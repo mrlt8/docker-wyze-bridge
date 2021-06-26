@@ -1,0 +1,14 @@
+version: '3'
+services:
+    nginx-rtmp:
+        container_name: nginx
+        image: alfg/nginx-rtmp
+        ports:
+            - 1935:1935
+            - 8080:80
+    wyzecam:
+        container_name: wyzebridge
+        build: ./app
+        environment:
+            - WYZE_EMAIL=
+            - WYZE_PASSWORD=
