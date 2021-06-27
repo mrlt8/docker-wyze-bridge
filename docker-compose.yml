@@ -1,13 +1,14 @@
 version: '3'
 services:
-    nginx-rtmp:
-        container_name: nginx
-        image: alfg/nginx-rtmp
+    rtsp-server:
+        container_name: rtsp-server
+        image: aler9/rtsp-simple-server
         ports:
             - 1935:1935
-            - 8080:80
+            - 8554:8554
+            - 8888:8888
     wyzecam:
-        container_name: wyzebridge
+        container_name: wyze-bridge
         build: ./app
         environment:
             - WYZE_EMAIL=

@@ -1,30 +1,33 @@
-# RTMP/HLS Bridge for Wyze Cam
+# RTMP/RTSP/HLS Bridge for Wyze Cam
 
-Quick docker container to enable RTMP/HLS streams for Wyze cams based on [noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) using [kroo/wyzecam](https://github.com/kroo/wyzecam) and [alfg/nginx-rtmp](https://hub.docker.com/r/alfg/nginx-rtmp/). 
+Quick docker container to enable RTMP, RTSP, and HLS streams for Wyze cams based on [noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) using [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server). 
 
 Has only been tested on macos.
 
 ---
-### Usage
+#### Usage
 
 git clone this repo, edit the docker-compose.yml with your wyze credentials, then run `docker composer up`.
 
+---
 
 #### URLs
 
- - Stats:  
+`camera-nickname` is the name of the camera set in the Wyze app and is in lower cases with hyphens in place of spaces. e.g. 'Front Door' would be `/front-door`
+
+- RTMP:  
 ```
-http://localhost:8080/stat
+rtmp://localhost:1935/camera-nickname
 ```
- - RTMP:  
+- RTSP:  
 ```
-rtmp://localhost:1935/stream/CAMERA.NICKNAME
+rtsp://localhost:8554/camera-nickname
 ```
 - HLS:  
 ```
-http://localhost:8080/live/CAMERA.NICKNAME.m3u8
+http://localhost:8888/camera-nickname/stream.m3u8
 ```
 - HLS can also be viewed in the browser using:
 ```
-http://localhost:8080/player.html?url=http://localhost:8080/live/CAMERA.NICKNAME.m3u8
+http://localhost:8888/camera-nickname
 ```
