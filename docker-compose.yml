@@ -3,13 +3,16 @@ services:
     rtsp-server:
         container_name: rtsp-server
         image: aler9/rtsp-simple-server
+        environment: 
+            - RTSP_PROTOCOLS=tcp
         ports:
             - 1935:1935
             - 8554:8554
             - 8888:8888
-    wyzecam:
+    wyzecam-bridge:
         container_name: wyze-bridge
         build: ./app
         environment:
             - WYZE_EMAIL=
             - WYZE_PASSWORD=
+            # - DEBUG_FFMPEG=True
