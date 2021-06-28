@@ -1,8 +1,8 @@
 # RTMP/RTSP/HLS Bridge for Wyze Cam
 
-Quick docker container to enable RTMP, RTSP, and HLS streams for Wyze cams based on [noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) using [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server). 
+Quick docker container to enable RTMP, RTSP, and HLS streams for Wyze cams using [noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server). 
 
-Has only been tested on macos.
+Has only been tested on macos, but should work on most x64 systems. 
 
 ---
 #### Usage
@@ -13,7 +13,7 @@ git clone this repo, edit the docker-compose.yml with your wyze credentials, the
 
 #### URLs
 
-`camera-nickname` is the name of the camera set in the Wyze app and is in lower cases with hyphens in place of spaces. e.g. 'Front Door' would be `/front-door`
+`camera-nickname` is the name of the camera set in the Wyze app and is in lower case with hyphens in place of spaces. e.g. 'Front Door' would be `/front-door`
 
 - RTMP:  
 ```

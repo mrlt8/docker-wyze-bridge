@@ -15,13 +15,10 @@ def rtsp_server(name):
             if 'DEBUG_FFMPEG' in os.environ:
                 print(f'[{name}]: {output.rstrip()}')
                 continue
-            if 'requests.exceptions.HTTPError' in output:
-                print(f'[{name}]: {output.rstrip()}',flush=True)
-                ffmpeg.kill()
-                break
             if os.environ["RTMP_URL"] in output:
                 print(f'[{name}]: {output.rstrip()}',flush=True)
-            if 'Conversion failed!' in output:
+                continue
+            if ('requests.exceptions.HTTPError' in output) or ('Conversion failed!' in output):
                 print(f'[{name}]: {output.rstrip()}',flush=True)
                 ffmpeg.kill()
                 break
