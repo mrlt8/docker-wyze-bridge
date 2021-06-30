@@ -2,7 +2,9 @@
 
 Quick docker container to enable RTMP, RTSP, and HLS streams for Wyze cams using [noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server). 
 
-Has only been tested on macos, but should work on most x64 systems. 
+Exposes a local RTMP, RTSP, and HLS stream for all your Wyze Cameras. No Third-party or special firmware required.
+
+Has only been tested on MacOS, but should work on most x64 systems. 
 
 ---
 #### Usage
@@ -31,3 +33,50 @@ http://localhost:8888/camera-nickname/stream.m3u8
 ```
 http://localhost:8888/camera-nickname
 ```
+
+---
+#### Filtering
+
+The default option will automatically create a stream for all the cameras on your account, but you can use the following environment options in your `docker-compose.yml` to filter the cameras.
+
+All options are cAsE-InSensiTive, and take single or multiple comma separated values.
+
+- Whitelist by Camera Name (set in the wyze app):
+```yaml
+environment:
+    - WYZE_EMAIL=
+    - WYZE_PASSWORD=
+    - FILTER_NAMES=Front Door, Driveway, porch
+```
+- Whitelist by Camera MAC Address:
+```yaml
+environment:
+    - WYZE_EMAIL=
+    - WYZE_PASSWORD=
+    - FILTER_MACS=00:aA:22:33:44:55, Aa22334455bB
+```
+- Whitelist by Camera Model:
+```yaml
+environment:
+    - WYZE_EMAIL=
+    - WYZE_PASSWORD=
+    - FILTER_MODEL=WYZEC1-JZ
+```
+
+- Blacklisting:
+
+You can reverse any of these whitelists into blacklists by adding *block, blacklist, exclude, ignore, or reverse* to `FILTER_MODE`. 
+
+
+```yaml
+environment:
+    - WYZE_EMAIL=
+    - WYZE_PASSWORD=
+    - FILTER_NAMES=Bedroom
+	- FILTER_MODE=BLOCK
+```
+
+---
+#### Debugging options
+
+`- DEBUG_FFMPEG=True` Prints stdout from FFmpeg
