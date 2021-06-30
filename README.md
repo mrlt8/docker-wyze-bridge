@@ -73,10 +73,11 @@ environment:
     - WYZE_EMAIL=
     - WYZE_PASSWORD=
     - FILTER_NAMES=Bedroom
-	- FILTER_MODE=BLOCK
+    - FILTER_MODE=BLOCK
 ```
 
 ---
 #### Debugging options
 
 `- DEBUG_FFMPEG=True` Prints stdout from FFmpeg
+`- DEBUG_NOKILL=True` Don't force-restart straem on error.  
