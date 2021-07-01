@@ -26,7 +26,7 @@ def rtsp_server(camera):
     while True:
         print(f'{datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Starting Camera ({camera.product_model}) on {camera.ip}...',flush=True)
         url = 'rtmp://rtsp-server:1935/' + camera.nickname.replace(' ', '-').lower()
-        ffmpeg = Popen(['python', '/opt/wyzecam/wyzecam-to-rtmp.py'], env={**environ,"WYZE_CAMERA_NAME": camera.nickname,"RTMP_URL": url},stdout=PIPE,stderr=STDOUT,text=True)
+        ffmpeg = Popen(['python3', '/opt/wyzecam/wyzecam-to-rtmp.py'], env={**environ,"WYZE_CAMERA_NAME": camera.nickname,"RTMP_URL": url},stdout=PIPE,stderr=STDOUT,text=True)
         while ffmpeg.poll() is None:
             output = ffmpeg.stdout.readline().rstrip()
             if not output:
