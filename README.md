@@ -6,16 +6,20 @@ Exposes a local RTMP, RTSP, and HLS stream for all your Wyze Cameras. No Third-p
 
 Has only been tested on MacOS, but should work on most x64 systems. 
 
----
-#### Usage
 
-git clone this repo, edit the docker-compose.yml with your wyze credentials, then run `docker composer up`.
+## Usage
 
----
+git clone this repo, edit the docker-compose.yml with your wyze credentials, then run `docker-composer up`.
 
-#### URLs
+Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
 
-`camera-nickname` is the name of the camera set in the Wyze app and is in lower case with hyphens in place of spaces. e.g. 'Front Door' would be `/front-door`
+## URLs
+
+`camera-nickname` is the name of the camera set in the Wyze app and are converted to lower case with hyphens in place of spaces. 
+
+e.g. 'Front Door' would be `/front-door`
+
+
 
 - RTMP:  
 ```
@@ -34,12 +38,14 @@ http://localhost:8888/camera-nickname/stream.m3u8
 http://localhost:8888/camera-nickname
 ```
 
----
-#### Filtering
+
+## Filtering
 
 The default option will automatically create a stream for all the cameras on your account, but you can use the following environment options in your `docker-compose.yml` to filter the cameras.
 
 All options are cAsE-InSensiTive, and take single or multiple comma separated values.
+
+#### Examples:
 
 - Whitelist by Camera Name (set in the wyze app):
 ```yaml
@@ -76,9 +82,16 @@ environment:
     - FILTER_MODE=BLOCK
 ```
 
----
-#### Debugging options
+## Other Configurations
+
+[rtsp-simple-server](https://github.com/aler9/rtsp-simple-server) options can be configured by editing `/app/rtsp-simple-server.yml`.
+
+In particular, increasing **readBufferCount** seems to help if you are getting dropped frames from your camera.
+
+
+## Debugging options
 
 `- DEBUG_FFMPEG=True` Prints stdout from FFmpeg
 
-`- DEBUG_NOKILL=True` Don't force-restart straem on error.  
+`- DEBUG_NOKILL=True` Don't force-restart stream on error.  
+
