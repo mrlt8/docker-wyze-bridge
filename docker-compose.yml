@@ -3,6 +3,7 @@ services:
     rtsp-server:
         container_name: rtsp-server
         image: aler9/rtsp-simple-server
+        restart: always
         environment: 
             - RTSP_PROTOCOLS=tcp
         ports:
@@ -11,9 +12,11 @@ services:
             - 8888:8888
         volumes:
             - ./app/rtsp-simple-server.yml:/rtsp-simple-server.yml
+
     wyzecam-bridge:
         container_name: wyze-bridge
         build: ./app
+        restart: always
         environment:
             - WYZE_EMAIL=
             - WYZE_PASSWORD=
