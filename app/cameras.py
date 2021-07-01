@@ -3,41 +3,41 @@ from subprocess import Popen, PIPE, STDOUT
 from threading import Thread
 from os import environ
 from time import sleep
+from datetime import datetime
 
 auth_info = login(environ["WYZE_EMAIL"], environ["WYZE_PASSWORD"])
 
 def get_env(env):
-    if env not in environ or not environ[env]:
-        return []
-    return [x.strip().upper().replace(':','') for x in environ[env].split(',')] if ',' in environ[env] else [environ[env].strip().upper().replace(':','')]
+    return [] if env not in environ or not environ[env] else [x.strip().upper().replace(':','') for x in environ[env].split(',')] if ',' in environ[env] else [environ[env].strip().upper().replace(':','')]
 def filter_cam(cam):
-	if cam.nickname.upper() in get_env('FILTER_NAMES') or cam.mac in get_env('FILTER_MACS') or cam.product_model in get_env('FILTER_MODEL'):
-		return True
+	return True if cam.nickname.upper() in get_env('FILTER_NAMES') or cam.mac in get_env('FILTER_MACS') or cam.product_model in get_env('FILTER_MODEL') else False
 def filtered_cameras(cams = get_camera_list(auth_info)):
     if 'FILTER_MODE' in environ and environ['FILTER_MODE'].upper() in ('BLOCK','BLACKLIST','EXCLUDE','IGNORE','REVERSE'):
-        print('BLACKLIST MODE ON')
-        return filter(lambda cam: not filter_cam(cam),cams)
+        filtered = list(filter(lambda cam: not filter_cam(cam),cams))
+        print(f'BLACKLIST MODE ON \nSTARTING {len(filtered)} OF {len(cams)} CAMERAS')
+        return filtered
     if any(key.startswith('FILTER_') for key in environ):		
-        print('WHITELIST MODE ON')
-        return filter(filter_cam,cams)
-    return cams 
-       
-def rtsp_server(name):
+        filtered = list(filter(filter_cam,cams))
+        print(f'WHITELIST MODE ON \nSTARTING {len(filtered)} OF {len(cams)} CAMERAS')
+        return filtered
+    print(f'STARTING ALL {len(cams)} CAMERAS')
+    return cams
+def rtsp_server(camera):
     while True:
-        print(f'[{name}]: Starting...',flush=True)
-        url = 'rtmp://rtsp-server:1935/' + name.replace(' ', '-').lower()
-        ffmpeg = Popen(['python', '/opt/wyzecam/wyzecam-to-rtmp.py'], env={**environ,"WYZE_CAMERA_NAME": name,"RTMP_URL": url},stdout=PIPE,stderr=STDOUT, text=True)
+        print(f'{datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Starting Camera ({camera.product_model}) on {camera.ip}...',flush=True)
+        url = 'rtmp://rtsp-server:1935/' + camera.nickname.replace(' ', '-').lower()
+        ffmpeg = Popen(['python', '/opt/wyzecam/wyzecam-to-rtmp.py'], env={**environ,"WYZE_CAMERA_NAME": camera.nickname,"RTMP_URL": url},stdout=PIPE,stderr=STDOUT,text=True)
         while ffmpeg.poll() is None:
             output = ffmpeg.stdout.readline().rstrip()
             if not output:
                 continue
-            if 'DEBUG_FFMPEG' in environ or any(err in output for err in [url, 'requests.exceptions.HTTPError','Broken pipe','Conversion failed!']):
-                print(f'[{name}]: {output.rstrip()}',flush=True)
-            if 'DEBUG_NOKILL' not in environ and any(err in output for err in ['requests.exceptions.HTTPError','Broken pipe','Conversion failed!']):
+            if 'DEBUG_FFMPEG' in environ or any(err in output for err in [url, 'requests.exceptions.HTTPError','Broken pipe','AV_ER_REMOTE_TIMEOUT_DISCONNECT']):
+                print(f'{datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] {output.rstrip()}',flush=True)
+            if 'DEBUG_NOKILL' not in environ and any(err in output for err in ['requests.exceptions.HTTPError','Broken pipe','AV_ER_REMOTE_TIMEOUT_DISCONNECT']):
                 break
-        print(f'[{name}]: Killing ffmpeg...',flush=True)
+        print(f'{datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Killing FFmpeg...',flush=True)
         ffmpeg.kill()
         sleep(1)
 
 for camera in filtered_cameras():
-    Thread(target=rtsp_server, args=(camera.nickname,)).start()
+    Thread(target=rtsp_server, args=(camera,)).start()
