@@ -68,7 +68,13 @@ environment:
     - WYZE_PASSWORD=
     - FILTER_MODEL=WYZEC1-JZ
 ```
-
+- Whitelist by Camera Model Name:
+```yaml
+environment:
+    - WYZE_EMAIL=
+    - WYZE_PASSWORD=
+    - FILTER_MODEL=V2, v3, Pan
+```
 - Blacklisting:
 
 You can reverse any of these whitelists into blacklists by adding *block, blacklist, exclude, ignore, or reverse* to `FILTER_MODE`. 
