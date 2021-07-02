@@ -15,8 +15,10 @@ services:
 
     wyzecam-bridge:
         container_name: wyze-bridge
-        build: ./app
         restart: always
+        build: 
+            context: ./app
+            # dockerfile: Dockerfile.arm
         environment:
             - WYZE_EMAIL=
             - WYZE_PASSWORD=
