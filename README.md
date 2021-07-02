@@ -13,12 +13,12 @@ git clone this repo, edit the docker-compose.yml with your wyze credentials, the
 
 Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
 
+
 ## URLs
 
 `camera-nickname` is the name of the camera set in the Wyze app and are converted to lower case with hyphens in place of spaces. 
 
 e.g. 'Front Door' would be `/front-door`
-
 
 
 - RTMP:  
@@ -45,6 +45,7 @@ The default option will automatically create a stream for all the cameras on you
 
 All options are cAsE-InSensiTive, and take single or multiple comma separated values.
 
+
 #### Examples:
 
 - Whitelist by Camera Name (set in the wyze app):
@@ -68,11 +69,16 @@ environment:
     - WYZE_PASSWORD=
     - FILTER_MODEL=WYZEC1-JZ
 ```
-
+- Whitelist by Camera Model Name:
+```yaml
+environment:
+    - WYZE_EMAIL=
+    - WYZE_PASSWORD=
+    - FILTER_MODEL=V2, v3, Pan
+```
 - Blacklisting:
 
 You can reverse any of these whitelists into blacklists by adding *block, blacklist, exclude, ignore, or reverse* to `FILTER_MODE`. 
-
 
 ```yaml
 environment:
@@ -84,6 +90,23 @@ environment:
 
 ## Other Configurations
 
+#### ARM/Raspberry Pi Support
+
+The default configuration will use the x64 tutk library, however, you can edit your `docker-compose.yml` to use the 32-bit arm library by specifying the `dockerfile` under `build` as `Dockerfile.arm`:
+
+```YAML
+    wyzecam-bridge:
+        container_name: wyze-bridge
+        restart: always
+        build: 
+            context: ./app
+            dockerfile: Dockerfile.arm
+        environment:
+            - WYZE_EMAIL=
+            - WYZE_PASSWORD=
+```
+
+#### rtsp-simple-server
 [rtsp-simple-server](https://github.com/aler9/rtsp-simple-server) options can be configured by editing `/app/rtsp-simple-server.yml`.
 
 In particular, increasing **readBufferCount** seems to help if you are getting dropped frames from your camera.
