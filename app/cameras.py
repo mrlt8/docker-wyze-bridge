@@ -1,24 +1,22 @@
-from wyzecam import login, get_camera_list
-from subprocess import Popen, PIPE, STDOUT
-from threading import Thread
-from os import environ
-from time import sleep
-from datetime import datetime
+import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, datetime
 
-auth_info = login(environ["WYZE_EMAIL"], environ["WYZE_PASSWORD"])
+if 'DEBUG_FFMPEG' not in os.environ:
+	warnings.filterwarnings("ignore")
 
+auth_info = wyzecam.login(os.environ["WYZE_EMAIL"], os.environ["WYZE_PASSWORD"])
 model_names = {'WYZECP1_JEF':'PAN','WYZEC1-JZ':'V2','WYZE_CAKP2JFUS':'V3','WYZEDB3':'DORRBELL'}
+
 def get_env(env):
-	return [] if not environ.get(env) else [x.strip().upper().replace(':','') for x in environ[env].split(',')] if ',' in environ[env] else [environ[env].strip().upper().replace(':','')]
+	return [] if not os.environ.get(env) else [x.strip().upper().replace(':','') for x in os.environ[env].split(',')] if ',' in os.environ[env] else [os.environ[env].strip().upper().replace(':','')]
 def filter_cam(cam):
 	return True if cam.nickname.upper() in get_env('FILTER_NAMES') or cam.mac in get_env('FILTER_MACS') or cam.product_model in get_env('FILTER_MODEL') or model_names.get(cam.product_model) in get_env('FILTER_MODEL') else False
-def filtered_cameras(cams = get_camera_list(auth_info)):
-	if 'FILTER_MODE' in environ and environ['FILTER_MODE'].upper() in ('BLOCK','BLACKLIST','EXCLUDE','IGNORE','REVERSE'):
+def filtered_cameras(cams = wyzecam.get_camera_list(auth_info)):
+	if 'FILTER_MODE' in os.environ and os.environ['FILTER_MODE'].upper() in ('BLOCK','BLACKLIST','EXCLUDE','IGNORE','REVERSE'):
 		filtered = list(filter(lambda cam: not filter_cam(cam),cams))
 		if len(filtered) >0:
 			print(f'BLACKLIST MODE ON \nSTARTING {len(filtered)} OF {len(cams)} CAMERAS')
 			return filtered
-	if any(key.startswith('FILTER_') for key in environ):		
+	if any(key.startswith('FILTER_') for key in os.environ):		
 		filtered = list(filter(filter_cam,cams))
 		if len(filtered) > 0:
 			print(f'WHITELIST MODE ON \nSTARTING {len(filtered)} OF {len(cams)} CAMERAS')
@@ -27,20 +25,42 @@ def filtered_cameras(cams = get_camera_list(auth_info)):
 	return cams
 def rtsp_server(camera):
 	while True:
-		print(f'{datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Starting WyzeCam {model_names.get(camera.product_model)} ({camera.product_model}) on {camera.ip}...',flush=True)
-		url = 'rtmp://rtsp-server:1935/' + camera.nickname.replace(' ', '-').lower()
-		ffmpeg = Popen(['python3', '/opt/wyzecam/wyzecam-to-rtmp.py'], env={**environ,"WYZE_CAMERA_NAME": camera.nickname,"RTMP_URL": url},stdout=PIPE,stderr=STDOUT,text=True)
-		while ffmpeg.poll() is None:
-			output = ffmpeg.stdout.readline().rstrip()
-			if not output:
-				continue
-			if 'DEBUG_FFMPEG' in environ or any(err in output for err in [url, 'requests.exceptions.HTTPError','Broken pipe','AV_ER_REMOTE_TIMEOUT_DISCONNECT']):
-				print(f'{datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] {output.rstrip()}',flush=True)
-			if 'DEBUG_NOKILL' not in environ and any(err in output for err in ['requests.exceptions.HTTPError','Broken pipe','AV_ER_REMOTE_TIMEOUT_DISCONNECT']):
-				break
-		print(f'{datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Killing FFmpeg...',flush=True)
-		ffmpeg.kill()
-		sleep(1)
+		try:
+			with wyzecam.WyzeIOTC() as iotc, iotc.connect_and_auth(wyzecam.get_user_info(auth_info), camera) as sess:
+				print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Starting WyzeCam {model_names.get(camera.product_model)} ({camera.product_model}) running FW: {sess.camera.camera_info["basicInfo"]["firmware"]} on {camera.ip} (Wifi: -{sess.camera.camera_info["basicInfo"]["wifidb"]} dBm)...',flush=True)
+				cmd = ('ffmpeg '+ cmd).split() if os.environ.get('FFMPEG_CMD') else ['ffmpeg',
+					'-hide_banner',
+					# '-stats' if 'DEBUG_FFMPEG' in os.environ else '-nostats',
+					'-nostats',
+					'-loglevel','info' if 'DEBUG_FFMPEG' in os.environ else 'fatal',
+					'-f', sess.camera.camera_info['videoParm']['type'].lower(),
+					'-framerate', sess.camera.camera_info['videoParm']['fps'],
+					'-i', '-',
+					'-vcodec', 'copy', 
+					'-f','rtsp', 'rtsp://rtsp-server:8554/' + camera.nickname.replace(' ', '-').lower()]
+				ffmpeg = subprocess.Popen(cmd,stdin=subprocess.PIPE)
+				while ffmpeg.poll() is None:
+					for frame in next(sess.recv_video_data()):
+						try:
+							ffmpeg.stdin.write(frame)
+						except Exception as ex:
+							print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] [FFMPEG] {ex}',flush=True)
+							break
+		except Exception as ex:
+			print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] {ex}',flush=True)
+			if str(ex) == 'IOTC_ER_CAN_NOT_FIND_DEVICE':
+				print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Camera offline? Sleeping for 10s.',flush=True)
+				time.sleep(10)
+		finally:
+			if 'ffmpeg' in locals():
+				print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Killing FFmpeg...',flush=True)
+				ffmpeg.kill()
+				time.sleep(0.5)
+				ffmpeg.wait()
+			if 'iotc' in locals():
+				iotc.deinitialize()
+			gc.collect()
 
+print('STARTING DOCKER-WYZE-BRIDGE v0.2.0',flush=True)
 for camera in filtered_cameras():
-	Thread(target=rtsp_server, args=(camera,)).start()
+	multiprocessing.Process(target=rtsp_server, args=(camera,)).start()
