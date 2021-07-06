@@ -34,7 +34,7 @@ def start_stream(camera):
 		try:
 			with wyzecam.WyzeIOTC() as iotc, iotc.connect_and_auth(wyzecam.get_user_info(login()), camera) as sess:
 				print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Starting WyzeCam {model_names.get(camera.product_model)} ({camera.product_model}) running FW: {sess.camera.camera_info["basicInfo"]["firmware"]} on {camera.ip} (Wifi: -{sess.camera.camera_info["basicInfo"]["wifidb"]} dBm)...',flush=True)
-				cmd = ('ffmpeg '+ cmd).split() if os.environ.get('FFMPEG_CMD') else ['ffmpeg',
+				cmd = ('ffmpeg ' + os.environ['FFMPEG_CMD'].strip("\'").strip('\"') + camera.nickname.replace(' ', '-').lower()).split() if os.environ.get('FFMPEG_CMD') else ['ffmpeg',
 					'-hide_banner',
 					# '-stats' if 'DEBUG_FFMPEG' in os.environ else '-nostats',
 					'-nostats',

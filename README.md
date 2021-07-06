@@ -1,10 +1,11 @@
 # RTMP/RTSP/HLS Bridge for Wyze Cam
 
-Quick docker container to enable RTMP, RTSP, and HLS streams for Wyze cams using [noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server). 
+Quick docker container to enable RTMP, RTSP, and HLS streams for Wyze cams based on [noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server). 
 
-Exposes a local RTMP, RTSP, and HLS stream for all your Wyze Cameras. No Third-party or special firmware required.
+Exposes a local RTMP, RTSP, and HLS stream for all your Wyze Cameras including v3. No Third-party or special firmware required.
 
-Has only been tested on MacOS, but should work on most x64 systems. 
+Has been tested on MacOS, but should work on most x64 systems as well as on some arm-based systems like the raspberry pi. 
+[See here](#armraspberry-pi-support) for instructions to run on arm.
 
 
 ## Usage
@@ -92,7 +93,7 @@ environment:
 
 #### ARM/Raspberry Pi Support
 
-The default configuration will use the x64 tutk library, however, you can edit your `docker-compose.yml` to use the 32-bit arm library by specifying the `dockerfile` under `build` as `Dockerfile.arm`:
+The default configuration will use the x64 tutk library, however, you can edit your `docker-compose.yml` to use the 32-bit arm library by setting `dockerfile` as `Dockerfile.arm`:
 
 ```YAML
     wyzecam-bridge:
@@ -111,10 +112,24 @@ The default configuration will use the x64 tutk library, however, you can edit y
 
 In particular, increasing **readBufferCount** seems to help if you are getting dropped frames from your camera.
 
+#### Custom FFmpeg Commands
+
+You can pass a custom [command](https://ffmpeg.org/ffmpeg.html) to FFmpeg by using `FFMPEG_CMD` in your docker-compose.yml:
+
+```YAML
+environment:
+    - WYZE_EMAIL=
+    - WYZE_PASSWORD=
+    - FFMPEG_CMD=-f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/
+```
+Additional info:
+- The `ffmpeg` command is implied and is optional.
+- The camera name will automatically be appended to the command, so you need to end with the rtmp/rtsp url.
+
 
 ## Debugging options
 
-`- DEBUG_FFMPEG=True` Prints stdout from FFmpeg
+`- DEBUG_FFMPEG=True` Enable additional logging from FFmpeg
 
-`- DEBUG_NOKILL=True` Don't force-restart stream on error.  
+
 
