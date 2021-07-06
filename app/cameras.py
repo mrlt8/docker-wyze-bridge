@@ -67,6 +67,6 @@ def start_stream(camera):
 				iotc.deinitialize()
 			gc.collect()
 
-print('STARTING DOCKER-WYZE-BRIDGE v0.2.1',flush=True)
+print('STARTING DOCKER-WYZE-BRIDGE v0.2.2',flush=True)
 for camera in filtered_cameras():
 	multiprocessing.Process(target=start_stream, args=[camera]).start()
