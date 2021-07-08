@@ -2,7 +2,7 @@ import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, datetime
 
 if 'DEBUG_FFMPEG' not in os.environ:
 	warnings.filterwarnings("ignore")
-model_names = {'WYZECP1_JEF':'PAN','WYZEC1-JZ':'V2','WYZE_CAKP2JFUS':'V3','WYZEDB3':'DORRBELL'}
+model_names = {'WYZECP1_JEF':'PAN','WYZEC1':'V1','WYZEC1-JZ':'V2','WYZE_CAKP2JFUS':'V3','WYZEDB3':'DOORBELL','WVOD1':'OUTDOOR'}
 
 
 def get_env(env):
