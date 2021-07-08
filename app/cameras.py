@@ -2,14 +2,14 @@ import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, datetime, p
 
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.3.0', flush=True)
+		print('STARTING DOCKER-WYZE-BRIDGE v0.3.1', flush=True)
 
 	if 'DEBUG_FFMPEG' not in os.environ:
 		warnings.filterwarnings("ignore")
 
 	model_names = {'WYZECP1_JEF':'PAN','WYZEC1':'V1','WYZEC1-JZ':'V2','WYZE_CAKP2JFUS':'V3','WYZEDB3':'DOORBELL','WVOD1':'OUTDOOR'}
 
-	def get_env(env):
+	def get_env(self,env):
 		return [] if not os.environ.get(env) else [x.strip().upper().replace(':','') for x in os.environ[env].split(',')] if ',' in os.environ[env] else [os.environ[env].strip().upper().replace(':','')]
 
 	def env_filter(self,cam):
@@ -44,7 +44,7 @@ class wyze_bridge:
 		if 'FILTER_MODE' in os.environ and os.environ['FILTER_MODE'].upper() in ('BLOCK','BLACKLIST','EXCLUDE','IGNORE','REVERSE'):
 			filtered = list(filter(lambda cam: not self.env_filter(cam),cams))
 			if len(filtered) >0:
-				print(f'BLACKLIST MODE ON \nSTARTING {len(filtered)} OF {len(cams)} CAMERAS ')
+				print(f'BLACKLIST MODE ON \nSTARTING {len(filtered)} OF {len(cams)} CAMERAS')
 				return filtered
 		if any(key.startswith('FILTER_') for key in os.environ):		
 			filtered = list(filter(self.env_filter,cams))
@@ -85,7 +85,7 @@ class wyze_bridge:
 						'-f','rtsp', 'rtsp://rtsp-server:8554/' + camera.nickname.replace(' ', '-').lower()]
 					ffmpeg = subprocess.Popen(cmd,stdin=subprocess.PIPE)
 					while ffmpeg.poll() is None:
-						for frame in next(sess.recv_video_data()):
+						for (frame,_) in sess.recv_video_data():
 							try:
 								ffmpeg.stdin.write(frame)
 							except Exception as ex:
