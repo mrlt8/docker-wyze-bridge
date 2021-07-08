@@ -117,6 +117,7 @@ The default configuration will use the x64 tutk library, however, you can edit y
 Bitrate and resolution of the stream from the wyze camera can be adjusted with `- QUALITY=HD120`.
 - Resolution can be set to `SD` (640x360 cams/480x640 doorbell) or `HD` (1920x1080 cam/1296x1728 doorbell). Default - HD.
 - Bitrate can be set from 60 to 240 kb/s. Default - 120.
+- Bitrate and resolution changes will apply to ALL cameras with the current version.
 
 ```yaml
 environment:
