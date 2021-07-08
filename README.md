@@ -7,6 +7,10 @@ Exposes a local RTMP, RTSP, and HLS stream for all your Wyze Cameras including v
 Has been tested on MacOS, but should work on most x64 systems as well as on some arm-based systems like the raspberry pi. 
 [See here](#armraspberry-pi-support) for instructions to run on arm.
 
+## Changes in v0.3.0
+
+- 🆕 Adjustable Bitrate and Resolution. [See here](#Bitrate-and-Resolution) 
+- 🆕 Nearly cloudless by limiting the number of calls to the wyze servers by storing auth tokens and cameras locally. Should also help prevent http errors. Can be disabled with `- FRESH_DATA=True`
 
 ## Usage
 
@@ -107,11 +111,27 @@ The default configuration will use the x64 tutk library, however, you can edit y
             - WYZE_PASSWORD=
 ```
 
+---
+#### Bitrate and Resolution
+
+Bitrate and resolution of the stream from the wyze camera can be adjusted with `- QUALITY=HD120`.
+- Resolution can be set to `SD` (640x360 cams/480x640 doorbell) or `HD` (1920x1080 cam/1296x1728 doorbell). Default - HD.
+- Bitrate can be set from 60 to 240 kb/s. Default - 120.
+
+```yaml
+environment:
+    - WYZE_EMAIL=
+    - WYZE_PASSWORD=
+    - QUALITY=SD60
+```
+
+---
 #### rtsp-simple-server
 [rtsp-simple-server](https://github.com/aler9/rtsp-simple-server) options can be configured by editing `/app/rtsp-simple-server.yml`.
 
 In particular, increasing **readBufferCount** seems to help if you are getting dropped frames from your camera.
 
+---
 #### Custom FFmpeg Commands
 
 You can pass a custom [command](https://ffmpeg.org/ffmpeg.html) to FFmpeg by using `FFMPEG_CMD` in your docker-compose.yml:
@@ -126,10 +146,11 @@ Additional info:
 - The `ffmpeg` command is implied and is optional.
 - The camera name will automatically be appended to the command, so you need to end with the rtmp/rtsp url.
 
+---
 
 ## Debugging options
 
 `- DEBUG_FFMPEG=True` Enable additional logging from FFmpeg
 
-
+`- FRESH_DATA=True` Disable local cache and pull new data from wyze servers.
 
