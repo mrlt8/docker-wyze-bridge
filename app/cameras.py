@@ -2,7 +2,7 @@ import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, datetime, p
 
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.3.1', flush=True)
+		print('STARTING DOCKER-WYZE-BRIDGE v0.3.1.1', flush=True)
 
 	if 'DEBUG_FFMPEG' not in os.environ:
 		warnings.filterwarnings("ignore")
@@ -18,10 +18,12 @@ class wyze_bridge:
 	def authWyze(self,name):
 		try:
 			if os.environ.get('FRESH_DATA') and ('auth' not in name or not hasattr(self,'auth')):
-				raise Exception
+				raise Exception('Forced Refresh') 
 			print(f'Fetching {name} data from local cache...')
-			return pickle.load(open(f"/opt/wyzecam/tokens/{name}.pickle", "rb"))
-		except Exception:
+			with(open(f'/opt/wyzecam/tokens/{name}.pickle','rb')) as f:
+				return pickle.load(f)
+		except Exception as ex:
+			print(f'{ex}')
 			if not hasattr(self,'auth') and 'auth' not in name:
 				self.authWyze('auth')
 			while True:
@@ -33,7 +35,8 @@ class wyze_bridge:
 						data = wyzecam.get_user_info(self.auth)
 					if 'cameras' in name:
 						data = wyzecam.get_camera_list(self.auth)
-					pickle.dump(data, open(f"/opt/wyzecam/tokens/{name}.pickle", "wb"))
+					with open(f"/opt/wyzecam/tokens/{name}.pickle","wb") as f:
+						pickle.dump(data, f)
 					return data
 				except Exception as ex:
 					print(f'{ex}\nSleeping for 10s...')
@@ -71,17 +74,22 @@ class wyze_bridge:
 				wyzecam.tutk.tutk.iotc_initialize(tutk_library)
 				wyzecam.tutk.tutk.av_initialize(tutk_library)	
 				with wyzecam.iotc.WyzeIOTCSession(tutk_library,self.user,camera,resolution,bitrate) as sess:
-					print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Starting {res} {bitrate}kb/s Stream for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) running FW: {sess.camera.camera_info["basicInfo"]["firmware"]} from {camera.ip} (Wifi: -{sess.camera.camera_info["basicInfo"]["wifidb"]} dBm)...',flush=True)
+					print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Starting {res} {bitrate}kb/s Stream for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) running FW: {sess.camera.camera_info["basicInfo"]["firmware"]} from {camera.ip} (WiFi Quality: {sess.camera.camera_info["basicInfo"]["wifidb"]}%)...',flush=True)
 					cmd = ('ffmpeg ' + os.environ['FFMPEG_CMD'].strip("\'").strip('\"') + camera.nickname.replace(' ', '-').lower()).split() if os.environ.get('FFMPEG_CMD') else ['ffmpeg',
 						'-hide_banner',
 						# '-stats' if 'DEBUG_FFMPEG' in os.environ else '-nostats',
 						'-nostats',
 						'-loglevel','info' if 'DEBUG_FFMPEG' in os.environ else 'fatal',
 						'-f', sess.camera.camera_info['videoParm']['type'].lower(),
-						'-framerate', sess.camera.camera_info['videoParm']['fps'],
+						'-r', sess.camera.camera_info['videoParm']['fps'],
+						'-err_detect','ignore_err',
+						'-avioflags','direct',
+						'-flags','low_delay',
+						'-fflags','+flush_packets+genpts+discardcorrupt+nobuffer',
 						'-i', '-',
 						# '-b:v', str(bitrate)+'k',
 						'-vcodec', 'copy', 
+						'-rtsp_transport','tcp',
 						'-f','rtsp', 'rtsp://rtsp-server:8554/' + camera.nickname.replace(' ', '-').lower()]
 					ffmpeg = subprocess.Popen(cmd,stdin=subprocess.PIPE)
 					while ffmpeg.poll() is None:
