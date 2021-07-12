@@ -2,7 +2,7 @@ import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, datetime, p
 
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.3.1.1', flush=True)
+		print('STARTING DOCKER-WYZE-BRIDGE v0.3.1.2', flush=True)
 
 	if 'DEBUG_FFMPEG' not in os.environ:
 		warnings.filterwarnings("ignore")
@@ -90,7 +90,7 @@ class wyze_bridge:
 						# '-b:v', str(bitrate)+'k',
 						'-vcodec', 'copy', 
 						'-rtsp_transport','tcp',
-						'-f','rtsp', 'rtsp://rtsp-server:8554/' + camera.nickname.replace(' ', '-').lower()]
+						'-f','rtsp', 'rtsp://rtsp-server:8554/' + camera.nickname.replace(' ', '-').replace('#', '').lower()]
 					ffmpeg = subprocess.Popen(cmd,stdin=subprocess.PIPE)
 					while ffmpeg.poll() is None:
 						for (frame,_) in sess.recv_video_data():
