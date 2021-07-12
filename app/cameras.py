@@ -1,9 +1,9 @@
-import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, datetime, pickle
+import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, datetime, pickle, sys, io, wyze_sdk
 
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.3.1.1', flush=True)
-
+		print('STARTING DOCKER-WYZE-BRIDGE v0.3-MFA', flush=True)
+	
 	if 'DEBUG_FFMPEG' not in os.environ:
 		warnings.filterwarnings("ignore")
 
@@ -15,32 +15,56 @@ class wyze_bridge:
 	def env_filter(self,cam):
 		return True if cam.nickname.upper() in self.get_env('FILTER_NAMES') or cam.mac in self.get_env('FILTER_MACS') or cam.product_model in self.get_env('FILTER_MODEL') or self.model_names.get(cam.product_model) in self.get_env('FILTER_MODEL') else False
 
+	def twofactor(self):
+		mfa_token = '/opt/wyzecam/tokens/mfa_token'
+		print(f'MFA Token Required\nAdd token to {mfa_token}',flush=True)
+		while True:
+			if os.path.exists(mfa_token) and os.path.getsize(mfa_token) > 0:
+				with open(mfa_token,'r+') as f:
+					lines = f.read().strip()
+					f.truncate(0)
+					print(f'Using {lines} as token',flush=True)
+					sys.stdin = io.StringIO(lines)
+					try:
+						response = wyze_sdk.Client(email=os.environ['WYZE_EMAIL'], password=os.environ['WYZE_PASSWORD'])
+						return wyzecam.WyzeCredential.parse_obj({'access_token':response._token,'refresh_token':response._refresh_token,'user_id':response._user_id,'phone_id':response._api_client().phone_id})
+					except Exception as ex:
+						print(f'{ex}\nPlease try again!',flush=True)
+			time.sleep(2)
+
 	def authWyze(self,name):
-		try:
-			if os.environ.get('FRESH_DATA') and ('auth' not in name or not hasattr(self,'auth')):
-				raise Exception('Forced Refresh') 
-			print(f'Fetching {name} data from local cache...')
-			with(open(f'/opt/wyzecam/tokens/{name}.pickle','rb')) as f:
+		pkl_data = f'/opt/wyzecam/tokens/{name}.pickle'
+		if os.environ.get('FRESH_DATA') and ('auth' not in name or not hasattr(self,'auth')):
+			print(f'Forced Refresh of {name}!') 
+		elif os.path.exists(pkl_data) and os.path.getsize(pkl_data) > 0:
+			with(open(pkl_data,'rb')) as f:
+				print(f'Fetching {name} data from local cache...',flush=True)
 				return pickle.load(f)
-		except Exception as ex:
-			print(f'{ex}')
-			if not hasattr(self,'auth') and 'auth' not in name:
-				self.authWyze('auth')
-			while True:
-				try:
-					print(f'Fetching {name} data from wyze...')
-					if 'auth' in name:
+		if not hasattr(self,'auth') and 'auth' not in name:
+			self.authWyze('auth')
+		while True:
+			try:
+				print(f'Fetching {name} data from wyze...',flush=True)
+				if 'auth' in name:
+					try:
 						self.auth = data =  wyzecam.login(os.environ["WYZE_EMAIL"], os.environ["WYZE_PASSWORD"])
-					if 'user' in name:
-						data = wyzecam.get_user_info(self.auth)
-					if 'cameras' in name:
-						data = wyzecam.get_camera_list(self.auth)
-					with open(f"/opt/wyzecam/tokens/{name}.pickle","wb") as f:
-						pickle.dump(data, f)
-					return data
-				except Exception as ex:
-					print(f'{ex}\nSleeping for 10s...')
-					time.sleep(10)
+					except ValueError as ex:
+						for err in ex.errors():
+							if 'mfa_options' in err['loc']:
+								self.auth = data = self.twofactor()
+					except Exception as ex:
+						[print('Invalid credentials?',flush=True) for err in ex.args if '400 Client Error' in err]
+						raise ex
+				if 'user' in name:
+					data = wyzecam.get_user_info(self.auth)
+				if 'cameras' in name:
+					data = wyzecam.get_camera_list(self.auth)
+				with open(pkl_data,"wb") as f:
+					pickle.dump(data, f)
+				return data
+			except Exception as ex:
+				print(f'{ex}\nSleeping for 10s...')
+				time.sleep(10)
 
 	def filtered_cameras(self):
 		cams = self.authWyze('cameras')
