@@ -2,7 +2,7 @@ import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, datetime, p
 
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.3-MFA', flush=True)
+		print('STARTING DOCKER-WYZE-BRIDGE v0.3.2', flush=True)
 	
 	if 'DEBUG_FFMPEG' not in os.environ:
 		warnings.filterwarnings("ignore")
@@ -34,17 +34,21 @@ class wyze_bridge:
 
 	def authWyze(self,name):
 		pkl_data = f'/opt/wyzecam/tokens/{name}.pickle'
-		if os.environ.get('FRESH_DATA') and ('auth' not in name or not hasattr(self,'auth')):
-			print(f'Forced Refresh of {name}!') 
-		elif os.path.exists(pkl_data) and os.path.getsize(pkl_data) > 0:
-			with(open(pkl_data,'rb')) as f:
-				print(f'Fetching {name} data from local cache...',flush=True)
-				return pickle.load(f)
+		if os.path.exists(pkl_data) and os.path.getsize(pkl_data) > 0:
+			if os.environ.get('FRESH_DATA') and ('auth' not in name or not hasattr(self,'auth')):
+				print(f'[FORCED REFRESH] Removing local cache for {name}!',flush=True)
+				os.remove(pkl_data)
+			else:	
+				with(open(pkl_data,'rb')) as f:
+					print(f'Fetching {name} from local cache...',flush=True)
+					return pickle.load(f)
+		else:
+			print(f'Could not find local cache for {name}',flush=True)
 		if not hasattr(self,'auth') and 'auth' not in name:
 			self.authWyze('auth')
 		while True:
 			try:
-				print(f'Fetching {name} data from wyze...',flush=True)
+				print(f'Fetching {name} from wyze api...',flush=True)
 				if 'auth' in name:
 					try:
 						self.auth = data =  wyzecam.login(os.environ["WYZE_EMAIL"], os.environ["WYZE_PASSWORD"])
@@ -60,10 +64,11 @@ class wyze_bridge:
 				if 'cameras' in name:
 					data = wyzecam.get_camera_list(self.auth)
 				with open(pkl_data,"wb") as f:
+					print(f'Saving {name} to local cache...',flush=True)
 					pickle.dump(data, f)
 				return data
 			except Exception as ex:
-				print(f'{ex}\nSleeping for 10s...')
+				print(f'{ex}\nSleeping for 10s...',flush=True)
 				time.sleep(10)
 
 	def filtered_cameras(self):
@@ -99,9 +104,8 @@ class wyze_bridge:
 				wyzecam.tutk.tutk.av_initialize(tutk_library)	
 				with wyzecam.iotc.WyzeIOTCSession(tutk_library,self.user,camera,resolution,bitrate) as sess:
 					print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Starting {res} {bitrate}kb/s Stream for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) running FW: {sess.camera.camera_info["basicInfo"]["firmware"]} from {camera.ip} (WiFi Quality: {sess.camera.camera_info["basicInfo"]["wifidb"]}%)...',flush=True)
-					cmd = ('ffmpeg ' + os.environ['FFMPEG_CMD'].strip("\'").strip('\"') + camera.nickname.replace(' ', '-').lower()).split() if os.environ.get('FFMPEG_CMD') else ['ffmpeg',
+					cmd = ('ffmpeg ' + os.environ['FFMPEG_CMD'].strip("\'").strip('\"') + camera.nickname.replace(' ', '-').replace('#', '').lower()).split() if os.environ.get('FFMPEG_CMD') else ['ffmpeg',
 						'-hide_banner',
-						# '-stats' if 'DEBUG_FFMPEG' in os.environ else '-nostats',
 						'-nostats',
 						'-loglevel','info' if 'DEBUG_FFMPEG' in os.environ else 'fatal',
 						'-f', sess.camera.camera_info['videoParm']['type'].lower(),
@@ -111,10 +115,10 @@ class wyze_bridge:
 						'-flags','low_delay',
 						'-fflags','+flush_packets+genpts+discardcorrupt+nobuffer',
 						'-i', '-',
-						# '-b:v', str(bitrate)+'k',
+						'-map','0:v:0',
 						'-vcodec', 'copy', 
 						'-rtsp_transport','tcp',
-						'-f','rtsp', 'rtsp://rtsp-server:8554/' + camera.nickname.replace(' ', '-').lower()]
+						'-f','rtsp', 'rtsp://rtsp-server:8554/' + camera.nickname.replace(' ', '-').replace('#', '').lower()]
 					ffmpeg = subprocess.Popen(cmd,stdin=subprocess.PIPE)
 					while ffmpeg.poll() is None:
 						for (frame,_) in sess.recv_video_data():
