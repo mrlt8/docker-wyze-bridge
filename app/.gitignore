@@ -1,0 +1,4 @@
+.DS_Store
+docker-compose.yml
+*.pickle
+mfa_token
