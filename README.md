@@ -1,16 +1,15 @@
 # RTMP/RTSP/HLS Bridge for Wyze Cam
 
-Quick docker container to enable RTMP, RTSP, and HLS streams for Wyze cams based on [noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server). 
+Docker container to enable RTMP, RTSP, and HLS streams for Wyze cams based on [noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server), and [shauntarves/wyze-sdk](https://github.com/shauntarves/wyze-sdk).
 
 Exposes a local RTMP, RTSP, and HLS stream for all your Wyze Cameras including v3. No Third-party or special firmware required.
 
-Has been tested on MacOS, but should work on most x64 systems as well as on some arm-based systems like the raspberry pi. 
+Should work on most x64 systems as well as on some arm-based systems like the raspberry pi. 
 [See here](#armraspberry-pi-support) for instructions to run on arm.
 
-## Changes in v0.3.0
+## Changes in v0.3.2
 
-- 🆕 Adjustable Bitrate and Resolution. [See here](#Bitrate-and-Resolution) 
-- 🆕 Nearly cloudless by limiting the number of calls to the wyze servers by storing auth tokens and cameras locally. Should also help prevent http errors. Can be disabled with `- FRESH_DATA=True`
+- 🆕 Multi-Factor Authentication Support. [See here](#Multi-Factor-Authentication) 
 
 ## Usage
 
@@ -19,7 +18,7 @@ git clone this repo, edit the docker-compose.yml with your wyze credentials, the
 Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
 
 
-## URLs
+## URIs
 
 `camera-nickname` is the name of the camera set in the Wyze app and are converted to lower case with hyphens in place of spaces. 
 
@@ -93,9 +92,22 @@ environment:
     - FILTER_MODE=BLOCK
 ```
 
-## Other Configurations
+## Multi-Factor Authentication
 
-#### ARM/Raspberry Pi Support
+Two-factor authentication ("Two-Step Verification" in the wyze app) is supported and will automatically be detected, however additional steps are required to enter your verification code.
+
+- echo the verification code directly to `/opt/wyzecam/tokens/mfa_token`
+```bash
+docker exec -it wyze-bridge sh -c 'echo "123456" > /opt/wyzecam/tokens/mfa_token'
+```
+- Mount `/opt/wyzecam/tokens/` locally and add your verification code to a new file `mfa_token`: 
+```YAML
+volumes: 
+    - ./tokens:/opt/wyzecam/tokens/
+```
+
+
+## ARM/Raspberry Pi Support
 
 The default configuration will use the x64 tutk library, however, you can edit your `docker-compose.yml` to use the 32-bit arm library by setting `dockerfile` as `Dockerfile.arm`:
 
@@ -111,8 +123,7 @@ The default configuration will use the x64 tutk library, however, you can edit y
             - WYZE_PASSWORD=
 ```
 
----
-#### Bitrate and Resolution
+## Bitrate and Resolution
 
 Bitrate and resolution of the stream from the wyze camera can be adjusted with `- QUALITY=HD120`.
 - Resolution can be set to `SD` (640x360 cams/480x640 doorbell) or `HD` (1920x1080 cam/1296x1728 doorbell). Default - HD.
@@ -126,14 +137,7 @@ environment:
     - QUALITY=SD60
 ```
 
----
-#### rtsp-simple-server
-[rtsp-simple-server](https://github.com/aler9/rtsp-simple-server) options can be configured by editing `/app/rtsp-simple-server.yml`.
-
-In particular, increasing **readBufferCount** seems to help if you are getting dropped frames from your camera.
-
----
-#### Custom FFmpeg Commands
+## Custom FFmpeg Commands
 
 You can pass a custom [command](https://ffmpeg.org/ffmpeg.html) to FFmpeg by using `FFMPEG_CMD` in your docker-compose.yml:
 
@@ -147,11 +151,16 @@ Additional info:
 - The `ffmpeg` command is implied and is optional.
 - The camera name will automatically be appended to the command, so you need to end with the rtmp/rtsp url.
 
----
+
+## rtsp-simple-server
+[rtsp-simple-server](https://github.com/aler9/rtsp-simple-server) options can be configured by editing `/app/rtsp-simple-server.yml`.
+
+In particular, increasing **readBufferCount** seems to help if you are getting dropped frames from your camera.
+
 
 ## Debugging options
 
 `- DEBUG_FFMPEG=True` Enable additional logging from FFmpeg
 
-`- FRESH_DATA=True` Disable local cache and pull new data from wyze servers.
+`- FRESH_DATA=True` Remove local cache and pull new data from wyze servers.
 
