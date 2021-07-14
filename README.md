@@ -13,7 +13,7 @@ Should work on most x64 systems as well as on some arm-based systems like the ra
 
 ## Usage
 
-git clone this repo, edit the docker-compose.yml with your wyze credentials, then run `docker-composer up`.
+git clone this repo, copy `docker-compose.yml.sample` to `docker-compose.yml` and update it with your wyze credentials, then run `docker-composer up`.
 
 Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
 
