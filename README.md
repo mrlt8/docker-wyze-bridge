@@ -1,10 +1,11 @@
 # RTMP/RTSP/HLS Bridge for Wyze Cam
 
-Docker container to enable RTMP, RTSP, and HLS streams for Wyze cams based on [noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server), and [shauntarves/wyze-sdk](https://github.com/shauntarves/wyze-sdk).
+Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze cameras including v3. No Third-party or special firmware required.
 
-Exposes a local RTMP, RTSP, and HLS stream for all your Wyze Cameras including v3. No Third-party or special firmware required.
+Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server), and [shauntarves/wyze-sdk](https://github.com/shauntarves/wyze-sdk).
 
-Should work on most x64 systems as well as on some arm-based systems like the raspberry pi. 
+##### Compatability:
+Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi. 
 [See here](#armraspberry-pi-support) for instructions to run on arm.
 
 ## Changes in v0.3.2
@@ -13,12 +14,15 @@ Should work on most x64 systems as well as on some arm-based systems like the ra
 
 ## Usage
 
-- git clone this repo or download the latest [release](https://github.com/mrlt8/docker-wyze-bridge/releases)
-- Copy and rename `docker-compose.sample.yml` to `docker-compose.yml` 
-- Edit `docker-compose.yml` with your wyze credentials
-- run `docker-composer up`
+##### Setup:
+1. git clone this repo or download the latest [release](https://github.com/mrlt8/docker-wyze-bridge/releases)
+1. Copy and rename `docker-compose.sample.yml` to `docker-compose.yml` 
+1. Edit `docker-compose.yml` with your wyze credentials
+1. run `docker-composer up`
 
-(May need to pass a verification code if you have Two-Step Verification. [See here](#Multi-Factor-Authentication).)
+##### Additional Info:
+- [Two-Step Verification](#Multi-Factor-Authentication)
+- [ARM/Raspberry Pi](#armraspberry-pi-support)
 
 Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
 
@@ -62,7 +66,7 @@ All options are cAsE-InSensiTive, and take single or multiple comma separated va
 environment:
     - WYZE_EMAIL=
     - WYZE_PASSWORD=
-    - FILTER_NAMES=Front Door, Driveway, porch
+    - FILTER_NAMES=Front Door, Driveway, porch cam
 ```
 - Whitelist by Camera MAC Address:
 ```yaml
@@ -101,7 +105,7 @@ environment:
 
 Two-factor authentication ("Two-Step Verification" in the wyze app) is supported and will automatically be detected, however additional steps are required to enter your verification code.
 
-- echo the verification code directly to `/opt/wyzecam/tokens/mfa_token`
+- Echo the verification code directly to `/opt/wyzecam/tokens/mfa_token`:
 ```bash
 docker exec -it wyze-bridge sh -c 'echo "123456" > /opt/wyzecam/tokens/mfa_token'
 ```
@@ -117,7 +121,7 @@ volumes:
 The default configuration will use the x64 tutk library, however, you can edit your `docker-compose.yml` to use the 32-bit arm library by setting `dockerfile` as `Dockerfile.arm`:
 
 ```YAML
-    wyzecam-bridge:
+    wyze-bridge:
         container_name: wyze-bridge
         restart: always
         build: 
