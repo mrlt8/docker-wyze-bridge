@@ -2,7 +2,7 @@ import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, datetime, p
 
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.3.2', flush=True)
+		print('STARTING DOCKER-WYZE-BRIDGE v0.3.2.1', flush=True)
 	
 	if 'DEBUG_FFMPEG' not in os.environ:
 		warnings.filterwarnings("ignore")

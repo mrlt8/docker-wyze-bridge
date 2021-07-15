@@ -14,7 +14,7 @@ Should work on most x64 systems as well as on some arm-based systems like the ra
 ## Usage
 
 - git clone this repo or download the latest [release](https://github.com/mrlt8/docker-wyze-bridge/releases)
-- Copy `docker-compose.yml.sample` to `docker-compose.yml` 
+- Copy and rename `docker-compose.sample.yml` to `docker-compose.yml` 
 - Edit `docker-compose.yml` with your wyze credentials
 - run `docker-composer up`
 

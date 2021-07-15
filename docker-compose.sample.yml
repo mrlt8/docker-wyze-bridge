@@ -13,7 +13,7 @@ services:
         volumes:
             - ./app/rtsp-simple-server.yml:/rtsp-simple-server.yml
 
-    wyzecam-bridge:
+    wyze-bridge:
         container_name: wyze-bridge
         restart: always
         build: 
