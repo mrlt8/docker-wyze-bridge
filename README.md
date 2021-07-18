@@ -8,9 +8,12 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi. 
 [See here](#armraspberry-pi-support) for instructions to run on arm.
 
-## Changes in v0.3.2
+## Changes in v0.4.0
 
-- 🆕 Multi-Factor Authentication Support. [See here](#Multi-Factor-Authentication) 
+**Upgrading from v0.3.x to v0.4 may require a new docker-compose.yml**
+
+- Combined rtsp-simple server into one container.
+- Fixes to allow `network_mode: host` for a completely local stream on linux systems
 
 ## Usage
 
@@ -105,14 +108,14 @@ environment:
 
 Two-factor authentication ("Two-Step Verification" in the wyze app) is supported and will automatically be detected, however additional steps are required to enter your verification code.
 
-- Echo the verification code directly to `/opt/wyzecam/tokens/mfa_token`:
+- Echo the verification code directly to `/tokens/mfa_token`:
 ```bash
-docker exec -it wyze-bridge sh -c 'echo "123456" > /opt/wyzecam/tokens/mfa_token'
+docker exec -it wyze-bridge sh -c 'echo "123456" > /tokens/mfa_token'
 ```
-- Mount `/opt/wyzecam/tokens/` locally and add your verification code to a new file `mfa_token`: 
+- Mount `/tokens/` locally and add your verification code to a new file `mfa_token`: 
 ```YAML
 volumes: 
-    - ./tokens:/opt/wyzecam/tokens/
+    - ./tokens:/tokens/
 ```
 
 

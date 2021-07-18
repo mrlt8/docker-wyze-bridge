@@ -2,7 +2,7 @@ import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, datetime, p
 
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.3.2.2', flush=True)
+		print('STARTING DOCKER-WYZE-BRIDGE v0.4.0', flush=True)
 	
 	if 'DEBUG_FFMPEG' not in os.environ:
 		warnings.filterwarnings("ignore")
@@ -16,7 +16,7 @@ class wyze_bridge:
 		return True if cam.nickname.upper() in self.get_env('FILTER_NAMES') or cam.mac in self.get_env('FILTER_MACS') or cam.product_model in self.get_env('FILTER_MODEL') or self.model_names.get(cam.product_model) in self.get_env('FILTER_MODEL') else False
 
 	def twofactor(self):
-		mfa_token = '/opt/wyzecam/tokens/mfa_token'
+		mfa_token = '/tokens/mfa_token'
 		print(f'MFA Token Required\nAdd token to {mfa_token}',flush=True)
 		while True:
 			if os.path.exists(mfa_token) and os.path.getsize(mfa_token) > 0:
@@ -33,7 +33,7 @@ class wyze_bridge:
 			time.sleep(2)
 
 	def authWyze(self,name):
-		pkl_data = f'/opt/wyzecam/tokens/{name}.pickle'
+		pkl_data = f'/tokens/{name}.pickle'
 		if os.path.exists(pkl_data) and os.path.getsize(pkl_data) > 0:
 			if os.environ.get('FRESH_DATA') and ('auth' not in name or not hasattr(self,'auth')):
 				print(f'[FORCED REFRESH] Removing local cache for {name}!',flush=True)
@@ -101,8 +101,9 @@ class wyze_bridge:
 						# bitrate = min([30,60,120,150,240], key=lambda x:abs(x-int(os.environ['QUALITY'][2:])))
 						bitrate = int(os.environ['QUALITY'][2:])
 				wyzecam.tutk.tutk.iotc_initialize(tutk_library)
+				# wyzecam.tutk.tutk.iotc_initialize(tutk_library,udp_port=8285)
 				wyzecam.tutk.tutk.av_initialize(tutk_library)
-				wyzecam.tutk.tutk.av_client_set_max_buf_size(tutk_library, 5 * 1024 * 1024)
+				wyzecam.tutk.tutk.av_client_set_max_buf_size(tutk_library, 5000)
 				with wyzecam.iotc.WyzeIOTCSession(tutk_library,self.user,camera,resolution,bitrate) as sess:
 					print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Starting {res} {bitrate}kb/s Stream for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) running FW: {sess.camera.camera_info["basicInfo"]["firmware"]} from {camera.ip} "{"P2P mode" if sess.session_check().mode ==0 else "Relay mode"  if sess.session_check().mode == 1 else "LAN mode"}" (WiFi Quality: {sess.camera.camera_info["basicInfo"]["wifidb"]}%)...',flush=True)
 					cmd = ('ffmpeg ' + os.environ['FFMPEG_CMD'].strip("\'").strip('\"') + camera.nickname.replace(' ', '-').replace('#', '').lower()).split() if os.environ.get('FFMPEG_CMD') else ['ffmpeg',
@@ -118,8 +119,8 @@ class wyze_bridge:
 						'-i', '-',
 						'-map','0:v:0',
 						'-vcodec', 'copy', 
-						'-rtsp_transport','tcp',
-						'-f','rtsp', 'rtsp://rtsp-server:8554/' + camera.nickname.replace(' ', '-').replace('#', '').lower()]
+						'-rtsp_transport','udp',
+						'-f','rtsp', 'rtsp://localhost:8554/' + camera.nickname.replace(' ', '-').replace('#', '').lower()]
 					ffmpeg = subprocess.Popen(cmd,stdin=subprocess.PIPE)
 					while ffmpeg.poll() is None:
 						for (frame,_) in sess.recv_video_data():

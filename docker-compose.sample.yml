@@ -1,21 +1,12 @@
-version: '3'
+version: '3.8'
 services:
-    rtsp-server:
-        container_name: rtsp-server
-        image: aler9/rtsp-simple-server
+    wyze-bridge:
         restart: always
-        environment: 
-            - RTSP_PROTOCOLS=tcp
+        # network_mode: host
         ports:
             - 1935:1935
             - 8554:8554
             - 8888:8888
-        volumes:
-            - ./app/rtsp-simple-server.yml:/rtsp-simple-server.yml
-
-    wyze-bridge:
-        container_name: wyze-bridge
-        restart: always
         build: 
             context: ./app
             # dockerfile: Dockerfile.arm
