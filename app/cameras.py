@@ -2,7 +2,7 @@ import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, datetime, p
 
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.3.2.1', flush=True)
+		print('STARTING DOCKER-WYZE-BRIDGE v0.3.2.2', flush=True)
 	
 	if 'DEBUG_FFMPEG' not in os.environ:
 		warnings.filterwarnings("ignore")
@@ -101,9 +101,10 @@ class wyze_bridge:
 						# bitrate = min([30,60,120,150,240], key=lambda x:abs(x-int(os.environ['QUALITY'][2:])))
 						bitrate = int(os.environ['QUALITY'][2:])
 				wyzecam.tutk.tutk.iotc_initialize(tutk_library)
-				wyzecam.tutk.tutk.av_initialize(tutk_library)	
+				wyzecam.tutk.tutk.av_initialize(tutk_library)
+				wyzecam.tutk.tutk.av_client_set_max_buf_size(tutk_library, 5 * 1024 * 1024)
 				with wyzecam.iotc.WyzeIOTCSession(tutk_library,self.user,camera,resolution,bitrate) as sess:
-					print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Starting {res} {bitrate}kb/s Stream for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) running FW: {sess.camera.camera_info["basicInfo"]["firmware"]} from {camera.ip} (WiFi Quality: {sess.camera.camera_info["basicInfo"]["wifidb"]}%)...',flush=True)
+					print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Starting {res} {bitrate}kb/s Stream for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) running FW: {sess.camera.camera_info["basicInfo"]["firmware"]} from {camera.ip} "{"P2P mode" if sess.session_check().mode ==0 else "Relay mode"  if sess.session_check().mode == 1 else "LAN mode"}" (WiFi Quality: {sess.camera.camera_info["basicInfo"]["wifidb"]}%)...',flush=True)
 					cmd = ('ffmpeg ' + os.environ['FFMPEG_CMD'].strip("\'").strip('\"') + camera.nickname.replace(' ', '-').replace('#', '').lower()).split() if os.environ.get('FFMPEG_CMD') else ['ffmpeg',
 						'-hide_banner',
 						'-nostats',
