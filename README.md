@@ -4,16 +4,16 @@ Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze 
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server), and [shauntarves/wyze-sdk](https://github.com/shauntarves/wyze-sdk).
 
-##### Compatability:
+##### Compatibility:
 Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi. 
 [See here](#armraspberry-pi-support) for instructions to run on arm.
 
-## Changes in v0.4.0
+## Changes in v0.4.1
 
-**Upgrading from v0.3.x to v0.4 may require a new docker-compose.yml**
+**Upgrading from v0.3.x to v0.4.0+ may require a new docker-compose.yml**
 
-- Combined rtsp-simple server into one container.
-- Fixes to allow `network_mode: host` for a completely local stream on linux systems
+- ["LAN-ONLY" option](#LAN-mode) to restrict streaming from the cloud to save bandwidth. 
+
 
 ## Usage
 
@@ -26,6 +26,7 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 ##### Additional Info:
 - [Two-Step Verification](#Multi-Factor-Authentication)
 - [ARM/Raspberry Pi](#armraspberry-pi-support)
+- [LAN mode](#LAN-Mode)
 
 Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
 
@@ -133,6 +134,32 @@ The default configuration will use the x64 tutk library, however, you can edit y
         environment:
             - WYZE_EMAIL=
             - WYZE_PASSWORD=
+```
+
+## LAN Mode
+
+Like the wyze app, the tutk library will attempt to stream directly from the camera when on the same LAN as the camera in "LAN mode" or relay the stream via the cloud in "relay mode".
+
+LAN mode is more ideal as all streaming will be local and won't use additional bandwidth.
+
+To enable LAN mode, you'll need to be on a linux-based system and modify your docker-compose.yml to enable host network_mode and remove the ports:
+```yaml
+...
+services:
+    wyze-bridge:
+        restart: always
+        network_mode: host
+        build: 
+        ...
+```
+
+You can further restrict streaming to LAN only by adding the `LAN_ONLY` environment variable:
+```yaml
+...
+environment:
+    - LAN_ONLY=True
+    - WYZE_EMAIL=
+    - WYZE_PASSWORD=
 ```
 
 ## Bitrate and Resolution
