@@ -5,7 +5,8 @@ Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server), and [shauntarves/wyze-sdk](https://github.com/shauntarves/wyze-sdk).
 
 ##### Compatibility:
-Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi. 
+Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi, however, ["LAN mode"](#LAN-Mode) requires a linux-based system.
+
 [See here](#armraspberry-pi-support) for instructions to run on arm.
 
 ## Changes in v0.4.1
