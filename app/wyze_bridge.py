@@ -1,9 +1,10 @@
-import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, datetime, pickle, sys, io, wyze_sdk
+import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, pickle, sys, io, wyze_sdk, logging
 
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.4.1', flush=True)
-	
+		print('STARTING DOCKER-WYZE-BRIDGE v0.4.1.1')
+
+	logging.basicConfig(format='%(asctime)s %(message)s',datefmt='%Y/%m/%d %X', stream=sys.stdout, level=logging.INFO)	
 	if 'DEBUG_FFMPEG' not in os.environ:
 		warnings.filterwarnings("ignore")
 
@@ -17,38 +18,38 @@ class wyze_bridge:
 
 	def twofactor(self):
 		mfa_token = '/tokens/mfa_token'
-		print(f'MFA Token Required\nAdd token to {mfa_token}',flush=True)
+		print(f'MFA Token Required\nAdd token to {mfa_token}')
 		while True:
 			if os.path.exists(mfa_token) and os.path.getsize(mfa_token) > 0:
 				with open(mfa_token,'r+') as f:
 					lines = f.read().strip()
 					f.truncate(0)
-					print(f'Using {lines} as token',flush=True)
+					print(f'Using {lines} as token')
 					sys.stdin = io.StringIO(lines)
 					try:
 						response = wyze_sdk.Client(email=os.environ['WYZE_EMAIL'], password=os.environ['WYZE_PASSWORD'])
 						return wyzecam.WyzeCredential.parse_obj({'access_token':response._token,'refresh_token':response._refresh_token,'user_id':response._user_id,'phone_id':response._api_client().phone_id})
 					except Exception as ex:
-						print(f'{ex}\nPlease try again!',flush=True)
+						print(f'{ex}\nPlease try again!')
 			time.sleep(2)
 
 	def authWyze(self,name):
 		pkl_data = f'/tokens/{name}.pickle'
 		if os.path.exists(pkl_data) and os.path.getsize(pkl_data) > 0:
 			if os.environ.get('FRESH_DATA') and ('auth' not in name or not hasattr(self,'auth')):
-				print(f'[FORCED REFRESH] Removing local cache for {name}!',flush=True)
+				print(f'[FORCED REFRESH] Removing local cache for {name}!')
 				os.remove(pkl_data)
 			else:	
 				with(open(pkl_data,'rb')) as f:
-					print(f'Fetching {name} from local cache...',flush=True)
+					print(f'Fetching {name} from local cache...')
 					return pickle.load(f)
 		else:
-			print(f'Could not find local cache for {name}',flush=True)
+			print(f'Could not find local cache for {name}')
 		if not hasattr(self,'auth') and 'auth' not in name:
 			self.authWyze('auth')
 		while True:
 			try:
-				print(f'Fetching {name} from wyze api...',flush=True)
+				print(f'Fetching {name} from wyze api...')
 				if 'auth' in name:
 					try:
 						self.auth = data =  wyzecam.login(os.environ["WYZE_EMAIL"], os.environ["WYZE_PASSWORD"])
@@ -57,18 +58,18 @@ class wyze_bridge:
 							if 'mfa_options' in err['loc']:
 								self.auth = data = self.twofactor()
 					except Exception as ex:
-						[print('Invalid credentials?',flush=True) for err in ex.args if '400 Client Error' in err]
+						[print('Invalid credentials?') for err in ex.args if '400 Client Error' in err]
 						raise ex
 				if 'user' in name:
 					data = wyzecam.get_user_info(self.auth)
 				if 'cameras' in name:
 					data = wyzecam.get_camera_list(self.auth)
 				with open(pkl_data,"wb") as f:
-					print(f'Saving {name} to local cache...',flush=True)
+					print(f'Saving {name} to local cache...')
 					pickle.dump(data, f)
 				return data
 			except Exception as ex:
-				print(f'{ex}\nSleeping for 10s...',flush=True)
+				print(f'{ex}\nSleeping for 10s...')
 				time.sleep(10)
 
 	def filtered_cameras(self):
@@ -89,7 +90,6 @@ class wyze_bridge:
 	def start_stream(self,camera):
 		while True:
 			try:
-				tutk_library = wyzecam.tutk.tutk.load_library()
 				resolution = 3 if camera.product_model == 'WYZEDB3' else 0
 				bitrate = 120
 				res = 'HD'
@@ -100,14 +100,14 @@ class wyze_bridge:
 					if os.environ['QUALITY'][2:].isdigit() and 30 <= int(os.environ['QUALITY'][2:]) <= 240:
 						# bitrate = min([30,60,120,150,240], key=lambda x:abs(x-int(os.environ['QUALITY'][2:])))
 						bitrate = int(os.environ['QUALITY'][2:])
+				tutk_library = wyzecam.tutk.tutk.load_library()
 				wyzecam.tutk.tutk.iotc_initialize(tutk_library)
-				# wyzecam.tutk.tutk.iotc_initialize(tutk_library,udp_port=8285)
 				wyzecam.tutk.tutk.av_initialize(tutk_library)
 				wyzecam.tutk.tutk.av_client_set_max_buf_size(tutk_library, 5000)
 				with wyzecam.iotc.WyzeIOTCSession(tutk_library,self.user,camera,resolution,bitrate) as sess:
 					if os.environ.get('LAN_ONLY') and sess.session_check().mode != 2:
 						raise Exception('NON-LAN MODE')
-					print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Starting {res} {bitrate}kb/s Stream for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) running FW: {sess.camera.camera_info["basicInfo"]["firmware"]} from {camera.ip} "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN"} mode" (WiFi Quality: {sess.camera.camera_info["basicInfo"]["wifidb"]}%)...',flush=True)
+					logging.info(f'[{camera.nickname}] Starting {res} {bitrate}kb/s Stream for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) running FW: {sess.camera.camera_info["basicInfo"]["firmware"]} from {camera.ip} "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN"} mode" (WiFi Quality: {sess.camera.camera_info["basicInfo"]["wifidb"]}%)...')
 					cmd = ('ffmpeg ' + os.environ['FFMPEG_CMD'].strip("\'").strip('\"') + camera.nickname.replace(' ', '-').replace('#', '').lower()).split() if os.environ.get('FFMPEG_CMD') else ['ffmpeg',
 						'-hide_banner',
 						'-nostats',
@@ -129,16 +129,15 @@ class wyze_bridge:
 							try:
 								ffmpeg.stdin.write(frame)
 							except Exception as ex:
-								print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] [FFMPEG] {ex}',flush=True)
-								break
+								raise Exception(f'[FFMPEG] {ex}')
 			except Exception as ex:
-				print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] {ex}',flush=True)
+				logging.info(f'[{camera.nickname}] {ex}')
 				if str(ex) == 'IOTC_ER_CAN_NOT_FIND_DEVICE':
-					print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Camera offline? Sleeping for 10s.',flush=True)
+					logging.info(f'[{camera.nickname}] Camera offline? Sleeping for 10s.')
 					time.sleep(10)
 			finally:
 				if 'ffmpeg' in locals():
-					print(f'{datetime.datetime.now().strftime("%Y/%m/%d %X")} [{camera.nickname}] Killing FFmpeg...',flush=True)
+					logging.info(f'[{camera.nickname}] Cleaning up FFmpeg...')
 					ffmpeg.kill()
 					time.sleep(0.5)
 					ffmpeg.wait()
