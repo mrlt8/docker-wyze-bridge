@@ -193,9 +193,8 @@ Additional info:
 
 
 ## rtsp-simple-server
-[rtsp-simple-server](https://github.com/aler9/rtsp-simple-server) options can be configured by editing `/app/rtsp-simple-server.yml`.
+[rtsp-simple-server](https://github.com/aler9/rtsp-simple-server/blob/main/rtsp-simple-server.yml) options can be customized as an environment variable in your docker-compose.yml by prefixing `RTSP_` to the UPPERCASE parameter. e.g. use `- RTSP_RTSPADDRESS=:8555` to overwrite the the default `rtspAddress`.
 
-In particular, increasing **readBufferCount** seems to help if you are getting dropped frames from your camera.
 
 
 ## Debugging options

@@ -2,7 +2,7 @@ import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, pickle, sys
 
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.4.1.1')
+		print('STARTING DOCKER-WYZE-BRIDGE v0.4.1.2')
 
 	logging.basicConfig(format='%(asctime)s %(message)s',datefmt='%Y/%m/%d %X', stream=sys.stdout, level=logging.INFO)	
 	if 'DEBUG_FFMPEG' not in os.environ:
@@ -103,11 +103,10 @@ class wyze_bridge:
 				tutk_library = wyzecam.tutk.tutk.load_library()
 				wyzecam.tutk.tutk.iotc_initialize(tutk_library)
 				wyzecam.tutk.tutk.av_initialize(tutk_library)
-				wyzecam.tutk.tutk.av_client_set_max_buf_size(tutk_library, 5000)
 				with wyzecam.iotc.WyzeIOTCSession(tutk_library,self.user,camera,resolution,bitrate) as sess:
 					if os.environ.get('LAN_ONLY') and sess.session_check().mode != 2:
 						raise Exception('NON-LAN MODE')
-					logging.info(f'[{camera.nickname}] Starting {res} {bitrate}kb/s Stream for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) running FW: {sess.camera.camera_info["basicInfo"]["firmware"]} from {camera.ip} "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN"} mode" (WiFi Quality: {sess.camera.camera_info["basicInfo"]["wifidb"]}%)...')
+					logging.info(f'[{camera.nickname}] Starting {res} {bitrate}kb/s Stream for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) running FW: {sess.camera.camera_info["basicInfo"]["firmware"]} from {camera.ip} "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" (WiFi Quality: {sess.camera.camera_info["basicInfo"]["wifidb"]}%)...')
 					cmd = ('ffmpeg ' + os.environ['FFMPEG_CMD'].strip("\'").strip('\"') + camera.nickname.replace(' ', '-').replace('#', '').lower()).split() if os.environ.get('FFMPEG_CMD') else ['ffmpeg',
 						'-hide_banner',
 						'-nostats',
@@ -121,7 +120,7 @@ class wyze_bridge:
 						'-i', '-',
 						'-map','0:v:0',
 						'-vcodec', 'copy', 
-						'-rtsp_transport','udp',
+						# '-rtsp_transport','udp',
 						'-f','rtsp', 'rtsp://localhost:8554/' + camera.nickname.replace(' ', '-').replace('#', '').lower()]
 					ffmpeg = subprocess.Popen(cmd,stdin=subprocess.PIPE)
 					while ffmpeg.poll() is None:
