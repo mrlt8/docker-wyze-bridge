@@ -1,12 +1,22 @@
 import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, pickle, sys, io, wyze_sdk, logging
 
+
+if 'DEBUG_LEVEL' in os.environ:
+	logging.basicConfig(format='%(asctime)s %(name)s - %(levelname)s - %(message)s',datefmt='%Y/%m/%d %X', stream=sys.stdout, level=os.environ.get('DEBUG_LEVEL'))
+if 'DEBUG' not in os.environ:
+	warnings.filterwarnings("ignore")
+handler = logging.StreamHandler(stream=sys.stdout)
+handler.setLevel(logging.INFO)
+handler.setFormatter(logging.Formatter('%(asctime)s %(message)s','%Y/%m/%d %X'))
+log = logging.getLogger('wyze_bridge')
+log.addHandler(handler) 
+log.setLevel(logging.INFO)
+
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.4.1.2')
-
-	logging.basicConfig(format='%(asctime)s %(message)s',datefmt='%Y/%m/%d %X', stream=sys.stdout, level=logging.INFO)	
-	if 'DEBUG_FFMPEG' not in os.environ:
-		warnings.filterwarnings("ignore")
+		print('STARTING DOCKER-WYZE-BRIDGE v0.4.1.3')
+		if 'DEBUG_LEVEL' in os.environ:
+			print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
 
 	model_names = {'WYZECP1_JEF':'PAN','WYZEC1':'V1','WYZEC1-JZ':'V2','WYZE_CAKP2JFUS':'V3','WYZEDB3':'DOORBELL','WVOD1':'OUTDOOR'}
 
@@ -106,7 +116,7 @@ class wyze_bridge:
 				with wyzecam.iotc.WyzeIOTCSession(tutk_library,self.user,camera,resolution,bitrate) as sess:
 					if os.environ.get('LAN_ONLY') and sess.session_check().mode != 2:
 						raise Exception('NON-LAN MODE')
-					logging.info(f'[{camera.nickname}] Starting {res} {bitrate}kb/s Stream for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) running FW: {sess.camera.camera_info["basicInfo"]["firmware"]} from {camera.ip} "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" (WiFi Quality: {sess.camera.camera_info["basicInfo"]["wifidb"]}%)...')
+					log.info(f'[{camera.nickname}] Starting {res} {bitrate}kb/s Stream for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) running FW: {sess.camera.camera_info["basicInfo"]["firmware"]} from {camera.ip} "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" (WiFi Quality: {sess.camera.camera_info["basicInfo"]["wifidb"]}%)...')
 					cmd = ('ffmpeg ' + os.environ['FFMPEG_CMD'].strip("\'").strip('\"') + camera.nickname.replace(' ', '-').replace('#', '').lower()).split() if os.environ.get('FFMPEG_CMD') else ['ffmpeg',
 						'-hide_banner',
 						'-nostats',
@@ -130,13 +140,13 @@ class wyze_bridge:
 							except Exception as ex:
 								raise Exception(f'[FFMPEG] {ex}')
 			except Exception as ex:
-				logging.info(f'[{camera.nickname}] {ex}')
+				log.info(f'[{camera.nickname}] {ex}')
 				if str(ex) == 'IOTC_ER_CAN_NOT_FIND_DEVICE':
-					logging.info(f'[{camera.nickname}] Camera offline? Sleeping for 10s.')
+					log.info(f'[{camera.nickname}] Camera offline? Sleeping for 10s.')
 					time.sleep(10)
 			finally:
 				if 'ffmpeg' in locals():
-					logging.info(f'[{camera.nickname}] Cleaning up FFmpeg...')
+					log.info(f'[{camera.nickname}] Cleaning up FFmpeg...')
 					ffmpeg.kill()
 					time.sleep(0.5)
 					ffmpeg.wait()
