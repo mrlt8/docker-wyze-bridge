@@ -1,0 +1,34 @@
+FROM scratch as scratch_
+FROM scratch_ AS scratch_amd64
+FROM scratch_ AS scratch_arm64
+ARG ARM=1
+FROM scratch_ AS scratch_arm32v7
+ARG ARM=1
+ARG TARGETARCH
+FROM scratch_$TARGETARCH
+ARG ARM
+FROM ${ARM:+arm32v7/}python:3.9-slim as base
+
+FROM base as builder
+ARG TUTK_ARCH=${ARM:+Arm11_BCM2835_4.8.3}
+ARG RTSP_ARCH=${ARM:+armv7}
+ARG FFMPEG_ARCH=${ARM:+armhf}
+RUN apt-get update && apt-get install -y tar xz-utils unzip g++ && apt-get clean && rm -rf /var/lib/apt/lists/*
+RUN pip3 install --prefix=/install requests wyzecam wyze_sdk supervisor
+ADD https://github.com/nblavoie/wyzecam-api/raw/master/wyzecam-sdk/TUTK_IOTC_Platform_14W42P1.zip /tmp/tutk.zip
+ADD https://github.com/aler9/rtsp-simple-server/releases/download/v0.16.4/rtsp-simple-server_v0.16.4_linux_${RTSP_ARCH:-amd64}.tar.gz /tmp/rtsp.tar.gz
+ADD https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-${FFMPEG_ARCH:-arm64}-static.tar.xz /tmp/ffmpeg.tar.xz
+RUN mkdir -p /tutk /app /ffmpeg && unzip /tmp/tutk.zip Lib/Linux/${TUTK_ARCH:-x64}/*.a -d /tmp/tutk/ && cd /tmp/tutk/Lib/Linux/${TUTK_ARCH:-x64}/ && g++ -fpic -shared -Wl,--whole-archive libAVAPIs.a libIOTCAPIs.a -Wl,--no-whole-archive -o /tutk/libIOTCAPIs_ALL.so && tar -xzf /tmp/rtsp.tar.gz -C /app && tar --strip-components=1 -C /ffmpeg -xf /tmp/ffmpeg.tar.xz && rm -rf /tmp/*
+
+
+FROM base
+ENV PYTHONUNBUFFERED=1
+ENV LD_LIBRARY_PATH=/usr/local/lib
+RUN apt-get update && apt-get install -y libssl1.1 && apt-get clean && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /ffmpeg/ffmpeg /usr/local/bin/ffmpeg
+COPY --from=builder /install /usr/local
+COPY --from=builder /tutk/libIOTCAPIs_ALL.so /usr/local/lib/
+COPY --from=builder /app/* /app/
+RUN mkdir -p /app /tokens 
+COPY wyze_bridge.py supervisord.conf /app/
+CMD ["supervisord", "-c", "/app/supervisord.conf" ]
