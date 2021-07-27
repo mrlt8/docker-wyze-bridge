@@ -14,7 +14,7 @@ log.setLevel(logging.INFO)
 
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.4.1.3')
+		print('STARTING DOCKER-WYZE-BRIDGE v0.4.1.4')
 		if 'DEBUG_LEVEL' in os.environ:
 			print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
 
@@ -131,7 +131,7 @@ class wyze_bridge:
 						'-map','0:v:0',
 						'-vcodec', 'copy', 
 						# '-rtsp_transport','udp',
-						'-f','rtsp', 'rtsp://localhost:8554/' + camera.nickname.replace(' ', '-').replace('#', '').lower()]
+						'-f','rtsp', 'rtsp://0.0.0.0:8554/' + camera.nickname.replace(' ', '-').replace('#', '').lower()]
 					ffmpeg = subprocess.Popen(cmd,stdin=subprocess.PIPE)
 					while ffmpeg.poll() is None:
 						for (frame,_) in sess.recv_video_data():
