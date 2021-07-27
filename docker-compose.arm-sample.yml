@@ -1,0 +1,11 @@
+version: '3.8'
+services:
+    wyze-bridge:
+        restart: always
+        network_mode: host
+        build: 
+            context: ./app
+            dockerfile: Dockerfile.arm
+        environment:
+            - WYZE_EMAIL=
+            - WYZE_PASSWORD=
