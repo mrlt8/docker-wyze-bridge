@@ -131,9 +131,11 @@ volumes:
 The default configuration will use the x64 tutk library, however, you can edit your `docker-compose.yml` to use the 32-bit arm library by setting `dockerfile` as `Dockerfile.arm`:
 
 ```YAML
+version: '3.8'
+services:
     wyze-bridge:
-        container_name: wyze-bridge
         restart: always
+        network_mode: host
         build: 
             context: ./app
             dockerfile: Dockerfile.arm
