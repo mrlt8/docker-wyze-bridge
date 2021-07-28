@@ -1,7 +1,13 @@
-ARG ARM=1
-FROM ${ARM:+arm32v7/}python:3.9-slim as base
+FROM python:3.9-slim as base
+FROM base AS base_amd64
 
-FROM base as builder
+FROM arm32v7/python:3.9-slim as base_arm
+ARG ARM=1
+FROM base_arm AS base_arm64
+
+ARG TARGETARCH
+FROM base_$TARGETARCH as builder
+ARG ARM
 ENV PYTHONUNBUFFERED=1
 ARG ARM \
     TUTK_ARCH=${ARM:+Arm11_BCM2835_4.8.3} \
@@ -23,7 +29,7 @@ RUN mkdir -p /app &&\
     tar --strip-components=1 -C /build/bin -xf /tmp/ffmpeg.tar.xz --wildcards '*ffmpeg' &&\
     rm -rf /tmp/*
 
-FROM base
+FROM base_$TARGETARCH
 ENV PYTHONUNBUFFERED=1
 COPY --from=builder /build /usr/local
 COPY --from=builder /app/* /app/

@@ -14,7 +14,7 @@ log.setLevel(logging.INFO)
 
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.4.1.5')
+		print('STARTING DOCKER-WYZE-BRIDGE v0.4.2')
 		if 'DEBUG_LEVEL' in os.environ:
 			print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
 
