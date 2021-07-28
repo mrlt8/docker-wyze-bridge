@@ -7,6 +7,7 @@ services:
             - 1935:1935
             - 8554:8554
             - 8888:8888
+        # image: mrlt8/wyze-bridge:latest
         build: 
             context: ./app
             # dockerfile: Dockerfile.arm

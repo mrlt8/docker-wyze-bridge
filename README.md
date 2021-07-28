@@ -5,26 +5,36 @@ Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server), and [shauntarves/wyze-sdk](https://github.com/shauntarves/wyze-sdk).
 
 ##### Compatibility:
-Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi, however, ["LAN mode"](#LAN-Mode) requires a linux-based system.
+Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi, however, ["LAN mode"](#LAN-Mode) requires a linux-based system due to host mode compatibility.
 
 [See here](#armraspberry-pi-support) for instructions to run on arm.
 
-## Changes in v0.4.1
+## Changes in v0.4.2
 
 **Upgrading from v0.3.x to v0.4.0+ may require a new docker-compose.yml**
 
-- ["LAN-ONLY" option](#LAN-mode) to restrict streaming from the cloud to save bandwidth. 
+- Rewritten Dockerfile to slim down final image.
 
 
 ## Usage
 
-##### Setup:
+##### docker run
+If on a linux based system, use your Wyze credentials and run:
+```
+docker run --network host -e WYZE_EMAIL= -e WYZE_PASSWORD=  mrlt8/wyze-bridge
+```
+or if on a non-linux system that doesn't support host mode:
+```
+docker run -p 1935:1935 -p 8554:8554 -p 8888:8888 -e WYZE_EMAIL= -e WYZE_PASSWORD=  mrlt8/wyze-bridge
+```
+
+##### Build with docker-compose (recommended)
 1. git clone this repo or download the latest [release](https://github.com/mrlt8/docker-wyze-bridge/releases)
-1. Copy and rename `docker-compose.sample.yml` to `docker-compose.yml` 
+1. Copy and rename the sample yml to `docker-compose.yml` 
 1. Edit `docker-compose.yml` with your wyze credentials
 1. run `docker-composer up`
 
-##### Additional Info:
+##### Additional Info
 - [Two-Step Verification](#Multi-Factor-Authentication)
 - [ARM/Raspberry Pi](#armraspberry-pi-support)
 - [LAN mode](#LAN-Mode)
@@ -69,29 +79,25 @@ All options are cAsE-InSensiTive, and take single or multiple comma separated va
 - Whitelist by Camera Name (set in the wyze app):
 ```yaml
 environment:
-    - WYZE_EMAIL=
-    - WYZE_PASSWORD=
+	..
     - FILTER_NAMES=Front Door, Driveway, porch cam
 ```
 - Whitelist by Camera MAC Address:
 ```yaml
 environment:
-    - WYZE_EMAIL=
-    - WYZE_PASSWORD=
+	..
     - FILTER_MACS=00:aA:22:33:44:55, Aa22334455bB
 ```
 - Whitelist by Camera Model:
 ```yaml
 environment:
-    - WYZE_EMAIL=
-    - WYZE_PASSWORD=
+	..
     - FILTER_MODEL=WYZEC1-JZ
 ```
 - Whitelist by Camera Model Name:
 ```yaml
 environment:
-    - WYZE_EMAIL=
-    - WYZE_PASSWORD=
+	..
     - FILTER_MODEL=V2, v3, Pan
 ```
 - Blacklisting:
@@ -100,8 +106,7 @@ You can reverse any of these whitelists into blacklists by adding *block, blackl
 
 ```yaml
 environment:
-    - WYZE_EMAIL=
-    - WYZE_PASSWORD=
+	..
     - FILTER_NAMES=Bedroom
     - FILTER_MODE=BLOCK
 ```
@@ -137,6 +142,19 @@ The default configuration will use the x64 tutk library, however, you can edit y
             - WYZE_PASSWORD=
 ```
 
+Alternatively, you can pull a pre-built image using:
+```yaml
+version: '3.8'
+services:
+    wyze-bridge:
+        restart: always
+        network_mode: host
+        image: mrlt8/wyze-bridge:latest
+        environment:
+            - WYZE_EMAIL=
+            - WYZE_PASSWORD=
+```
+
 ## LAN Mode
 
 Like the wyze app, the tutk library will attempt to stream directly from the camera when on the same LAN as the camera in "LAN mode" or relay the stream via the cloud in "relay mode".
@@ -158,9 +176,8 @@ You can further restrict streaming to LAN only by adding the `LAN_ONLY` environm
 ```yaml
 ...
 environment:
+	..
     - LAN_ONLY=True
-    - WYZE_EMAIL=
-    - WYZE_PASSWORD=
 ```
 
 ## Bitrate and Resolution
@@ -172,8 +189,7 @@ Bitrate and resolution of the stream from the wyze camera can be adjusted with `
 
 ```yaml
 environment:
-    - WYZE_EMAIL=
-    - WYZE_PASSWORD=
+	..
     - QUALITY=SD60
 ```
 
@@ -183,8 +199,7 @@ You can pass a custom [command](https://ffmpeg.org/ffmpeg.html) to FFmpeg by usi
 
 ```YAML
 environment:
-    - WYZE_EMAIL=
-    - WYZE_PASSWORD=
+	..
     - FFMPEG_CMD=-f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/
 ```
 Additional info:

@@ -3,6 +3,7 @@ services:
     wyze-bridge:
         restart: always
         network_mode: host
+        # image: mrlt8/wyze-bridge:latest
         build: 
             context: ./app
             dockerfile: Dockerfile.arm
