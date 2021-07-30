@@ -59,7 +59,7 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./app/
           push: ${{ github.event_name != 'pull_request' }}
-          file: multi-arch.Dockerfile
+          file: ./app/multi-arch.Dockerfile
           platforms: linux/amd64,linux/arm64,linux/arm
           labels: ${{ steps.meta.outputs.labels }}
           tags: |
