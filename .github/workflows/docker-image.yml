@@ -43,6 +43,14 @@ jobs:
         id: buildx
         uses: docker/setup-buildx-action@master
 
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@98669ae865ea3cffbcbaa878cf57c20bbf1c6c38
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
       - name: Build and push Docker image
@@ -53,8 +61,9 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           file: ./multi-arch.Dockerfile
           platforms: linux/amd64,linux/arm64,linux/arm
+          labels: ${{ steps.meta.outputs.labels }}
           tags: |
             ghcr.io/${{ github.repository }}:${VERSION}
             ghcr.io/${{ github.repository }}:latest
             mrlt8/wyze-bridge:${VERSION}
-						mrlt8/wyze-bridge:latest
+            mrlt8/wyze-bridge:latest
