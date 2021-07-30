@@ -1,4 +1,4 @@
-import wyzecam, gc, time, subprocess, multiprocessing, warnings, os, pickle, sys, io, wyze_sdk, logging
+import wyzecam, gc, time, subprocess, threading, warnings, os, pickle, sys, io, wyze_sdk, logging
 
 
 if 'DEBUG_LEVEL' in os.environ:
@@ -154,7 +154,7 @@ class wyze_bridge:
 		self.cameras = self.filtered_cameras()
 		self.iotc = wyzecam.WyzeIOTC(max_num_av_channels=len(self.cameras)).__enter__()
 		for camera in self.cameras:
-			multiprocessing.Process(target=self.start_stream, args=[camera]).start()
+			threading.Thread(target=self.start_stream, args=[camera]).start()
 
 if __name__ == "__main__":
 	wyze_bridge().run()
