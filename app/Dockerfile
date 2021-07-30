@@ -3,10 +3,10 @@ FROM ${ARM:+arm32v7/}python:3.9-slim as base
 
 FROM base as builder
 ENV PYTHONUNBUFFERED=1
-ARG ARM \
-    TUTK_ARCH=${ARM:+Arm11_BCM2835_4.8.3} \
-    RTSP_ARCH=${ARM:+armv7} \
-    FFMPEG_ARCH=${ARM:+armhf}
+ARG ARM
+ARG TUTK_ARCH=${ARM:+Arm11_BCM2835_4.8.3}
+ARG RTSP_ARCH=${ARM:+armv7}
+ARG FFMPEG_ARCH=${ARM:+armhf}
 RUN apt-get update &&\
     apt-get install -y tar xz-utils unzip g++ &&\
     apt-get clean &&\
