@@ -121,7 +121,7 @@ class wyze_bridge:
 						'-hide_banner',
 						'-nostats',
 						'-loglevel','info' if 'DEBUG_FFMPEG' in os.environ else 'fatal',
-						'-f', sess.camera.camera_info['videoParm']['type'].lower(),
+						'-f', sess.camera.camera_info['videoParm']['type'] if 'type' in sess.camera.camera_info['videoParm'] else 'h264',
 						'-r', sess.camera.camera_info['videoParm']['fps'],
 						'-err_detect','ignore_err',
 						'-avioflags','direct',
