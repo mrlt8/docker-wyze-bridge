@@ -54,7 +54,7 @@ jobs:
           file: ./multi-arch.Dockerfile
           platforms: linux/amd64,linux/arm64,linux/arm
           tags: |
-          ${{ github.repository }}:${VERSION}
-          ${{ github.repository }}:latest
-          ghcr.io/${{ github.repository }}:${VERSION}
-          ghcr.io/${{ github.repository }}:latest
+            ghcr.io/${{ github.repository }}:${VERSION}
+            ghcr.io/${{ github.repository }}:latest
+            mrlt8/wyze-bridge:${VERSION}
+						mrlt8/wyze-bridge:latest
