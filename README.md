@@ -9,11 +9,13 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 
 [See here](#armraspberry-pi-support) for instructions to run on arm.
 
-## Changes in v0.4.2
+## Changes in v0.4.3
 
 **Upgrading from v0.3.x to v0.4.0+ may require a new docker-compose.yml**
 
-- Rewritten Dockerfile to slim down final image.
+- FIX: 'type' error due to missing codec info - Thanks to @jmacul2
+- Switch to threading for performance bump
+- Increase retry time for offline cameras
 
 
 ## Usage
@@ -215,6 +217,12 @@ Additional info:
 
 
 ## Debugging options
+
+environment options:
+
+`- DEBUG_LEVEL=` Adjust the level of upstream logging
+
+`- RTSP_LOGLEVEL=` Adjust the verbosity of rtsp-simple-server; available values are "warn", "info", "debug".
 
 `- DEBUG_FFMPEG=True` Enable additional logging from FFmpeg
 

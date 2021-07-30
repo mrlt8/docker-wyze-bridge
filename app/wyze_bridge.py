@@ -9,12 +9,12 @@ handler = logging.StreamHandler(stream=sys.stdout)
 handler.setLevel(logging.INFO)
 handler.setFormatter(logging.Formatter('%(asctime)s %(message)s','%Y/%m/%d %X'))
 log = logging.getLogger('wyze_bridge')
-log.addHandler(handler) 
+log.addHandler(handler)
 log.setLevel(logging.INFO)
 
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.4.2')
+		print('STARTING DOCKER-WYZE-BRIDGE v0.4.3')
 		if 'DEBUG_LEVEL' in os.environ:
 			print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
 
@@ -49,7 +49,7 @@ class wyze_bridge:
 			if os.environ.get('FRESH_DATA') and ('auth' not in name or not hasattr(self,'auth')):
 				print(f'[FORCED REFRESH] Removing local cache for {name}!')
 				os.remove(pkl_data)
-			else:	
+			else:
 				with(open(pkl_data,'rb')) as f:
 					print(f'Fetching {name} from local cache...')
 					return pickle.load(f)
@@ -89,7 +89,7 @@ class wyze_bridge:
 			if len(filtered) >0:
 				print(f'BLACKLIST MODE ON \nSTARTING {len(filtered)} OF {len(cams)} CAMERAS')
 				return filtered
-		if any(key.startswith('FILTER_') for key in os.environ):		
+		if any(key.startswith('FILTER_') for key in os.environ):
 			filtered = list(filter(self.env_filter,cams))
 			if len(filtered) > 0:
 				print(f'WHITELIST MODE ON \nSTARTING {len(filtered)} OF {len(cams)} CAMERAS')
@@ -110,13 +110,10 @@ class wyze_bridge:
 					if os.environ['QUALITY'][2:].isdigit() and 30 <= int(os.environ['QUALITY'][2:]) <= 240:
 						# bitrate = min([30,60,120,150,240], key=lambda x:abs(x-int(os.environ['QUALITY'][2:])))
 						bitrate = int(os.environ['QUALITY'][2:])
-				tutk_library = wyzecam.tutk.tutk.load_library()
-				wyzecam.tutk.tutk.iotc_initialize(tutk_library)
-				wyzecam.tutk.tutk.av_initialize(tutk_library)
-				with wyzecam.iotc.WyzeIOTCSession(tutk_library,self.user,camera,resolution,bitrate) as sess:
+				with wyzecam.iotc.WyzeIOTCSession(self.iotc.tutk_platform_lib,self.user,camera,resolution,bitrate) as sess:
 					if os.environ.get('LAN_ONLY') and sess.session_check().mode != 2:
 						raise Exception('NON-LAN MODE')
-					log.info(f'[{camera.nickname}] Starting {res} {bitrate}kb/s Stream for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) running FW: {sess.camera.camera_info["basicInfo"]["firmware"]} from {camera.ip} "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" (WiFi Quality: {sess.camera.camera_info["basicInfo"]["wifidb"]}%)...')
+					log.info(f'[{camera.nickname}] Starting {res} {bitrate}kb/s Stream for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) in "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"]["wifidb"]}%')
 					cmd = ('ffmpeg ' + os.environ['FFMPEG_CMD'].strip("\'").strip('\"') + camera.nickname.replace(' ', '-').replace('#', '').lower()).split() if os.environ.get('FFMPEG_CMD') else ['ffmpeg',
 						'-hide_banner',
 						'-nostats',
@@ -129,7 +126,7 @@ class wyze_bridge:
 						'-fflags','+flush_packets+genpts+discardcorrupt+nobuffer',
 						'-i', '-',
 						'-map','0:v:0',
-						'-vcodec', 'copy', 
+						'-vcodec', 'copy',
 						# '-rtsp_transport','udp',
 						'-f','rtsp', 'rtsp://0.0.0.0' + (os.environ.get('RTSP_RTSPADDRESS') if 'RTSP_RTSPADDRESS' in os.environ else ':8554') + '/' + camera.nickname.replace(' ', '-').replace('#', '').lower()]
 					ffmpeg = subprocess.Popen(cmd,stdin=subprocess.PIPE)
@@ -142,21 +139,21 @@ class wyze_bridge:
 			except Exception as ex:
 				log.info(f'[{camera.nickname}] {ex}')
 				if str(ex) == 'IOTC_ER_CAN_NOT_FIND_DEVICE':
-					log.info(f'[{camera.nickname}] Camera offline? Sleeping for 10s.')
-					time.sleep(10)
+					offline_time = (offline_time+10 if offline_time < 600 else 30) if 'offline_time' in vars() else 10
+					log.info(f'[{camera.nickname}] Camera offline? Will retry again in {offline_time}s.')
+					time.sleep(offline_time)
 			finally:
 				if 'ffmpeg' in locals():
 					log.info(f'[{camera.nickname}] Cleaning up FFmpeg...')
 					ffmpeg.kill()
 					time.sleep(0.5)
 					ffmpeg.wait()
-				if 'tutk_library' in locals():
-					wyzecam.tutk.tutk.av_deinitialize(tutk_library)
-					wyzecam.tutk.tutk.iotc_deinitialize(tutk_library)
 				gc.collect()
 	def run(self):
 		self.user = self.authWyze('user')
-		for camera in self.filtered_cameras():
+		self.cameras = self.filtered_cameras()
+		self.iotc = wyzecam.WyzeIOTC(max_num_av_channels=len(self.cameras)).__enter__()
+		for camera in self.cameras:
 			multiprocessing.Process(target=self.start_stream, args=[camera]).start()
 
 if __name__ == "__main__":
