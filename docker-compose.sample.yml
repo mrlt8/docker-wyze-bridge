@@ -10,6 +10,8 @@ services:
         # image: mrlt8/wyze-bridge:latest
         build: 
             context: ./app
+            # args:
+            #     ARM: 1
             # dockerfile: Dockerfile.arm
         environment:
             - WYZE_EMAIL=

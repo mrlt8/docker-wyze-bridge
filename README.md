@@ -5,27 +5,21 @@ Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server), and [shauntarves/wyze-sdk](https://github.com/shauntarves/wyze-sdk).
 
 ##### Compatibility:
-Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi, however, ["LAN mode"](#LAN-Mode) requires a linux-based system due to host mode compatibility.
+Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi.
 
 [See here](#armraspberry-pi-support) for instructions to run on arm.
 
-## Changes in v0.4.3
+## Changes in v0.5.0
 
 **Upgrading from v0.3.x to v0.4.0+ may require a new docker-compose.yml**
 
-- FIX: 'type' error due to missing codec info - Thanks to @jmacul2
-- Switch to threading for performance bump
-- Increase retry time for offline cameras
+- Improved LAN mode. No longer requires host mode.
 
 
 ## Usage
 
 ##### docker run
-If on a linux based system, use your Wyze credentials and run:
-```
-docker run --network host -e WYZE_EMAIL= -e WYZE_PASSWORD=  mrlt8/wyze-bridge
-```
-or if on a non-linux system that doesn't support host mode:
+Use your Wyze credentials and run:
 ```
 docker run -p 1935:1935 -p 8554:8554 -p 8888:8888 -e WYZE_EMAIL= -e WYZE_PASSWORD=  mrlt8/wyze-bridge
 ```
@@ -133,30 +127,20 @@ volumes:
 The default configuration will use the x64 tutk library, however, you can edit your `docker-compose.yml` to use the 32-bit arm library by setting `dockerfile` as `Dockerfile.arm`:
 
 ```YAML
-version: '3.8'
-services:
-    wyze-bridge:
-        restart: always
-        network_mode: host
-        build: 
-            context: ./app
-            dockerfile: Dockerfile.arm
-        environment:
-            - WYZE_EMAIL=
-            - WYZE_PASSWORD=
+..
+    build: 
+        context: ./app
+        dockerfile: Dockerfile.arm
+    environment:
+        ..
 ```
 
 Alternatively, you can pull a pre-built image using:
 ```yaml
-version: '3.8'
-services:
-    wyze-bridge:
-        restart: always
-        network_mode: host
-        image: mrlt8/wyze-bridge:latest
-        environment:
-            - WYZE_EMAIL=
-            - WYZE_PASSWORD=
+..
+    image: mrlt8/wyze-bridge:latest
+    environment:
+        ..
 ```
 
 ## LAN Mode
@@ -165,18 +149,7 @@ Like the wyze app, the tutk library will attempt to stream directly from the cam
 
 LAN mode is more ideal as all streaming will be local and won't use additional bandwidth.
 
-To enable LAN mode, you'll need to be on a linux-based system and modify your docker-compose.yml to enable host network_mode and remove the ports:
-```yaml
-...
-services:
-    wyze-bridge:
-        restart: always
-        network_mode: host
-        build: 
-        ...
-```
-
-You can further restrict streaming to LAN only by adding the `LAN_ONLY` environment variable:
+You can restrict streaming to LAN only by adding the `LAN_ONLY` environment variable:
 ```yaml
 ...
 environment:
