@@ -126,7 +126,7 @@ class wyze_bridge:
 						'-i', '-',
 						'-map','0:v:0',
 						'-vcodec', 'copy',
-						# '-rtsp_transport','udp',
+						'-rtsp_transport','tcp' if ('RTSP_PROTOCOLS' in os.environ and 'tcp' in os.environ.get('RTSP_PROTOCOLS')) else 'udp',
 						'-f','rtsp', 'rtsp://0.0.0.0' + (os.environ.get('RTSP_RTSPADDRESS') if 'RTSP_RTSPADDRESS' in os.environ else ':8554') + '/' + camera.nickname.replace(' ', '-').replace('#', '').lower()]
 					ffmpeg = subprocess.Popen(cmd,stdin=subprocess.PIPE)
 					while ffmpeg.poll() is None:
