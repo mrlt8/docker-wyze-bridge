@@ -11,8 +11,6 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 
 ## Changes in v0.5.0
 
-**Upgrading from v0.3.x to v0.4.0+ may require a new docker-compose.yml**
-
 - Improved LAN mode. No longer requires host mode.
 
 
@@ -25,8 +23,9 @@ docker run -p 1935:1935 -p 8554:8554 -p 8888:8888 -e WYZE_EMAIL= -e WYZE_PASSWOR
 ```
 
 ##### Build with docker-compose (recommended)
-1. git clone this repo or download the latest [release](https://github.com/mrlt8/docker-wyze-bridge/releases)
-1. Copy and rename the sample yml to `docker-compose.yml` 
+1. `git clone https://github.com/mrlt8/docker-wyze-bridge.git`
+1. `cd docker-wyze-bridge`
+1. `cp docker-compose.sample.yml docker-compose.yml` 
 1. Edit `docker-compose.yml` with your wyze credentials
 1. run `docker-composer up`
 
