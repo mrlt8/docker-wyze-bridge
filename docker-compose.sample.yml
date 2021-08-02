@@ -2,7 +2,6 @@ version: '3.8'
 services:
     wyze-bridge:
         restart: always
-        # network_mode: host
         ports:
             - 1935:1935
             - 8554:8554
