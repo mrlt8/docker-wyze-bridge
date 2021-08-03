@@ -7,10 +7,12 @@ services:
             - 1935:1935
             - 8554:8554
             - 8888:8888
+        # Uncomment to use a pre-built image:
         # image: mrlt8/wyze-bridge:latest
+        # or build from source:
         build: 
             context: ./app
-            # Uncomment the followinng line to build for arm
+            # Uncomment to build for arm
             # dockerfile: Dockerfile.arm 
         environment:
             - WYZE_EMAIL=
