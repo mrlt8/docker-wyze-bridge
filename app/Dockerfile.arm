@@ -17,7 +17,8 @@ RUN apt-get update &&\
 ADD https://github.com/mrlt8/wyzecam/archive/refs/heads/patch-1.zip /tmp/wyzecam.zip
 RUN unzip /tmp/wyzecam.zip -d /tmp/ &&\
     cd /tmp/wyzecam-patch-1 &&\
-    pip3 install --no-warn-script-location --prefix=/build . requests wyze_sdk supervisor
+    pip3 install --no-warn-script-location --prefix=/build . requests wyze_sdk supervisor &&\
+    sed -i '/x-api-key/a \            '\''user-agent'\''\: '\''wyze_ios_2.22.32'\'',' /build/lib/python3.9/site-packages/wyze_sdk/service/auth_service.py
 # TEMP Patch END
 
 ADD https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-${FFMPEG_ARCH:-amd64}-static.tar.xz /tmp/ffmpeg.tar.xz

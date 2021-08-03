@@ -11,8 +11,9 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 
 ## Changes in v0.5.0
 
-- Improved LAN mode. No longer requires host mode.
-
+- FIX: MFA error due to (missing user-agent)[https://github.com/shauntarves/wyze-sdk/issues/35#issuecomment-885325398]
+- Improved LAN mode - no longer requires host mode
+- Improved stability
 
 ## Usage
 

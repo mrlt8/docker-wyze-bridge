@@ -1,6 +1,7 @@
 version: '3.8'
 services:
     wyze-bridge:
+        container_name: wyze-bridge
         restart: always
         ports:
             - 1935:1935
@@ -9,9 +10,8 @@ services:
         # image: mrlt8/wyze-bridge:latest
         build: 
             context: ./app
-            # args:
-            #     ARM: 1
-            # dockerfile: Dockerfile.arm
+            # Uncomment the followinng line to build for arm
+            # dockerfile: Dockerfile.arm 
         environment:
             - WYZE_EMAIL=
             - WYZE_PASSWORD=
