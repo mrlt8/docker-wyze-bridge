@@ -1,8 +1,7 @@
 import wyzecam, gc, time, subprocess, threading, warnings, os, pickle, sys, io, wyze_sdk, logging
 
-
 if 'DEBUG_LEVEL' in os.environ:
-	logging.basicConfig(format='%(asctime)s %(name)s - %(levelname)s - %(message)s',datefmt='%Y/%m/%d %X', stream=sys.stdout, level=os.environ.get('DEBUG_LEVEL'))
+	logging.basicConfig(format='%(asctime)s %(name)s - %(levelname)s - %(message)s',datefmt='%Y/%m/%d %X', stream=sys.stdout, level=os.environ.get('DEBUG_LEVEL').upper())
 if 'DEBUG' not in os.environ:
 	warnings.filterwarnings("ignore")
 handler = logging.StreamHandler(stream=sys.stdout)
@@ -14,7 +13,7 @@ log.setLevel(logging.INFO)
 
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.4.3')
+		print('STARTING DOCKER-WYZE-BRIDGE v0.5.0')
 		if 'DEBUG_LEVEL' in os.environ:
 			print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
 
@@ -127,7 +126,7 @@ class wyze_bridge:
 						'-i', '-',
 						'-map','0:v:0',
 						'-vcodec', 'copy',
-						# '-rtsp_transport','udp',
+						'-rtsp_transport','tcp' if ('RTSP_PROTOCOLS' in os.environ and 'tcp' in os.environ.get('RTSP_PROTOCOLS')) else 'udp',
 						'-f','rtsp', 'rtsp://0.0.0.0' + (os.environ.get('RTSP_RTSPADDRESS') if 'RTSP_RTSPADDRESS' in os.environ else ':8554') + '/' + camera.nickname.replace(' ', '-').replace('#', '').lower()]
 					ffmpeg = subprocess.Popen(cmd,stdin=subprocess.PIPE)
 					while ffmpeg.poll() is None:
@@ -138,9 +137,9 @@ class wyze_bridge:
 								raise Exception(f'[FFMPEG] {ex}')
 			except Exception as ex:
 				log.info(f'[{camera.nickname}] {ex}')
-				if str(ex) == 'IOTC_ER_CAN_NOT_FIND_DEVICE':
+				if str(ex) == 'IOTC_ER_DEVICE_OFFLINE':
 					offline_time = (offline_time+10 if offline_time < 600 else 30) if 'offline_time' in vars() else 10
-					log.info(f'[{camera.nickname}] Camera offline? Will retry again in {offline_time}s.')
+					log.info(f'[{camera.nickname}] Camera is offline. Will retry again in {offline_time}s.')
 					time.sleep(offline_time)
 			finally:
 				if 'ffmpeg' in locals():
