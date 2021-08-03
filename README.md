@@ -128,7 +128,6 @@ volumes:
 The default configuration will use the x64 tutk library, however, you can edit your `docker-compose.yml` to use the 32-bit arm library by setting `dockerfile` as `Dockerfile.arm`:
 
 ```YAML
-..
     build: 
         context: ./app
         dockerfile: Dockerfile.arm
@@ -138,7 +137,6 @@ The default configuration will use the x64 tutk library, however, you can edit y
 
 Alternatively, you can pull a pre-built image using:
 ```yaml
-..
     image: mrlt8/wyze-bridge:latest
     environment:
         ..
@@ -152,7 +150,6 @@ LAN mode is more ideal as all streaming will be local and won't use additional b
 
 You can restrict streaming to LAN only by adding the `LAN_ONLY` environment variable:
 ```yaml
-...
 environment:
 	..
     - LAN_ONLY=True
