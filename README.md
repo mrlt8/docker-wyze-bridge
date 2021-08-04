@@ -2,12 +2,18 @@
 
 Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze cameras including v3. No Third-party or special firmware required.
 
-Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server), and [shauntarves/wyze-sdk](https://github.com/shauntarves/wyze-sdk).
+Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
 ### Compatibility:
 Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi.
 
 [See here](#armraspberry-pi-support) for instructions to run on arm.
+
+## Changes in v0.5.0
+
+- FIX: SMS two-step verification. 
+- NEW: `IGNORE_OFFLINE` environment option to ignore offline cameras until the container restarts.
+- Removed some of the extra FFMPEG option
 
 ## Changes in v0.5.0
 
@@ -160,7 +166,7 @@ environment:
 Bitrate and resolution of the stream from the wyze camera can be adjusted with `- QUALITY=HD120`.
 - Resolution can be set to `SD` (640x360 cams/480x640 doorbell) or `HD` (1920x1080 cam/1296x1728 doorbell). Default - HD.
 - Bitrate can be set from 60 to 240 kb/s. Default - 120.
-- Bitrate and resolution changes will apply to ALL cameras with the current version.
+- Bitrate and resolution changes will apply to ALL cameras.
 
 ```yaml
 environment:
@@ -190,6 +196,8 @@ Additional info:
 ## Debugging options
 
 environment options:
+
+`- IGNORE_OFFLINE=true` Ignore ofline cameras until container restarts
 
 `- DEBUG_LEVEL=` Adjust the level of upstream logging
 
