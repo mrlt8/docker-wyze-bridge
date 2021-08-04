@@ -9,7 +9,7 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 
 [See here](#armraspberry-pi-support) for instructions to run on arm.
 
-## Changes in v0.5.0
+## Changes in v0.5.1
 
 - FIX: SMS two-step verification. 
 - NEW: `IGNORE_OFFLINE` environment option to ignore offline cameras until the container restarts.
@@ -206,4 +206,3 @@ environment options:
 `- DEBUG_FFMPEG=True` Enable additional logging from FFmpeg
 
 `- FRESH_DATA=True` Remove local cache and pull new data from wyze servers.
-
