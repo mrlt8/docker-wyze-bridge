@@ -35,7 +35,7 @@ or
 1. `cd docker-wyze-bridge`
 1. `cp docker-compose.sample.yml docker-compose.yml` 
 1. Edit `docker-compose.yml` with your wyze credentials
-1. run `docker-composer up --build`
+1. run `docker-compose up --build`
 
 ### Additional Info
 - [Two-Step Verification](#Multi-Factor-Authentication)
