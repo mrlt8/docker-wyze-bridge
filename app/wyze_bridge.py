@@ -18,7 +18,7 @@ class wyze_bridge:
 			print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
 
 	model_names = {'WYZECP1_JEF':'PAN','WYZEC1':'V1','WYZEC1-JZ':'V2','WYZE_CAKP2JFUS':'V3','WYZEDB3':'DOORBELL','WVOD1':'OUTDOOR'}
-
+	res = {'1':'1080p','2':'360p','3':'HD','4':'SD'}
 	def get_env(self,env):
 		return [] if not os.environ.get(env) else [x.strip().upper().replace(':','') for x in os.environ[env].split(',')] if ',' in os.environ[env] else [os.environ[env].strip().upper().replace(':','')]
 
@@ -39,7 +39,6 @@ class wyze_bridge:
 			log.warn(f'MFA Token Required\nAdd token to {mfa_token}')
 			while response.json()['access_token'] is None:
 				json_resp = response.json()
-				# Request SMS code
 				if 'PrimaryPhone' in json_resp['mfa_options']:
 					sms_resp = wyzecam.api.requests.post(
 					"https://auth-prod.api.wyze.com/user/login/sendSmsCode",
@@ -147,7 +146,15 @@ class wyze_bridge:
 						if os.environ.get('LAN_ONLY'):
 							raise Exception('NON-LAN MODE')
 						log.warn(f'[{camera.nickname}] WARNING: Camera is connected via "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode". Stream may consume additional bandwidth!')
-					log.info(f'[{camera.nickname}] Starting {res} {bitrate}kb/s Stream for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) in "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"]["wifidb"]}%')
+					if sess.camera.camera_info['videoParm']:
+						if 'DEBUG_FFMPEG' in os.environ:
+							log.info(f"[{camera.nickname}] {sess.camera.camera_info['videoParm']}")
+						stream = (self.res[sess.camera.camera_info['videoParm']['resolution']] if sess.camera.camera_info['videoParm']['resolution'] in self.res else f"RES-{sess.camera.camera_info['videoParm']['resolution']}") + f" {sess.camera.camera_info['videoParm']['bitRate']}kb/s Stream"
+					elif os.environ.get('QUALITY'):
+						stream = f'{res} {bitrate}kb/s Stream'
+					else:
+						stream = "Stream"
+					log.info(f'[{camera.nickname}] Starting {stream} for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) in "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"]["wifidb"]}%')
 					cmd = ('ffmpeg ' + os.environ['FFMPEG_CMD'].strip("\'").strip('\"') + camera.nickname.replace(' ', '-').replace('#', '').lower()).split() if os.environ.get('FFMPEG_CMD') else ['ffmpeg',
 						'-hide_banner',
 						'-nostats',
