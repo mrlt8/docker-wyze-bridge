@@ -1,18 +1,14 @@
-FROM python:3.9-slim as base
-FROM base AS base_amd64
-
+FROM amd64/python:3.9-slim as base_amd64
 FROM arm32v7/python:3.9-slim as base_arm
 ARG ARM=1
 FROM base_arm AS base_arm64
 
-ARG TARGETARCH
 FROM base_$TARGETARCH as builder
-ARG ARM
 ENV PYTHONUNBUFFERED=1
-ARG ARM \
-    TUTK_ARCH=${ARM:+Arm11_BCM2835_4.8.3} \
-    RTSP_ARCH=${ARM:+armv7} \
-    FFMPEG_ARCH=${ARM:+armhf}
+ARG ARM
+ARG TUTK_ARCH=${ARM:+Arm11_BCM2835_4.8.3}
+ARG RTSP_ARCH=${ARM:+armv7}
+ARG FFMPEG_ARCH=${ARM:+armhf}
 RUN apt-get update &&\
     apt-get install -y tar xz-utils unzip g++ &&\
     apt-get clean &&\
@@ -37,4 +33,4 @@ COPY --from=builder /build /usr/local
 COPY --from=builder /app /app
 RUN mkdir -p /tokens/
 COPY wyze_bridge.py supervisord.conf /app/
-CMD ["supervisord", "-c", "/app/supervisord.conf" ]
+CMD [ "supervisord", "-c", "/app/supervisord.conf" ]
