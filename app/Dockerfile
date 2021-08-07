@@ -31,4 +31,4 @@ COPY --from=builder /build /usr/local
 COPY --from=builder /app /app
 RUN mkdir -p /tokens/
 COPY wyze_bridge.py supervisord.conf /app/
-CMD ["supervisord", "-c", "/app/supervisord.conf" ]
+CMD [ "supervisord", "-c", "/app/supervisord.conf" ]

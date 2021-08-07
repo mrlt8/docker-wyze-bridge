@@ -13,7 +13,7 @@ log.setLevel(logging.INFO)
 
 class wyze_bridge:
 	def __init__(self):
-		print('STARTING DOCKER-WYZE-BRIDGE v0.5.1')
+		print('STARTING DOCKER-WYZE-BRIDGE v0.5.2')
 		if 'DEBUG_LEVEL' in os.environ:
 			print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
 
@@ -36,7 +36,7 @@ class wyze_bridge:
 		response.raise_for_status()
 		if response.json()['mfa_options'] is not None:
 			mfa_token = '/tokens/mfa_token'
-			log.warn(f'MFA Token Required\nAdd token to {mfa_token}')
+			log.warn(f'MFA Token ({response.json()["mfa_options"][0]}) Required\nAdd token to {mfa_token}')
 			while response.json()['access_token'] is None:
 				json_resp = response.json()
 				if 'PrimaryPhone' in json_resp['mfa_options']:
@@ -47,6 +47,7 @@ class wyze_bridge:
 						headers=wyzecam.api.get_headers(phone_id),
 					)
 					sms_resp.raise_for_status()
+					log.info(f'SMS code requested')
 				while True:
 					if os.path.exists(mfa_token) and os.path.getsize(mfa_token) > 0:
 						with open(mfa_token,'r+') as f:
@@ -147,39 +148,49 @@ class wyze_bridge:
 							raise Exception('NON-LAN MODE')
 						log.warn(f'[{camera.nickname}] WARNING: Camera is connected via "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode". Stream may consume additional bandwidth!')
 					if sess.camera.camera_info['videoParm']:
-						if 'DEBUG_FFMPEG' in os.environ:
-							log.info(f"[{camera.nickname}] {sess.camera.camera_info['videoParm']}")
+						# if 'DEBUG_FFMPEG' in os.environ:
+						# 	log.info(f"[{camera.nickname}] {sess.camera.camera_info['videoParm']}")
 						stream = (self.res[sess.camera.camera_info['videoParm']['resolution']] if sess.camera.camera_info['videoParm']['resolution'] in self.res else f"RES-{sess.camera.camera_info['videoParm']['resolution']}") + f" {sess.camera.camera_info['videoParm']['bitRate']}kb/s Stream"
 					elif os.environ.get('QUALITY'):
 						stream = f'{res} {bitrate}kb/s Stream'
 					else:
 						stream = "Stream"
+					clean_name = camera.nickname.replace(' ', '-').replace('#', '').lower()
 					log.info(f'[{camera.nickname}] Starting {stream} for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) in "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"]["wifidb"]}%')
-					cmd = ('ffmpeg ' + os.environ['FFMPEG_CMD'].strip("\'").strip('\"') + camera.nickname.replace(' ', '-').replace('#', '').lower()).split() if os.environ.get('FFMPEG_CMD') else ['ffmpeg',
-						'-hide_banner',
-						'-nostats',
-						'-loglevel','info' if 'DEBUG_FFMPEG' in os.environ else 'fatal',
-						# '-f','h265',
-						# '-f', sess.camera.camera_info['videoParm']['type'] if 'type' in sess.camera.camera_info['videoParm'] else 'h264',
-						# '-r', sess.camera.camera_info['videoParm']['fps'],
-						# '-err_detect','ignore_err',
-						# '-avioflags','direct',
-						# '-flags','low_delay',
-						# '-fflags','+flush_packets+genpts+discardcorrupt+nobuffer',
+					cmd = (
+						(os.environ[f'FFMPEG_CMD_{clean_name.upper().replace("-","_")}'].strip().strip("\'").strip('\"') + clean_name).split()) if f'FFMPEG_CMD_{clean_name.upper().replace("-","_")}' in os.environ else (
+						(os.environ['FFMPEG_CMD'].strip().strip("\'").strip('\"') + clean_name).split()) if os.environ.get('FFMPEG_CMD') else [
+						'-loglevel'
+						] + (
+							['verbose'] if 'DEBUG_FFMPEG' in os.environ else ['fatal','-hide_banner','-nostats']
+						) + (
+							os.environ.get(f'FFMPEG_FLAGS_{clean_name.upper()}').split() if f'FFMPEG_FLAGS_{clean_name.upper()}' in os.environ else 
+							os.environ.get('FFMPEG_FLAGS').split() if 'FFMPEG_FLAGS' in os.environ else []
+						) + [
 						'-i', '-',
-						# '-map','0:v:0',
 						'-vcodec', 'copy',
-						'-rtsp_transport','tcp' if ('RTSP_PROTOCOLS' in os.environ and 'tcp' in os.environ.get('RTSP_PROTOCOLS')) else 'udp',
-						'-f','rtsp', 'rtsp://0.0.0.0' + (os.environ.get('RTSP_RTSPADDRESS') if 'RTSP_RTSPADDRESS' in os.environ else ':8554') + '/' + camera.nickname.replace(' ', '-').replace('#', '').lower()]
+						# '-rtsp_transport','udp' if 'udp' in os.environ.get('RTSP_PROTOCOLS') else 'tcp',
+						'-f','rtsp', 
+						'rtsp://0.0.0.0' + (os.environ.get('RTSP_RTSPADDRESS') if 'RTSP_RTSPADDRESS' in os.environ else ':8554') + '/' + clean_name]
+					if 'ffmpeg' not in cmd[0].lower():
+						cmd.insert(0, 'ffmpeg')
+					if 'DEBUG_FFMPEG' in os.environ:
+						log.info(f"[{camera.nickname}][FFMPEG_CMD] {' '.join(cmd)}")
 					ffmpeg = subprocess.Popen(cmd,stdin=subprocess.PIPE)
 					while ffmpeg.poll() is None:
 						for (frame,_) in sess.recv_video_data():
 							try:
 								ffmpeg.stdin.write(frame)
 							except Exception as ex:
+								log.info(f'[{camera.nickname}] Closing FFMPEG...')
+								ffmpeg.terminate()
+								time.sleep(0.5)
 								raise Exception(f'[FFMPEG] {ex}')
 			except Exception as ex:
 				log.info(f'[{camera.nickname}] {ex}')
+				if str(ex) == 'IOTC_ER_CAN_NOT_FIND_DEVICE':
+					log.info(f'[{camera.nickname}] Camera firmare may be incompatible.')
+					sys.exit()
 				if str(ex) == 'IOTC_ER_DEVICE_OFFLINE':
 					if 'IGNORE_OFFLINE' in os.environ:
 						log.info(f'[{camera.nickname}] Camera is offline. Will NOT try again until container restarts.')
@@ -188,8 +199,8 @@ class wyze_bridge:
 					log.info(f'[{camera.nickname}] Camera is offline. Will retry again in {offline_time}s.')
 					time.sleep(offline_time)
 			finally:
-				if 'ffmpeg' in locals():
-					log.info(f'[{camera.nickname}] Cleaning up FFmpeg...')
+				while 'ffmpeg' in locals() and ffmpeg.poll() is None:
+					log.info(f'[{camera.nickname}] Cleaning up FFMPEG...')
 					ffmpeg.kill()
 					time.sleep(0.5)
 					ffmpeg.wait()
@@ -202,4 +213,7 @@ class wyze_bridge:
 			threading.Thread(target=self.start_stream, args=[camera]).start()
 
 if __name__ == "__main__":
+	if 'WYZE_EMAIL' not in os.environ or 'WYZE_PASSWORD' not in os.environ:
+		print('Set your'+ (' WYZE_EMAIL' if 'WYZE_EMAIL' not in os.environ else '') + (' WYZE_PASSWORD' if 'WYZE_PASSWORD' not in os.environ else '') + ' credentials and restart the container.')
+		input()
 	wyze_bridge().run()

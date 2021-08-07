@@ -9,6 +9,18 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 
 [See here](#armraspberry-pi-support) for instructions to run on arm.
 
+## ⚠️ Latest Firmware Compatibility 
+Latest version of the Wyze firmware seems to cause connection issues which will result in the error:
+```
+IOTC_ER_CAN_NOT_FIND_DEVICE
+```
+
+## Changes in v0.5.2
+
+- NEW: Per camera custom FFMPEG commands with `FFMPEG_CMD_CAM_NAME`
+- NEW: Custom FFMPEG input flags for all cameras with `FFMPEG_FLAG`
+- NEW: Per camera custom FFMPEG input flags with `FFMPEG_FLAG_CAM_NAME`
+
 ## Changes in v0.5.1
 
 - FIX: SMS two-step verification. 
@@ -87,20 +99,14 @@ environment:
 ```
 - Whitelist by Camera MAC Address:
 ```yaml
-environment:
-	..
     - FILTER_MACS=00:aA:22:33:44:55, Aa22334455bB
 ```
 - Whitelist by Camera Model:
 ```yaml
-environment:
-	..
     - FILTER_MODEL=WYZEC1-JZ
 ```
 - Whitelist by Camera Model Name:
 ```yaml
-environment:
-	..
     - FILTER_MODEL=V2, v3, Pan
 ```
 - Blacklisting:
@@ -178,10 +184,18 @@ environment:
 
 You can pass a custom [command](https://ffmpeg.org/ffmpeg.html) to FFmpeg by using `FFMPEG_CMD` in your docker-compose.yml:
 
+### For all cameras:
 ```YAML
 environment:
 	..
     - FFMPEG_CMD=-f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/
+```
+
+### For a specific camera:
+where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
+
+```yaml
+    - FFMPEG_CMD_CAM_NAME=ffmpeg -f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/
 ```
 Additional info:
 - The `ffmpeg` command is implied and is optional.
@@ -190,7 +204,6 @@ Additional info:
 
 ## rtsp-simple-server
 [rtsp-simple-server](https://github.com/aler9/rtsp-simple-server/blob/main/rtsp-simple-server.yml) options can be customized as an environment variable in your docker-compose.yml by prefixing `RTSP_` to the UPPERCASE parameter. e.g. use `- RTSP_RTSPADDRESS=:8555` to overwrite the the default `rtspAddress`.
-
 
 
 ## Debugging options
