@@ -235,7 +235,11 @@ Additional info:
 
 ## rtsp-simple-server
 
-[rtsp-simple-server](https://github.com/aler9/rtsp-simple-server/blob/main/rtsp-simple-server.yml) options can be customized as an environment variable in your docker-compose.yml by prefixing `RTSP_` to the UPPERCASE parameter. e.g. use `- RTSP_RTSPADDRESS=:8555` to overwrite the the default `rtspAddress`.
+[rtsp-simple-server](https://github.com/aler9/rtsp-simple-server/blob/main/rtsp-simple-server.yml) options can be customized as an environment variable in your docker-compose.yml by prefixing `RTSP_` to the UPPERCASE parameter. 
+
+e.g. use `- RTSP_RTSPADDRESS=:8555` to overwrite the default `rtspAddress`.
+
+or `- RTSP_PATHS_ALL_READUSER=123` to customize a path specific option like ` paths: all: readuser:123`
 
 ## Debugging options
 
