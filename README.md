@@ -20,7 +20,7 @@ IOTC_ER_CAN_NOT_FIND_DEVICE
 
 ## Changes in v0.5.3
 
-- Update to rtsp-cimple-server v17.0.0
+- Update to rtsp-simple-server v17.0.0
 - Set max_num_av_channels to 1.4x the number of cameras (potential fix for `AV_ER_EXCEED_MAX_CHANNEL`)
 
 ## Changes in v0.5.2
