@@ -1,5 +1,6 @@
 ARG ARM
-FROM ${ARM:+arm32v7/}python:3.9-slim as base
+ARG ARCH=${ARM:+arm32v7}
+FROM ${ARCH:-amd64}/python:3.9-slim as base
 
 FROM base as builder
 ENV PYTHONUNBUFFERED=1
@@ -12,11 +13,10 @@ RUN apt-get update &&\
     apt-get clean &&\
     rm -rf /var/lib/apt/lists/*
 
-# RUN pip3 install --no-warn-script-location --prefix=/build requests wyzecam supervisor
 RUN pip3 install --no-warn-script-location --prefix=/build https://github.com/mrlt8/wyzecam/archive/refs/heads/patch-1.zip supervisor requests
 ADD https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-${FFMPEG_ARCH:-amd64}-static.tar.xz /tmp/ffmpeg.tar.xz
 ADD https://github.com/miguelangel-nubla/videoP2Proxy/archive/refs/heads/master.zip /tmp/tutk.zip
-ADD https://github.com/aler9/rtsp-simple-server/releases/download/v0.16.4/rtsp-simple-server_v0.16.4_linux_${RTSP_ARCH:-amd64}.tar.gz /tmp/rtsp.tar.gz
+ADD https://github.com/aler9/rtsp-simple-server/releases/download/v0.17.0/rtsp-simple-server_v0.17.0_linux_${RTSP_ARCH:-amd64}.tar.gz /tmp/rtsp.tar.gz
 RUN mkdir -p /app &&\
     unzip -j /tmp/tutk.zip */lib/Linux/${TUTK_ARCH:-x64}/*.a -d /tmp/tutk/ &&\
     cd /tmp/tutk &&\
