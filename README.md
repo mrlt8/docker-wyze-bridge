@@ -10,6 +10,8 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 
 [See here](#armraspberry-pi-support) for instructions to run on arm.
 
+Some reports of issues with v1 and WCO models that need further investigation.
+
 ## ⚠️ Latest Firmware Compatibility
 
 Latest version of the Wyze firmware seems to cause connection issues which will result in the error:
@@ -17,6 +19,10 @@ Latest version of the Wyze firmware seems to cause connection issues which will 
 ```
 IOTC_ER_CAN_NOT_FIND_DEVICE
 ```
+
+## Changes in v0.5.4
+
+- NEW: `URI_SEPARATOR` to customize the character used in the camera URI when the camera name contains a space: `-`, `_`, or `#` to remove the space. Will currently default to `-` if not set.
 
 ## Changes in v0.5.3
 
@@ -235,7 +241,7 @@ Additional info:
 
 ## rtsp-simple-server
 
-[rtsp-simple-server](https://github.com/aler9/rtsp-simple-server/blob/main/rtsp-simple-server.yml) options can be customized as an environment variable in your docker-compose.yml by prefixing `RTSP_` to the UPPERCASE parameter. 
+[rtsp-simple-server](https://github.com/aler9/rtsp-simple-server/blob/main/rtsp-simple-server.yml) options can be customized as an environment variable in your docker-compose.yml by prefixing `RTSP_` to the UPPERCASE parameter.
 
 e.g. use `- RTSP_RTSPADDRESS=:8555` to overwrite the default `rtspAddress`.
 
@@ -244,6 +250,8 @@ or `- RTSP_PATHS_ALL_READUSER=123` to customize a path specific option like ` pa
 ## Debugging options
 
 environment options:
+
+`- URI_SEPARATOR=` Customize the separator used to replace spaces in the URI; available values are `-`, `_`, or use `#` to remove spaces.
 
 `- IGNORE_OFFLINE=true` Ignore ofline cameras until container restarts
 

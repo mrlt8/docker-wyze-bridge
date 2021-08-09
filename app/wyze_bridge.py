@@ -37,7 +37,7 @@ log.setLevel(logging.INFO)
 
 class wyze_bridge:
     def __init__(self):
-        print("STARTING DOCKER-WYZE-BRIDGE v0.5.3.1")
+        print("STARTING DOCKER-WYZE-BRIDGE v0.5.4")
         if "DEBUG_LEVEL" in os.environ:
             print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
 
@@ -210,10 +210,20 @@ class wyze_bridge:
     def start_stream(self, camera):
         while True:
             try:
+                if camera.product_model == "WVOD1" or camera.product_model == "WYZEC1":
+                    log.warn(
+                        f"[{camera.nickname}] Wyze {camera.product_model} may not be fully supported yet"
+                    )
+                    if "IGNORE_OFFLINE" in os.environ:
+                        sys.exit()
+                    log.info(
+                        f"[{camera.nickname}] Use a custom filter to block or IGNORE_OFFLINE to ignore this camera"
+                    )
+                    time.sleep(60)
+                iotc = [self.iotc.tutk_platform_lib, self.user, camera]
                 resolution = 3 if camera.product_model == "WYZEDB3" else 0
                 bitrate = 120
                 res = "HD"
-                iotc = [self.iotc.tutk_platform_lib, self.user, camera]
                 if os.environ.get("QUALITY"):
                     if "SD" in os.environ["QUALITY"][:2].upper():
                         resolution += 1
@@ -254,7 +264,16 @@ class wyze_bridge:
                     else:
                         stream = "Stream"
                     clean_name = (
-                        camera.nickname.replace(" ", "-").replace("#", "").lower()
+                        camera.nickname.replace(
+                            " ",
+                            (
+                                os.environ.get("URI_SEPARATOR")
+                                if os.environ.get("URI_SEPARATOR") in ("-", "_", "#")
+                                else "-"
+                            ),
+                        )
+                        .replace("#", "")
+                        .lower()
                     )
                     log.info(
                         f'[{camera.nickname}] Starting {stream} for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) in "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"]["wifidb"]}%'
