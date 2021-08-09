@@ -1,4 +1,13 @@
-import wyzecam, gc, time, subprocess, threading, warnings, os, pickle, sys, logging
+import gc
+import logging
+import os
+import pickle
+import subprocess
+import sys
+import threading
+import time
+import warnings
+import wyzecam
 
 if "WYZE_EMAIL" not in os.environ or "WYZE_PASSWORD" not in os.environ:
     print(
@@ -28,7 +37,7 @@ log.setLevel(logging.INFO)
 
 class wyze_bridge:
     def __init__(self):
-        print("STARTING DOCKER-WYZE-BRIDGE v0.5.3")
+        print("STARTING DOCKER-WYZE-BRIDGE v0.5.3.1")
         if "DEBUG_LEVEL" in os.environ:
             print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
 
@@ -245,26 +254,21 @@ class wyze_bridge:
                     else:
                         stream = "Stream"
                     clean_name = (
-                        camera.nickname.replace(" ", "_").replace("#", "").lower()
+                        camera.nickname.replace(" ", "-").replace("#", "").lower()
                     )
                     log.info(
                         f'[{camera.nickname}] Starting {stream} for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) in "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"]["wifidb"]}%'
                     )
                     cmd = (
                         (
-                            os.environ[
-                                f'FFMPEG_CMD_{clean_name.upper().replace("-","_")}'
-                            ]
+                            os.environ[f"FFMPEG_CMD_{clean_name.upper()}"]
                             .strip()
                             .strip("'")
                             .strip('"')
-                            + clean_name
                         ).split()
-                        if f'FFMPEG_CMD_{clean_name.upper().replace("-","_")}'
-                        in os.environ
+                        if f"FFMPEG_CMD_{clean_name.upper()}" in os.environ
                         else (
                             os.environ["FFMPEG_CMD"].strip().strip("'").strip('"')
-                            + clean_name
                         ).split()
                         if os.environ.get("FFMPEG_CMD")
                         else ["-loglevel"]
@@ -293,15 +297,14 @@ class wyze_bridge:
                                 os.environ.get("RTSP_RTSPADDRESS")
                                 if "RTSP_RTSPADDRESS" in os.environ
                                 else ":8554"
-                            )
-                            + "/"
-                            + clean_name,
+                            ),
                         ]
                     )
                     if "ffmpeg" not in cmd[0].lower():
                         cmd.insert(0, "ffmpeg")
                     if "DEBUG_FFMPEG" in os.environ:
                         log.info(f"[{camera.nickname}][FFMPEG_CMD] {' '.join(cmd)}")
+                    cmd[-1] = cmd[-1] + ("" if cmd[-1][-1] == "/" else "/") + clean_name
                     ffmpeg = subprocess.Popen(cmd, stdin=subprocess.PIPE)
                     while ffmpeg.poll() is None:
                         for (frame, _) in sess.recv_video_data():
@@ -320,7 +323,7 @@ class wyze_bridge:
                     )
                     if "IGNORE_OFFLINE" in os.environ:
                         sys.exit()
-                        time.sleep(60)
+                    time.sleep(60)
                 if str(ex) == "IOTC_ER_DEVICE_OFFLINE":
                     if "IGNORE_OFFLINE" in os.environ:
                         log.info(
