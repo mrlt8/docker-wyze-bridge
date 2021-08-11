@@ -37,7 +37,7 @@ log.setLevel(logging.INFO)
 
 class wyze_bridge:
     def __init__(self):
-        print("STARTING DOCKER-WYZE-BRIDGE v0.5.4")
+        print("STARTING DOCKER-WYZE-BRIDGE v0.5.5")
         if "DEBUG_LEVEL" in os.environ:
             print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
 
@@ -273,6 +273,7 @@ class wyze_bridge:
                             ),
                         )
                         .replace("#", "")
+                        .replace("'", "")
                         .lower()
                     )
                     log.info(
@@ -308,14 +309,17 @@ class wyze_bridge:
                             "-",
                             "-vcodec",
                             "copy",
-                            # '-rtsp_transport','udp' if 'udp' in os.environ.get('RTSP_PROTOCOLS') else 'tcp',
+                            # "-rtsp_transport", "udp" if "RTSP_PROTOCOLS" in os.environ and "udp" in os.environ.get("RTSP_PROTOCOLS") else "tcp",
                             "-f",
                             "rtsp",
-                            "rtsp://0.0.0.0"
+                            "rtsp://"
                             + (
-                                os.environ.get("RTSP_RTSPADDRESS")
+                                "0.0.0.0" + os.environ.get("RTSP_RTSPADDRESS")
                                 if "RTSP_RTSPADDRESS" in os.environ
-                                else ":8554"
+                                and os.environ.get("RTSP_RTSPADDRESS").startswith(":")
+                                else os.environ.get("RTSP_RTSPADDRESS")
+                                if "RTSP_RTSPADDRESS" in os.environ
+                                else "0.0.0.0:8554"
                             ),
                         ]
                     )
@@ -325,15 +329,16 @@ class wyze_bridge:
                         log.info(f"[{camera.nickname}][FFMPEG_CMD] {' '.join(cmd)}")
                     cmd[-1] = cmd[-1] + ("" if cmd[-1][-1] == "/" else "/") + clean_name
                     ffmpeg = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-                    while ffmpeg.poll() is None:
-                        for (frame, _) in sess.recv_video_data():
-                            try:
-                                ffmpeg.stdin.write(frame)
-                            except Exception as ex:
-                                log.info(f"[{camera.nickname}] Closing FFMPEG...")
-                                ffmpeg.terminate()
-                                time.sleep(0.5)
-                                raise Exception(f"[FFMPEG] {ex}")
+                    for (frame, _) in sess.recv_video_data():
+                        try:
+                            if ffmpeg.poll() != None:
+                                raise Exception("FFMPEG closed")
+                            ffmpeg.stdin.write(frame)
+                        except Exception as ex:
+                            log.info(f"[{camera.nickname}] Closing FFMPEG...")
+                            ffmpeg.terminate()
+                            time.sleep(0.5)
+                            raise Exception(f"[FFMPEG] {ex}")
             except Exception as ex:
                 log.info(f"[{camera.nickname}] {ex}")
                 if str(ex) == "IOTC_ER_CAN_NOT_FIND_DEVICE":

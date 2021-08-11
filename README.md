@@ -20,32 +20,11 @@ Latest version of the Wyze firmware seems to cause connection issues which will 
 IOTC_ER_CAN_NOT_FIND_DEVICE
 ```
 
-## Changes in v0.5.4
+## Changes in v0.5.5
 
-- NEW: `URI_SEPARATOR` to customize the character used in the camera URI when the camera name contains a space: `-`, `_`, or `#` to remove the space. Will currently default to `-` if not set.
+- FIX: `invalid path name` for cameras with an apostrophe in the name
 
-## Changes in v0.5.3
-
-- Update to rtsp-simple-server v17.0.0
-- Set max_num_av_channels to 1.4x the number of cameras (potential fix for `AV_ER_EXCEED_MAX_CHANNEL`)
-
-## Changes in v0.5.2
-
-- NEW: Per camera custom FFMPEG commands with `FFMPEG_CMD_CAM_NAME`
-- NEW: Custom FFMPEG input flags for all cameras with `FFMPEG_FLAG`
-- NEW: Per camera custom FFMPEG input flags with `FFMPEG_FLAG_CAM_NAME`
-
-## Changes in v0.5.1
-
-- FIX: SMS two-step verification.
-- NEW: `IGNORE_OFFLINE` environment option to ignore offline cameras until the container restarts.
-- Removed some of the extra FFMPEG option
-
-## Changes in v0.5.0
-
-- FIX: MFA error due to [missing user-agent](https://github.com/shauntarves/wyze-sdk/issues/35#issuecomment-885325398)
-- Improved LAN mode - no longer requires host mode
-- Improved stability
+[View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
 ## Usage
 
