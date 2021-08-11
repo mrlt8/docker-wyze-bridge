@@ -14,11 +14,17 @@ Some reports of issues with v1 and WCO models that need further investigation.
 
 ## ⚠️ Latest Firmware Compatibility
 
-Latest version of the Wyze firmware seems to cause connection issues which will result in the error:
+Wyze firmware released after July seem to cause connection issues which may result in the error:
 
 ```
 IOTC_ER_CAN_NOT_FIND_DEVICE
 ```
+Latest confirmed firmware:
+| Camera  | Compatible Firmware | Current Firmware |
+| ------------- | ------------- | ------------- |
+| V2  | 4.9.6.241 (March 9, 2021)  | ❌ 4.9.7.798 |
+| V3  | 4.36.2.5 (June 14, 2021)   | ✅ 4.36.2.5 |
+| PAN  | 4.10.6.241 (March 9, 2021)   |❌ 4.10.7.798|
 
 ## Changes in v0.5.5
 
