@@ -31,7 +31,7 @@ Latest confirmed firmware:
 
 - FIX #72: Authentication error due to cached camera data with old enr
 - FIX: cache for auth data
-- Block cameras on firmware *.789*
+- Block cameras on firmware *.798*
 - Allow up to 255 for stream quality.
 - Filter out WVODB1 to prevent MAX_CHANNEL error
 
