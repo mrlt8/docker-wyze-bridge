@@ -12,23 +12,28 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 
 Some reports of issues with v1 and WCO models that need further investigation.
 
-## ⚠️ Latest Firmware Compatibility
+#### ⚠️ Latest Firmware Compatibility
 
 Wyze firmware released after July seem to cause connection issues which may result in the error:
 
 ```
 IOTC_ER_CAN_NOT_FIND_DEVICE
 ```
+
 Latest confirmed firmware:
-| Camera  | Compatible Firmware | Current Firmware |
-| ------------- | ------------- | ------------- |
-| V2  | 4.9.6.241 (March 9, 2021)  | ❌ 4.9.7.798 |
-| V3  | 4.36.2.5 (June 14, 2021)   | ✅ 4.36.2.5 |
-| PAN  | 4.10.6.241 (March 9, 2021)   |❌ 4.10.7.798|
+| Camera | Compatible Firmware        | Current Firmware |
+| ------ | -------------------------- | ---------------- |
+| V2     | 4.9.6.241 (March 9, 2021)  | ❌ 4.9.7.798      |
+| V3     | 4.36.2.5 (June 14, 2021)   | ✅ 4.36.2.5       |
+| PAN    | 4.10.6.241 (March 9, 2021) | ❌ 4.10.7.798     |
 
-## Changes in v0.5.5
+## Changes in v0.5.6
 
-- FIX: `invalid path name` for cameras with an apostrophe in the name
+- FIX #72: Authentication error due to cached camera data with old enr
+- FIX: cache for auth data
+- Block cameras on firmware *.789*
+- Allow up to 255 for stream quality.
+- Filter out WVODB1 to prevent MAX_CHANNEL error
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -38,7 +43,7 @@ Latest confirmed firmware:
 
 Use your Wyze credentials and run:
 
-```
+```bash
 docker run -p 1935:1935 -p 8554:8554 -p 8888:8888 -e WYZE_EMAIL= -e WYZE_PASSWORD=  mrlt8/wyze-bridge
 ```
 
@@ -96,13 +101,13 @@ The default option will automatically create a stream for all the cameras on you
 
 All options are cAsE-InSensiTive, and take single or multiple comma separated values.
 
-#### Examples:
+#### Examples
 
 - Whitelist by Camera Name (set in the wyze app):
 
 ```yaml
 environment:
-	..
+    ..
     - FILTER_NAMES=Front Door, Driveway, porch cam
 ```
 
@@ -130,7 +135,7 @@ You can reverse any of these whitelists into blacklists by adding _block, blackl
 
 ```yaml
 environment:
-	..
+    ..
     - FILTER_NAMES=Bedroom
     - FILTER_MODE=BLOCK
 ```
@@ -145,7 +150,7 @@ Two-factor authentication ("Two-Step Verification" in the wyze app) is supported
 docker exec -it wyze-bridge sh -c 'echo "123456" > /tokens/mfa_token'
 ```
 
-- Mount `/tokens/` locally and add your verification code to a new file `mfa_token`:
+- Mount `/tokens/` locally and add your verification code to a file named `mfa_token`:
 
 ```YAML
 volumes:
@@ -181,37 +186,43 @@ You can restrict streaming to LAN only by adding the `LAN_ONLY` environment vari
 
 ```yaml
 environment:
-	..
+    ..
     - LAN_ONLY=True
 ```
 
 ## Bitrate and Resolution
 
-Bitrate and resolution of the stream from the wyze camera can be adjusted with `- QUALITY=HD120`.
-
-- Resolution can be set to `SD` (640x360 cams/480x640 doorbell) or `HD` (1920x1080 cam/1296x1728 doorbell). Default - HD.
-- Bitrate can be set from 60 to 240 kb/s. Default - 120.
-- Bitrate and resolution changes will apply to ALL cameras.
+Bitrate and resolution of the stream from the wyze camera can be adjusted with:
 
 ```yaml
 environment:
-	..
-    - QUALITY=SD60
+    ..
+    - QUALITY=HD120
 ```
+
+Additional info:
+
+- Resolution can be set to `SD` (360p in the app) or `HD` - 640x360/1920x1080 for cams or 480x640/1296x1728 for doorbells.
+- Bitrate can be set from 30 to 255. Some bitrates may not work with certain resolutions.
+- Bitrate and resolution changes will apply to ALL cameras.
+- App equivalents would be:
+  - 360p - SD30
+  - SD - HD60
+  - HD - HD120
 
 ## Custom FFmpeg Commands
 
 You can pass a custom [command](https://ffmpeg.org/ffmpeg.html) to FFmpeg by using `FFMPEG_CMD` in your docker-compose.yml:
 
-### For all cameras:
+#### For all cameras
 
 ```YAML
 environment:
-	..
+    ..
     - FFMPEG_CMD=-f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/
 ```
 
-### For a specific camera:
+#### For a specific camera
 
 where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
 
@@ -222,7 +233,23 @@ where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and 
 Additional info:
 
 - The `ffmpeg` command is implied and is optional.
-- The camera name will automatically be appended to the command, so you need to end with the rtmp/rtsp url.
+- The camera name will automatically be appended to the end of the command.
+
+## Custom FFmpeg Flags
+
+Custom ffmpeg flags can easily be tested with:
+
+```YAML
+environment:
+    ..
+    - FFMPEG_FLAGS=-fflags +flush_packets+genpts+discardcorrupt+nobuffer
+```
+
+or where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
+
+```yaml
+- FFMPEG_FLAGS_CAM_NAME=-flags low_delay
+```
 
 ## rtsp-simple-server
 
@@ -230,7 +257,7 @@ Additional info:
 
 e.g. use `- RTSP_RTSPADDRESS=:8555` to overwrite the default `rtspAddress`.
 
-or `- RTSP_PATHS_ALL_READUSER=123` to customize a path specific option like ` paths: all: readuser:123`
+or `- RTSP_PATHS_ALL_READUSER=123` to customize a path specific option like `paths: all: readuser:123`
 
 ## Debugging options
 

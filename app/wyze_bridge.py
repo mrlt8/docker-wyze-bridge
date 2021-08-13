@@ -37,7 +37,7 @@ log.setLevel(logging.INFO)
 
 class wyze_bridge:
     def __init__(self):
-        print("STARTING DOCKER-WYZE-BRIDGE v0.5.5")
+        print("STARTING DOCKER-WYZE-BRIDGE v0.5.6")
         if "DEBUG_LEVEL" in os.environ:
             print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
 
@@ -72,7 +72,7 @@ class wyze_bridge:
             else False
         )
 
-    def wyze_login(self):
+    def auth_wyze(self):
         phone_id = str(wyzecam.api.uuid.uuid4())
         payload = {
             "email": os.environ["WYZE_EMAIL"],
@@ -143,47 +143,59 @@ class wyze_bridge:
             dict(response.json(), phone_id=phone_id)
         )
 
-    def authWyze(self, name):
+    def get_wyze_data(self, name):
         pkl_data = f"/tokens/{name}.pickle"
         if os.path.exists(pkl_data) and os.path.getsize(pkl_data) > 0:
             if os.environ.get("FRESH_DATA") and (
                 "auth" not in name or not hasattr(self, "auth")
             ):
-                print(f"[FORCED REFRESH] Removing local cache for {name}!")
+                log.warn(f"[FORCED REFRESH] Removing local cache for '{name}'!")
                 os.remove(pkl_data)
             else:
                 with (open(pkl_data, "rb")) as f:
-                    print(f"Fetching {name} from local cache...")
-                    return pickle.load(f)
+                    log.info(f"Fetching '{name}' from local cache...")
+                    pickle_data = pickle.load(f)
+                    if "auth" in name:
+                        self.auth = pickle_data
+                    return pickle_data
         else:
-            print(f"Could not find local cache for {name}")
+            log.warn(f"Could not find local cache for '{name}'")
         if not hasattr(self, "auth") and "auth" not in name:
-            self.authWyze("auth")
+            self.get_wyze_data("auth")
         while True:
             try:
-                print(f"Fetching {name} from wyze api...")
+                log.info(f"Fetching '{name}' from wyze api...")
                 if "auth" in name:
                     try:
-                        self.auth = data = self.wyze_login()
+                        self.auth = data = self.auth_wyze()
                     except Exception as ex:
                         for err in ex.args:
                             if "400 Client Error" in err:
-                                print("Invalid credentials?")
+                                log.warn("Invalid credentials?")
                         raise ex
                 if "user" in name:
                     data = wyzecam.get_user_info(self.auth)
                 if "cameras" in name:
                     data = wyzecam.get_camera_list(self.auth)
                 with open(pkl_data, "wb") as f:
-                    print(f"Saving {name} to local cache...")
+                    log.info(f"Saving '{name}' to local cache...")
                     pickle.dump(data, f)
                 return data
             except Exception as ex:
-                print(f"{ex}\nSleeping for 10s...")
+                log.info(f"{ex}\nSleeping for 10s...")
                 time.sleep(10)
 
-    def filtered_cameras(self):
-        cams = self.authWyze("cameras")
+    def get_filtered_cams(self):
+        cams = self.get_wyze_data("cameras")
+        cams = [
+            cam for cam in cams if cam.__getattribute__("product_model") != "WVODB1"
+        ]
+        for cam in cams:
+            if hasattr(cam, "firmware_ver") and cam.firmware_ver.endswith(".798"):
+                log.warn(
+                    f"FW: {cam.firmware_ver} on {cam.nickname} is currently not compatible and will be disabled"
+                )
+                cams.remove(cam)
         if "FILTER_MODE" in os.environ and os.environ["FILTER_MODE"].upper() in (
             "BLOCK",
             "BLACKLIST",
@@ -230,12 +242,14 @@ class wyze_bridge:
                         res = "SD"
                     if (
                         os.environ["QUALITY"][2:].isdigit()
-                        and 30 <= int(os.environ["QUALITY"][2:]) <= 240
+                        and 30 <= int(os.environ["QUALITY"][2:]) <= 255
                     ):
-                        # bitrate = min([30,60,120,150,240], key=lambda x:abs(x-int(os.environ['QUALITY'][2:])))
                         bitrate = int(os.environ["QUALITY"][2:])
                     iotc.extend((resolution, bitrate))
                 with wyzecam.iotc.WyzeIOTCSession(*iotc) as sess:
+                    # wyzecam.tutk.tutk.av_client_set_max_buf_size(
+                    #     sess.tutk_platform_lib, 800000
+                    # )
                     if sess.session_check().mode != 2:
                         if os.environ.get("LAN_ONLY"):
                             raise Exception("NON-LAN MODE")
@@ -341,6 +355,14 @@ class wyze_bridge:
                             raise Exception(f"[FFMPEG] {ex}")
             except Exception as ex:
                 log.info(f"[{camera.nickname}] {ex}")
+                if str(ex) == "Authentication did not succeed! {'connectionRes': '2'}":
+                    log.warn("Expired ENR? Removing 'cameras' from local cache...")
+                    os.remove("/tokens/cameras.pickle")
+                    log.warn(
+                        "Restart container to fetch new data or use 'FRESH_DATA' if error persists"
+                    )
+                    time.sleep(10)
+                    sys.exit()
                 if str(ex) == "IOTC_ER_CAN_NOT_FIND_DEVICE":
                     log.info(
                         f"[{camera.nickname}] Camera firmware may be incompatible."
@@ -372,11 +394,9 @@ class wyze_bridge:
                 gc.collect()
 
     def run(self):
-        self.user = self.authWyze("user")
-        self.cameras = self.filtered_cameras()
-        self.iotc = wyzecam.WyzeIOTC(
-            max_num_av_channels=round(len(self.cameras) * 1.4)
-        ).__enter__()
+        self.user = self.get_wyze_data("user")
+        self.cameras = self.get_filtered_cams()
+        self.iotc = wyzecam.WyzeIOTC(max_num_av_channels=len(self.cameras)).__enter__()
         for camera in self.cameras:
             threading.Thread(target=self.start_stream, args=[camera]).start()
 
