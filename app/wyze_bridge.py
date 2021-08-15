@@ -37,7 +37,7 @@ log.setLevel(logging.INFO)
 
 class wyze_bridge:
     def __init__(self):
-        print("STARTING DOCKER-WYZE-BRIDGE v0.5.6")
+        print("STARTING DOCKER-WYZE-BRIDGE v0.5.7")
         if "DEBUG_LEVEL" in os.environ:
             print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
 
@@ -127,15 +127,13 @@ class wyze_bridge:
                                         "verification_code": verification_code,
                                     },
                                     headers=wyzecam.api.get_headers(phone_id),
-                                    # nonce=round(time.time() * 1000),
                                 )
                                 resp.raise_for_status()
                                 if "access_token" in resp.json():
                                     response = resp
                             except Exception as ex:
-                                for err in ex.args:
-                                    if "400 Client Error" in err:
-                                        log.warn("Wrong Code?")
+                                if "400 Client Error" in str(ex):
+                                    log.warn("Wrong Code?")
                                 log.warn(f"Error: {ex}\nPlease try again!")
                         break
                     time.sleep(2)
@@ -166,13 +164,7 @@ class wyze_bridge:
             try:
                 log.info(f"Fetching '{name}' from wyze api...")
                 if "auth" in name:
-                    try:
-                        self.auth = data = self.auth_wyze()
-                    except Exception as ex:
-                        for err in ex.args:
-                            if "400 Client Error" in err:
-                                log.warn("Invalid credentials?")
-                        raise ex
+                    self.auth = data = self.auth_wyze()
                 if "user" in name:
                     data = wyzecam.get_user_info(self.auth)
                 if "cameras" in name:
@@ -182,6 +174,8 @@ class wyze_bridge:
                     pickle.dump(data, f)
                 return data
             except Exception as ex:
+                if "400 Client Error" in str(ex):
+                    log.warn("Invalid credentials?")
                 log.info(f"{ex}\nSleeping for 10s...")
                 time.sleep(10)
 
@@ -247,9 +241,6 @@ class wyze_bridge:
                         bitrate = int(os.environ["QUALITY"][2:])
                     iotc.extend((resolution, bitrate))
                 with wyzecam.iotc.WyzeIOTCSession(*iotc) as sess:
-                    # wyzecam.tutk.tutk.av_client_set_max_buf_size(
-                    #     sess.tutk_platform_lib, 800000
-                    # )
                     if sess.session_check().mode != 2:
                         if os.environ.get("LAN_ONLY"):
                             raise Exception("NON-LAN MODE")
@@ -355,7 +346,7 @@ class wyze_bridge:
                             raise Exception(f"[FFMPEG] {ex}")
             except Exception as ex:
                 log.info(f"[{camera.nickname}] {ex}")
-                if str(ex) == "Authentication did not succeed! {'connectionRes': '2'}":
+                if str(ex) in "Authentication did not succeed! {'connectionRes': '2'}":
                     log.warn("Expired ENR? Removing 'cameras' from local cache...")
                     os.remove("/tokens/cameras.pickle")
                     log.warn(
@@ -363,14 +354,14 @@ class wyze_bridge:
                     )
                     time.sleep(10)
                     sys.exit()
-                if str(ex) == "IOTC_ER_CAN_NOT_FIND_DEVICE":
+                if str(ex) in "IOTC_ER_CAN_NOT_FIND_DEVICE":
                     log.info(
                         f"[{camera.nickname}] Camera firmware may be incompatible."
                     )
                     if "IGNORE_OFFLINE" in os.environ:
                         sys.exit()
                     time.sleep(60)
-                if str(ex) == "IOTC_ER_DEVICE_OFFLINE":
+                if str(ex) in "IOTC_ER_DEVICE_OFFLINE":
                     if "IGNORE_OFFLINE" in os.environ:
                         log.info(
                             f"[{camera.nickname}] Camera is offline. Will NOT try again until container restarts."

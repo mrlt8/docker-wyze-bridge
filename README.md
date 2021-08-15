@@ -27,13 +27,9 @@ Latest confirmed firmware:
 | V3     | 4.36.2.5 (June 14, 2021)   | ✅ 4.36.2.5       |
 | PAN    | 4.10.6.241 (March 9, 2021) | ❌ 4.10.7.798     |
 
-## Changes in v0.5.6
+## Changes in v0.5.7
 
-- FIX #72: Authentication error due to cached camera data with old enr
-- FIX: cache for auth data
-- Block cameras on firmware *.798*
-- Allow up to 255 for stream quality.
-- Filter out WVODB1 to prevent MAX_CHANNEL error
+- Bump rtsp-simple-server to [v0.17.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.17.2) with improvements for HLS.
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
