@@ -27,9 +27,11 @@ Latest confirmed firmware:
 | V3     | 4.36.2.5 (June 14, 2021)   | ✅ 4.36.2.5       |
 | PAN    | 4.10.6.241 (March 9, 2021) | ❌ 4.10.7.798     |
 
-## Changes in v0.5.7
+## Changes in v0.5.8
 
-- Bump rtsp-simple-server to [v0.17.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.17.2) with improvements for HLS.
+- Dockerfile: Always pull latest rtsp-simple-server and reduce layers.
+- Changed default protocol to TCP
+- Cleanup logging.
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
