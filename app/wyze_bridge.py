@@ -21,7 +21,7 @@ if "WYZE_EMAIL" not in os.environ or "WYZE_PASSWORD" not in os.environ:
 
 class wyze_bridge:
     def __init__(self):
-        print("STARTING DOCKER-WYZE-BRIDGE v0.5.8")
+        print("STARTING DOCKER-WYZE-BRIDGE v0.5.9")
         if "DEBUG_LEVEL" in os.environ:
             print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
             debug_level = getattr(logging, os.environ.get("DEBUG_LEVEL").upper(), 10)
@@ -75,7 +75,7 @@ class wyze_bridge:
         if response.json()["mfa_options"] is not None:
             mfa_token = "/tokens/mfa_token"
             self.log.warn(
-                f'MFA Token ({response.json()["mfa_options"][0]}) Required\nAdd token to {mfa_token}'
+                f'🔐 MFA Token ({response.json()["mfa_options"][0]}) Required\nAdd token to {mfa_token}'
             )
             while response.json()["access_token"] is None:
                 json_resp = response.json()
@@ -91,82 +91,82 @@ class wyze_bridge:
                         headers=wyzecam.api.get_headers(phone_id),
                     )
                     sms_resp.raise_for_status()
-                    self.log.info(f"SMS code requested")
+                    self.log.info(f"💬 SMS code requested")
                 while True:
                     if os.path.exists(mfa_token) and os.path.getsize(mfa_token) > 0:
                         with open(mfa_token, "r+") as f:
                             verification_code = f.read().strip()
                             f.truncate(0)
-                            self.log.warn(
-                                f"Using {verification_code} as verification code"
+                        self.log.info(f"🔑 Using {verification_code} for authentication")
+                        try:
+                            resp = wyzecam.api.requests.post(
+                                "https://auth-prod.api.wyze.com/user/login",
+                                json={
+                                    "email": os.environ["WYZE_EMAIL"],
+                                    "password": wyzecam.api.triplemd5(
+                                        os.environ["WYZE_PASSWORD"]
+                                    ),
+                                    "mfa_type": json_resp["mfa_options"][0],
+                                    "verification_id": sms_resp.json()["session_id"]
+                                    if "sms_resp" in vars()
+                                    else json_resp["mfa_details"]["totp_apps"][0][
+                                        "app_id"
+                                    ],
+                                    "verification_code": verification_code,
+                                },
+                                headers=wyzecam.api.get_headers(phone_id),
                             )
-                            try:
-                                resp = wyzecam.api.requests.post(
-                                    "https://auth-prod.api.wyze.com/user/login",
-                                    json={
-                                        "email": os.environ["WYZE_EMAIL"],
-                                        "password": wyzecam.api.triplemd5(
-                                            os.environ["WYZE_PASSWORD"]
-                                        ),
-                                        "mfa_type": json_resp["mfa_options"][0],
-                                        "verification_id": sms_resp.json()["session_id"]
-                                        if "sms_resp" in vars()
-                                        else json_resp["mfa_details"]["totp_apps"][0][
-                                            "app_id"
-                                        ],
-                                        "verification_code": verification_code,
-                                    },
-                                    headers=wyzecam.api.get_headers(phone_id),
-                                )
-                                resp.raise_for_status()
-                                if "access_token" in resp.json():
-                                    response = resp
-                            except Exception as ex:
-                                if "400 Client Error" in str(ex):
-                                    self.log.warn("Wrong Code?")
-                                self.log.warn(f"Error: {ex}\nPlease try again!")
-                        break
+                            resp.raise_for_status()
+                            if "access_token" in resp.json():
+                                response = resp
+                        except Exception as ex:
+                            if "400 Client Error" in str(ex):
+                                self.log.warn("🚷 Wrong Code?")
+                            self.log.warn(f"Error: {ex}\nPlease try again!")
+                        finally:
+                            break
                     time.sleep(2)
         return wyzecam.api_models.WyzeCredential.parse_obj(
             dict(response.json(), phone_id=phone_id)
         )
 
     def get_wyze_data(self, name):
-        pkl_data = f"/tokens/{name}.pickle"
-        if os.path.exists(pkl_data) and os.path.getsize(pkl_data) > 0:
-            if os.environ.get("FRESH_DATA") and (
-                "auth" not in name or not hasattr(self, "auth")
-            ):
-                self.log.warn(f"[FORCED REFRESH] Removing local cache for '{name}'!")
-                os.remove(pkl_data)
-            else:
-                with (open(pkl_data, "rb")) as f:
-                    self.log.info(f"Fetching '{name}' from local cache...")
-                    pickle_data = pickle.load(f)
-                    if "auth" in name:
-                        self.auth = pickle_data
-                    return pickle_data
-        else:
-            self.log.warn(f"Could not find local cache for '{name}'")
+        pkl_file = f"/tokens/{name}.pickle"
+        try:
+            with (open(pkl_file, "rb")) as f:
+                pickle_data = pickle.load(f)
+                if os.environ.get("FRESH_DATA"):
+                    os.remove(pkl_file)
+                    raise Exception(f"🗑  FORCED REFRESH - Removing local '{name}' data")
+                self.log.info(f"📚 Using '{name}' from local cache...")
+                return pickle_data
+        except OSError:
+            self.log.info(f"🔍 Could not find local cache for '{name}'")
+        except Exception as ex:
+            self.log.warn(ex)
         if not hasattr(self, "auth") and "auth" not in name:
-            self.get_wyze_data("auth")
+            self.auth = self.get_wyze_data("auth")
         while True:
             try:
-                self.log.info(f"Fetching '{name}' from wyze api...")
+                self.log.info(f"🌎 Fetching '{name}' from the Wyze API...")
                 if "auth" in name:
                     self.auth = data = self.auth_wyze()
                 if "user" in name:
                     data = wyzecam.get_user_info(self.auth)
                 if "cameras" in name:
                     data = wyzecam.get_camera_list(self.auth)
-                with open(pkl_data, "wb") as f:
-                    self.log.info(f"Saving '{name}' to local cache...")
+                if not data:
+                    del self.auth
+                    os.remove("/tokens/auth.pickle")
+                    raise (f"Error getting {name} - Removing auth data")
+                with open(pkl_file, "wb") as f:
                     pickle.dump(data, f)
+                    self.log.info(f"💾 Saving '{name}' to local cache...")
                 return data
             except Exception as ex:
                 if "400 Client Error" in str(ex):
-                    self.log.warn("Invalid credentials?")
-                self.log.info(f"{ex}\nSleeping for 10s...")
+                    self.log.warn("🚷 Invalid credentials?")
+                self.log.warn(f"{ex}\nSleeping for 10s...")
                 time.sleep(10)
 
     def get_filtered_cams(self):
@@ -177,7 +177,7 @@ class wyze_bridge:
         for cam in cams:
             if hasattr(cam, "firmware_ver") and cam.firmware_ver.endswith(".798"):
                 self.log.warn(
-                    f"FW: {cam.firmware_ver} on {cam.nickname} is currently not compatible and will be disabled"
+                    f"💔 FW: {cam.firmware_ver} on {cam.nickname} is currently not compatible and will be disabled"
                 )
                 cams.remove(cam)
         if "FILTER_MODE" in os.environ and os.environ["FILTER_MODE"].upper() in (
@@ -233,9 +233,9 @@ class wyze_bridge:
                 with wyzecam.iotc.WyzeIOTCSession(*iotc) as sess:
                     if sess.session_check().mode != 2:
                         if os.environ.get("LAN_ONLY"):
-                            raise Exception("NON-LAN MODE")
+                            raise Exception("🌎 NON-LAN MODE - Will try again...")
                         self.log.warn(
-                            f'WARNING: Camera is connected via "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode". Stream may consume additional bandwidth!'
+                            f'🌎 WARNING: Camera is connected via "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode". Stream may consume additional bandwidth!'
                         )
                     if sess.camera.camera_info["videoParm"]:
                         if "DEBUG_LEVEL" in os.environ:
