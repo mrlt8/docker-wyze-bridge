@@ -21,7 +21,7 @@ if "WYZE_EMAIL" not in os.environ or "WYZE_PASSWORD" not in os.environ:
 
 class wyze_bridge:
     def __init__(self):
-        print("STARTING DOCKER-WYZE-BRIDGE v0.5.9")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.10\n")
         if "DEBUG_LEVEL" in os.environ:
             print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
             debug_level = getattr(logging, os.environ.get("DEBUG_LEVEL").upper(), 10)
@@ -75,7 +75,7 @@ class wyze_bridge:
         if response.json()["mfa_options"] is not None:
             mfa_token = "/tokens/mfa_token"
             self.log.warn(
-                f'🔐 MFA Token ({response.json()["mfa_options"][0]}) Required\nAdd token to {mfa_token}'
+                f'🔐 MFA Token ({response.json()["mfa_options"][0]}) Required\n\n📝 Add verification code to {mfa_token}'
             )
             while response.json()["access_token"] is None:
                 json_resp = response.json()
@@ -119,13 +119,14 @@ class wyze_bridge:
                             resp.raise_for_status()
                             if "access_token" in resp.json():
                                 response = resp
+                                self.log.info(f"✅ Verification code accepted!")
                         except Exception as ex:
                             if "400 Client Error" in str(ex):
                                 self.log.warn("🚷 Wrong Code?")
-                            self.log.warn(f"Error: {ex}\nPlease try again!")
+                            self.log.warn(f"Error: {ex}\n\nPlease try again!\n")
                         finally:
                             break
-                    time.sleep(2)
+                    time.sleep(1)
         return wyzecam.api_models.WyzeCredential.parse_obj(
             dict(response.json(), phone_id=phone_id)
         )
@@ -137,7 +138,9 @@ class wyze_bridge:
                 pickle_data = pickle.load(f)
                 if os.environ.get("FRESH_DATA"):
                     os.remove(pkl_file)
-                    raise Exception(f"🗑  FORCED REFRESH - Removing local '{name}' data")
+                    raise Exception(
+                        f"♻️  FORCED REFRESH - Removing local '{name}' data"
+                    )
                 self.log.info(f"📚 Using '{name}' from local cache...")
                 return pickle_data
         except OSError:
@@ -175,9 +178,9 @@ class wyze_bridge:
             cam for cam in cams if cam.__getattribute__("product_model") != "WVODB1"
         ]
         for cam in cams:
-            if hasattr(cam, "firmware_ver") and cam.firmware_ver.endswith(".798"):
+            if hasattr(cam, "dtls") and cam.dtls > 0:
                 self.log.warn(
-                    f"💔 FW: {cam.firmware_ver} on {cam.nickname} is currently not compatible and will be disabled"
+                    f"💔 'dtls' mode detected on FW: {cam.firmware_ver}. {cam.nickname} will be disabled."
                 )
                 cams.remove(cam)
         if "FILTER_MODE" in os.environ and os.environ["FILTER_MODE"].upper() in (
@@ -190,17 +193,17 @@ class wyze_bridge:
             filtered = list(filter(lambda cam: not self.env_filter(cam), cams))
             if len(filtered) > 0:
                 print(
-                    f"BLACKLIST MODE ON \nSTARTING {len(filtered)} OF {len(cams)} CAMERAS"
+                    f"\n🪄 BLACKLIST MODE ON \n🏁 STARTING {len(filtered)} OF {len(cams)} CAMERAS\n"
                 )
                 return filtered
         if any(key.startswith("FILTER_") for key in os.environ):
             filtered = list(filter(self.env_filter, cams))
             if len(filtered) > 0:
                 print(
-                    f"WHITELIST MODE ON \nSTARTING {len(filtered)} OF {len(cams)} CAMERAS"
+                    f"🪄 WHITELIST MODE ON \n🏁 STARTING {len(filtered)} OF {len(cams)} CAMERAS\n"
                 )
                 return filtered
-        print(f"STARTING ALL {len(cams)} CAMERAS")
+        print(f"\n🏁 STARTING ALL {len(cams)} CAMERAS\n")
         return cams
 
     def start_stream(self, camera):
@@ -260,7 +263,7 @@ class wyze_bridge:
                         stream = "Stream"
                     uri = self.clean_name(camera.nickname)
                     self.log.info(
-                        f'Starting {stream} for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) in "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"]["wifidb"]}%'
+                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) in "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"]["wifidb"]}%'
                     )
                     cmd = (
                         (
@@ -346,7 +349,7 @@ class wyze_bridge:
                 if str(ex) in "IOTC_ER_DEVICE_OFFLINE":
                     if "IGNORE_OFFLINE" in os.environ:
                         self.log.info(
-                            f"Camera is offline. Will NOT try again until container restarts."
+                            f"🪦 Camera is offline. Will NOT try again until container restarts."
                         )
                         sys.exit()
                     offline_time = (
@@ -355,7 +358,7 @@ class wyze_bridge:
                         else 10
                     )
                     self.log.info(
-                        f"Camera is offline. Will retry again in {offline_time}s."
+                        f"💀 Camera is offline. Will retry again in {offline_time}s."
                     )
                     time.sleep(offline_time)
             finally:
