@@ -21,7 +21,7 @@ if "WYZE_EMAIL" not in os.environ or "WYZE_PASSWORD" not in os.environ:
 
 class wyze_bridge:
     def __init__(self):
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.10\n")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.10")
         if "DEBUG_LEVEL" in os.environ:
             print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
             debug_level = getattr(logging, os.environ.get("DEBUG_LEVEL").upper(), 10)
@@ -180,7 +180,7 @@ class wyze_bridge:
         for cam in cams:
             if hasattr(cam, "dtls") and cam.dtls > 0:
                 self.log.warn(
-                    f"💔 'dtls' mode detected on FW: {cam.firmware_ver}. {cam.nickname} will be disabled."
+                    f"💔 DTLS enabled on FW: {cam.firmware_ver}. {cam.nickname} will be disabled."
                 )
                 cams.remove(cam)
         if "FILTER_MODE" in os.environ and os.environ["FILTER_MODE"].upper() in (
@@ -193,17 +193,17 @@ class wyze_bridge:
             filtered = list(filter(lambda cam: not self.env_filter(cam), cams))
             if len(filtered) > 0:
                 print(
-                    f"\n🪄 BLACKLIST MODE ON \n🏁 STARTING {len(filtered)} OF {len(cams)} CAMERAS\n"
+                    f"\n🪄 BLACKLIST MODE ON \n🏁 STARTING {len(filtered)} OF {len(cams)} CAMERAS"
                 )
                 return filtered
         if any(key.startswith("FILTER_") for key in os.environ):
             filtered = list(filter(self.env_filter, cams))
             if len(filtered) > 0:
                 print(
-                    f"🪄 WHITELIST MODE ON \n🏁 STARTING {len(filtered)} OF {len(cams)} CAMERAS\n"
+                    f"🪄 WHITELIST MODE ON \n🏁 STARTING {len(filtered)} OF {len(cams)} CAMERAS"
                 )
                 return filtered
-        print(f"\n🏁 STARTING ALL {len(cams)} CAMERAS\n")
+        print(f"\n🏁 STARTING ALL {len(cams)} CAMERAS")
         return cams
 
     def start_stream(self, camera):
