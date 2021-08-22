@@ -21,7 +21,7 @@ if "WYZE_EMAIL" not in os.environ or "WYZE_PASSWORD" not in os.environ:
 
 class wyze_bridge:
     def __init__(self):
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.10")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.11")
         if "DEBUG_LEVEL" in os.environ:
             print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
             debug_level = getattr(logging, os.environ.get("DEBUG_LEVEL").upper(), 10)
@@ -92,6 +92,9 @@ class wyze_bridge:
                     )
                     sms_resp.raise_for_status()
                     self.log.info(f"💬 SMS code requested")
+                    json_resp["mfa_options"] = "PrimaryPhone"
+                else:
+                    json_resp["mfa_options"] = "TotpVerificationCode"
                 while True:
                     if os.path.exists(mfa_token) and os.path.getsize(mfa_token) > 0:
                         with open(mfa_token, "r+") as f:
@@ -106,7 +109,7 @@ class wyze_bridge:
                                     "password": wyzecam.api.triplemd5(
                                         os.environ["WYZE_PASSWORD"]
                                     ),
-                                    "mfa_type": json_resp["mfa_options"][0],
+                                    "mfa_type": json_resp["mfa_options"],
                                     "verification_id": sms_resp.json()["session_id"]
                                     if "sms_resp" in vars()
                                     else json_resp["mfa_details"]["totp_apps"][0][
