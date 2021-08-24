@@ -23,17 +23,9 @@ If you wish to continue using your camera with the bridge, you should downgrade 
 | V3     | 4.36.2.5 (June 14, 2021)   | ✅ 4.36.2.5      |
 | PAN    | 4.10.6.241 (March 9, 2021) | ❌ 4.10.7.798    |
 
-## Changes in v0.5.11
+## Changes in v0.5.12
 
-- Fix bug in 2FA when submitting verification resulted in "400" Error
-
-## Changes in v0.5.10
-
-- Check for DTLS status instead of firmware version for compatibility
-- Update version numbers for api requests
-- Reduce sleep time for 2fa
-- Increase default `RTSP_READTIMEOUT` and `RTSP_READBUFFERCOUNT`
-- Reduce another docker layer
+- Clear local cache when switching accounts.
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 

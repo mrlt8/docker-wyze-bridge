@@ -21,7 +21,7 @@ if "WYZE_EMAIL" not in os.environ or "WYZE_PASSWORD" not in os.environ:
 
 class wyze_bridge:
     def __init__(self):
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.11")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.12")
         if "DEBUG_LEVEL" in os.environ:
             print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
             debug_level = getattr(logging, os.environ.get("DEBUG_LEVEL").upper(), 10)
@@ -139,13 +139,19 @@ class wyze_bridge:
         try:
             with (open(pkl_file, "rb")) as f:
                 pickle_data = pickle.load(f)
-                if os.environ.get("FRESH_DATA"):
-                    os.remove(pkl_file)
-                    raise Exception(
-                        f"♻️  FORCED REFRESH - Removing local '{name}' data"
-                    )
-                self.log.info(f"📚 Using '{name}' from local cache...")
-                return pickle_data
+            if os.environ.get("FRESH_DATA"):
+                os.remove(pkl_file)
+                raise Exception(f"♻️  FORCED REFRESH - Removing local '{name}' data")
+            if (
+                "user" in name
+                and pickle_data.email.upper() != os.environ["WYZE_EMAIL"].upper()
+            ):
+                for f in os.listdir(os.path.dirname(pkl_file)):
+                    if f.endswith(os.path.splitext(pkl_file)[1]):
+                        os.remove(os.path.dirname(pkl_file) + "/" + f)
+                raise Exception(f"🕵️  Cached email doesn't match 'WYZE_EMAIL'")
+            self.log.info(f"📚 Using '{name}' from local cache...")
+            return pickle_data
         except OSError:
             self.log.info(f"🔍 Could not find local cache for '{name}'")
         except Exception as ex:
@@ -163,7 +169,7 @@ class wyze_bridge:
                     data = wyzecam.get_camera_list(self.auth)
                 if not data:
                     del self.auth
-                    os.remove("/tokens/auth.pickle")
+                    os.remove(os.path.dirname(pkl_file) + "/auth.pickle")
                     raise (f"Error getting {name} - Removing auth data")
                 with open(pkl_file, "wb") as f:
                     pickle.dump(data, f)
@@ -206,7 +212,7 @@ class wyze_bridge:
                     f"🪄 WHITELIST MODE ON \n🏁 STARTING {len(filtered)} OF {len(cams)} CAMERAS"
                 )
                 return filtered
-        print(f"\n🏁 STARTING ALL {len(cams)} CAMERAS")
+        print(f"\n🏁 STARTING ALL ({len(cams)}) CAMERAS")
         return cams
 
     def start_stream(self, camera):
@@ -266,7 +272,7 @@ class wyze_bridge:
                         stream = "Stream"
                     uri = self.clean_name(camera.nickname)
                     self.log.info(
-                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(camera.product_model)} ({camera.product_model}) in "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"]["wifidb"]}%'
+                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(camera.product_model) if self.model_names.get(camera.product_model) else camera.product_model} in "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"]["wifidb"]}%'
                     )
                     cmd = (
                         (
@@ -391,6 +397,7 @@ class wyze_bridge:
         self.user = self.get_wyze_data("user")
         self.cameras = self.get_filtered_cams()
         self.iotc = wyzecam.WyzeIOTC(max_num_av_channels=len(self.cameras)).__enter__()
+        # logging.debug(self.iotc.version)
         for camera in self.cameras:
             threading.Thread(
                 target=self.start_stream,
