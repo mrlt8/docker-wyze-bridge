@@ -3,3 +3,4 @@ docker-compose.yml
 *.pickle
 mfa_token
 .vscode
+.env
