@@ -1,5 +1,6 @@
 .DS_Store
 docker-compose.yml
 *.pickle
+*.env
 mfa_token
 .vscode

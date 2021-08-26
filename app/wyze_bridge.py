@@ -21,7 +21,7 @@ if "WYZE_EMAIL" not in os.environ or "WYZE_PASSWORD" not in os.environ:
 
 class wyze_bridge:
     def __init__(self):
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.12")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.13")
         if "DEBUG_LEVEL" in os.environ:
             print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
             debug_level = getattr(logging, os.environ.get("DEBUG_LEVEL").upper(), 10)
@@ -44,10 +44,11 @@ class wyze_bridge:
             []
             if not os.environ.get(env)
             else [
-                x.strip().upper().replace(":", "") for x in os.environ[env].split(",")
+                x.strip("'\" ").upper().replace(":", "")
+                for x in os.environ[env].split(",")
             ]
             if "," in os.environ[env]
-            else [os.environ[env].strip().upper().replace(":", "")]
+            else [os.environ[env].strip("'\" ").upper().replace(":", "")]
         )
 
     def env_filter(self, cam):
@@ -63,8 +64,10 @@ class wyze_bridge:
     def auth_wyze(self):
         phone_id = str(wyzecam.api.uuid.uuid4())
         payload = {
-            "email": os.environ["WYZE_EMAIL"],
-            "password": wyzecam.api.triplemd5(os.environ["WYZE_PASSWORD"]),
+            "email": os.environ["WYZE_EMAIL"].strip("'\" "),
+            "password": wyzecam.api.triplemd5(
+                os.environ["WYZE_PASSWORD"].strip("'\" ")
+            ),
         }
         response = wyzecam.api.requests.post(
             "https://auth-prod.api.wyze.com/user/login",
@@ -98,7 +101,7 @@ class wyze_bridge:
                 while True:
                     if os.path.exists(mfa_token) and os.path.getsize(mfa_token) > 0:
                         with open(mfa_token, "r+") as f:
-                            verification_code = f.read().strip()
+                            verification_code = f.read().strip("'\" ")
                             f.truncate(0)
                         self.log.info(f"🔑 Using {verification_code} for authentication")
                         try:
@@ -275,16 +278,9 @@ class wyze_bridge:
                         f'🎉 Starting {stream} for WyzeCam {self.model_names.get(camera.product_model) if self.model_names.get(camera.product_model) else camera.product_model} in "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"]["wifidb"]}%'
                     )
                     cmd = (
-                        (
-                            os.environ[f"FFMPEG_CMD_{uri}"]
-                            .strip()
-                            .strip("'")
-                            .strip('"')
-                        ).split()
+                        (os.environ[f"FFMPEG_CMD_{uri}"].strip("'\" ")).split()
                         if f"FFMPEG_CMD_{uri}" in os.environ
-                        else (
-                            os.environ["FFMPEG_CMD"].strip().strip("'").strip('"')
-                        ).split()
+                        else (os.environ["FFMPEG_CMD"].strip("'\" ")).split()
                         if os.environ.get("FFMPEG_CMD")
                         else ["-loglevel"]
                         + (
