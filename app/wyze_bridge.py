@@ -9,11 +9,11 @@ import time
 import warnings
 import wyzecam
 
-if "WYZE_EMAIL" not in os.environ or "WYZE_PASSWORD" not in os.environ:
+if not os.environ.get("WYZE_EMAIL") or not os.environ.get("WYZE_PASSWORD"):
     print(
         "Set your "
-        + ("WYZE_EMAIL " if "WYZE_EMAIL" not in os.environ else "")
-        + ("WYZE_PASSWORD " if "WYZE_PASSWORD" not in os.environ else "")
+        + ("WYZE_EMAIL " if not os.environ.get("WYZE_EMAIL") else "")
+        + ("WYZE_PASSWORD " if not os.environ.get("WYZE_PASSWORD") else "")
         + "credentials and restart the container."
     )
     sys.exit()

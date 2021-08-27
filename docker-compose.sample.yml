@@ -12,5 +12,5 @@ services:
             - 8554:8554
             - 8888:8888
         environment:
-            - WYZE_EMAIL=
-            - WYZE_PASSWORD=
+            - WYZE_EMAIL=${WYZE_EMAIL} # Replace with wyze email 
+            - WYZE_PASSWORD=${WYZE_PASSWORD} # Replace with wyze password
