@@ -44,11 +44,11 @@ class wyze_bridge:
             []
             if not os.environ.get(env)
             else [
-                x.strip("'\" ").upper().replace(":", "")
+                x.strip("'\"\n ").upper().replace(":", "")
                 for x in os.environ[env].split(",")
             ]
             if "," in os.environ[env]
-            else [os.environ[env].strip("'\" ").upper().replace(":", "")]
+            else [os.environ[env].strip("'\"\n ").upper().replace(":", "")]
         )
 
     def env_filter(self, cam):
@@ -64,9 +64,9 @@ class wyze_bridge:
     def auth_wyze(self):
         phone_id = str(wyzecam.api.uuid.uuid4())
         payload = {
-            "email": os.environ["WYZE_EMAIL"].strip("'\" "),
+            "email": os.environ["WYZE_EMAIL"].strip("'\"\n "),
             "password": wyzecam.api.triplemd5(
-                os.environ["WYZE_PASSWORD"].strip("'\" ")
+                os.environ["WYZE_PASSWORD"].strip("'\"\n ")
             ),
         }
         response = wyzecam.api.requests.post(
@@ -278,9 +278,9 @@ class wyze_bridge:
                         f'🎉 Starting {stream} for WyzeCam {self.model_names.get(camera.product_model) if self.model_names.get(camera.product_model) else camera.product_model} in "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"]["wifidb"]}%'
                     )
                     cmd = (
-                        (os.environ[f"FFMPEG_CMD_{uri}"].strip("'\" ")).split()
+                        (os.environ[f"FFMPEG_CMD_{uri}"].strip("'\"\n ")).split()
                         if f"FFMPEG_CMD_{uri}" in os.environ
-                        else (os.environ["FFMPEG_CMD"].strip("'\" ")).split()
+                        else (os.environ["FFMPEG_CMD"].strip("'\"\n ")).split()
                         if os.environ.get("FFMPEG_CMD")
                         else ["-loglevel"]
                         + (
