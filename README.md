@@ -54,6 +54,7 @@ or
 - [Two-Step Verification](#Multi-Factor-Authentication)
 - [ARM/Raspberry Pi](#armraspberry-pi-support)
 - [LAN mode](#LAN-Mode)
+- [Run on Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer-Setup)
 
 Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
 
