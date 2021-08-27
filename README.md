@@ -23,9 +23,9 @@ If you wish to continue using your camera with the bridge, you should downgrade 
 | V3     | 4.36.2.5 (June 14, 2021)   | ✅ 4.36.2.5      |
 | PAN    | 4.10.6.241 (March 9, 2021) | ❌ 4.10.7.798    |
 
-## Changes in v0.5.13
+## Changes in v0.5.14
 
-- Remove `"`s from email and password.
+- Fix #93: 2fa 400 due to `\n` character at the end of sting
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 

@@ -21,7 +21,7 @@ if "WYZE_EMAIL" not in os.environ or "WYZE_PASSWORD" not in os.environ:
 
 class wyze_bridge:
     def __init__(self):
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.13")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.14")
         if "DEBUG_LEVEL" in os.environ:
             print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
             debug_level = getattr(logging, os.environ.get("DEBUG_LEVEL").upper(), 10)
@@ -101,7 +101,7 @@ class wyze_bridge:
                 while True:
                     if os.path.exists(mfa_token) and os.path.getsize(mfa_token) > 0:
                         with open(mfa_token, "r+") as f:
-                            verification_code = f.read().strip("'\" ")
+                            verification_code = f.read().replace(" ", "").strip("'\"\n")
                             f.truncate(0)
                         self.log.info(f"🔑 Using {verification_code} for authentication")
                         try:
@@ -232,7 +232,7 @@ class wyze_bridge:
                     )
                     time.sleep(60)
                 iotc = [self.iotc.tutk_platform_lib, self.user, camera]
-                resolution = 3 if camera.product_model == "WYZEDB3" else 0
+                resolution = 3 if camera.product_model in "WYZEDB3" else 0
                 bitrate = 120
                 res = "HD"
                 if os.environ.get("QUALITY"):
