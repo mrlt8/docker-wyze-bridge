@@ -1,0 +1,41 @@
+{
+    "name": "Docker Wyze Bridge",
+    "version": "latest",
+    "slug": "docker-wyze-bridge",
+    "description": "RTMP/RTSP/HLS bridge for Wyze cams in a docker container",
+    "url": "http://github.com/mrlt8/docker-wyze-bridge",
+    "arch": [
+        "armv7",
+        "aarch64",
+        "amd64"
+    ],
+    "startup": "application",
+    "boot": "auto",
+    "apparmor": true,
+    "ports": {
+        "1935/tcp": 1935,
+        "8554/tcp": 8554,
+        "8888/tcp": 8888
+    },
+    "ports_description": {
+        "1935/tcp": "RTMP streams",
+        "8554/tcp": "RTSP streams",
+        "8888/tcp": "HLS streams"
+    },
+    "environment": {
+        "HASS": "true"
+    },
+    "map": [
+        "config:rw"
+    ],
+    "options": {
+        "WYZE_EMAIL": null,
+        "WYZE_PASSWORD": null
+    },
+    "schema": {
+        "WYZE_EMAIL": "email",
+        "WYZE_PASSWORD": "password"
+    },
+    "legacy": true,
+    "image": "mrlt8/wyze-bridge"
+}
