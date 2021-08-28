@@ -12,20 +12,20 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 
 Some reports of issues with v1 and WCO models that need further investigation.
 
-#### ⚠️ Latest Firmware Compatibility
+#### ⚠️ Firmware Compatibility
 
-The bridge currently has issues finding cameras on the newer firmware with DTLS enabled.
+The bridge currently has issues connecting to cameras on newer firmware with DTLS enabled.
 
-If you wish to continue using your camera with the bridge, you should downgrade or remain on a compatible firmware for the time being:
-| Camera | Compatible Firmware        | Latest Firmware |
-| ------ | -------------------------- | --------------- |
-| V2     | 4.9.6.241 (March 9, 2021)  | ❌ 4.9.7.798     |
-| V3     | 4.36.2.5 (June 14, 2021)   | ✅ 4.36.2.5      |
-| PAN    | 4.10.6.241 (March 9, 2021) | ❌ 4.10.7.798    |
+If you wish to continue using your camera with the bridge, you should downgrade or remain on a firmware without DTLS:
+| Camera | Latest Firmware w/o DTLS    |
+| ------ | --------------------------- |
+| V2     | 4.9.6.241 (March 9, 2021)   |
+| V3     | 4.36.3.19 (August 26, 2021) |
+| PAN    | 4.10.6.241 (March 9, 2021)  |
 
-## Changes in v0.5.14
+## Changes in v0.5.15
 
-- Fix #93: 2fa 400 due to `\n` character at the end of sting
+- Initial basic support as 🏠 Home Assistant Add-on
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 

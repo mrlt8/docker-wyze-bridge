@@ -21,7 +21,9 @@ if not os.environ.get("WYZE_EMAIL") or not os.environ.get("WYZE_PASSWORD"):
 
 class wyze_bridge:
     def __init__(self):
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.14")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.15")
+        if os.environ.get("HASS"):
+            print("\n🏠 Home Assistant Mode")
         if "DEBUG_LEVEL" in os.environ:
             print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
             debug_level = getattr(logging, os.environ.get("DEBUG_LEVEL").upper(), 10)
@@ -76,7 +78,8 @@ class wyze_bridge:
         )
         response.raise_for_status()
         if response.json()["mfa_options"] is not None:
-            mfa_token = "/tokens/mfa_token"
+            mfa_path = "config" if os.environ.get("HASS") else "tokens"
+            mfa_token = f"/{mfa_path}/mfa_token"
             self.log.warn(
                 f'🔐 MFA Token ({response.json()["mfa_options"][0]}) Required\n\n📝 Add verification code to {mfa_token}'
             )
@@ -163,7 +166,7 @@ class wyze_bridge:
             self.auth = self.get_wyze_data("auth")
         while True:
             try:
-                self.log.info(f"🌎 Fetching '{name}' from the Wyze API...")
+                self.log.info(f"☁️ Fetching '{name}' from the Wyze API...")
                 if "auth" in name:
                     self.auth = data = self.auth_wyze()
                 if "user" in name:
@@ -248,9 +251,9 @@ class wyze_bridge:
                 with wyzecam.iotc.WyzeIOTCSession(*iotc) as sess:
                     if sess.session_check().mode != 2:
                         if os.environ.get("LAN_ONLY"):
-                            raise Exception("🌎 NON-LAN MODE - Will try again...")
+                            raise Exception("☁️ NON-LAN MODE - Will try again...")
                         self.log.warn(
-                            f'🌎 WARNING: Camera is connected via "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode". Stream may consume additional bandwidth!'
+                            f'☁️ WARNING: Camera is connected via "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode". Stream may consume additional bandwidth!'
                         )
                     if sess.camera.camera_info["videoParm"]:
                         if "DEBUG_LEVEL" in os.environ:
@@ -395,6 +398,18 @@ class wyze_bridge:
         self.iotc = wyzecam.WyzeIOTC(max_num_av_channels=len(self.cameras)).__enter__()
         # logging.debug(self.iotc.version)
         for camera in self.cameras:
+            if (
+                os.environ.get("HASS")
+                and hasattr(camera, "thumbnail")
+                and camera.thumbnail is not None
+            ):
+                os.makedirs("/config/www/", exist_ok=True)
+                with wyzecam.api.requests.get(camera.thumbnail) as thumb:
+                    with open(
+                        f"/config/www/{self.clean_name(camera.nickname).lower()}.jpg",
+                        "wb",
+                    ) as f:
+                        f.write(thumb.content)
             threading.Thread(
                 target=self.start_stream,
                 args=[camera],
