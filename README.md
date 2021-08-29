@@ -25,7 +25,7 @@ If you wish to continue using your camera with the bridge, you should downgrade 
 
 ## Changes in v0.5.15
 
-- Initial basic support as 🏠 Home Assistant Add-on
+- Initial basic support as 🏠 Home Assistant Add-on. See [wiki](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for details
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -55,6 +55,7 @@ or
 - [ARM/Raspberry Pi](#armraspberry-pi-support)
 - [LAN mode](#LAN-Mode)
 - [Run on Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer-Setup)
+- [Home Assistant](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
 
 Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
 
