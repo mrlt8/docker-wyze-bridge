@@ -1,5 +1,8 @@
 # RTMP/RTSP/HLS Bridge for Wyze Cam
 
+[![Docker](https://github.com/mrlt8/docker-wyze-bridge/actions/workflows/docker-image.yml/badge.svg)](https://github.com/mrlt8/docker-wyze-bridge/actions/workflows/docker-image.yml) [![GitHub release (latest by date)](https://img.shields.io/github/v/release/mrlt8/docker-wyze-bridge?logo=github)](https://github.com/mrlt8/docker-wyze-bridge/releases/latest) [![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/mrlt8/wyze-bridge?sort=semver&logo=docker)](https://hub.docker.com/r/mrlt8/wyze-bridge) [![Docker Pulls](https://img.shields.io/docker/pulls/mrlt8/wyze-bridge?logo=docker)](https://hub.docker.com/r/mrlt8/wyze-bridge) ![GitHub Repo stars](https://img.shields.io/github/stars/mrlt8/docker-wyze-bridge?style=social)
+
+
 Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze cameras including v3. No Third-party or special firmware required.
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
@@ -23,9 +26,10 @@ If you wish to continue using your camera with the bridge, you should downgrade 
 | V3     | 4.36.3.19 (August 26, 2021) |
 | PAN    | 4.10.6.241 (March 9, 2021)  |
 
-## Changes in v0.5.15
+## Changes in v0.5.16
 
-- Initial basic support as 🏠 Home Assistant Add-on. See [wiki](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for details
+- 🏠 Home Assistant: Cache data to `/config/wyze-bridge/`
+- 🏠 Home Assistant: 2fA verification input file changed to `/config/wyze-bridge/mfa_token.txt`
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 

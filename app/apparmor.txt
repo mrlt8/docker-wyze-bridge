@@ -1,0 +1,9 @@
+#include <tunables/global>
+
+profile docker-wyze-bridge flags=(attach_disconnected,mediate_deleted) {
+  #include <abstractions/base>
+  
+  # Capabilities
+  network inet tcp,
+  file,
+}

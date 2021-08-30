@@ -1,9 +1,10 @@
 {
     "name": "Docker Wyze Bridge",
-    "version": "latest",
-    "slug": "docker-wyze-bridge",
     "description": "RTMP/RTSP/HLS bridge for Wyze cams in a docker container",
+    "slug": "docker-wyze-bridge",
     "url": "http://github.com/mrlt8/docker-wyze-bridge",
+    "version": "0.5.16",
+    "image": "mrlt8/wyze-bridge",
     "arch": [
         "armv7",
         "aarch64",
@@ -36,6 +37,5 @@
         "WYZE_EMAIL": "email",
         "WYZE_PASSWORD": "password"
     },
-    "legacy": true,
-    "image": "mrlt8/wyze-bridge"
+    "legacy": true
 }

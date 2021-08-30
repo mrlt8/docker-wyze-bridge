@@ -21,9 +21,14 @@ if not os.environ.get("WYZE_EMAIL") or not os.environ.get("WYZE_PASSWORD"):
 
 class wyze_bridge:
     def __init__(self):
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.15")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.16")
+        self.token_path = "/tokens/"
         if os.environ.get("HASS"):
             print("\n🏠 Home Assistant Mode")
+            self.token_path = "/config/wyze-bridge/"
+            os.makedirs("/config/www/", exist_ok=True)
+            os.makedirs(self.token_path, exist_ok=True)
+            open(f"{self.token_path}mfa_token.txt", "w").close()
         if "DEBUG_LEVEL" in os.environ:
             print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
             debug_level = getattr(logging, os.environ.get("DEBUG_LEVEL").upper(), 10)
@@ -78,8 +83,8 @@ class wyze_bridge:
         )
         response.raise_for_status()
         if response.json()["mfa_options"] is not None:
-            mfa_path = "config" if os.environ.get("HASS") else "tokens"
-            mfa_token = f"/{mfa_path}/mfa_token"
+            mfa_token = f"{self.token_path}mfa_token"
+            mfa_token += ".txt" if os.environ.get("HASS") else ""
             self.log.warn(
                 f'🔐 MFA Token ({response.json()["mfa_options"][0]}) Required\n\n📝 Add verification code to {mfa_token}'
             )
@@ -141,7 +146,7 @@ class wyze_bridge:
         )
 
     def get_wyze_data(self, name):
-        pkl_file = f"/tokens/{name}.pickle"
+        pkl_file = f"{self.token_path}{name}.pickle"
         try:
             with (open(pkl_file, "rb")) as f:
                 pickle_data = pickle.load(f)
@@ -175,7 +180,7 @@ class wyze_bridge:
                     data = wyzecam.get_camera_list(self.auth)
                 if not data:
                     del self.auth
-                    os.remove(os.path.dirname(pkl_file) + "/auth.pickle")
+                    os.remove(f"{self.token_path}auth.pickle")
                     raise (f"Error getting {name} - Removing auth data")
                 with open(pkl_file, "wb") as f:
                     pickle.dump(data, f)
@@ -343,7 +348,7 @@ class wyze_bridge:
                 self.log.info(f"{ex}")
                 if str(ex) in "Authentication did not succeed! {'connectionRes': '2'}":
                     self.log.warn("Expired ENR? Removing 'cameras' from local cache...")
-                    os.remove("/tokens/cameras.pickle")
+                    os.remove(f"{self.token_path}cameras.pickle")
                     self.log.warn(
                         "Restart container to fetch new data or use 'FRESH_DATA' if error persists"
                     )
@@ -403,13 +408,18 @@ class wyze_bridge:
                 and hasattr(camera, "thumbnail")
                 and camera.thumbnail is not None
             ):
-                os.makedirs("/config/www/", exist_ok=True)
-                with wyzecam.api.requests.get(camera.thumbnail) as thumb:
-                    with open(
-                        f"/config/www/{self.clean_name(camera.nickname).lower()}.jpg",
-                        "wb",
-                    ) as f:
-                        f.write(thumb.content)
+                try:
+                    with wyzecam.api.requests.get(camera.thumbnail) as thumb:
+                        self.log.info(
+                            f"☁️ Pulling thumbnail for {camera.nickname} from the Wyze API..."
+                        )
+                        with open(
+                            f"/config/www/{self.clean_name(camera.nickname).lower()}.jpg",
+                            "wb",
+                        ) as f:
+                            f.write(thumb.content)
+                except Exception as ex:
+                    self.log.warn(ex)
             threading.Thread(
                 target=self.start_stream,
                 args=[camera],
