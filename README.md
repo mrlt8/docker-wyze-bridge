@@ -1,21 +1,41 @@
 # RTMP/RTSP/HLS Bridge for Wyze Cam
 
-[![Docker](https://github.com/mrlt8/docker-wyze-bridge/actions/workflows/docker-image.yml/badge.svg)](https://github.com/mrlt8/docker-wyze-bridge/actions/workflows/docker-image.yml) [![GitHub release (latest by date)](https://img.shields.io/github/v/release/mrlt8/docker-wyze-bridge?logo=github)](https://github.com/mrlt8/docker-wyze-bridge/releases/latest) [![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/mrlt8/wyze-bridge?sort=semver&logo=docker)](https://hub.docker.com/r/mrlt8/wyze-bridge) [![Docker Pulls](https://img.shields.io/docker/pulls/mrlt8/wyze-bridge?logo=docker)](https://hub.docker.com/r/mrlt8/wyze-bridge) ![GitHub Repo stars](https://img.shields.io/github/stars/mrlt8/docker-wyze-bridge?style=social)
-
+[![Docker](https://github.com/mrlt8/docker-wyze-bridge/actions/workflows/docker-image.yml/badge.svg)](https://github.com/mrlt8/docker-wyze-bridge/actions/workflows/docker-image.yml)
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/mrlt8/docker-wyze-bridge?logo=github)](https://github.com/mrlt8/docker-wyze-bridge/releases/latest)
+[![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/mrlt8/wyze-bridge?sort=semver&logo=docker)](https://hub.docker.com/r/mrlt8/wyze-bridge)
+[![Docker Pulls](https://img.shields.io/docker/pulls/mrlt8/wyze-bridge?logo=docker)](https://hub.docker.com/r/mrlt8/wyze-bridge)
+![GitHub Repo stars](https://img.shields.io/github/stars/mrlt8/docker-wyze-bridge?style=social)
 
 Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze cameras including v3. No Third-party or special firmware required.
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
-### Compatibility:
+## Compatibility
+
+![Supports armv7 Architecture](https://img.shields.io/badge/armv7-yes-success.svg)
+![Supports aarch64 Architecture](https://img.shields.io/badge/aarch64-yes-success.svg)
+![Supports amd64 Architecture](https://img.shields.io/badge/amd64-yes-success.svg)
+[![Home Assistant Add-on](https://img.shields.io/badge/home_assistant-add--on-blue.svg?logo=homeassistant)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
+[![Portainer stack](https://img.shields.io/badge/portainer-stack-blue.svg?logo=portainer)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
 
 Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi.
 
 [See here](#armraspberry-pi-support) for instructions to run on arm.
 
+The container can be run on its own or as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant).
+
+## Supported Cameras
+
+![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
+![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-limited-important.svg)
+![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
+![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-limited-important.svg)
+![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
+![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-no-inactive.svg)
+
 Some reports of issues with v1 and WCO models that need further investigation.
 
-#### ⚠️ Firmware Compatibility
+### ⚠️ Firmware Compatibility
 
 The bridge currently has issues connecting to cameras on newer firmware with DTLS enabled.
 
@@ -58,7 +78,7 @@ or
 - [Two-Step Verification](#Multi-Factor-Authentication)
 - [ARM/Raspberry Pi](#armraspberry-pi-support)
 - [LAN mode](#LAN-Mode)
-- [Run on Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer-Setup)
+- [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
 - [Home Assistant](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
 
 Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
@@ -154,6 +174,10 @@ docker exec -it wyze-bridge sh -c 'echo "123456" > /tokens/mfa_token'
 volumes:
     - ./tokens:/tokens/
 ```
+
+- 🏠 Home Assistant:
+
+    Add your code to the text file: `/config/wyze-bridge/mfa_token.txt`.
 
 ## ARM/Raspberry Pi Support
 
