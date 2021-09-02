@@ -22,9 +22,9 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 ### Firmware Compatibility
 
 ![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
-![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-limited-important.svg)
+![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-<4.9.6.241-important.svg)
 ![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
-![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-limited-important.svg)
+![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-<4.10.6.241-important.svg)
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
 ![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-no-inactive.svg)
 

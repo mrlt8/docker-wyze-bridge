@@ -24,9 +24,9 @@ The container can be run on its own or as a [Home Assistant Add-on](https://gith
 ## Supported Cameras
 
 ![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
-![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-limited-important.svg)
+![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-<4.9.6.241-important.svg)
 ![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
-![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-limited-important.svg)
+![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-<4.10.6.241-important.svg)
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
 ![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-no-inactive.svg)
 
@@ -45,7 +45,7 @@ If you wish to continue using your camera with the bridge, you should downgrade 
 
 ## Changes in v0.5.17
 
-- ARM Only: Switch to debian buster base image to avoid libseccomp2 realted issues
+- ARM Only: Switch to debian buster base image to avoid libseccomp2 related issues
 - Fix: Additional checks for stale data
 - 🏠 Home Assistant: Force refresh of cameras from wyze api to pull new thumbnails
 - 🏠 Home Assistant: Add hass.io labels to docker image
