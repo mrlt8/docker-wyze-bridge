@@ -16,7 +16,7 @@ RUN apt-get update \
 RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local requests supervisor https://github.com/mrlt8/wyzecam/archive/refs/heads/main.zip
 ADD https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-${FFMPEG_ARCH:-amd64}-static.tar.xz /tmp/ffmpeg.tar.xz
 ADD https://github.com/miguelangel-nubla/videoP2Proxy/archive/refs/heads/master.zip /tmp/tutk.zip
-RUN mkdir -p /build/app /build/tokens \
+RUN mkdir -p /build/app /build/tokens /build/img \
     && RTSP_TAG=$(curl -s https://api.github.com/repos/aler9/rtsp-simple-server/releases/latest | jq -r .tag_name) \
     && curl -L https://github.com/aler9/rtsp-simple-server/releases/download/${RTSP_TAG}/rtsp-simple-server_${RTSP_TAG}_linux_${RTSP_ARCH:-amd64}.tar.gz \
     | tar xzf - -C /build/app \

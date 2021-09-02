@@ -3,8 +3,8 @@
     "description": "RTMP/RTSP/HLS bridge for Wyze cams in a docker container",
     "slug": "docker-wyze-bridge",
     "url": "http://github.com/mrlt8/docker-wyze-bridge",
-    "version": "0.5.17",
     "image": "mrlt8/wyze-bridge",
+    "version": "0.5.18",
     "arch": [
         "armv7",
         "aarch64",
@@ -31,12 +31,15 @@
     ],
     "options": {
         "WYZE_EMAIL": null,
-        "WYZE_PASSWORD": null
+        "WYZE_PASSWORD": null,
+        "API_THUMB": "true",
+        "LAN_ONLY": "true"
     },
     "schema": {
         "WYZE_EMAIL": "email",
         "WYZE_PASSWORD": "password",
-        "LAN_ONLY": "bool?",
+        "LAN_ONLY": "bool",
+        "API_THUMB": "bool",
         "FRESH_DATA": "bool?",
         "IGNORE_OFFLINE": "bool?",
         "FILTER_NAMES": "str?",
@@ -45,9 +48,9 @@
         "FILTER_MODE": "list(Include|Exclude)?",
         "FFMPEG_FLAGS": "str?",
         "FFMPEG_CMD": "str?",
-        "URI_SEPARATOR": "list(-|_|#)?",
         "QUALITY": "str?",
         "DEBUG_FFMPEG": "bool?",
+        "URI_SEPARATOR": "list(-|_|#)?",
         "DEBUG_LEVEL": "list(debug|info|warning|error)?",
         "RTSP_LOGLEVEL": "list(debug|info|warn)?",
         "RTSP_RTSPDISABLE": "list(yes|no)?",

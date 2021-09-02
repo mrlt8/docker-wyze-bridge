@@ -12,8 +12,8 @@ import wyzecam
 if not os.environ.get("WYZE_EMAIL") or not os.environ.get("WYZE_PASSWORD"):
     print(
         "Set your "
-        + ("WYZE_EMAIL " if not os.environ.get("WYZE_EMAIL") else "")
-        + ("WYZE_PASSWORD " if not os.environ.get("WYZE_PASSWORD") else "")
+        + ("WYZE_EMAIL " if not os.getenv("WYZE_EMAIL") else "")
+        + ("WYZE_PASSWORD " if not os.getenv("WYZE_PASSWORD") else "")
         + "credentials and restart the container."
     )
     sys.exit()
@@ -21,7 +21,7 @@ if not os.environ.get("WYZE_EMAIL") or not os.environ.get("WYZE_PASSWORD"):
 
 class wyze_bridge:
     def __init__(self):
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.17")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.18")
         self.token_path = "/tokens/"
         if os.environ.get("HASS"):
             print("\n🏠 Home Assistant Mode")
@@ -29,7 +29,7 @@ class wyze_bridge:
             os.makedirs("/config/www/", exist_ok=True)
             os.makedirs(self.token_path, exist_ok=True)
             open(f"{self.token_path}mfa_token.txt", "w").close()
-        if "DEBUG_LEVEL" in os.environ:
+        if self.env_bool("DEBUG_LEVEL"):
             print(f'DEBUG_LEVEL set to {os.environ.get("DEBUG_LEVEL")}')
             debug_level = getattr(logging, os.environ.get("DEBUG_LEVEL").upper(), 10)
             logging.getLogger().setLevel(debug_level)
@@ -46,7 +46,10 @@ class wyze_bridge:
     }
     res = {"1": "1080p", "2": "360p", "3": "HD", "4": "SD"}
 
-    def get_env(self, env):
+    def env_bool(self, env: str):
+        return os.environ.get(env, "").lower().replace("false", "")
+
+    def get_env(self, env: str):
         return (
             []
             if not os.environ.get(env)
@@ -84,7 +87,7 @@ class wyze_bridge:
         response.raise_for_status()
         if response.json()["mfa_options"] is not None:
             mfa_token = f"{self.token_path}mfa_token"
-            mfa_token += ".txt" if os.environ.get("HASS") else ""
+            mfa_token += ".txt" if os.getenv("HASS") else ""
             self.log.warning(
                 f'🔐 MFA Token ({response.json()["mfa_options"][0]}) Required\n\n📝 Add verification code to {mfa_token}'
             )
@@ -148,16 +151,16 @@ class wyze_bridge:
     def get_wyze_data(self, name):
         pkl_file = f"{self.token_path}{name}.pickle"
         try:
-            with (open(pkl_file, "rb")) as f:
+            with open(pkl_file, "rb") as f:
                 pickle_data = pickle.load(f)
-            if os.environ.get("HASS") and "cam" in name:
-                raise Exception("🏠 HA: Refreshing camera data for thumbnails")
-            if os.environ.get("FRESH_DATA"):
+            if self.env_bool("API_THUMB") and "cam" in name:
+                raise Exception("♻️  Refreshing camera data for thumbnails")
+            if self.env_bool("FRESH_DATA"):
                 os.remove(pkl_file)
                 raise Exception(f"♻️  FORCED REFRESH - Removing local '{name}' data")
             if (
                 "user" in name
-                and pickle_data.email.upper() != os.environ["WYZE_EMAIL"].upper()
+                and pickle_data.email.upper() != os.getenv("WYZE_EMAIL").upper()
             ):
                 for f in os.listdir(os.path.dirname(pkl_file)):
                     if f.endswith(os.path.splitext(pkl_file)[1]):
@@ -173,7 +176,7 @@ class wyze_bridge:
             if not hasattr(self, "auth") and "auth" not in name:
                 self.auth = self.get_wyze_data("auth")
             try:
-                self.log.info(f"☁️ Fetching '{name}' from the Wyze API...")
+                self.log.info(f"☁️  Fetching '{name}' from the Wyze API...")
                 if "auth" in name:
                     self.auth = data = self.auth_wyze()
                 if "user" in name:
@@ -207,7 +210,7 @@ class wyze_bridge:
                     f"💔 DTLS enabled on FW: {cam.firmware_ver}. {cam.nickname} will be disabled."
                 )
                 cams.remove(cam)
-        if "FILTER_MODE" in os.environ and os.environ["FILTER_MODE"].upper() in (
+        if os.getenv("FILTER_MODE", "").upper() in (
             "BLOCK",
             "BLACKLIST",
             "EXCLUDE",
@@ -242,7 +245,7 @@ class wyze_bridge:
                     self.log.warning(
                         f"Wyze {camera.product_model} may not be fully supported yet"
                     )
-                    if "IGNORE_OFFLINE" in os.environ:
+                    if self.env_bool("IGNORE_OFFLINE"):
                         sys.exit()
                     self.log.info(
                         f"Use a custom filter to block or IGNORE_OFFLINE to ignore this camera"
@@ -252,7 +255,7 @@ class wyze_bridge:
                 resolution = 3 if camera.product_model in "WYZEDB3" else 0
                 bitrate = 120
                 res = "HD"
-                if os.environ.get("QUALITY"):
+                if self.env_bool("QUALITY"):
                     if "SD" in os.environ["QUALITY"][:2].upper():
                         resolution += 1
                         res = "SD"
@@ -264,13 +267,13 @@ class wyze_bridge:
                     iotc.extend((resolution, bitrate))
                 with wyzecam.iotc.WyzeIOTCSession(*iotc) as sess:
                     if sess.session_check().mode != 2:
-                        if os.environ.get("LAN_ONLY"):
-                            raise Exception("☁️ NON-LAN MODE - Will try again...")
+                        if self.env_bool("LAN_ONLY"):
+                            raise Exception("☁️  NON-LAN MODE - Will try again...")
                         self.log.warning(
-                            f'☁️ WARNING: Camera is connected via "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode". Stream may consume additional bandwidth!'
+                            f'☁️  WARNING: Camera is connected via "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode". Stream may consume additional bandwidth!'
                         )
                     if sess.camera.camera_info["videoParm"]:
-                        if "DEBUG_LEVEL" in os.environ:
+                        if self.env_bool("DEBUG_LEVEL"):
                             self.log.info(
                                 f"[videoParm] {sess.camera.camera_info['videoParm']}"
                             )
@@ -285,8 +288,7 @@ class wyze_bridge:
                             )
                             + f" {sess.camera.camera_info['videoParm']['bitRate']}kb/s Stream"
                         )
-
-                    elif os.environ.get("QUALITY"):
+                    elif self.env_bool("QUALITY"):
                         stream = f"{res} {bitrate}kb/s Stream"
                     else:
                         stream = "Stream"
@@ -295,21 +297,21 @@ class wyze_bridge:
                         f'🎉 Starting {stream} for WyzeCam {self.model_names.get(camera.product_model) if self.model_names.get(camera.product_model) else camera.product_model} in "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"]["wifidb"]}%'
                     )
                     cmd = (
-                        (os.environ[f"FFMPEG_CMD_{uri}"].strip("'\"\n ")).split()
+                        (os.getenv(f"FFMPEG_CMD_{uri}").strip("'\"\n ")).split()
                         if f"FFMPEG_CMD_{uri}" in os.environ
                         else (os.environ["FFMPEG_CMD"].strip("'\"\n ")).split()
-                        if os.environ.get("FFMPEG_CMD")
+                        if self.env_bool("FFMPEG_CMD")
                         else ["-loglevel"]
                         + (
                             ["verbose"]
-                            if "DEBUG_FFMPEG" in os.environ
+                            if self.env_bool("DEBUG_FFMPEG")
                             else ["fatal", "-hide_banner", "-nostats"]
                         )
                         + (
-                            os.environ.get(f"FFMPEG_FLAGS_{uri}").split()
+                            os.getenv(f"FFMPEG_FLAGS_{uri}").split()
                             if f"FFMPEG_FLAGS_{uri}" in os.environ
-                            else os.environ.get("FFMPEG_FLAGS").split()
-                            if "FFMPEG_FLAGS" in os.environ
+                            else os.getenv("FFMPEG_FLAGS").split()
+                            if self.env_bool("FFMPEG_FLAGS")
                             else []
                         )
                         + [
@@ -318,27 +320,23 @@ class wyze_bridge:
                             "-vcodec",
                             "copy",
                             "-rtsp_transport",
-                            "udp"
-                            if "RTSP_PROTOCOLS" in os.environ
-                            and "udp" in os.environ.get("RTSP_PROTOCOLS")
-                            else "tcp",
+                            os.getenv("RTSP_PROTOCOLS", "tcp"),
                             "-f",
                             "rtsp",
                             "rtsp://"
                             + (
-                                "0.0.0.0" + os.environ.get("RTSP_RTSPADDRESS")
-                                if "RTSP_RTSPADDRESS" in os.environ
-                                and os.environ.get("RTSP_RTSPADDRESS").startswith(":")
-                                else os.environ.get("RTSP_RTSPADDRESS")
-                                if "RTSP_RTSPADDRESS" in os.environ
+                                "0.0.0.0" + os.getenv("RTSP_RTSPADDRESS")
+                                if os.getenv("RTSP_RTSPADDRESS", "").startswith(":")
+                                else os.getenv("RTSP_RTSPADDRESS")
+                                if os.getenv("RTSP_RTSPADDRESS")
                                 else "0.0.0.0:8554"
                             ),
                         ]
                     )
                     if "ffmpeg" not in cmd[0].lower():
                         cmd.insert(0, "ffmpeg")
-                    if "DEBUG_FFMPEG" in os.environ:
-                        self.log.info(f"FFMPEG_CMD] {' '.join(cmd)}")
+                    if self.env_bool("DEBUG_FFMPEG"):
+                        self.log.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
                     cmd[-1] = (
                         cmd[-1] + ("" if cmd[-1][-1] == "/" else "/") + uri.lower()
                     )
@@ -365,11 +363,11 @@ class wyze_bridge:
                     sys.exit()
                 if str(ex) in "IOTC_ER_CAN_NOT_FIND_DEVICE":
                     self.log.info(f"Camera firmware may be incompatible.")
-                    if "IGNORE_OFFLINE" in os.environ:
+                    if self.env_bool("IGNORE_OFFLINE"):
                         sys.exit()
                     time.sleep(60)
                 if str(ex) in "IOTC_ER_DEVICE_OFFLINE":
-                    if "IGNORE_OFFLINE" in os.environ:
+                    if self.env_bool("IGNORE_OFFLINE"):
                         self.log.info(
                             f"🪦 Camera is offline. Will NOT try again until container restarts."
                         )
@@ -391,20 +389,11 @@ class wyze_bridge:
                     ffmpeg.wait()
                 gc.collect()
 
-    def clean_name(self, name):
-        return (
-            name.replace(
-                " ",
-                (
-                    os.environ.get("URI_SEPARATOR")
-                    if os.environ.get("URI_SEPARATOR") in ("-", "_", "#")
-                    else "-"
-                ),
-            )
-            .replace("#", "")
-            .replace("'", "")
-            .upper()
-        )
+    def clean_name(self, name: str):
+        uri_sep = "-"
+        if os.getenv("URI_SEPARATOR") in ("-", "_", "#"):
+            uri_sep = os.getenv("URI_SEPARATOR")
+        return name.replace(" ", uri_sep).replace("#", "").replace("'", "").upper()
 
     def run(self):
         self.user = self.get_wyze_data("user")
@@ -413,7 +402,7 @@ class wyze_bridge:
         # logging.debug(self.iotc.version)
         for camera in self.cameras:
             if (
-                os.environ.get("HASS")
+                self.env_bool("API_THUMB")
                 and hasattr(camera, "thumbnail")
                 and camera.thumbnail is not None
             ):
@@ -421,10 +410,10 @@ class wyze_bridge:
                     with wyzecam.api.requests.get(camera.thumbnail) as thumb:
                         thumb.raise_for_status()
                         self.log.info(
-                            f"☁️ Pulling thumbnail for {camera.nickname} from the Wyze API..."
+                            f"☁️  Pulling thumbnail for {camera.nickname} from the Wyze API..."
                         )
                         with open(
-                            f"/config/www/{self.clean_name(camera.nickname).lower()}.jpg",
+                            f"/{'config/www' if os.getenv('HASS') else 'img' }/{self.clean_name(camera.nickname).lower()}.jpg",
                             "wb",
                         ) as f:
                             f.write(thumb.content)
@@ -440,12 +429,14 @@ class wyze_bridge:
 if __name__ == "__main__":
     logging.basicConfig(
         format="%(asctime)s [%(name)s][%(levelname)s][%(threadName)s] %(message)s"
-        if "DEBUG_LEVEL" in os.environ
+        if os.getenv("DEBUG_LEVEL", "").lower().replace("false", "")
         else "%(asctime)s [%(threadName)s] %(message)s",
         datefmt="%Y/%m/%d %X",
         stream=sys.stdout,
         level=logging.WARNING,
     )
-    if "DEBUG_LEVEL" not in os.environ or "DEBUG_FFMPEG" not in os.environ:
-        warnings.filterwarnings("ignore")
+    warnings.simplefilter("always")
+    warnings.formatwarning = lambda msg, *args, **kwargs: f"WARNING: {msg}"
+    logging.captureWarnings(True)
+
     wyze_bridge().run()

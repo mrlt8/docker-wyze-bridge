@@ -9,6 +9,22 @@ Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze 
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
+## Changes in v0.5.18
+
+- New: `API_THUMB` ENV parameter to save a thumbnail from the Wyze API
+- New: Show warnings on frame drops
+- 🏠 Home Assistant: Improved config option compatibility
+
+## Changes in v0.5.17
+
+- ARM Only: Switch to debian buster base image to avoid libseccomp2 related issues
+- Fix: Additional checks for stale data
+- 🏠 Home Assistant: Force refresh of cameras from wyze api to pull new thumbnails
+- 🏠 Home Assistant: Add hass.io labels to docker image
+- 🏠 Home Assistant: Add schema for *some* config options
+
+[View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
+
 ## Compatibility
 
 ![Supports armv7 Architecture](https://img.shields.io/badge/armv7-yes-success.svg)
@@ -42,16 +58,6 @@ If you wish to continue using your camera with the bridge, you should downgrade 
 | V2     | 4.9.6.241 (March 9, 2021)   |
 | V3     | 4.36.3.19 (August 26, 2021) |
 | PAN    | 4.10.6.241 (March 9, 2021)  |
-
-## Changes in v0.5.17
-
-- ARM Only: Switch to debian buster base image to avoid libseccomp2 related issues
-- Fix: Additional checks for stale data
-- 🏠 Home Assistant: Force refresh of cameras from wyze api to pull new thumbnails
-- 🏠 Home Assistant: Add hass.io labels to docker image
-- 🏠 Home Assistant: Add schema for *some* config options
-
-[View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
 ## Usage
 

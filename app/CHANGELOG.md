@@ -1,3 +1,9 @@
+# Changes in v0.5.18
+
+- New: `API_THUMB` ENV parameter to save a thumbnail from the Wyze API
+- New: Show warnings on frame drops
+- 🏠 Home Assistant: Improved config option compatibility
+
 # Changes in v0.5.17
 
 - ARM Only: Switch to debian buster base image to avoid libseccomp2 related issues
