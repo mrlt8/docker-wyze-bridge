@@ -4,7 +4,6 @@
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/mrlt8/docker-wyze-bridge?logo=github)](https://github.com/mrlt8/docker-wyze-bridge/releases/latest)
 [![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/mrlt8/wyze-bridge?sort=semver&logo=docker)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 [![Docker Pulls](https://img.shields.io/docker/pulls/mrlt8/wyze-bridge?logo=docker)](https://hub.docker.com/r/mrlt8/wyze-bridge)
-![GitHub Repo stars](https://img.shields.io/github/stars/mrlt8/docker-wyze-bridge?style=social)
 
 Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze cameras including v3. No Third-party or special firmware required.
 
@@ -20,8 +19,6 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi.
 
-[See here](#armraspberry-pi-support) for instructions to run on arm.
-
 The container can be run on its own or as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant).
 
 ## Supported Cameras
@@ -35,7 +32,7 @@ The container can be run on its own or as a [Home Assistant Add-on](https://gith
 
 Some reports of issues with v1 and WCO models that need further investigation.
 
-### ⚠️ Firmware Compatibility
+### Firmware Compatibility
 
 The bridge currently has issues connecting to cameras on newer firmware with DTLS enabled.
 
@@ -46,10 +43,13 @@ If you wish to continue using your camera with the bridge, you should downgrade 
 | V3     | 4.36.3.19 (August 26, 2021) |
 | PAN    | 4.10.6.241 (March 9, 2021)  |
 
-## Changes in v0.5.16
+## Changes in v0.5.17
 
-- 🏠 Home Assistant: Cache data to `/config/wyze-bridge/`
-- 🏠 Home Assistant: 2fA verification input file changed to `/config/wyze-bridge/mfa_token.txt`
+- ARM Only: Switch to debian buster base image to avoid libseccomp2 realted issues
+- Fix: Additional checks for stale data
+- 🏠 Home Assistant: Force refresh of cameras from wyze api to pull new thumbnails
+- 🏠 Home Assistant: Add hass.io labels to docker image
+- 🏠 Home Assistant: Add schema for *some* config options
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -60,7 +60,7 @@ If you wish to continue using your camera with the bridge, you should downgrade 
 Use your Wyze credentials and run:
 
 ```bash
-docker run -p 1935:1935 -p 8554:8554 -p 8888:8888 -e WYZE_EMAIL= -e WYZE_PASSWORD=  mrlt8/wyze-bridge
+docker run -p 1935:1935 -p 8554:8554 -p 8888:8888 -e WYZE_EMAIL= -e WYZE_PASSWORD=  mrlt8/wyze-bridge:latest
 ```
 
 or
@@ -76,7 +76,7 @@ or
 ### Additional Info
 
 - [Two-Step Verification](#Multi-Factor-Authentication)
-- [ARM/Raspberry Pi](#armraspberry-pi-support)
+- [ARM/Raspberry Pi](#armraspberry-pi)
 - [LAN mode](#LAN-Mode)
 - [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
 - [Home Assistant](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
@@ -119,7 +119,7 @@ The default option will automatically create a stream for all the cameras on you
 
 All options are cAsE-InSensiTive, and take single or multiple comma separated values.
 
-#### Examples
+### Examples
 
 - Whitelist by Camera Name (set in the wyze app):
 
@@ -179,23 +179,33 @@ volumes:
 
     Add your code to the text file: `/config/wyze-bridge/mfa_token.txt`.
 
-## ARM/Raspberry Pi Support
+## ARM/Raspberry Pi
 
-The default configuration will use the x64 tutk library, however, you can edit your `docker-compose.yml` to use the 32-bit arm library by setting `dockerfile` as `Dockerfile.arm`:
+The default `docker-compose.yml` will pull a multi-arch image that has support for both amrv7 and arm64, and no changes are required to run the container as is.
 
-```YAML
-    build:
-        context: ./app
-        dockerfile: Dockerfile.arm
-    environment:
-        ..
+### libseccomp2
+
+arm/arm64 users on 32-bit Debian-based distros may experience errors such as `can't initialize time` which can be resolved by updating libseccomp2:
+
+```bash
+apt-get -y install libseccomp2/unstable
 ```
 
-Alternatively, you can pull a pre-built image using:
+or
 
-```yaml
-image: mrlt8/wyze-bridge:latest
-environment: ..
+```bash
+wget http://ftp.us.debian.org/debian/pool/main/libs/libseccomp/libseccomp2_2.5.1-1_armhf.deb
+sudo dpkg -i libseccomp2_2.5.1-1_armhf.deb
+```
+
+### Build from source
+
+If you would like to build the container from source, you will need to edit your `docker-compose.yml` to use the arm libraries. To do so, edit your `docker-compose.yml` and remove or comment out the line `image: mrlt8/wyze-bridge:latest` and add or uncomment the following three lines:
+
+```YAML
+build:
+    context: ./app
+    dockerfile: Dockerfile.arm
 ```
 
 ## LAN Mode
@@ -236,7 +246,7 @@ Additional info:
 
 You can pass a custom [command](https://ffmpeg.org/ffmpeg.html) to FFmpeg by using `FFMPEG_CMD` in your docker-compose.yml:
 
-#### For all cameras
+### For all cameras
 
 ```YAML
 environment:
@@ -244,7 +254,7 @@ environment:
     - FFMPEG_CMD=-f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/
 ```
 
-#### For a specific camera
+### For a specific camera
 
 where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
 

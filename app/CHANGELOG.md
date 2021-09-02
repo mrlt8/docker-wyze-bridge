@@ -1,4 +1,7 @@
-# Changes in v0.5.16
+# Changes in v0.5.17
 
-- 🏠 Home Assistant: Cache data to `/config/wyze-bridge/`
-- 🏠 Home Assistant: 2fA verification input file changed to `/config/wyze-bridge/mfa_token.txt`
+- ARM Only: Switch to debian buster base image to avoid libseccomp2 realted issues
+- Fix: Additional checks for stale data
+- 🏠 Home Assistant: Force refresh of cameras from wyze api to pull new thumbnails
+- 🏠 Home Assistant: Add hass.io labels to docker image
+- 🏠 Home Assistant: Add schema for *some* config options

@@ -21,7 +21,7 @@ if not os.environ.get("WYZE_EMAIL") or not os.environ.get("WYZE_PASSWORD"):
 
 class wyze_bridge:
     def __init__(self):
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.16")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.5.17")
         self.token_path = "/tokens/"
         if os.environ.get("HASS"):
             print("\n🏠 Home Assistant Mode")
@@ -85,7 +85,7 @@ class wyze_bridge:
         if response.json()["mfa_options"] is not None:
             mfa_token = f"{self.token_path}mfa_token"
             mfa_token += ".txt" if os.environ.get("HASS") else ""
-            self.log.warn(
+            self.log.warning(
                 f'🔐 MFA Token ({response.json()["mfa_options"][0]}) Required\n\n📝 Add verification code to {mfa_token}'
             )
             while response.json()["access_token"] is None:
@@ -136,8 +136,8 @@ class wyze_bridge:
                                 self.log.info(f"✅ Verification code accepted!")
                         except Exception as ex:
                             if "400 Client Error" in str(ex):
-                                self.log.warn("🚷 Wrong Code?")
-                            self.log.warn(f"Error: {ex}\n\nPlease try again!\n")
+                                self.log.warning("🚷 Wrong Code?")
+                            self.log.warning(f"Error: {ex}\n\nPlease try again!\n")
                         finally:
                             break
                     time.sleep(1)
@@ -150,6 +150,8 @@ class wyze_bridge:
         try:
             with (open(pkl_file, "rb")) as f:
                 pickle_data = pickle.load(f)
+            if os.environ.get("HASS") and "cam" in name:
+                raise Exception("🏠 HA: Refreshing camera data for thumbnails")
             if os.environ.get("FRESH_DATA"):
                 os.remove(pkl_file)
                 raise Exception(f"♻️  FORCED REFRESH - Removing local '{name}' data")
@@ -166,10 +168,10 @@ class wyze_bridge:
         except OSError:
             self.log.info(f"🔍 Could not find local cache for '{name}'")
         except Exception as ex:
-            self.log.warn(ex)
-        if not hasattr(self, "auth") and "auth" not in name:
-            self.auth = self.get_wyze_data("auth")
+            self.log.warning(ex)
         while True:
+            if not hasattr(self, "auth") and "auth" not in name:
+                self.auth = self.get_wyze_data("auth")
             try:
                 self.log.info(f"☁️ Fetching '{name}' from the Wyze API...")
                 if "auth" in name:
@@ -178,18 +180,20 @@ class wyze_bridge:
                     data = wyzecam.get_user_info(self.auth)
                 if "cameras" in name:
                     data = wyzecam.get_camera_list(self.auth)
-                if not data:
-                    del self.auth
-                    os.remove(f"{self.token_path}auth.pickle")
-                    raise (f"Error getting {name} - Removing auth data")
                 with open(pkl_file, "wb") as f:
                     pickle.dump(data, f)
                     self.log.info(f"💾 Saving '{name}' to local cache...")
                 return data
+            except AssertionError:
+                del self.auth
+                # ADD METHOD TO USE refresh_token
+                os.remove(f"{self.token_path}auth.pickle")
+                self.log.warning(f"⚠️ Error getting {name} - Removing auth data")
+                time.sleep(5)
             except Exception as ex:
                 if "400 Client Error" in str(ex):
-                    self.log.warn("🚷 Invalid credentials?")
-                self.log.warn(f"{ex}\nSleeping for 10s...")
+                    self.log.warning("🚷 Invalid credentials?")
+                self.log.warning(f"{ex}\nSleeping for 10s...")
                 time.sleep(10)
 
     def get_filtered_cams(self):
@@ -199,7 +203,7 @@ class wyze_bridge:
         ]
         for cam in cams:
             if hasattr(cam, "dtls") and cam.dtls > 0:
-                self.log.warn(
+                self.log.warning(
                     f"💔 DTLS enabled on FW: {cam.firmware_ver}. {cam.nickname} will be disabled."
                 )
                 cams.remove(cam)
@@ -223,6 +227,11 @@ class wyze_bridge:
                     f"🪄 WHITELIST MODE ON \n🏁 STARTING {len(filtered)} OF {len(cams)} CAMERAS"
                 )
                 return filtered
+        if len(cams) == 0:
+            print(f"\n\n ❌ COULD NOT FIND ANY CAMERAS!")
+            os.remove(f"{self.token_path}cameras.pickle")
+            time.sleep(30)
+            sys.exit()
         print(f"\n🏁 STARTING ALL ({len(cams)}) CAMERAS")
         return cams
 
@@ -230,7 +239,7 @@ class wyze_bridge:
         while True:
             try:
                 if camera.product_model == "WVOD1" or camera.product_model == "WYZEC1":
-                    self.log.warn(
+                    self.log.warning(
                         f"Wyze {camera.product_model} may not be fully supported yet"
                     )
                     if "IGNORE_OFFLINE" in os.environ:
@@ -257,7 +266,7 @@ class wyze_bridge:
                     if sess.session_check().mode != 2:
                         if os.environ.get("LAN_ONLY"):
                             raise Exception("☁️ NON-LAN MODE - Will try again...")
-                        self.log.warn(
+                        self.log.warning(
                             f'☁️ WARNING: Camera is connected via "{"P2P" if sess.session_check().mode ==0 else "Relay" if sess.session_check().mode == 1 else "LAN" if sess.session_check().mode == 2 else "Other ("+sess.session_check().mode+")" } mode". Stream may consume additional bandwidth!'
                         )
                     if sess.camera.camera_info["videoParm"]:
@@ -347,9 +356,9 @@ class wyze_bridge:
             except Exception as ex:
                 self.log.info(f"{ex}")
                 if str(ex) in "Authentication did not succeed! {'connectionRes': '2'}":
-                    self.log.warn("Expired ENR? Removing 'cameras' from local cache...")
+                    self.log.warning("Expired ENR? Removing local 'cameras' cache...")
                     os.remove(f"{self.token_path}cameras.pickle")
-                    self.log.warn(
+                    self.log.warning(
                         "Restart container to fetch new data or use 'FRESH_DATA' if error persists"
                     )
                     time.sleep(10)
@@ -410,6 +419,7 @@ class wyze_bridge:
             ):
                 try:
                     with wyzecam.api.requests.get(camera.thumbnail) as thumb:
+                        thumb.raise_for_status()
                         self.log.info(
                             f"☁️ Pulling thumbnail for {camera.nickname} from the Wyze API..."
                         )
@@ -419,7 +429,7 @@ class wyze_bridge:
                         ) as f:
                             f.write(thumb.content)
                 except Exception as ex:
-                    self.log.warn(ex)
+                    self.log.warning(f"[{camera.nickname}] {ex}")
             threading.Thread(
                 target=self.start_stream,
                 args=[camera],

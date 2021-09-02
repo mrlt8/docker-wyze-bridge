@@ -23,6 +23,8 @@ jobs:
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
+        with:
+          platforms: linux/amd64,linux/arm64,linux/arm
 
       - name: Set up Docker Buildx
         id: buildx
@@ -56,13 +58,8 @@ jobs:
             ghcr.io/${{ github.repository }}
           tags: |
             type=schedule
-            type=semver,pattern={{version}}
+            type=semver,pattern={{ version }}
             type=edge,branch=main
-          labels: |
-            io.hass.name=docker-wyze-bridge
-            io.hass.description=RTMP/RTSP/HLS bridge for Wyze cams in a docker container
-            io.hass.version=latest
-            io.hass.type=addon
 
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
@@ -74,5 +71,11 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           file: ./app/multi-arch.Dockerfile
           platforms: linux/amd64,linux/arm64,linux/arm
-          labels: ${{ steps.meta.outputs.labels }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            io.hass.name=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.title'] }}
+            io.hass.description=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.description'] }}
+            io.hass.version=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            io.hass.type=addon
+            io.hass.arch=amd64,armhf,aarch64
           tags: ${{ steps.meta.outputs.tags }}
