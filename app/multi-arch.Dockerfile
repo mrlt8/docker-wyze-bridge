@@ -1,9 +1,7 @@
-FROM amd64/python:3.9-slim as base_amd64
+FROM amd64/python:3.9-slim-buster as base_amd64
 FROM arm32v7/python:3.9-slim-buster as base_arm
 ARG ARM=1
-FROM arm32v7/python:3.9-slim as base_arm64
-ARG ARM=1
-#FROM base_arm AS base_arm64
+FROM base_arm AS base_arm64
 
 FROM base_$TARGETARCH as builder
 ENV PYTHONUNBUFFERED=1
@@ -16,7 +14,7 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local requests supervisor https://github.com/mrlt8/wyzecam/archive/refs/heads/main.zip
+RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local mintotp requests supervisor https://github.com/mrlt8/wyzecam/archive/refs/heads/main.zip
 ADD https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-${FFMPEG_ARCH:-amd64}-static.tar.xz /tmp/ffmpeg.tar.xz
 ADD https://github.com/miguelangel-nubla/videoP2Proxy/archive/refs/heads/master.zip /tmp/tutk.zip
 RUN mkdir -p /build/app /build/tokens /build/img \

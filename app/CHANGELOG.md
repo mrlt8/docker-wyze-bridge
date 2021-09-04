@@ -1,13 +1,10 @@
-# Changes in v0.5.18
+## Changes in v0.6.0
 
-- New: `API_THUMB` ENV parameter to save a thumbnail from the Wyze API
-- New: Show warnings on frame drops
-- 🏠 Home Assistant: Improved config option compatibility
-
-# Changes in v0.5.17
-
-- ARM Only: Switch to debian buster base image to avoid libseccomp2 related issues
-- Fix: Additional checks for stale data
-- 🏠 Home Assistant: Force refresh of cameras from wyze api to pull new thumbnails
-- 🏠 Home Assistant: Add hass.io labels to docker image
-- 🏠 Home Assistant: Add schema for *some* config options
+- 💥 BREAKING: Renamed `FILTER_MODE` to `FILTER_BLOCK` and will be disabled if blank or set to false.
+- 💥 BREAKING: Renamed `FILTER_MODEL` to `FILTER_MODELS`
+- 🔨 Reworked auth and caching and other other code refactoring
+- ✨ NEW: Use refresh token when token expires - no need to 2FA when your session expires!
+- ✨ NEW: Use seed to generate TOTP
+- ✨ NEW: `DEBUG_FRAMES` ENV parameter to show all dropped frames
+- ⏪ CHANGE: Only show first lost/incomplete frame warning
+- 🐧 CHANGE: Switch all base images to debian buster for consistency

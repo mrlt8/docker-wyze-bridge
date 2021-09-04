@@ -9,19 +9,16 @@ Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze 
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
-## Changes in v0.5.18
+## Changes in v0.6.0
 
-- New: `API_THUMB` ENV parameter to save a thumbnail from the Wyze API
-- New: Show warnings on frame drops
-- 🏠 Home Assistant: Improved config option compatibility
-
-## Changes in v0.5.17
-
-- ARM Only: Switch to debian buster base image to avoid libseccomp2 related issues
-- Fix: Additional checks for stale data
-- 🏠 Home Assistant: Force refresh of cameras from wyze api to pull new thumbnails
-- 🏠 Home Assistant: Add hass.io labels to docker image
-- 🏠 Home Assistant: Add schema for *some* config options
+- 💥 BREAKING: Renamed `FILTER_MODE` to `FILTER_BLOCK` and will be disabled if blank or set to false.
+- 💥 BREAKING: Renamed `FILTER_MODEL` to `FILTER_MODELS`
+- 🔨 Reworked auth, caching, and other other code refactoring
+- ✨ NEW: Refresh token when token expires - no need to 2FA when your session expires!
+- ✨ NEW: Use seed to generate TOTP
+- ✨ NEW: `DEBUG_FRAMES` ENV parameter to show all dropped frames
+- ⏪ CHANGE: Only show first lost/incomplete frame warning
+- 🐧 CHANGE: Switch all base images to debian buster for consistency
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -155,13 +152,13 @@ environment:
 
 - Blacklisting:
 
-You can reverse any of these whitelists into blacklists by adding _block, blacklist, exclude, ignore, or reverse_ to `FILTER_MODE`.
+You can reverse any of these whitelists into blacklists by setting `FILTER_BLOCK`.
 
 ```yaml
 environment:
     ..
     - FILTER_NAMES=Bedroom
-    - FILTER_MODE=BLOCK
+    - FILTER_BLOCK=true
 ```
 
 ## Multi-Factor Authentication
@@ -247,6 +244,10 @@ Additional info:
   - 360p - SD30
   - SD - HD60
   - HD - HD120
+
+## Still Image
+
+If you require a still image from the stream, you can configure the `API_THUMB` ENV option to grab a thumbnail from the wyze api which will be save to `/img/cam-name.jpg` on standard docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
 
 ## Custom FFmpeg Commands
 

@@ -3,4 +3,6 @@ docker-compose.yml
 *.pickle
 *.env
 mfa_token
+totp
 .vscode
+tokens/
