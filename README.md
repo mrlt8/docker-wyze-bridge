@@ -9,6 +9,10 @@ Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze 
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
+## Changes in v0.6.1
+
+- ✨ NEW: `RTSP_THUMB` ENV parameter to save images from RTSP stream ([details](#still-images))
+
 ## Changes in v0.6.0
 
 - 💥 BREAKING: Renamed `FILTER_MODE` to `FILTER_BLOCK` and will be disabled if blank or set to false.
@@ -94,27 +98,27 @@ e.g. 'Front Door' would be `/front-door`
 
 - RTMP:
 
-```
-rtmp://localhost:1935/camera-nickname
-```
+  ```
+  rtmp://localhost:1935/camera-nickname
+  ```
 
 - RTSP:
 
-```
-rtsp://localhost:8554/camera-nickname
-```
+  ```
+  rtsp://localhost:8554/camera-nickname
+  ```
 
 - HLS:
 
-```
-http://localhost:8888/camera-nickname/stream.m3u8
-```
+  ```
+  http://localhost:8888/camera-nickname/stream.m3u8
+  ```
 
 - HLS can also be viewed in the browser using:
 
-```
-http://localhost:8888/camera-nickname
-```
+  ```
+  http://localhost:8888/camera-nickname
+  ```
 
 ## Filtering
 
@@ -126,40 +130,40 @@ All options are cAsE-InSensiTive, and take single or multiple comma separated va
 
 - Whitelist by Camera Name (set in the wyze app):
 
-```yaml
-environment:
-    ..
-    - FILTER_NAMES=Front Door, Driveway, porch cam
-```
+  ```yaml
+  environment:
+      ..
+      - FILTER_NAMES=Front Door, Driveway, porch cam
+  ```
 
 - Whitelist by Camera MAC Address:
 
-```yaml
-- FILTER_MACS=00:aA:22:33:44:55, Aa22334455bB
-```
+  ```yaml
+  - FILTER_MACS=00:aA:22:33:44:55, Aa22334455bB
+  ```
 
 - Whitelist by Camera Model:
 
-```yaml
-- FILTER_MODEL=WYZEC1-JZ
-```
+  ```yaml
+  - FILTER_MODEL=WYZEC1-JZ
+  ```
 
 - Whitelist by Camera Model Name:
 
-```yaml
-- FILTER_MODEL=V2, v3, Pan
-```
+  ```yaml
+  - FILTER_MODEL=V2, v3, Pan
+  ```
 
 - Blacklisting:
 
-You can reverse any of these whitelists into blacklists by setting `FILTER_BLOCK`.
+  You can reverse any of these whitelists into blacklists by setting `FILTER_BLOCK`.
 
-```yaml
-environment:
-    ..
-    - FILTER_NAMES=Bedroom
-    - FILTER_BLOCK=true
-```
+  ```yaml
+  environment:
+      ..
+      - FILTER_NAMES=Bedroom
+      - FILTER_BLOCK=true
+  ```
 
 ## Multi-Factor Authentication
 
@@ -167,20 +171,20 @@ Two-factor authentication ("Two-Step Verification" in the wyze app) is supported
 
 - Echo the verification code directly to `/tokens/mfa_token`:
 
-```bash
-docker exec -it wyze-bridge sh -c 'echo "123456" > /tokens/mfa_token'
-```
+  ```bash
+  docker exec -it wyze-bridge sh -c 'echo "123456" > /tokens/mfa_token'
+  ```
 
 - Mount `/tokens/` locally and add your verification code to a file named `mfa_token`:
 
-```YAML
-volumes:
-    - ./tokens:/tokens/
-```
+  ```YAML
+  volumes:
+      - ./tokens:/tokens/
+  ```
 
 - 🏠 Home Assistant:
 
-    Add your code to the text file: `/config/wyze-bridge/mfa_token.txt`.
+  Add your code to the text file: `/config/wyze-bridge/mfa_token.txt`.
 
 ## ARM/Raspberry Pi
 
@@ -225,6 +229,16 @@ environment:
     - LAN_ONLY=True
 ```
 
+## Still Images
+
+- `API_THUMB`: Will run ONCE at startup
+
+  Enabling the `API_THUMB` ENV option will grab a *high-quality* thumbnail from the wyze api and save it to `/img/cam-name.jpg` on standard docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
+
+- `RTSP_THUMB`: Will run every 180 seconds (configurable)
+
+  Enabling the `RTSP_THUMB` ENV option will grab a frame from the RTSP stream every 180 seconds if the `RTSP_THUMB` value is not an integer and save it to `/img/cam-name.jpg` on standard docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
+
 ## Bitrate and Resolution
 
 Bitrate and resolution of the stream from the wyze camera can be adjusted with:
@@ -244,10 +258,6 @@ Additional info:
   - 360p - SD30
   - SD - HD60
   - HD - HD120
-
-## Still Image
-
-If you require a still image from the stream, you can configure the `API_THUMB` ENV option to grab a thumbnail from the wyze api which will be save to `/img/cam-name.jpg` on standard docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
 
 ## Custom FFmpeg Commands
 
@@ -305,6 +315,8 @@ environment options:
 `- URI_SEPARATOR=` Customize the separator used to replace spaces in the URI; available values are `-`, `_`, or use `#` to remove spaces.
 
 `- IGNORE_OFFLINE=true` Ignore ofline cameras until container restarts
+
+`- DEBUG_FRAMES` Show all lost/incomplete frames
 
 `- DEBUG_LEVEL=` Adjust the level of upstream logging
 

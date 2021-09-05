@@ -28,6 +28,6 @@ RUN mkdir -p /build/app /build/tokens /build/img \
 COPY wyze_bridge.py supervisord.conf /build/app/
 
 FROM base_$TARGETARCH
-ENV PYTHONUNBUFFERED=1 RTSP_PROTOCOLS=tcp RTSP_READTIMEOUT=30s RTSP_READBUFFERCOUNT=2048
+ENV PYTHONUNBUFFERED=1 RTSP_PROTOCOLS=tcp RTSP_READTIMEOUT=30s RTSP_READBUFFERCOUNT=2048 RTSP_API=yes
 COPY --from=builder /build /
 CMD [ "supervisord", "-c", "/app/supervisord.conf" ]
