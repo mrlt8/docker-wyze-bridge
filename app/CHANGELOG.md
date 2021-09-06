@@ -1,6 +1,6 @@
 ## Changes in v0.6.1
 
-- ✨ NEW: `RTSP_THUMB` ENV parameter to show all dropped frames
+- ✨ NEW: `RTSP_THUMB` ENV parameter to save images from RTSP stream 
 
 ## Changes in v0.6.0
 
