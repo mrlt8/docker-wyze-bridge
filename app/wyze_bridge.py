@@ -23,12 +23,14 @@ if not os.environ.get("WYZE_EMAIL") or not os.environ.get("WYZE_PASSWORD"):
 class wyze_bridge:
     def __init__(self) -> None:
         self.token_path = "/tokens/"
+        self.img_path = "/img/"
 
     def run(self) -> None:
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.0")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.1")
         if os.environ.get("HASS"):
             print("\n🏠 Home Assistant Mode")
             self.token_path = "/config/wyze-bridge/"
+            self.img_path = "/config/www/"
             os.makedirs("/config/www/", exist_ok=True)
             os.makedirs(self.token_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
@@ -182,6 +184,7 @@ class wyze_bridge:
                 time.sleep(10)
 
     def clean_name(self, name: str) -> str:
+        name = name.strip()
         uri_sep = "-"
         if os.getenv("URI_SEPARATOR") in ("-", "_", "#"):
             uri_sep = os.getenv("URI_SEPARATOR")
@@ -192,14 +195,22 @@ class wyze_bridge:
             with wyzecam.api.requests.get(camera.thumbnail) as thumb:
                 thumb.raise_for_status()
                 log.info(f'☁️ Pulling "{camera.nickname}" thumbnail')
-            p = "/" + "config/www" if os.getenv("HASS") else "img" + "/"
-            with open(p + self.clean_name(camera.nickname).lower() + ".jpg", "wb") as f:
+            img = self.img_path + self.clean_name(camera.nickname).lower() + ".jpg"
+            with open(img, "wb") as f:
                 f.write(thumb.content)
         except Exception as ex:
-            log.warning(f"[{camera.nickname}] {ex}")
+            log.warning(ex)
 
-    def save_stream_still(self, sess) -> None:
-        log.info("Attempting to save still from stream...")
+    def save_rtsp_thumb(self, uri: str) -> None:
+        sleep = os.getenv("RTSP_THUMB") if os.getenv("RTSP_THUMB").isdigit() else 180
+        rtsp_path = wyzecam.api.requests.post(
+            "http://0.0.0.0:9997/v1/config/paths/add/" + uri.lower(),
+            json={
+                "runOnPublish": f"sh -c 'ffmpeg -loglevel fatal -rtsp_transport tcp -i rtsp://localhost:$RTSP_PORT/$RTSP_PATH -vframes 1 -y {self.img_path}$RTSP_PATH.jpg && sleep {sleep}'",
+                "runOnPublishRestart": True,
+            },
+        )
+        rtsp_path.raise_for_status()
 
     def get_filtered_cams(self) -> list:
         cams = self.get_wyze_data("cameras")
@@ -237,7 +248,9 @@ class wyze_bridge:
         resolution = 3 if camera.product_model in "WYZEDB3" else 0
         bitrate = 120
         res = "HD"
-        if self.env_bool("API_THUMB") and getattr(camera, "thumbnail", False):
+        if self.env_bool("RTSP_THUMB") and self.env_bool("RTSP_API"):
+            self.save_rtsp_thumb(uri)
+        elif self.env_bool("API_THUMB") and getattr(camera, "thumbnail", False):
             self.save_api_thumb(camera)
         if self.env_bool("QUALITY"):
             quality = os.environ["QUALITY"]
@@ -256,8 +269,6 @@ class wyze_bridge:
                         log.warning(
                             f'☁️ WARNING: Camera is connected via "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode". Stream may consume additional bandwidth!'
                         )
-                    if self.env_bool("STREAM_THUMB"):
-                        self.save_stream_still(sess)
                     if sess.camera.camera_info.get("videoParm", False):
                         vidparm = sess.camera.camera_info["videoParm"]
                         if self.env_bool("DEBUG_LEVEL"):

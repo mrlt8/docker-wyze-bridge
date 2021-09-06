@@ -1,3 +1,7 @@
+## Changes in v0.6.1
+
+- ✨ NEW: `RTSP_THUMB` ENV parameter to show all dropped frames
+
 ## Changes in v0.6.0
 
 - 💥 BREAKING: Renamed `FILTER_MODE` to `FILTER_BLOCK` and will be disabled if blank or set to false.

@@ -40,6 +40,7 @@
         "WYZE_PASSWORD": "password",
         "LAN_ONLY": "bool",
         "API_THUMB": "bool",
+        "RTSP_THUMB": "bool?",
         "FRESH_DATA": "bool?",
         "IGNORE_OFFLINE": "bool?",
         "FILTER_NAMES": "str?",
