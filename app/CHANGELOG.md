@@ -1,6 +1,6 @@
 ## Changes in v0.6.2
 
-- 🔨 FIX: Fixed an issue where chaning the resolution in the app would cause the stream to die could also potentially solves an issue with the doorbell.
+- 🔨 FIX: Fixed an issue where chaning the resolution in the app would cause the stream to die. Could also potentially solve an issue with the doorbell.
 - 🏠 FIX: Invalid boolean in config
 
 ## Changes in v0.6.1
