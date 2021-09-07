@@ -10,15 +10,6 @@ import time
 import warnings
 import wyzecam
 
-if not os.environ.get("WYZE_EMAIL") or not os.environ.get("WYZE_PASSWORD"):
-    print(
-        "Set your "
-        + ("WYZE_EMAIL " if not os.getenv("WYZE_EMAIL") else "")
-        + ("WYZE_PASSWORD " if not os.getenv("WYZE_PASSWORD") else "")
-        + "credentials and restart the container."
-    )
-    sys.exit()
-
 
 class wyze_bridge:
     def __init__(self) -> None:
@@ -46,7 +37,7 @@ class wyze_bridge:
             threading.Thread(
                 target=self.start_stream,
                 args=[camera],
-                name=camera.nickname,
+                name=camera.nickname.strip(),
             ).start()
 
     mode = {0: "P2P", 1: "RELAY", 2: "LAN"}
@@ -262,6 +253,7 @@ class wyze_bridge:
             iotc.extend((resolution, bitrate))
         while True:
             try:
+                log.debug("⌛️ Connecting to cam..")
                 with wyzecam.iotc.WyzeIOTCSession(*iotc) as sess:
                     if sess.session_check().mode != 2:
                         if self.env_bool("LAN_ONLY"):
@@ -324,30 +316,22 @@ class wyze_bridge:
                     time.sleep(offline_time)
             finally:
                 while "ffmpeg" in locals() and ffmpeg.poll() is None:
-                    log.info("Cleaning up FFMPEG...")
+                    log.info("🧹 Cleaning up FFMPEG...")
                     ffmpeg.kill()
                     ffmpeg.wait()
                 gc.collect()
 
-    def get_ffmpeg_cmd(self, uri):
+    def get_ffmpeg_cmd(self, uri: str) -> list:
         return (
             (os.getenv(f"FFMPEG_CMD_{uri}").strip("'\"\n ")).split()
             if f"FFMPEG_CMD_{uri}" in os.environ
             else (os.environ["FFMPEG_CMD"].strip("'\"\n ")).split()
             if self.env_bool("FFMPEG_CMD")
             else ["-loglevel"]
-            + (
-                ["verbose"]
-                if self.env_bool("DEBUG_FFMPEG")
-                else ["fatal", "-hide_banner", "-nostats"]
-            )
-            + (
-                os.getenv(f"FFMPEG_FLAGS_{uri}").split()
-                if f"FFMPEG_FLAGS_{uri}" in os.environ
-                else os.getenv("FFMPEG_FLAGS").split()
-                if self.env_bool("FFMPEG_FLAGS")
-                else []
-            )
+            + ["verbose" if self.env_bool("DEBUG_FFMPEG") else "fatal"]
+            + os.getenv(f"FFMPEG_FLAGS_{uri}", os.getenv("FFMPEG_FLAGS", ""))
+            .strip("'\"\n ")
+            .split()
             + [
                 "-i",
                 "-",
@@ -361,32 +345,40 @@ class wyze_bridge:
                 + (
                     "0.0.0.0" + os.getenv("RTSP_RTSPADDRESS")
                     if os.getenv("RTSP_RTSPADDRESS", "").startswith(":")
-                    else os.getenv("RTSP_RTSPADDRESS")
-                    if os.getenv("RTSP_RTSPADDRESS")
-                    else "0.0.0.0:8554"
+                    else os.getenv("RTSP_RTSPADDRESS", "0.0.0.0:8554")
                 ),
             ]
         )
 
 
+if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
+    print(
+        "Set your "
+        + ("WYZE_EMAIL " if not os.getenv("WYZE_EMAIL") else "")
+        + ("WYZE_PASSWORD " if not os.getenv("WYZE_PASSWORD") else "")
+        + "credentials and restart the container."
+    )
+    sys.exit()
+
 if __name__ == "__main__":
+    wb = wyze_bridge()
     logging.basicConfig(
         format="%(asctime)s [%(name)s][%(levelname)s][%(threadName)s] %(message)s"
-        if os.getenv("DEBUG_LEVEL", "").lower().replace("false", "")
+        if wb.env_bool("DEBUG_LEVEL")
         else "%(asctime)s [%(threadName)s] %(message)s",
         datefmt="%Y/%m/%d %X",
         stream=sys.stdout,
         level=logging.WARNING,
     )
-    if wyze_bridge().env_bool("DEBUG_LEVEL"):
+    if wb.env_bool("DEBUG_LEVEL"):
         debug_level = getattr(logging, os.getenv("DEBUG_LEVEL").upper(), 10)
         logging.getLogger().setLevel(debug_level)
     log = logging.getLogger("wyze_bridge")
     log.setLevel(debug_level if "DEBUG_LEVEL" in os.environ else logging.INFO)
 
-    if wyze_bridge().env_bool("DEBUG_FRAMES"):
+    if wb.env_bool("DEBUG_FRAMES"):
         warnings.simplefilter("always")
     warnings.formatwarning = lambda msg, *args, **kwargs: f"WARNING: {msg}"
     logging.captureWarnings(True)
 
-    wyze_bridge().run()
+    wb.run()
