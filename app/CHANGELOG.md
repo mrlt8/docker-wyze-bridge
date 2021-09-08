@@ -1,3 +1,7 @@
+## Changes in v0.6.3
+
+- 🐛 BUG: Fixed bug where cam on older firmware would not connect due to missing `wifidb`
+
 ## Changes in v0.6.2
 
 - 🔨 FIX: Fixed an issue where chaning the resolution in the app would cause the stream to die. Could also potentially solve an issue with the doorbell.

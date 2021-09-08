@@ -17,7 +17,7 @@ class wyze_bridge:
         self.img_path = "/img/"
 
     def run(self) -> None:
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.2")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.3")
         if os.environ.get("HASS"):
             print("\n🏠 Home Assistant Mode")
             self.token_path = "/config/wyze-bridge/"
@@ -89,8 +89,13 @@ class wyze_bridge:
                 mfa_type = "TotpVerificationCode"
                 verification_id = auth.mfa_details["totp_apps"][0]["app_id"]
             if os.path.exists(totp) and os.path.getsize(totp) > 1:
-                with open(totp, "r") as f:
-                    verification_code = mintotp.totp(f.read())
+                try:
+                    with open(totp, "r") as f:
+                        verification_code = mintotp.totp(f.read().strip("'\"\n "))
+                except Exception as ex:
+                    log.warning(ex)
+                    time.sleep(30)
+                log.info(f"🔏 Using {totp} to generate TOTP")
             else:
                 log.warning(f"\n📝 Add verification code to {mfa_token}")
                 while not os.path.exists(mfa_token) or os.path.getsize(mfa_token) == 0:
@@ -121,6 +126,7 @@ class wyze_bridge:
                 if "400 Client Error" in str(ex):
                     log.warning("🚷 Wrong Code?")
                 log.warning(f"Error: {ex}\n\nPlease try again!\n")
+                time.sleep(3)
 
     def get_wyze_data(self, name: str, refresh: bool = False):
         pkl_file = self.token_path + name + ".pickle"
@@ -274,7 +280,7 @@ class wyze_bridge:
                     else:
                         stream = "Stream"
                     log.info(
-                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(camera.product_model,camera.product_model)} in "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"]["wifidb"]}%'
+                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(camera.product_model,camera.product_model)} in "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
                     )
                     cmd = self.get_ffmpeg_cmd(uri)
                     if "ffmpeg" not in cmd[0].lower():
