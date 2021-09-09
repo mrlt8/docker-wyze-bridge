@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Container version="2">
+  <Name>docker-wyze-bridge</Name>
+  <Description>RTMP/RTSP/HLS bridge for Wyze cams in a docker container</Description>
+  <Registry>https://hub.docker.com/r/mrlt8/wyze-bridge</Registry>
+  <Repository>mrlt8/wyze-bridge</Repository>
+  <GitHub>https://github.com/mrlt8/docker-wyze-bridge</GitHub>
+  <Project>https://github.com/mrlt8/docker-wyze-bridge</Project>
+  <Support>https://github.com/mrlt8/docker-wyze-bridge</Support>
+  <Category>Home Automation:</Category>
+  <Overview>RTMP/RTSP/HLS bridge for Wyze cams in a docker container</Overview>
+  <BindTime>true</BindTime>
+  <Privileged>false</Privileged>
+  <Networking>
+    <Mode>bridge</Mode>
+    <Publish>
+      <Port>
+        <HostPort>1935</HostPort>
+        <ContainerPort>1935</ContainerPort>
+        <Protocol>tcp</Protocol>
+      </Port>
+      <Port>
+        <HostPort>8554</HostPort>
+        <ContainerPort>8554</ContainerPort>
+        <Protocol>tcp</Protocol>
+      </Port>
+      <Port>
+        <HostPort>8888</HostPort>
+        <ContainerPort>8888</ContainerPort>
+        <Protocol>tcp</Protocol>
+      </Port>
+    </Publish>
+  </Networking>
+  <Environment>
+    <Variable>
+      <Name>WYZE_EMAIL</Name>
+    </Variable>
+    <Variable>
+      <Name>WYZE_PASSWORD</Name>
+    </Variable>
+    <Variable>
+      <Name>LAN_ONLY</Name>
+    </Variable>
+  </Environment>
+  <Config Name="WYZE_EMAIL" Target="WYZE_EMAIL" Default="" Mode="" Description="Container Variable: WYZE_EMAIL" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="WYZE_PASSWORD" Target="WYZE_PASSWORD" Default="" Mode="" Description="Container Variable: WYZE_PASSWORD" Type="Variable" Display="always" Required="true" Mask="false"/>
+  <Config Name="LAN_ONLY" Target="LAN_ONLY" Default="False" Mode="" Description="Container Variable: LAN_ONLY" Type="Variable" Display="always" Required="false" Mask="false"/>
+</Containers>
