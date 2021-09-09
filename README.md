@@ -9,6 +9,10 @@ Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze 
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
+## Changes in v0.6.4
+
+- 🐛 BUG: Fixed the issue introduced in v0.6.2 where a resolution change caused issues for RTMP and HLS streams. This will now raise an exception which *should* restart ffmpeg if the resolution doesn't match for more than 30 frames.
+
 ## Changes in v0.6.3
 
 - 🐛 BUG: Fixed bug where cam on older firmware would not connect due to missing `wifidb`

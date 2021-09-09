@@ -1,5 +1,6 @@
 import gc
 import logging
+from types import resolve_bases
 import mintotp
 import os
 import pickle
@@ -17,7 +18,7 @@ class wyze_bridge:
         self.img_path = "/img/"
 
     def run(self) -> None:
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.3")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.4")
         if os.environ.get("HASS"):
             print("\n🏠 Home Assistant Mode")
             self.token_path = "/config/wyze-bridge/"
@@ -242,7 +243,7 @@ class wyze_bridge:
     def start_stream(self, camera) -> None:
         uri = self.clean_name(camera.nickname)
         iotc = [self.iotc.tutk_platform_lib, self.user, camera]
-        resolution = 3 if camera.product_model in "WYZEDB3" else 0
+        resolution = 0
         bitrate = 120
         res = "HD"
         if self.env_bool("RTSP_THUMB") and self.env_bool("RTSP_API"):
@@ -252,11 +253,13 @@ class wyze_bridge:
         if self.env_bool("QUALITY"):
             quality = os.environ["QUALITY"]
             if "SD" in quality[:2].upper():
-                resolution += 1
+                resolution = 1
                 res = "SD"
             if quality[2:].isdigit() and 30 <= int(quality[2:]) <= 255:
                 bitrate = int(quality[2:])
             iotc.extend((resolution, bitrate))
+        if camera.product_model in "WYZEDB3":
+            resolution += 3
         while True:
             try:
                 log.debug("⌛️ Connecting to cam..")
@@ -272,9 +275,9 @@ class wyze_bridge:
                         if self.env_bool("DEBUG_LEVEL"):
                             log.info(f"[videoParm] {vidparm}")
                         res = self.res.get(
-                            vidparm["resolution"], f"RES-{vidparm['resolution']}"
+                            vidparm.get("resolution", 0), f"RES-{vidparm['resolution']}"
                         )
-                        stream = f"{res} {vidparm['bitRate']}kb/s Stream"
+                        stream = f"{res} {vidparm.get('bitRate', 0)}kb/s Stream"
                     elif self.env_bool("QUALITY"):
                         stream = f"{res} {bitrate}kb/s Stream"
                     else:
@@ -291,11 +294,21 @@ class wyze_bridge:
                         cmd[-1] + ("" if cmd[-1][-1] == "/" else "/") + uri.lower()
                     )
                     ffmpeg = subprocess.Popen(cmd, stdin=subprocess.PIPE)
-                    for (frame, _) in sess.recv_video_data():
+                    skipped = 0
+                    for (frame, info) in sess.recv_video_data():
                         try:
-                            if ffmpeg.poll() != None:
-                                raise Exception("FFMPEG closed")
+                            if skipped > os.getenv("BAD_FRAMES", 30):
+                                raise Exception("Wrong resolution")
+                            if resolution != info.frame_size and not self.env_bool(
+                                "IGNORE_RES"
+                            ):
+                                skipped += 1
+                                log.debug(
+                                    f"wrong resolution exp: {resolution} got:{info.frame_size} ({skipped} times)"
+                                )
+                                continue
                             ffmpeg.stdin.write(frame)
+                            skipped = 0
                         except Exception as ex:
                             raise Exception(f"[FFMPEG] {ex}")
             except Exception as ex:
