@@ -1,6 +1,5 @@
 import gc
 import logging
-from types import resolve_bases
 import mintotp
 import os
 import pickle
@@ -18,7 +17,7 @@ class wyze_bridge:
         self.img_path = "/img/"
 
     def run(self) -> None:
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.4")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.5")
         if os.environ.get("HASS"):
             print("\n🏠 Home Assistant Mode")
             self.token_path = "/config/wyze-bridge/"
@@ -26,9 +25,9 @@ class wyze_bridge:
             os.makedirs("/config/www/", exist_ok=True)
             os.makedirs(self.token_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
-        if self.env_bool("FILTER_MODE"):
+        if os.getenv("FILTER_MODE"):
             print("\n\n⚠️ 'FILTER_MODE' DEPRECATED.\nUSE 'FILTER_BLOCK' INSTEAD\n")
-        if self.env_bool("FILTER_MODEL"):
+        if os.getenv("FILTER_MODEL"):
             print("\n\n⚠️ 'FILTER_MODEL' DEPRECATED.\nUSE 'FILTER_MODELS' INSTEAD\n")
         self.user = self.get_wyze_data("user")
         self.cameras = self.get_filtered_cams()
@@ -42,7 +41,6 @@ class wyze_bridge:
             ).start()
 
     mode = {0: "P2P", 1: "RELAY", 2: "LAN"}
-    res = {"1": "1080p", "2": "360p", "3": "HD", "4": "SD"}
     model_names = {
         "WYZECP1_JEF": "PAN",
         "WYZEC1": "V1",
@@ -52,8 +50,8 @@ class wyze_bridge:
         "WVOD1": "OUTDOOR",
     }
 
-    def env_bool(self, env: str) -> str:
-        return os.environ.get(env, "").lower().replace("false", "")
+    def env_bool(self, env: str, false: str = "") -> str:
+        return os.environ.get(env.upper(), false).lower().replace("false", "") or false
 
     def env_list(self, env: str) -> list:
         if "," in os.getenv(env, ""):
@@ -242,24 +240,16 @@ class wyze_bridge:
 
     def start_stream(self, camera) -> None:
         uri = self.clean_name(camera.nickname)
-        iotc = [self.iotc.tutk_platform_lib, self.user, camera]
-        resolution = 0
-        bitrate = 120
-        res = "HD"
         if self.env_bool("RTSP_THUMB") and self.env_bool("RTSP_API"):
             self.save_rtsp_thumb(uri)
         elif self.env_bool("API_THUMB") and getattr(camera, "thumbnail", False):
             self.save_api_thumb(camera)
-        if self.env_bool("QUALITY"):
-            quality = os.environ["QUALITY"]
-            if "SD" in quality[:2].upper():
-                resolution = 1
-                res = "SD"
-            if quality[2:].isdigit() and 30 <= int(quality[2:]) <= 255:
-                bitrate = int(quality[2:])
-            iotc.extend((resolution, bitrate))
-        if camera.product_model in "WYZEDB3":
-            resolution += 3
+        env_q = self.env_bool("QUALITY", "na").upper().ljust(3, "0")
+        res_size = 1 if "SD" in env_q[:2] else 0
+        bitrate = int(env_q[2:]) if 30 <= int(env_q[2:]) <= 255 else 120
+        stream = f'{"360p" if res_size == 1 else "1080p"} {bitrate}kb/s Stream'
+        res_size += 3 if camera.product_model in "WYZEDB3" else 0
+        iotc = [self.iotc.tutk_platform_lib, self.user, camera, res_size, bitrate]
         while True:
             try:
                 log.debug("⌛️ Connecting to cam..")
@@ -270,20 +260,12 @@ class wyze_bridge:
                         log.warning(
                             f'☁️ WARNING: Camera is connected via "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode". Stream may consume additional bandwidth!'
                         )
-                    if sess.camera.camera_info.get("videoParm", False):
-                        vidparm = sess.camera.camera_info["videoParm"]
-                        if self.env_bool("DEBUG_LEVEL"):
-                            log.info(f"[videoParm] {vidparm}")
-                        res = self.res.get(
-                            vidparm.get("resolution", 0), f"RES-{vidparm['resolution']}"
-                        )
-                        stream = f"{res} {vidparm.get('bitRate', 0)}kb/s Stream"
-                    elif self.env_bool("QUALITY"):
-                        stream = f"{res} {bitrate}kb/s Stream"
-                    else:
-                        stream = "Stream"
+                    if self.env_bool("DEBUG_LEVEL") and sess.camera.camera_info.get(
+                        "videoParm", False
+                    ):
+                        log.info(f"[videoParm] {sess.camera.camera_info['videoParm']}")
                     log.info(
-                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(camera.product_model,camera.product_model)} in "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {sess.camera.camera_info["basicInfo"]["firmware"]} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
+                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(camera.product_model,camera.product_model)} in "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {sess.camera.camera_info["basicInfo"].get("firmware","NA")} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
                     )
                     cmd = self.get_ffmpeg_cmd(uri)
                     if "ffmpeg" not in cmd[0].lower():
@@ -297,14 +279,14 @@ class wyze_bridge:
                     skipped = 0
                     for (frame, info) in sess.recv_video_data():
                         try:
-                            if skipped > os.getenv("BAD_FRAMES", 30):
-                                raise Exception("Wrong resolution")
-                            if resolution != info.frame_size and not self.env_bool(
+                            if skipped >= os.getenv("BAD_FRAMES", 30):
+                                raise Exception(f"Wrong resolution: {info.frame_size}")
+                            if res_size != info.frame_size and not self.env_bool(
                                 "IGNORE_RES"
                             ):
                                 skipped += 1
                                 log.debug(
-                                    f"wrong resolution exp: {resolution} got:{info.frame_size} ({skipped} times)"
+                                    f"Bad frame resolution: {res_size} != {info.frame_size} [{skipped}]"
                                 )
                                 continue
                             ffmpeg.stdin.write(frame)
@@ -357,14 +339,14 @@ class wyze_bridge:
                 "-vcodec",
                 "copy",
                 "-rtsp_transport",
-                os.getenv("RTSP_PROTOCOLS", "tcp"),
+                self.env_bool("RTSP_PROTOCOLS", "tcp"),
                 "-f",
                 "rtsp",
                 "rtsp://"
                 + (
                     "0.0.0.0" + os.getenv("RTSP_RTSPADDRESS")
                     if os.getenv("RTSP_RTSPADDRESS", "").startswith(":")
-                    else os.getenv("RTSP_RTSPADDRESS", "0.0.0.0:8554")
+                    else self.env_bool("RTSP_RTSPADDRESS", "0.0.0.0:8554")
                 ),
             ]
         )
@@ -394,10 +376,8 @@ if __name__ == "__main__":
         logging.getLogger().setLevel(debug_level)
     log = logging.getLogger("wyze_bridge")
     log.setLevel(debug_level if "DEBUG_LEVEL" in os.environ else logging.INFO)
-
     if wb.env_bool("DEBUG_FRAMES"):
         warnings.simplefilter("always")
     warnings.formatwarning = lambda msg, *args, **kwargs: f"WARNING: {msg}"
     logging.captureWarnings(True)
-
     wb.run()

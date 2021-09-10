@@ -4,7 +4,7 @@
     "slug": "docker-wyze-bridge",
     "url": "http://github.com/mrlt8/docker-wyze-bridge",
     "image": "mrlt8/wyze-bridge",
-    "version": "0.6.4",
+    "version": "0.6.5",
     "arch": [
         "armv7",
         "aarch64",
@@ -32,8 +32,8 @@
     "options": {
         "WYZE_EMAIL": null,
         "WYZE_PASSWORD": null,
-        "API_THUMB": true,
-        "LAN_ONLY": true
+        "LAN_ONLY": true,
+        "API_THUMB": true
     },
     "schema": {
         "WYZE_EMAIL": "email",

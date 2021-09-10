@@ -1,3 +1,7 @@
+## Changes in v0.6.5
+
+- 🔨 Always set default frame size and bitrate to prevent restart loop.
+
 ## Changes in v0.6.4
 
 - 🐛 BUG: Fixed the issue introduced in v0.6.2 where a resolution change caused issues for RTMP and HLS streams. This will now raise an exception which *should* restart ffmpeg if the resolution doesn't match for more than 30 frames.
