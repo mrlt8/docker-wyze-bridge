@@ -13,7 +13,7 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local mintotp requests https://github.com/mrlt8/wyzecam/archive/refs/heads/main.zip
+RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local mintotp paho-mqtt requests https://github.com/mrlt8/wyzecam/archive/refs/heads/main.zip
 ADD https://johnvansickle.com/ffmpeg/builds/ffmpeg-git-${FFMPEG_ARCH:-amd64}-static.tar.xz /tmp/ffmpeg.tar.xz
 ADD https://github.com/miguelangel-nubla/videoP2Proxy/archive/refs/heads/master.zip /tmp/tutk.zip
 RUN mkdir -p /build/app /build/tokens /build/img \
@@ -27,6 +27,6 @@ RUN mkdir -p /build/app /build/tokens /build/img \
 COPY wyze_bridge.py /build/app/
 
 FROM base
-ENV PYTHONUNBUFFERED=1 RTSP_PROTOCOLS=tcp RTSP_READTIMEOUT=30s RTSP_READBUFFERCOUNT=2048
+ENV PYTHONUNBUFFERED=1 RTSP_PROTOCOLS=tcp RTSP_READTIMEOUT=30s RTSP_READBUFFERCOUNT=2048 RTSP_LOGLEVEL=warn
 COPY --from=builder /build /
 CMD [ "python3", "/app/wyze_bridge.py" ]

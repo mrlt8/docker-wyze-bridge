@@ -13,12 +13,10 @@ import wyzecam
 
 
 class wyze_bridge:
-    def __init__(self) -> None:
+    def run(self) -> None:
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v0.7x\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
-
-    def run(self) -> None:
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.7x")
         if os.environ.get("HASS"):
             print("\n🏠 Home Assistant Mode")
             self.token_path = "/config/wyze-bridge/"
@@ -33,11 +31,9 @@ class wyze_bridge:
         self.iotc = wyzecam.WyzeIOTC(max_num_av_channels=len(self.cameras)).__enter__()
         logging.debug(f"IOTC Version: {self.iotc.version}")
         for camera in self.cameras:
-            self.add_rtsp_path(self.clean_name(camera.nickname))
+            self.add_rtsp_path(camera)
             threading.Thread(
-                target=self.start_stream,
-                args=[camera],
-                name=camera.nickname.strip(),
+                target=self.start_stream, args=[camera], name=camera.nickname.strip()
             ).start()
         self.start_rtsp_server()
 
@@ -52,7 +48,7 @@ class wyze_bridge:
     }
 
     def env_bool(self, env: str, false: str = "") -> str:
-        return os.environ.get(env.upper(), false).lower().replace("false", "") or false
+        return os.environ.get(env.upper(), "").lower().replace("false", "") or false
 
     def env_list(self, env: str) -> list:
         if "," in os.getenv(env, ""):
@@ -194,12 +190,12 @@ class wyze_bridge:
         except Exception as ex:
             log.warning(ex)
 
-    def add_rtsp_path(self, uri: str) -> None:
-        if self.env_bool("RTSP_THUMB"):
-            os.environ[f"RTSP_PATHS_{uri}_RUNONPUBLISHRESTART"] = "yes"
-            os.environ[
-                f"RTSP_PATHS_{uri}_RUNONPUBLISH"
-            ] = f"sh -c 'ffmpeg -loglevel fatal -rtsp_transport tcp -i rtsp://localhost:8554/{uri.lower()} -vframes 1 -y {self.img_path}{uri.lower()}.jpg && sleep {os.getenv('RTSP_THUMB') if os.getenv('RTSP_THUMB').isdigit() else 180}'"
+    def add_rtsp_path(self, cam: str) -> None:
+        run_on = f"RTSP_PATHS_{self.clean_name(cam.nickname)}_RUNON"
+        cam_details = f"{cam.mac} {cam.product_model} {cam.firmware_ver}"
+        py_event = "python3 /app/rtsp_event.py $RTSP_PATH " + cam_details
+        os.environ[run_on + "READ"] = f"{py_event} read"
+        os.environ[run_on + "PUBLISH"] = f"{py_event} pub {self.img_path}"
 
     def get_filtered_cams(self) -> list:
         cams = self.get_wyze_data("cameras")

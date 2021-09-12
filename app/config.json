@@ -28,7 +28,6 @@
     "map": [
         "config:rw"
     ],
-    "advanced": true,
     "options": {
         "WYZE_EMAIL": null,
         "WYZE_PASSWORD": null,
