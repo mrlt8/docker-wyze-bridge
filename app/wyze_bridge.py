@@ -10,6 +10,7 @@ import threading
 import time
 import warnings
 import wyzecam
+import paho.mqtt.publish
 
 
 class wyze_bridge:
@@ -32,9 +33,11 @@ class wyze_bridge:
         logging.debug(f"IOTC Version: {self.iotc.version}")
         for camera in self.cameras:
             self.add_rtsp_path(camera)
+            self.mqtt_discovery(camera)
             threading.Thread(
                 target=self.start_stream, args=[camera], name=camera.nickname.strip()
             ).start()
+        os.environ["img_path"] = self.img_path
         self.start_rtsp_server()
 
     mode = {0: "P2P", 1: "RELAY", 2: "LAN"}
@@ -192,10 +195,39 @@ class wyze_bridge:
 
     def add_rtsp_path(self, cam: str) -> None:
         run_on = f"RTSP_PATHS_{self.clean_name(cam.nickname)}_RUNON"
-        cam_details = f"{cam.mac} {cam.product_model} {cam.firmware_ver}"
-        py_event = "python3 /app/rtsp_event.py $RTSP_PATH " + cam_details
-        os.environ[run_on + "READ"] = f"{py_event} read"
-        os.environ[run_on + "PUBLISH"] = f"{py_event} pub {self.img_path}"
+        py_event = "python3 /app/rtsp_event.py $RTSP_PATH "
+        for event in {"READ", "PUBLISH"}:
+            if self.env_bool(run_on + event):
+                os.environ[run_on + event + "_2"] = os.environ[run_on + event]
+            os.environ[run_on + event] = py_event + event
+
+    def mqtt_discovery(self, cam):
+        if self.env_bool("MQTT_DTOPIC") and self.env_bool("MQTT_HOST"):
+            payload = json.dumps(
+                {
+                    "uniq_id": "WYZE" + cam.mac,
+                    "name": "Wyze Cam " + cam.nickname,
+                    "topic": f"wyzebridge/{self.clean_name(cam.nickname).lower()}/state",
+                    "availability_topic": f"wyzebridge/{self.clean_name(cam.nickname).lower()}/state",
+                    "device": {
+                        "connections": [["mac", cam.mac]],
+                        "identifiers": cam.mac,
+                        "manufacturer": "Wyze",
+                        "model": cam.product_model,
+                        "sw_version": cam.firmware_ver,
+                        "via_device": "docker-wyze-bridge",
+                    },
+                }
+            )
+            paho.mqtt.publish.single(
+                f"{os.getenv('MQTT_DTOPIC')}/camera/{cam.mac}/config",
+                payload=payload,
+                hostname=os.getenv("MQTT_HOST").split(":")[0],
+                port=int(os.getenv("MQTT_HOST").split(":")[1]),
+                auth=dict(
+                    zip(["username", "password"], self.env_bool("MQTT_AUTH").split(":"))
+                ),
+            )
 
     def get_filtered_cams(self) -> list:
         cams = self.get_wyze_data("cameras")
@@ -327,21 +359,19 @@ class wyze_bridge:
         )
 
 
-if os.getenv("HASS"):
-    with open("/data/options.json") as f:
-        conf = json.load(f).items()
-    [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf if v]
-
-if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
-    print(
-        "Set your "
-        + ("WYZE_EMAIL " if not os.getenv("WYZE_EMAIL") else "")
-        + ("WYZE_PASSWORD " if not os.getenv("WYZE_PASSWORD") else "")
-        + "credentials and restart the container."
-    )
-    sys.exit()
-
 if __name__ == "__main__":
+    if os.getenv("HASS"):
+        with open("/data/options.json") as f:
+            conf = json.load(f).items()
+        [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf if v]
+    if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
+        print(
+            "Set your "
+            + ("WYZE_EMAIL " if not os.getenv("WYZE_EMAIL") else "")
+            + ("WYZE_PASSWORD " if not os.getenv("WYZE_PASSWORD") else "")
+            + "credentials and restart the container."
+        )
+        sys.exit()
     wb = wyze_bridge()
     logging.basicConfig(
         format="%(asctime)s [%(name)s][%(levelname)s][%(threadName)s] %(message)s"
