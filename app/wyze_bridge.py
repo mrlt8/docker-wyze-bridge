@@ -17,7 +17,7 @@ class wyze_bridge:
         self.img_path = "/img/"
 
     def run(self) -> None:
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.5")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.6")
         if os.environ.get("HASS"):
             print("\n🏠 Home Assistant Mode")
             self.token_path = "/config/wyze-bridge/"
@@ -248,8 +248,8 @@ class wyze_bridge:
         res_size = 1 if "SD" in env_q[:2] else 0
         bitrate = int(env_q[2:]) if 30 <= int(env_q[2:]) <= 255 else 120
         stream = f'{"360p" if res_size == 1 else "1080p"} {bitrate}kb/s Stream'
-        res_size += 3 if camera.product_model in "WYZEDB3" else 0
         iotc = [self.iotc.tutk_platform_lib, self.user, camera, res_size, bitrate]
+        res_size += 3 if camera.product_model in "WYZEDB3" else 0
         while True:
             try:
                 log.debug("⌛️ Connecting to cam..")
