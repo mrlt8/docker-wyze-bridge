@@ -9,6 +9,10 @@ Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze 
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
+## Changes in v0.6.6
+
+- 🐛 Potential fix for WYZEDB3
+
 ## Changes in v0.6.5
 
 - 🔨 Always set default frame size and bitrate to prevent restart loop.

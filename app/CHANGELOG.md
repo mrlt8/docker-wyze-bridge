@@ -1,3 +1,7 @@
+## Changes in v0.6.6
+
+- 🐛 Potential fix for WYZEDB3
+
 ## Changes in v0.6.5
 
 - 🔨 Always set default frame size and bitrate to prevent restart loop.
