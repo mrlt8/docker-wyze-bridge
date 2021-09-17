@@ -17,7 +17,7 @@ class wyze_bridge:
         self.img_path = "/img/"
 
     def run(self) -> None:
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.6")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.7")
         if os.environ.get("HASS"):
             print("\n🏠 Home Assistant Mode")
             self.token_path = "/config/wyze-bridge/"
@@ -248,8 +248,11 @@ class wyze_bridge:
         res_size = 1 if "SD" in env_q[:2] else 0
         bitrate = int(env_q[2:]) if 30 <= int(env_q[2:]) <= 255 else 120
         stream = f'{"360p" if res_size == 1 else "1080p"} {bitrate}kb/s Stream'
-        iotc = [self.iotc.tutk_platform_lib, self.user, camera, res_size, bitrate]
         res_size += 3 if camera.product_model in "WYZEDB3" else 0
+        if self.env_bool("FRAME_SIZE"):
+            res_size = int(os.getenv("FRAME_SIZE"))
+            stream = f"FRAME_SIZE: {res_size} {bitrate}kb/s Stream"
+        iotc = [self.iotc.tutk_platform_lib, self.user, camera, res_size, bitrate]
         while True:
             try:
                 log.debug("⌛️ Connecting to cam..")
@@ -279,7 +282,7 @@ class wyze_bridge:
                     skipped = 0
                     for (frame, info) in sess.recv_video_data():
                         try:
-                            if skipped >= os.getenv("BAD_FRAMES", 30):
+                            if skipped >= int(os.getenv("BAD_FRAMES", 30)):
                                 raise Exception(f"Wrong resolution: {info.frame_size}")
                             if res_size != info.frame_size and not self.env_bool(
                                 "IGNORE_RES"
