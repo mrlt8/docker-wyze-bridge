@@ -1,3 +1,7 @@
+## Changes in v0.6.7
+
+- 🔨 FIX: Set default frame size for WYZEDB3
+
 ## Changes in v0.6.6
 
 - 🐛 Potential fix for WYZEDB3

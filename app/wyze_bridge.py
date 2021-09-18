@@ -17,7 +17,7 @@ class wyze_bridge:
         self.img_path = "/img/"
 
     def run(self) -> None:
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.7 beta 2")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.7")
         if os.environ.get("HASS"):
             print("\n🏠 Home Assistant Mode")
             self.token_path = "/config/wyze-bridge/"
