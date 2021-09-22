@@ -202,13 +202,18 @@ class wyze_bridge:
             os.environ[run_on + event] = py_event + event
 
     def mqtt_discovery(self, cam):
-        if self.env_bool("MQTT_DTOPIC") and self.env_bool("MQTT_HOST"):
-            payload = json.dumps(
-                {
+        if self.env_bool("MQTT_HOST"):
+            log.info("MQTT Discovery")
+            uri = f"{self.clean_name(cam.nickname).lower()}"
+            msgs = [(f"wyzebridge/{uri}/state", "offline")]
+            if self.env_bool("MQTT_DTOPIC"):
+                topic = f"{os.getenv('MQTT_DTOPIC')}/camera/{cam.mac}/config"
+                payload = {
                     "uniq_id": "WYZE" + cam.mac,
                     "name": "Wyze Cam " + cam.nickname,
-                    "topic": f"wyzebridge/{self.clean_name(cam.nickname).lower()}/state",
-                    "availability_topic": f"wyzebridge/{self.clean_name(cam.nickname).lower()}/state",
+                    "topic": f"wyzebridge/{uri}/image",
+                    "json_attributes_topic": f"wyzebridge/{uri}/attributes",
+                    "availability_topic": f"wyzebridge/{uri}/state",
                     "device": {
                         "connections": [["mac", cam.mac]],
                         "identifiers": cam.mac,
@@ -218,16 +223,17 @@ class wyze_bridge:
                         "via_device": "docker-wyze-bridge",
                     },
                 }
-            )
-            paho.mqtt.publish.single(
-                f"{os.getenv('MQTT_DTOPIC')}/camera/{cam.mac}/config",
-                payload=payload,
-                hostname=os.getenv("MQTT_HOST").split(":")[0],
-                port=int(os.getenv("MQTT_HOST").split(":")[1]),
-                auth=dict(
-                    zip(["username", "password"], self.env_bool("MQTT_AUTH").split(":"))
-                ),
-            )
+                msgs.append((topic, json.dumps(payload)))
+            auth = zip(["username", "password"], self.env_bool("MQTT_AUTH").split(":"))
+            try:
+                paho.mqtt.publish.multiple(
+                    msgs,
+                    hostname=os.getenv("MQTT_HOST").split(":")[0],
+                    port=int(os.getenv("MQTT_HOST").split(":")[1]),
+                    auth=dict(auth),
+                )
+            except Exception as ex:
+                log.warning(f"[MQTT] {ex}")
 
     def get_filtered_cams(self) -> list:
         cams = self.get_wyze_data("cameras")
@@ -267,11 +273,11 @@ class wyze_bridge:
         uri = self.clean_name(camera.nickname)
         if self.env_bool("API_THUMB") and getattr(camera, "thumbnail", False):
             self.save_api_thumb(camera)
-        env_q = self.env_bool("QUALITY", "na").ljust(3, "0")
+        env_q = self.env_bool("QUALITY", "na").strip("'\"\n ").ljust(3, "0")
         res_size = 1 if "sd" in env_q[:2] else 0
         bitrate = int(env_q[2:]) if 30 <= int(env_q[2:]) <= 255 else 120
         stream = f'{"360p" if res_size == 1 else "1080p"} {bitrate}kb/s Stream'
-        res_size += 3 if camera.product_model in "WYZEDB3" else 0
+        res_size = 4 if camera.product_model == "WYZEDB3" else res_size
         iotc = [self.iotc.tutk_platform_lib, self.user, camera, res_size, bitrate]
         while True:
             try:
@@ -366,13 +372,13 @@ if __name__ == "__main__":
         [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf if v]
     if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
         print(
-            "Set your "
-            + ("WYZE_EMAIL " if not os.getenv("WYZE_EMAIL") else "")
-            + ("WYZE_PASSWORD " if not os.getenv("WYZE_PASSWORD") else "")
-            + "credentials and restart the container."
+            "Missing credentials:",
+            ("WYZE_EMAIL " if not os.getenv("WYZE_EMAIL") else "")
+            + ("WYZE_PASSWORD" if not os.getenv("WYZE_PASSWORD") else ""),
         )
         sys.exit()
     wb = wyze_bridge()
+    threading.current_thread().name = "WyzeBridge"
     logging.basicConfig(
         format="%(asctime)s [%(name)s][%(levelname)s][%(threadName)s] %(message)s"
         if wb.env_bool("DEBUG_LEVEL")

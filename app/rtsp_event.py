@@ -7,6 +7,7 @@ import subprocess
 import sys
 import threading
 import time
+import json
 
 
 class rtsp_event:
@@ -17,7 +18,7 @@ class rtsp_event:
         self.__dict__.update(
             dict(zip(["uri", "type", "mac", "model", "firmware"], sys.argv[1:]))
         )
-        self.mqtt_connected = self.mqtt_connect() or False
+        self.mqtt_connect()
 
     def env_bool(self, env: str, false: str = "") -> str:
         return os.environ.get(env.upper(), "").lower().replace("false", "") or false
@@ -28,12 +29,26 @@ class rtsp_event:
 
     def pub_start(self):
         self.write_log(f"✅ '/{self.uri}' stream is UP!")
+        img_file = os.getenv("img_path") + self.uri + ".jpg"
         while True:
             self.send_mqtt("state", "online")
             if os.getenv("RTSP_THUMB"):
                 subprocess.Popen(
-                    f"ffmpeg -loglevel fatal -rtsp_transport tcp -i rtsp://localhost:8554/{self.uri} -vframes 1 -y {os.getenv('path')}{self.uri}.jpg".split()
+                    f"ffmpeg -loglevel fatal -skip_frame nokey -rtsp_transport tcp -i rtsp://localhost:8554/{self.uri} -vframes 1 -y {img_file}".split()
                 ).wait()
+            if os.path.exists(img_file) and os.path.getsize(img_file) > 1:
+                with open(img_file, "rb") as img:
+                    self.send_mqtt("image", img.read())
+                self.send_mqtt(
+                    "attributes",
+                    json.dumps(
+                        {
+                            "stream": "rtsp://localhost:8554/" + self.uri,
+                            "image": f"http://localhost:8123/local/{self.uri}.jpg",
+                        }
+                    ),
+                )
+
             time.sleep(
                 int(os.getenv("RTSP_THUMB"))
                 if os.getenv("RTSP_THUMB", "").isdigit()
@@ -48,6 +63,7 @@ class rtsp_event:
         keep_alive.wait()
 
     def mqtt_connect(self):
+        self.mqtt_connected = False
         if self.env_bool("MQTT_HOST"):
             self.base = f"wyzebridge/{self.uri}/"
             if self.env_bool("MQTT_TOPIC"):
@@ -57,11 +73,17 @@ class rtsp_event:
             if self.env_bool("MQTT_AUTH"):
                 auth = os.getenv("MQTT_AUTH").split(":")
                 self.mqtt.username_pw_set(auth[0], auth[1] if len(auth) > 1 else None)
-            self.mqtt.will_set(self.base + f"clients/{os.getpid()}", None)
+            self.mqtt.will_set(self.base, None)
             if "PUBLISH" in self.type:
                 self.mqtt.will_set(self.base + "state", "disconnected")
-            self.mqtt.connect(host[0], int(host[1]), 60)
-            return True
+            if "READ" in self.type:
+                self.mqtt.will_set(self.base + f"clients/{os.getpid()}", None)
+            try:
+                self.mqtt.connect(host[0], int(host[1]), 60)
+                self.mqtt.loop_start()
+                self.mqtt_connected = True
+            except Exception as ex:
+                self.write_log(f"[MQTT] {ex}")
 
     def send_mqtt(self, topic, message):
         if self.mqtt_connected:
@@ -71,10 +93,12 @@ class rtsp_event:
         if "PUBLISH" in self.type:
             self.write_log(f"❌ '/{self.uri}' stream is down")
             self.send_mqtt("state", "offline")
+            self.send_mqtt("image.jpg", None)
         if "READ" in self.type:
             self.write_log(f"📕 Client stopped reading")
             self.send_mqtt(f"clients/{os.getpid()}", None)
         if self.mqtt_connected:
+            self.mqtt.loop_stop()
             self.mqtt.disconnect()
 
 

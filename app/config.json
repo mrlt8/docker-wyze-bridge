@@ -23,7 +23,8 @@
         "8888/tcp": "HLS streams"
     },
     "environment": {
-        "HASS": "true"
+        "HASS": "true",
+        "MQTT_DTOPIC": "homeassistant"
     },
     "map": [
         "config:rw"
