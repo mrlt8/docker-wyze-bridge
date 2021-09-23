@@ -1,3 +1,8 @@
+## Changes in v0.6.8
+
+- 🔨 Doorbell (WYZEDB3) related changes. Please post feedback [here #133](https://github.com/mrlt8/docker-wyze-bridge/issues/133)
+- ✨ New: `OFFLINE_TIME` env option to specify the time before retrying to connect to a camera that is offline [#143](https://github.com/mrlt8/docker-wyze-bridge/issues/143).
+
 ## Changes in v0.6.7
 
 - 🔨 FIX: Set default frame size for WYZEDB3

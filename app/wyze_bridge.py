@@ -17,7 +17,7 @@ class wyze_bridge:
         self.img_path = "/img/"
 
     def run(self) -> None:
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.8 beta 1")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.8")
         if os.environ.get("HASS"):
             print("\n🏠 Home Assistant Mode")
             self.token_path = "/config/wyze-bridge/"
@@ -316,6 +316,7 @@ class wyze_bridge:
                         if "offline_time" in vars()
                         else 10
                     )
+                    offline_time = int(self.env_bool("OFFLINE_TIME", offline_time))
                     log.info(f"👻 Camera offline. WILL retry in {offline_time}s.")
                     time.sleep(offline_time)
             finally:
