@@ -25,7 +25,7 @@ RUN mkdir -p /build/app /build/tokens /build/img \
     && g++ -fpic -shared -Wl,--whole-archive /tmp/tutk/libAVAPIs.a /tmp/tutk/libIOTCAPIs.a -Wl,--no-whole-archive -o /build/usr/local/lib/libIOTCAPIs_ALL.so \
     && tar --strip-components=1 -C /build/usr/local/bin -xf /tmp/ffmpeg.tar.xz --wildcards '*ffmpeg' \
     && rm -rf /tmp/*
-COPY wyze_bridge.py /build/app/
+COPY *.py /build/app/
 
 FROM base_$TARGETARCH
 ENV PYTHONUNBUFFERED=1 RTSP_PROTOCOLS=tcp RTSP_READTIMEOUT=30s RTSP_READBUFFERCOUNT=2048 RTSP_LOGLEVEL=warn
