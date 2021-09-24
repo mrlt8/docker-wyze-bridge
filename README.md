@@ -9,6 +9,11 @@ Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze 
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
+## Changes in v0.6.9
+
+- 🔨 Changed RTSP_THUMB command to use 127.0.0.1 instead of localhost
+- 🐛 Fixed: `OFFLINE_TIME` lower case int bug.
+
 ## Changes in v0.6.8
 
 - 🔨 Doorbell (WYZEDB3) related changes. Please post feedback [here #133](https://github.com/mrlt8/docker-wyze-bridge/issues/133)

@@ -1,3 +1,8 @@
+## Changes in v0.6.9
+
+- 🔨 Changed RTSP_THUMB command to use 127.0.0.1 instead of localhost
+- 🐛 Fixed: `OFFLINE_TIME` lower case int bug.
+
 ## Changes in v0.6.8
 
 - 🔨 Doorbell (WYZEDB3) related changes. Please post feedback [here #133](https://github.com/mrlt8/docker-wyze-bridge/issues/133)

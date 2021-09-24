@@ -17,7 +17,7 @@ class wyze_bridge:
         self.img_path = "/img/"
 
     def run(self) -> None:
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.8")
+        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.9")
         if os.environ.get("HASS"):
             print("\n🏠 Home Assistant Mode")
             self.token_path = "/config/wyze-bridge/"
@@ -202,7 +202,7 @@ class wyze_bridge:
         rtsp_path = wyzecam.api.requests.post(
             "http://0.0.0.0:9997/v1/config/paths/add/" + uri.lower(),
             json={
-                "runOnPublish": f"sh -c 'ffmpeg -loglevel fatal -rtsp_transport tcp -i rtsp://localhost:$RTSP_PORT/$RTSP_PATH -vframes 1 -y {self.img_path}$RTSP_PATH.jpg && sleep {sleep}'",
+                "runOnPublish": f"sh -c 'ffmpeg -loglevel fatal -rtsp_transport tcp -i rtsp://127.0.0.1:$RTSP_PORT/$RTSP_PATH -vframes 1 -y {self.img_path}$RTSP_PATH.jpg && sleep {sleep}'",
                 "runOnPublishRestart": True,
             },
         )
@@ -311,14 +311,13 @@ class wyze_bridge:
                     if self.env_bool("IGNORE_OFFLINE"):
                         log.info("🪦 Camera is offline. Will NOT try again.")
                         sys.exit()
-                    offline_time = (
+                    offline_time = self.env_bool("OFFLINE_TIME") or (
                         (offline_time + 10 if offline_time < 600 else 30)
                         if "offline_time" in vars()
                         else 10
                     )
-                    offline_time = int(self.env_bool("OFFLINE_TIME", offline_time))
                     log.info(f"👻 Camera offline. WILL retry in {offline_time}s.")
-                    time.sleep(offline_time)
+                    time.sleep(int(offline_time))
             finally:
                 while "ffmpeg" in locals() and ffmpeg.poll() is None:
                     log.info("🧹 Cleaning up FFMPEG...")
