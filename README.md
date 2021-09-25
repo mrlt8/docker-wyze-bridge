@@ -7,39 +7,13 @@
 
 Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze cameras including v3. No Third-party or special firmware required.
 
-Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam), and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
+Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
-## Changes in v0.6.5
+## Changes in v0.7.0
 
-- 🔨 Always set default frame size and bitrate to prevent restart loop.
-
-## Changes in v0.6.4
-
-- 🐛 BUG: Fixed the issue introduced in v0.6.2 where a resolution change caused issues for RTMP and HLS streams. This will now raise an exception which *should* restart ffmpeg if the resolution doesn't match for more than 30 frames.
-
-## Changes in v0.6.3
-
-- 🐛 BUG: Fixed bug where cam on older firmware would not connect due to missing `wifidb`
-
-## Changes in v0.6.2
-
-- 🔨 FIX: Fixed an issue where chaning the resolution in the app would cause the stream to die. Could also potentially solve an issue with the doorbell.
-- 🏠 FIX: Invalid boolean in config
-
-## Changes in v0.6.1
-
-- ✨ NEW: `RTSP_THUMB` ENV parameter to save images from RTSP stream ([details](#still-images))
-
-## Changes in v0.6.0
-
-- 💥 BREAKING: Renamed `FILTER_MODE` to `FILTER_BLOCK` and will be disabled if blank or set to false.
-- 💥 BREAKING: Renamed `FILTER_MODEL` to `FILTER_MODELS`
-- 🔨 Reworked auth, caching, and other other code refactoring
-- ✨ NEW: Refresh token when token expires - no need to 2FA when your session expires!
-- ✨ NEW: Use seed to generate TOTP
-- ✨ NEW: `DEBUG_FRAMES` ENV parameter to show all dropped frames
-- ⏪ CHANGE: Only show first lost/incomplete frame warning
-- 🐧 CHANGE: Switch all base images to debian buster for consistency
+- ✨ NEW: Basic MQTT support with discovery - publishes camera status, connections to camera, and snapshot if available
+- 🔀 Removed Supervisord
+- 📦 Switch to static build of [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge) with h264_omx
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -53,7 +27,7 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi.
 
-The container can be run on its own or as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant).
+The container can be run on its own, in [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer), or as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant).
 
 ## Supported Cameras
 
@@ -77,25 +51,27 @@ If you wish to continue using your camera with the bridge, you should downgrade 
 | V3     | 4.36.3.19 (August 26, 2021) |
 | PAN    | 4.10.6.241 (March 9, 2021)  |
 
-## Usage
+## Basic Usage
 
 ### docker run
 
 Use your Wyze credentials and run:
 
 ```bash
-docker run -p 1935:1935 -p 8554:8554 -p 8888:8888 -e WYZE_EMAIL= -e WYZE_PASSWORD=  mrlt8/wyze-bridge:latest
+docker run -p 8888:8888 -e WYZE_EMAIL= -e WYZE_PASSWORD=  mrlt8/wyze-bridge:latest
 ```
 
-or
+This will start the bridge with the HLS ports open and you can view your stream by visiting: `http://localhost:8888/cam-nickname` where localhost is the hostname or ip of the machine running the bridge followed by the cam nickname in lowercase with `-` in place of spaces.
 
-### Build with docker-compose (recommended)
+### docker-compose (recommended)
 
-1. `git clone https://github.com/mrlt8/docker-wyze-bridge.git`
-1. `cd docker-wyze-bridge`
-1. `cp docker-compose.sample.yml docker-compose.yml`
-1. Edit `docker-compose.yml` with your wyze credentials
-1. run `docker-compose up --build`
+This is similar to the docker run command, but will save all your options in a yaml file.
+
+1. [Download](https://raw.githubusercontent.com/mrlt8/docker-wyze-bridge/main/docker-compose.sample.yml) and rename or create a `docker-compose.yml` file
+2. Edit `docker-compose.yml` with your wyze credentials
+3. run `docker-compose up`
+
+Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
 
 ### Additional Info
 
@@ -105,13 +81,15 @@ or
 - [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
 - [Home Assistant](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
 
-Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
+#### Special Characters
 
-## URIs
+If your email or password contains a `%` or `$` character, you may need to escape them with an extra character. e.g., `pa$$word` should be entered as `pa$$$$word`
 
-`camera-nickname` is the name of the camera set in the Wyze app and are converted to lower case with hyphens in place of spaces.
+## Camera Stream URIs
 
-e.g. 'Front Door' would be `/front-door`
+By default, the bridge will create three streams for each of your cameras which can be acccessed at the following URIs, where `camera-nickname` is the name of the camera set in the Wyze app and converted to lower case with hyphens in place of spaces. e.g. 'Front Door' would be `/front-door`
+
+Replace localhost with the hostname or ip of the machine running the bridge:
 
 - RTMP:
 
@@ -137,56 +115,11 @@ e.g. 'Front Door' would be `/front-door`
   http://localhost:8888/camera-nickname
   ```
 
-## Filtering
-
-The default option will automatically create a stream for all the cameras on your account, but you can use the following environment options in your `docker-compose.yml` to filter the cameras.
-
-All options are cAsE-InSensiTive, and take single or multiple comma separated values.
-
-### Examples
-
-- Whitelist by Camera Name (set in the wyze app):
-
-  ```yaml
-  environment:
-      ..
-      - FILTER_NAMES=Front Door, Driveway, porch cam
-  ```
-
-- Whitelist by Camera MAC Address:
-
-  ```yaml
-  - FILTER_MACS=00:aA:22:33:44:55, Aa22334455bB
-  ```
-
-- Whitelist by Camera Model:
-
-  ```yaml
-  - FILTER_MODEL=WYZEC1-JZ
-  ```
-
-- Whitelist by Camera Model Name:
-
-  ```yaml
-  - FILTER_MODEL=V2, v3, Pan
-  ```
-
-- Blacklisting:
-
-  You can reverse any of these whitelists into blacklists by setting `FILTER_BLOCK`.
-
-  ```yaml
-  environment:
-      ..
-      - FILTER_NAMES=Bedroom
-      - FILTER_BLOCK=true
-  ```
-
-## Multi-Factor Authentication
+### Multi-Factor Authentication
 
 Two-factor authentication ("Two-Step Verification" in the wyze app) is supported and will automatically be detected, however additional steps are required to enter your verification code.
 
-- Echo the verification code directly to `/tokens/mfa_token`:
+- Echo the verification code directly to `/tokens/mfa_token` by opening a second terminal window and using:
 
   ```bash
   docker exec -it wyze-bridge sh -c 'echo "123456" > /tokens/mfa_token'
@@ -232,6 +165,55 @@ build:
     dockerfile: Dockerfile.arm
 ```
 
+## Advanced Options
+
+**WYZE_EMAIL** and **WYZE_PASSWORD** are the only two required environment variables. The following envs are optional.
+
+### Filtering
+
+The default option will automatically create a stream for all the cameras on your account, but you can use the following environment options in your `docker-compose.yml` to filter the cameras.
+
+All options are case-insensitivE, and take single or comma separated values.
+
+#### Examples
+
+- Whitelist by Camera Name (set in the wyze app):
+
+  ```yaml
+  environment:
+      ..
+      - FILTER_NAMES=Front Door, Driveway, porch cam
+  ```
+
+- Whitelist by Camera MAC Address:
+
+  ```yaml
+  - FILTER_MACS=00:aA:22:33:44:55, Aa22334455bB
+  ```
+
+- Whitelist by Camera Model:
+
+  ```yaml
+  - FILTER_MODEL=WYZEC1-JZ
+  ```
+
+- Whitelist by Camera Model Name:
+
+  ```yaml
+  - FILTER_MODEL=V2, v3, Pan
+  ```
+
+- Blacklisting:
+
+  You can reverse any of these whitelists into blacklists by setting `FILTER_BLOCK`.
+
+  ```yaml
+  environment:
+      ..
+      - FILTER_NAMES=Bedroom
+      - FILTER_BLOCK=true
+  ```
+
 ## LAN Mode
 
 Like the wyze app, the tutk library will attempt to stream directly from the camera when on the same LAN as the camera in "LAN mode" or relay the stream via the cloud in "relay mode".
@@ -248,11 +230,11 @@ environment:
 
 ## Still Images
 
-- `API_THUMB`: Will run ONCE at startup
+- `API_THUMB` (string): Will run ONCE at startup
 
   Enabling the `API_THUMB` ENV option will grab a *high-quality* thumbnail from the wyze api and save it to `/img/cam-name.jpg` on standard docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
 
-- `RTSP_THUMB`: Will run every 180 seconds (configurable)
+- `RTSP_THUMB` (string/bool|int): Will run every 180 seconds (configurable)
 
   Enabling the `RTSP_THUMB` ENV option will grab a frame from the RTSP stream every 180 seconds if the `RTSP_THUMB` value is not an integer and save it to `/img/cam-name.jpg` on standard docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
 
@@ -262,7 +244,6 @@ Bitrate and resolution of the stream from the wyze camera can be adjusted with:
 
 ```yaml
 environment:
-    ..
     - QUALITY=HD120
 ```
 
@@ -271,6 +252,7 @@ Additional info:
 - Resolution can be set to `SD` (360p in the app) or `HD` - 640x360/1920x1080 for cams or 480x640/1296x1728 for doorbells.
 - Bitrate can be set from 30 to 255. Some bitrates may not work with certain resolutions.
 - Bitrate and resolution changes will apply to ALL cameras.
+- Adjusting the bitrate and resolution in the bridge will also change the stream in the wyze app and vice versa.
 - App equivalents would be:
   - 360p - SD30
   - SD - HD60
@@ -329,16 +311,18 @@ or `- RTSP_PATHS_ALL_READUSER=123` to customize a path specific option like `pat
 
 environment options:
 
-`- URI_SEPARATOR=` Customize the separator used to replace spaces in the URI; available values are `-`, `_`, or use `#` to remove spaces.
+- `URI_SEPARATOR` (-|_|#) Customize the separator used to replace spaces in the URI; available values are `-`, `_`, or use `#` to remove spaces.
 
-`- IGNORE_OFFLINE=true` Ignore ofline cameras until container restarts
+- `IGNORE_OFFLINE` (string/bool) Ignore ofline cameras until container restarts
 
-`- DEBUG_FRAMES` Show all lost/incomplete frames
+- `OFFLINE_TIME` (int) Customize the sleep time when a camera is offline
 
-`- DEBUG_LEVEL=` Adjust the level of upstream logging
+- `DEBUG_FRAMES` (string/bool) Show all lost/incomplete frames
 
-`- RTSP_LOGLEVEL=` Adjust the verbosity of rtsp-simple-server; available values are "warn", "info", "debug".
+- `DEBUG_LEVEL` (debug|info|warning|error) Adjust the level of upstream logging
 
-`- DEBUG_FFMPEG=True` Enable additional logging from FFmpeg
+- `RTSP_LOGLEVEL` (debug|info|warn) Adjust the verbosity of rtsp-simple-server; available values are "warn", "info", "debug".
 
-`- FRESH_DATA=True` Remove local cache and pull new data from wyze servers.
+- `DEBUG_FFMPEG` (string/bool) Enable additional logging from FFmpeg
+
+- `FRESH_DATA` (string/bool) Remove local cache and pull new data from wyze servers.

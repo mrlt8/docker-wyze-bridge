@@ -33,18 +33,28 @@ class rtsp_event:
         while True:
             self.send_mqtt("state", "online")
             if os.getenv("RTSP_THUMB"):
+                rtsp_addr = "127.0.0.1:8554"
+                if self.env_bool(f"RTSP_PATHS_{self.uri.upper()}_READUSER"):
+                    rtsp_addr = (
+                        self.env_bool(f"RTSP_PATHS_{self.uri.upper()}_READUSER")
+                        + ":"
+                        + self.env_bool(f"RTSP_PATHS_{self.uri.upper()}_READPASS")
+                        + f"@{rtsp_addr}"
+                    )
                 subprocess.Popen(
-                    f"ffmpeg -loglevel fatal -skip_frame nokey -rtsp_transport tcp -i rtsp://localhost:8554/{self.uri} -vframes 1 -y {img_file}".split()
+                    f"ffmpeg -loglevel fatal -skip_frame nokey -rtsp_transport tcp -i rtsp://{rtsp_addr}/{self.uri} -vframes 1 -y {img_file}".split()
                 ).wait()
             if os.path.exists(img_file) and os.path.getsize(img_file) > 1:
                 with open(img_file, "rb") as img:
                     self.send_mqtt("image", img.read())
+            if self.env_bool("HASS"):
+                host = self.env_bool("HOSTNAME", "localhost")
                 self.send_mqtt(
                     "attributes",
                     json.dumps(
                         {
-                            "stream": "rtsp://localhost:8554/" + self.uri,
-                            "image": f"http://localhost:8123/local/{self.uri}.jpg",
+                            "stream": f"rtsp://{host}:8554/{self.uri}",
+                            "image": f"http://{host}:8123/local/{self.uri}.jpg",
                         }
                     ),
                 )

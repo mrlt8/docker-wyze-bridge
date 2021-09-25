@@ -194,16 +194,21 @@ class wyze_bridge:
             log.warning(ex)
 
     def add_rtsp_path(self, cam: str) -> None:
-        run_on = f"RTSP_PATHS_{self.clean_name(cam.nickname)}_RUNON"
+        path = f"RTSP_PATHS_{self.clean_name(cam.nickname)}_"
         py_event = "python3 /app/rtsp_event.py $RTSP_PATH "
         for event in {"READ", "PUBLISH"}:
-            if self.env_bool(run_on + event):
-                os.environ[run_on + event + "_2"] = os.environ[run_on + event]
-            os.environ[run_on + event] = py_event + event
+            if self.env_bool(path + "RUNON" + event):
+                os.environ[f"{path}RUNON{event}_2"] = os.environ[path + "RUNON" + event]
+            os.environ[path + "RUNON" + event] = py_event + event
+        os.environ[path + "READUSER"] = self.env_bool(
+            path + "READUSER", os.getenv("RTSP_PATHS_ALL_READUSER", "")
+        )
+        os.environ[path + "READPASS"] = self.env_bool(
+            path + "READPASS", os.getenv("RTSP_PATHS_ALL_READPASS", "")
+        )
 
     def mqtt_discovery(self, cam):
         if self.env_bool("MQTT_HOST"):
-            log.info("MQTT Discovery")
             uri = f"{self.clean_name(cam.nickname).lower()}"
             msgs = [(f"wyzebridge/{uri}/state", "offline")]
             if self.env_bool("MQTT_DTOPIC"):
@@ -214,6 +219,7 @@ class wyze_bridge:
                     "topic": f"wyzebridge/{uri}/image",
                     "json_attributes_topic": f"wyzebridge/{uri}/attributes",
                     "availability_topic": f"wyzebridge/{uri}/state",
+                    "icon": "mdi:image",
                     "device": {
                         "connections": [["mac", cam.mac]],
                         "identifiers": cam.mac,
@@ -224,13 +230,13 @@ class wyze_bridge:
                     },
                 }
                 msgs.append((topic, json.dumps(payload)))
-            auth = zip(["username", "password"], self.env_bool("MQTT_AUTH").split(":"))
+            mqauth = os.getenv("MQTT_AUTH").split(":")
             try:
                 paho.mqtt.publish.multiple(
                     msgs,
                     hostname=os.getenv("MQTT_HOST").split(":")[0],
                     port=int(os.getenv("MQTT_HOST").split(":")[1]),
-                    auth=dict(auth),
+                    auth={"username": mqauth[0], "password": mqauth[1]},
                 )
             except Exception as ex:
                 log.warning(f"[MQTT] {ex}")
@@ -276,7 +282,7 @@ class wyze_bridge:
         env_q = self.env_bool("QUALITY", "na").strip("'\"\n ").ljust(3, "0")
         res_size = 1 if "sd" in env_q[:2] else 0
         bitrate = int(env_q[2:]) if 30 <= int(env_q[2:]) <= 255 else 120
-        stream = f'{"360p" if res_size == 1 else "1080p"} {bitrate}kb/s Stream'
+        stream = f'{"SD" if res_size == 1 else "HD"} {bitrate}kb/s Stream'
         res_size = 4 if camera.product_model == "WYZEDB3" else res_size
         iotc = [self.iotc.tutk_platform_lib, self.user, camera, res_size, bitrate]
         while True:
@@ -335,13 +341,13 @@ class wyze_bridge:
                     if self.env_bool("IGNORE_OFFLINE"):
                         log.info("🪦 Camera is offline. Will NOT try again.")
                         sys.exit()
-                    offline_time = (
+                    offline_time = self.env_bool("OFFLINE_TIME") or (
                         (offline_time + 10 if offline_time < 600 else 30)
                         if "offline_time" in vars()
                         else 10
                     )
                     log.info(f"👻 Camera offline. WILL retry in {offline_time}s.")
-                    time.sleep(offline_time)
+                    time.sleep(int(offline_time))
             finally:
                 while "ffmpeg" in locals() and ffmpeg.poll() is None:
                     log.info("🧹 Cleaning up FFMPEG...")
@@ -369,7 +375,22 @@ if __name__ == "__main__":
     if os.getenv("HASS"):
         with open("/data/options.json") as f:
             conf = json.load(f).items()
+        info = wyzecam.api.requests.get(
+            "http://supervisor/info",
+            headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
+        ).json()
+        if "ok" in info.get("result"):
+            os.environ["HOSTNAME"] = info["data"]["hostname"]
+        mqtt_conf = wyzecam.api.requests.get(
+            "http://supervisor/services/mqtt",
+            headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
+        ).json()
+        if "ok" in mqtt_conf.get("result"):
+            data = mqtt_conf["data"]
+            os.environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
+            os.environ["MQTT_AUTH"] = f'{data["username"]}:{data["password"]}'
         [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf if v]
+        print(os.environ)
     if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
         print(
             "Missing credentials:",
