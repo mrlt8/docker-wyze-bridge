@@ -3,6 +3,7 @@
     "description": "RTMP/RTSP/HLS bridge for Wyze cams in a docker container",
     "slug": "docker-wyze-bridge",
     "url": "http://github.com/mrlt8/docker-wyze-bridge",
+    "image": "mrlt8/wyze-bridge",
     "version": "0.7",
     "arch": [
         "armv7",
@@ -23,30 +24,44 @@
         "8888/tcp": "HLS streams"
     },
     "environment": {
-        "HASS": "true",
-        "MQTT_DTOPIC": "homeassistant"
+        "HASS": "true"
     },
     "map": [
         "config:rw"
+    ],
+    "services": [
+        "mqtt:want"
     ],
     "options": {
         "WYZE_EMAIL": null,
         "WYZE_PASSWORD": null,
         "LAN_ONLY": false,
-        "API_THUMB": true
+        "SNAPSHOT": "API",
+        "MQTT_DTOPIC": "homeassistant"
     },
     "schema": {
         "WYZE_EMAIL": "email",
         "WYZE_PASSWORD": "password",
         "LAN_ONLY": "bool",
-        "API_THUMB": "bool",
-        "RTSP_THUMB": "bool?",
+        "SNAPSHOT": "list(API|RTSP|Disable)",
         "FRESH_DATA": "bool?",
         "IGNORE_OFFLINE": "bool?",
-        "URI_SEPARATOR": "list(-|_|#)?",
+        "MQTT_HOST": "str?",
+        "MQTT_AUTH": "str?",
+        "MQTT_TOPIC": "str?",
+        "MQTT_DTOPIC": "str?",
         "FILTER_NAMES": "str?",
         "FILTER_MODELS": "str?",
         "FILTER_MACS": "str?",
-        "FILTER_BLOCK": "bool?"
+        "FILTER_BLOCK": "bool?",
+        "URI_SEPARATOR": "list(-|_|#)?",
+        "QUALITY": "str?",
+        "FFMPEG_FLAGS": "str?",
+        "FFMPEG_CMD": "str?",
+        "DEBUG_FRAMES": "bool?",
+        "DEBUG_FFMPEG": "bool?",
+        "RTSP_RTSPDISABLE": "list(yes|no)?",
+        "RTSP_RTMPDISABLE": "list(yes|no)?",
+        "RTSP_HLSDISABLE": "list(yes|no)?"
     }
 }

@@ -25,8 +25,8 @@ class wyze_bridge:
             os.makedirs("/config/www/", exist_ok=True)
             os.makedirs(self.token_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
-        if self.env_bool("RTSP_THUMB") and os.getenv("API_THUMB"):
-            del os.environ["API_THUMB"]
+        if os.getenv("API_THUMB") or os.getenv("RTSP_THUMB"):
+            print("\n\n⚠️ 'API_THUMB' and 'RTSP_THUMB' DEPRECATED.\nUSE 'SNAPSHOT'\n")
         self.user = self.get_wyze_data("user")
         self.cameras = self.get_filtered_cams()
         self.iotc = wyzecam.WyzeIOTC(max_num_av_channels=len(self.cameras)).__enter__()
@@ -126,7 +126,7 @@ class wyze_bridge:
     def get_wyze_data(self, name: str, refresh: bool = False):
         pkl_file = self.token_path + name + ".pickle"
         try:
-            if "cam" in name and self.env_bool("API_THUMB"):
+            if "cam" in name and "API" in self.env_bool("SNAPSHOT").upper():
                 raise Exception("♻️ Refreshing camera data for thumbnails")
             if "auth" in name and refresh:
                 raise Exception("♻️ Refresh auth tokens")
@@ -183,6 +183,8 @@ class wyze_bridge:
         return name.replace(" ", uri_sep).replace("#", "").replace("'", "").upper()
 
     def save_api_thumb(self, camera) -> None:
+        if not getattr(camera, "thumbnail", False):
+            return
         try:
             with wyzecam.api.requests.get(camera.thumbnail) as thumb:
                 thumb.raise_for_status()
@@ -277,7 +279,7 @@ class wyze_bridge:
 
     def start_stream(self, camera) -> None:
         uri = self.clean_name(camera.nickname)
-        if self.env_bool("API_THUMB") and getattr(camera, "thumbnail", False):
+        if "API" in self.env_bool("SNAPSHOT").upper():
             self.save_api_thumb(camera)
         env_q = self.env_bool("QUALITY", "na").strip("'\"\n ").ljust(3, "0")
         res_size = 1 if "sd" in env_q[:2] else 0
@@ -390,7 +392,6 @@ if __name__ == "__main__":
             os.environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
             os.environ["MQTT_AUTH"] = f'{data["username"]}:{data["password"]}'
         [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf if v]
-        print(os.environ)
     if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
         print(
             "Missing credentials:",

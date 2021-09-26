@@ -2,8 +2,8 @@
 
 [![Docker](https://github.com/mrlt8/docker-wyze-bridge/actions/workflows/docker-image.yml/badge.svg)](https://github.com/mrlt8/docker-wyze-bridge/actions/workflows/docker-image.yml)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/mrlt8/docker-wyze-bridge?logo=github)](https://github.com/mrlt8/docker-wyze-bridge/releases/latest)
-[![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/mrlt8/wyze-bridge?sort=semver&logo=docker)](https://hub.docker.com/r/mrlt8/wyze-bridge)
-[![Docker Pulls](https://img.shields.io/docker/pulls/mrlt8/wyze-bridge?logo=docker)](https://hub.docker.com/r/mrlt8/wyze-bridge)
+[![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/mrlt8/wyze-bridge?sort=semver&logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
+[![Docker Pulls](https://img.shields.io/docker/pulls/mrlt8/wyze-bridge?logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 
 Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze cameras including v3. No Third-party or special firmware required.
 
@@ -11,9 +11,11 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 ## Changes in v0.7.0
 
+- 💥 BREAKING: `API_THUMB` and `RTSP_THUMB` are now `SNAPSHOT=API` or `SNAPSHOT=RTSP` or `SNAPSHOT=RTSP30` for custom interval
 - ✨ NEW: Basic MQTT support with discovery - publishes camera status, connections to camera, and snapshot if available
 - 🔀 Removed Supervisord
 - 📦 Switch to static build of [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge) with h264_omx
+- 🔨 Fixed broken rtsp auth
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -22,12 +24,14 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 ![Supports armv7 Architecture](https://img.shields.io/badge/armv7-yes-success.svg)
 ![Supports aarch64 Architecture](https://img.shields.io/badge/aarch64-yes-success.svg)
 ![Supports amd64 Architecture](https://img.shields.io/badge/amd64-yes-success.svg)
-[![Home Assistant Add-on](https://img.shields.io/badge/home_assistant-add--on-blue.svg?logo=homeassistant)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
-[![Portainer stack](https://img.shields.io/badge/portainer-stack-blue.svg?logo=portainer)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
+[![Home Assistant Add-on](https://img.shields.io/badge/home_assistant-add--on-blue.svg?logo=homeassistant&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
+[![Portainer stack](https://img.shields.io/badge/portainer-stack-blue.svg?logo=portainer&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
 
 Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi.
 
 The container can be run on its own, in [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer), or as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant).
+
+[![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmrlt8%2Fdocker-wyze-bridge)
 
 ## Supported Cameras
 
@@ -72,6 +76,12 @@ This is similar to the docker run command, but will save all your options in a y
 3. run `docker-compose up`
 
 Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
+
+### 🏠 Home Assistant
+
+[![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmrlt8%2Fdocker-wyze-bridge)
+
+Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on Home Assistant.
 
 ### Additional Info
 
@@ -214,7 +224,7 @@ All options are case-insensitivE, and take single or comma separated values.
       - FILTER_BLOCK=true
   ```
 
-## LAN Mode
+### LAN Mode
 
 Like the wyze app, the tutk library will attempt to stream directly from the camera when on the same LAN as the camera in "LAN mode" or relay the stream via the cloud in "relay mode".
 
@@ -228,17 +238,30 @@ environment:
     - LAN_ONLY=True
 ```
 
-## Still Images
+### Snapshot/Still Images
 
-- `API_THUMB` (string): Will run ONCE at startup
+- `SNAPSHOT=API` Will run ONCE at startup
 
-  Enabling the `API_THUMB` ENV option will grab a *high-quality* thumbnail from the wyze api and save it to `/img/cam-name.jpg` on standard docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
+  Will grab a *high-quality* thumbnail from the wyze api and save it to `/img/cam-name.jpg` on docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
 
-- `RTSP_THUMB` (string/bool|int): Will run every 180 seconds (configurable)
+- `SNAPSHOT=RTSP` Will run every 180 seconds (configurable)
 
-  Enabling the `RTSP_THUMB` ENV option will grab a frame from the RTSP stream every 180 seconds if the `RTSP_THUMB` value is not an integer and save it to `/img/cam-name.jpg` on standard docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
+  Will grab a frame from the RTSP stream every 180 seconds and save it to `/img/cam-name.jpg` on standard docker installs or `/config/www/cam-name.jpg` in Home Assistant mode. Can specify a custom interval with `SNAPSHOT=RTSP(INT)` e.g. `SNAPSHOT=RTSP30` to run every 30 seconds
 
-## Bitrate and Resolution
+### MQTT (beta)
+
+Some basic MQTT support is now available in v0.7.0.
+
+MQTT auth and discovery should be automatic in Home Assistant mode.
+
+| ENV Name    | Description                                | Example       |
+| ----------- | ------------------------------------------ | ------------- |
+| MQTT_HOST   | IP/Hostname AND Port of the MQTT broker    | mqtt:1883     |
+| MQTT_AUTH   | Username AND password; leave blank if none | user:pass     |
+| MQTT_TOPIC  | Optional - Specify topic prefix            | myhome        |
+| MQTT_DTOPIC | Optional - Discovery topic                 | homeassistant |
+
+### Bitrate and Resolution
 
 Bitrate and resolution of the stream from the wyze camera can be adjusted with:
 
@@ -258,11 +281,11 @@ Additional info:
   - SD - HD60
   - HD - HD120
 
-## Custom FFmpeg Commands
+### Custom FFmpeg Commands
 
 You can pass a custom [command](https://ffmpeg.org/ffmpeg.html) to FFmpeg by using `FFMPEG_CMD` in your docker-compose.yml:
 
-### For all cameras
+#### For all cameras
 
 ```YAML
 environment:
@@ -270,7 +293,7 @@ environment:
     - FFMPEG_CMD=-f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/
 ```
 
-### For a specific camera
+#### For a specific camera
 
 where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
 
@@ -283,7 +306,7 @@ Additional info:
 - The `ffmpeg` command is implied and is optional.
 - The camera name will automatically be appended to the end of the command.
 
-## Custom FFmpeg Flags
+### Custom FFmpeg Flags
 
 Custom ffmpeg flags can easily be tested with:
 
@@ -299,7 +322,7 @@ or where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces a
 - FFMPEG_FLAGS_CAM_NAME=-flags low_delay
 ```
 
-## rtsp-simple-server
+### rtsp-simple-server
 
 [rtsp-simple-server](https://github.com/aler9/rtsp-simple-server/blob/main/rtsp-simple-server.yml) options can be customized as an environment variable in your docker-compose.yml by prefixing `RTSP_` to the UPPERCASE parameter.
 
@@ -307,7 +330,7 @@ e.g. use `- RTSP_RTSPADDRESS=:8555` to overwrite the default `rtspAddress`.
 
 or `- RTSP_PATHS_ALL_READUSER=123` to customize a path specific option like `paths: all: readuser:123`
 
-## Debugging options
+### Debugging options
 
 environment options:
 

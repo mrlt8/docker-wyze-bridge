@@ -28,11 +28,13 @@ class rtsp_event:
         print(date, f"[RTSP][{self.uri.upper()}] {txt}")
 
     def pub_start(self):
+        host = self.env_bool("HOSTNAME", "localhost")
         self.write_log(f"✅ '/{self.uri}' stream is UP!")
         img_file = os.getenv("img_path") + self.uri + ".jpg"
+        env_snap = os.getenv("SNAPSHOT", "NA").ljust(5, "0").upper()
         while True:
             self.send_mqtt("state", "online")
-            if os.getenv("RTSP_THUMB"):
+            if "RTSP" in env_snap[:4]:
                 rtsp_addr = "127.0.0.1:8554"
                 if self.env_bool(f"RTSP_PATHS_{self.uri.upper()}_READUSER"):
                     rtsp_addr = (
@@ -48,7 +50,6 @@ class rtsp_event:
                 with open(img_file, "rb") as img:
                     self.send_mqtt("image", img.read())
             if self.env_bool("HASS"):
-                host = self.env_bool("HOSTNAME", "localhost")
                 self.send_mqtt(
                     "attributes",
                     json.dumps(
@@ -60,8 +61,8 @@ class rtsp_event:
                 )
 
             time.sleep(
-                int(os.getenv("RTSP_THUMB"))
-                if os.getenv("RTSP_THUMB", "").isdigit()
+                int(env_snap[4:])
+                if env_snap[4:].isdigit() and int(env_snap[4:]) > 1
                 else 180
             )
 
