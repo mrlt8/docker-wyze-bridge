@@ -285,8 +285,11 @@ class wyze_bridge:
         res_size = 1 if "sd" in env_q[:2] else 0
         bitrate = int(env_q[2:]) if 30 <= int(env_q[2:]) <= 255 else 120
         stream = f'{"SD" if res_size == 1 else "HD"} {bitrate}kb/s Stream'
-        res_size = 4 if camera.product_model == "WYZEDB3" else res_size
+        if camera.product_model == "WYZEDB3" and res_size == 1:
+            res_size = 4
         iotc = [self.iotc.tutk_platform_lib, self.user, camera, res_size, bitrate]
+        if camera.product_model == "WYZEDB3" and res_size == 0:
+            res_size = 4
         while True:
             try:
                 log.debug("⌛️ Connecting to cam..")

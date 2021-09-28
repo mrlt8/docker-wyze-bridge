@@ -14,7 +14,7 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 - 💥 BREAKING: `API_THUMB` and `RTSP_THUMB` are now `SNAPSHOT=API` or `SNAPSHOT=RTSP` or `SNAPSHOT=RTSP30` for custom interval
 - ✨ NEW: Basic MQTT support with discovery - publishes camera status, connections to camera, and snapshot if available
 - 🔀 Removed Supervisord
-- 📦 Switch to static build of [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge) with h264_omx
+- 📦 Switch to static build of [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge)
 - 🔨 Fixed broken rtsp auth
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
@@ -167,7 +167,7 @@ sudo dpkg -i libseccomp2_2.5.1-1_armhf.deb
 
 ### Build from source
 
-If you would like to build the container from source, you will need to edit your `docker-compose.yml` to use the arm libraries. To do so, edit your `docker-compose.yml` and remove or comment out the line `image: mrlt8/wyze-bridge:latest` and add or uncomment the following three lines:
+If you would like to build the container from source, you will need to edit your `docker-compose.yml` to use the arm libraries by removing or commenting out the line `image: mrlt8/wyze-bridge:latest` and add or uncomment the following three lines:
 
 ```YAML
 build:
@@ -240,26 +240,22 @@ environment:
 
 ### Snapshot/Still Images
 
-- `SNAPSHOT=API` Will run ONCE at startup
+- `SNAPSHOT=API` Will run ONCE at startup and will grab a *high-quality* thumbnail from the wyze api and save it to `/img/cam-name.jpg` on docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
 
-  Will grab a *high-quality* thumbnail from the wyze api and save it to `/img/cam-name.jpg` on docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
-
-- `SNAPSHOT=RTSP` Will run every 180 seconds (configurable)
-
-  Will grab a frame from the RTSP stream every 180 seconds and save it to `/img/cam-name.jpg` on standard docker installs or `/config/www/cam-name.jpg` in Home Assistant mode. Can specify a custom interval with `SNAPSHOT=RTSP(INT)` e.g. `SNAPSHOT=RTSP30` to run every 30 seconds
+- `SNAPSHOT=RTSP` Will run every 180 seconds (configurable) and wll grab a new frame from the RTSP stream every iteration and save it to `/img/cam-name.jpg` on standard docker installs or `/config/www/cam-name.jpg` in Home Assistant mode. Can specify a custom interval with `SNAPSHOT=RTSP(INT)` e.g. `SNAPSHOT=RTSP30` to run every 30 seconds
 
 ### MQTT (beta)
 
 Some basic MQTT support is now available in v0.7.0.
 
-MQTT auth and discovery should be automatic in Home Assistant mode.
+MQTT auth and discovery should be automatic in Home Assistant mode - can be disabled by setting `MQTT_HOST` to False.
 
-| ENV Name    | Description                                | Example       |
-| ----------- | ------------------------------------------ | ------------- |
-| MQTT_HOST   | IP/Hostname AND Port of the MQTT broker    | mqtt:1883     |
-| MQTT_AUTH   | Username AND password; leave blank if none | user:pass     |
-| MQTT_TOPIC  | Optional - Specify topic prefix            | myhome        |
-| MQTT_DTOPIC | Optional - Discovery topic                 | homeassistant |
+| ENV Name    | Description                                   | Example             |
+| ----------- | --------------------------------------------- | ------------------- |
+| MQTT_HOST   | IP/Hostname AND Port of the MQTT broker       | core-mosquitto:1883 |
+| MQTT_AUTH   | Username AND password; leave blank if none    | user:pass           |
+| MQTT_TOPIC  | Optional - Specify topic prefix               | myhome              |
+| MQTT_DTOPIC | Optional - Discovery topic for home assistant | homeassistant       |
 
 ### Bitrate and Resolution
 

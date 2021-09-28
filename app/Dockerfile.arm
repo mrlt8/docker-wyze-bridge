@@ -16,8 +16,7 @@ RUN apt-get update \
 RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local mintotp paho-mqtt requests https://github.com/mrlt8/wyzecam/archive/refs/heads/main.zip
 ADD https://github.com/miguelangel-nubla/videoP2Proxy/archive/refs/heads/master.zip /tmp/tutk.zip
 RUN mkdir -p /build/app /build/tokens /build/img \
-    && FFMPEG_TAG=$(curl -s https://api.github.com/repos/homebridge/ffmpeg-for-homebridge/releases/latest | jq -r .tag_name) \
-    && curl -L https://github.com/homebridge/ffmpeg-for-homebridge/releases/download/${FFMPEG_TAG}/ffmpeg-debian-${FFMPEG_ARCH:-x86_64}.tar.gz \
+    && curl -L https://github.com/homebridge/ffmpeg-for-homebridge/releases/latest/download/ffmpeg-debian-${FFMPEG_ARCH:-x86_64}.tar.gz \
     | tar xzf - -C /build \
     && RTSP_TAG=$(curl -s https://api.github.com/repos/aler9/rtsp-simple-server/releases/latest | jq -r .tag_name) \
     && curl -L https://github.com/aler9/rtsp-simple-server/releases/download/${RTSP_TAG}/rtsp-simple-server_${RTSP_TAG}_linux_${RTSP_ARCH:-amd64}.tar.gz \
