@@ -11,8 +11,11 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 ## Changes in v0.7.0
 
-- 💥 BREAKING: `API_THUMB` and `RTSP_THUMB` are now `SNAPSHOT=API` or `SNAPSHOT=RTSP` or `SNAPSHOT=RTSP30` for custom interval
-- ✨ NEW: Basic MQTT support with discovery - publishes camera status, connections to camera, and snapshot if available
+- 💥 BREAKING: `API_THUMB` and `RTSP_THUMB` are now `SNAPSHOT=API` or `SNAPSHOT=RTSP` or `SNAPSHOT=RTSP30` for custom interval. See [Snapshot](#snapshotstill-images)
+- 💥 BREAKING: `LAN_ONLY` is now `NET_MODE=LAN`. See [LAN Mode](#lan-mode)
+- ✨ NEW: `NET_MODE=P2P` to block relay mode and stream from the camera using P2P mode for VPS/cloud and remote installs. see [P2P Mode](#p2p-mode)
+- ✨ NEW: Basic MQTT support with discovery - publishes camera status, connections to camera, and snapshot if available. See [MQTT](#mqtt-beta)
+- ✨ NEW: `ROTATE_DOOR` will use ffmpeg to roate the Doorbell (WYZEDB3) stream. NOTE: this will re-encoding rather than copy h264 stream, which may require additional processing power.
 - 🔀 Removed Supervisord
 - 📦 Switch to static build of [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge)
 - 🔨 Fixed broken rtsp auth
@@ -224,19 +227,26 @@ All options are case-insensitivE, and take single or comma separated values.
       - FILTER_BLOCK=true
   ```
 
-### LAN Mode
+### Network Connection Modes
 
-Like the wyze app, the tutk library will attempt to stream directly from the camera when on the same LAN as the camera in "LAN mode" or relay the stream via the cloud in "relay mode".
+Like the wyze app, the tutk library has three different modes to connect to the camera and will attempt to stream directly from the camera when on the same LAN as the camera in "LAN mode". If the camera is not available locally, it will either attempt to stream directly from your network using "P2P Mode" or relay the stream via the wyze servers (AWS) in "relay mode".
 
 LAN mode is more ideal as all streaming will be local and won't use additional bandwidth.
 
-You can restrict streaming to LAN only by adding the `LAN_ONLY` environment variable:
+#### LAN Mode
+
+By default, the bridge will attempt to connect via "LAN Mode", but will fallback to other methods if LAN mode fails.
+You can restrict streaming to LAN only by setting the `NET_MODE=LAN` environment variable:
 
 ```yaml
 environment:
     ..
-    - LAN_ONLY=True
+    - NET_MODE=LAN
 ```
+
+#### P2P Mode
+
+`NET_MODE=P2P` is ideal when running the bridge remotely on a different network or on a VPS and will allow the bridge to stream directly from the camera over the internet while blocking "Relay Mode".
 
 ### Snapshot/Still Images
 

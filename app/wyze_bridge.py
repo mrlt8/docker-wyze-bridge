@@ -27,6 +27,8 @@ class wyze_bridge:
             open(self.token_path + "mfa_token.txt", "w").close()
         if os.getenv("API_THUMB") or os.getenv("RTSP_THUMB"):
             print("\n\n⚠️ 'API_THUMB' and 'RTSP_THUMB' DEPRECATED.\nUSE 'SNAPSHOT'\n")
+        if os.getenv("LAN_ONLY"):
+            print("\n\n⚠️ 'LAN_ONLY' DEPRECATED.\nUSE 'NET_MODE'\n")
         self.user = self.get_wyze_data("user")
         self.cameras = self.get_filtered_cams()
         self.iotc = wyzecam.WyzeIOTC(max_num_av_channels=len(self.cameras)).__enter__()
@@ -277,26 +279,33 @@ class wyze_bridge:
         log.info("starting rtsp-simple-server")
         subprocess.Popen(["/app/rtsp-simple-server", "/app/rtsp-simple-server.yml"])
 
-    def start_stream(self, camera) -> None:
-        uri = self.clean_name(camera.nickname)
+    def start_stream(self, cam) -> None:
+        uri = self.clean_name(cam.nickname)
         if "API" in self.env_bool("SNAPSHOT").upper():
-            self.save_api_thumb(camera)
+            self.save_api_thumb(cam)
         env_q = self.env_bool("QUALITY", "na").strip("'\"\n ").ljust(3, "0")
         res_size = 1 if "sd" in env_q[:2] else 0
         bitrate = int(env_q[2:]) if 30 <= int(env_q[2:]) <= 255 else 120
         stream = f'{"SD" if res_size == 1 else "HD"} {bitrate}kb/s Stream'
-        if camera.product_model == "WYZEDB3" and res_size == 1:
+        if cam.product_model == "WYZEDB3" and res_size == 1:
             res_size = 4
-        iotc = [self.iotc.tutk_platform_lib, self.user, camera, res_size, bitrate]
-        if camera.product_model == "WYZEDB3" and res_size == 0:
+        iotc = [self.iotc.tutk_platform_lib, self.user, cam, res_size, bitrate]
+        if cam.product_model == "WYZEDB3" and res_size == 0:
             res_size = 4
+        rotate = cam.product_model in "WYZEDB3" and self.env_bool("ROTATE_DOOR", False)
         while True:
             try:
                 log.debug("⌛️ Connecting to cam..")
                 with wyzecam.iotc.WyzeIOTCSession(*iotc) as sess:
-                    if sess.session_check().mode != 2:
-                        if self.env_bool("LAN_ONLY"):
-                            raise Exception("☁️ NON-LAN MODE. WILL try again...")
+                    net_mode = self.env_bool("NET_MODE", "ANY").upper()
+                    if "P2P" in net_mode and sess.session_check().mode == 1:
+                        raise Exception("☁️ Connected via RELAY MODE! Reconnecting")
+                    if (
+                        "LAN" in net_mode or self.env_bool("LAN_ONLY")
+                    ) and sess.session_check().mode != 2:
+
+                        raise Exception("☁️ Connected via NON-LAN MODE! Reconnecting")
+                    if "ANY" in net_mode and sess.session_check().mode != 2:
                         log.warning(
                             f'☁️ WARNING: Camera is connected via "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode". Stream may consume additional bandwidth!'
                         )
@@ -305,9 +314,9 @@ class wyze_bridge:
                     ):
                         log.info(f"[videoParm] {sess.camera.camera_info['videoParm']}")
                     log.info(
-                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(camera.product_model,camera.product_model)} in "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {sess.camera.camera_info["basicInfo"].get("firmware","NA")} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
+                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(cam.product_model,cam.product_model)} in "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {sess.camera.camera_info["basicInfo"].get("firmware","NA")} IP: {cam.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
                     )
-                    cmd = self.get_ffmpeg_cmd(uri)
+                    cmd = self.get_ffmpeg_cmd(uri, rotate)
                     if "ffmpeg" not in cmd[0].lower():
                         cmd.insert(0, "ffmpeg")
                     if self.env_bool("DEBUG_FFMPEG"):
@@ -360,7 +369,7 @@ class wyze_bridge:
                     ffmpeg.wait()
                 gc.collect()
 
-    def get_ffmpeg_cmd(self, uri: str) -> list:
+    def get_ffmpeg_cmd(self, uri: str, rotate: bool = False) -> list:
         return os.getenv(f"FFMPEG_CMD_{uri}", os.getenv("FFMPEG_CMD", "")).strip(
             "'\"\n "
         ).split() or (
@@ -369,7 +378,8 @@ class wyze_bridge:
             .strip("'\"\n ")
             .split()
             + ["-i", "-"]
-            + ["-vcodec", "copy"]
+            + ["-vcodec"]
+            + (["copy"] if not rotate else ["libx264", "-vf", "transpose=2"])
             + ["-rtsp_transport", self.env_bool("RTSP_PROTOCOLS", "tcp")]
             + ["-f", "rtsp"]
             + ["rtsp://0.0.0.0:8554"]
