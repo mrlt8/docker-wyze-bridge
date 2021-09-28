@@ -1,3 +1,7 @@
+## Changes in v0.6.10
+
+- 🔨 Doorbell adjust HD res size
+
 ## Changes in v0.6.9
 
 - 🔨 Changed RTSP_THUMB command to use 127.0.0.1 instead of localhost
