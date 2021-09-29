@@ -4,7 +4,7 @@
     "slug": "docker-wyze-bridge",
     "url": "http://github.com/mrlt8/docker-wyze-bridge",
     "image": "mrlt8/wyze-bridge",
-    "version": "0.6.10",
+    "version": "0.7.0",
     "arch": [
         "armv7",
         "aarch64",
@@ -29,35 +29,40 @@
     "map": [
         "config:rw"
     ],
+    "services": [
+        "mqtt:want"
+    ],
     "options": {
         "WYZE_EMAIL": null,
         "WYZE_PASSWORD": null,
-        "LAN_ONLY": true,
-        "API_THUMB": true
+        "NET_MODE": "ANY",
+        "SNAPSHOT": "API",
+        "MQTT_DTOPIC": "homeassistant"
     },
     "schema": {
         "WYZE_EMAIL": "email",
         "WYZE_PASSWORD": "password",
-        "LAN_ONLY": "bool",
-        "API_THUMB": "bool",
-        "RTSP_THUMB": "bool?",
-        "FRESH_DATA": "bool?",
-        "IGNORE_OFFLINE": "bool?",
+        "NET_MODE": "list(LAN|P2P|ANY)",
+        "SNAPSHOT": "list(API|RTSP|Disable)",
+        "MQTT_HOST": "str?",
+        "MQTT_AUTH": "str?",
+        "MQTT_TOPIC": "str?",
+        "MQTT_DTOPIC": "str?",
         "FILTER_NAMES": "str?",
         "FILTER_MODELS": "str?",
         "FILTER_MACS": "str?",
         "FILTER_BLOCK": "bool?",
+        "ROTATE_DOOR": "bool?",
+        "IGNORE_OFFLINE": "bool?",
+        "FRESH_DATA": "bool?",
+        "URI_SEPARATOR": "list(-|_|#)?",
+        "QUALITY": "str?",
         "FFMPEG_FLAGS": "str?",
         "FFMPEG_CMD": "str?",
-        "QUALITY": "str?",
         "DEBUG_FRAMES": "bool?",
         "DEBUG_FFMPEG": "bool?",
-        "URI_SEPARATOR": "list(-|_|#)?",
-        "DEBUG_LEVEL": "list(debug|info|warning|error)?",
-        "RTSP_LOGLEVEL": "list(debug|info|warn)?",
         "RTSP_RTSPDISABLE": "list(yes|no)?",
         "RTSP_RTMPDISABLE": "list(yes|no)?",
         "RTSP_HLSDISABLE": "list(yes|no)?"
-    },
-    "legacy": true
+    }
 }

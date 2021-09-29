@@ -1,4 +1,5 @@
 import gc
+import json
 import logging
 import mintotp
 import os
@@ -9,15 +10,14 @@ import threading
 import time
 import warnings
 import wyzecam
+import paho.mqtt.publish
 
 
 class wyze_bridge:
-    def __init__(self) -> None:
+    def run(self) -> None:
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v0.7.0\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
-
-    def run(self) -> None:
-        print("\n🚀 STARTING DOCKER-WYZE-BRIDGE v0.6.10")
         if os.environ.get("HASS"):
             print("\n🏠 Home Assistant Mode")
             self.token_path = "/config/wyze-bridge/"
@@ -25,20 +25,22 @@ class wyze_bridge:
             os.makedirs("/config/www/", exist_ok=True)
             os.makedirs(self.token_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
-        if os.getenv("FILTER_MODE"):
-            print("\n\n⚠️ 'FILTER_MODE' DEPRECATED.\nUSE 'FILTER_BLOCK' INSTEAD\n")
-        if os.getenv("FILTER_MODEL"):
-            print("\n\n⚠️ 'FILTER_MODEL' DEPRECATED.\nUSE 'FILTER_MODELS' INSTEAD\n")
+        if os.getenv("API_THUMB") or os.getenv("RTSP_THUMB"):
+            print("\n\n⚠️ 'API_THUMB' and 'RTSP_THUMB' DEPRECATED.\nUSE 'SNAPSHOT'\n")
+        if os.getenv("LAN_ONLY"):
+            print("\n\n⚠️ 'LAN_ONLY' DEPRECATED.\nUSE 'NET_MODE'\n")
         self.user = self.get_wyze_data("user")
         self.cameras = self.get_filtered_cams()
         self.iotc = wyzecam.WyzeIOTC(max_num_av_channels=len(self.cameras)).__enter__()
-        # logging.debug(self.iotc.version)
+        logging.debug(f"IOTC Version: {self.iotc.version}")
         for camera in self.cameras:
+            self.add_rtsp_path(camera)
+            self.mqtt_discovery(camera)
             threading.Thread(
-                target=self.start_stream,
-                args=[camera],
-                name=camera.nickname.strip(),
+                target=self.start_stream, args=[camera], name=camera.nickname.strip()
             ).start()
+        os.environ["img_path"] = self.img_path
+        self.start_rtsp_server()
 
     mode = {0: "P2P", 1: "RELAY", 2: "LAN"}
     model_names = {
@@ -51,7 +53,7 @@ class wyze_bridge:
     }
 
     def env_bool(self, env: str, false: str = "") -> str:
-        return os.environ.get(env.upper(), false).lower().replace("false", "") or false
+        return os.environ.get(env.upper(), "").lower().replace("false", "") or false
 
     def env_list(self, env: str) -> list:
         if "," in os.getenv(env, ""):
@@ -88,12 +90,8 @@ class wyze_bridge:
                 mfa_type = "TotpVerificationCode"
                 verification_id = auth.mfa_details["totp_apps"][0]["app_id"]
             if os.path.exists(totp) and os.path.getsize(totp) > 1:
-                try:
-                    with open(totp, "r") as f:
-                        verification_code = mintotp.totp(f.read().strip("'\"\n "))
-                except Exception as ex:
-                    log.warning(ex)
-                    time.sleep(30)
+                with open(totp, "r") as f:
+                    verification_code = mintotp.totp(f.read().strip("'\"\n "))
                 log.info(f"🔏 Using {totp} to generate TOTP")
             else:
                 log.warning(f"\n📝 Add verification code to {mfa_token}")
@@ -130,7 +128,7 @@ class wyze_bridge:
     def get_wyze_data(self, name: str, refresh: bool = False):
         pkl_file = self.token_path + name + ".pickle"
         try:
-            if "cam" in name and self.env_bool("API_THUMB"):
+            if "cam" in name and "API" in self.env_bool("SNAPSHOT").upper():
                 raise Exception("♻️ Refreshing camera data for thumbnails")
             if "auth" in name and refresh:
                 raise Exception("♻️ Refresh auth tokens")
@@ -187,6 +185,8 @@ class wyze_bridge:
         return name.replace(" ", uri_sep).replace("#", "").replace("'", "").upper()
 
     def save_api_thumb(self, camera) -> None:
+        if not getattr(camera, "thumbnail", False):
+            return
         try:
             with wyzecam.api.requests.get(camera.thumbnail) as thumb:
                 thumb.raise_for_status()
@@ -197,16 +197,53 @@ class wyze_bridge:
         except Exception as ex:
             log.warning(ex)
 
-    def save_rtsp_thumb(self, uri: str) -> None:
-        sleep = os.getenv("RTSP_THUMB") if os.getenv("RTSP_THUMB").isdigit() else 180
-        rtsp_path = wyzecam.api.requests.post(
-            "http://0.0.0.0:9997/v1/config/paths/add/" + uri.lower(),
-            json={
-                "runOnPublish": f"sh -c 'ffmpeg -loglevel fatal -rtsp_transport tcp -i rtsp://127.0.0.1:$RTSP_PORT/$RTSP_PATH -vframes 1 -y {self.img_path}$RTSP_PATH.jpg && sleep {sleep}'",
-                "runOnPublishRestart": True,
-            },
+    def add_rtsp_path(self, cam: str) -> None:
+        path = f"RTSP_PATHS_{self.clean_name(cam.nickname)}_"
+        py_event = "python3 /app/rtsp_event.py $RTSP_PATH "
+        for event in {"READ", "PUBLISH"}:
+            if self.env_bool(path + "RUNON" + event):
+                os.environ[f"{path}RUNON{event}_2"] = os.environ[path + "RUNON" + event]
+            os.environ[path + "RUNON" + event] = py_event + event
+        os.environ[path + "READUSER"] = self.env_bool(
+            path + "READUSER", os.getenv("RTSP_PATHS_ALL_READUSER", "")
         )
-        rtsp_path.raise_for_status()
+        os.environ[path + "READPASS"] = self.env_bool(
+            path + "READPASS", os.getenv("RTSP_PATHS_ALL_READPASS", "")
+        )
+
+    def mqtt_discovery(self, cam):
+        if self.env_bool("MQTT_HOST"):
+            uri = f"{self.clean_name(cam.nickname).lower()}"
+            msgs = [(f"wyzebridge/{uri}/state", "offline")]
+            if self.env_bool("MQTT_DTOPIC"):
+                topic = f"{os.getenv('MQTT_DTOPIC')}/camera/{cam.mac}/config"
+                payload = {
+                    "uniq_id": "WYZE" + cam.mac,
+                    "name": "Wyze Cam " + cam.nickname,
+                    "topic": f"wyzebridge/{uri}/image",
+                    "json_attributes_topic": f"wyzebridge/{uri}/attributes",
+                    "availability_topic": f"wyzebridge/{uri}/state",
+                    "icon": "mdi:image",
+                    "device": {
+                        "connections": [["mac", cam.mac]],
+                        "identifiers": cam.mac,
+                        "manufacturer": "Wyze",
+                        "model": cam.product_model,
+                        "sw_version": cam.firmware_ver,
+                        "via_device": "docker-wyze-bridge",
+                    },
+                }
+                msgs.append((topic, json.dumps(payload)))
+            mqauth = os.getenv("MQTT_AUTH").split(":")
+            try:
+                paho.mqtt.publish.multiple(
+                    msgs,
+                    hostname=os.getenv("MQTT_HOST").split(":")[0],
+                    port=int(os.getenv("MQTT_HOST").split(":")[1]),
+                    auth={"username": mqauth[0], "password": mqauth[1]},
+                )
+            except Exception as ex:
+                log.warning(f"[MQTT] {ex}")
 
     def get_filtered_cams(self) -> list:
         cams = self.get_wyze_data("cameras")
@@ -219,7 +256,7 @@ class wyze_bridge:
                 if self.env_bool("IGNORE_OFFLINE"):
                     cams.remove(cam)
         total = len(cams)
-        if self.env_bool("FILTER_BLOCK") or self.env_bool("FILTER_MODE"):
+        if self.env_bool("FILTER_BLOCK"):
             filtered = list(filter(lambda cam: not self.env_filter(cam), cams))
             if len(filtered) > 0:
                 print("\n🪄 BLACKLIST MODE ON")
@@ -238,28 +275,41 @@ class wyze_bridge:
         print(f"\n🎬 STARTING {msg} {total} CAMERAS")
         return cams
 
-    def start_stream(self, camera) -> None:
-        uri = self.clean_name(camera.nickname)
-        if self.env_bool("RTSP_THUMB") and self.env_bool("RTSP_API"):
-            self.save_rtsp_thumb(uri)
-        elif self.env_bool("API_THUMB") and getattr(camera, "thumbnail", False):
-            self.save_api_thumb(camera)
-        env_q = self.env_bool("QUALITY", "na").upper().ljust(3, "0")
-        res_size = 1 if "SD" in env_q[:2] else 0
+    def start_rtsp_server(self):
+        try:
+            with open("/RTSP_TAG", "r") as tag:
+                log.info(f"Starting rtsp-simple-server {tag.read().strip()}")
+        except:
+            log.info("starting rtsp-simple-server")
+        subprocess.Popen(["/app/rtsp-simple-server", "/app/rtsp-simple-server.yml"])
+
+    def start_stream(self, cam) -> None:
+        uri = self.clean_name(cam.nickname)
+        if "API" in self.env_bool("SNAPSHOT").upper():
+            self.save_api_thumb(cam)
+        env_q = self.env_bool("QUALITY", "na").strip("'\"\n ").ljust(3, "0")
+        res_size = 1 if "sd" in env_q[:2] else 0
         bitrate = int(env_q[2:]) if 30 <= int(env_q[2:]) <= 255 else 120
-        stream = f'{"360p" if res_size == 1 else "1080p"} {bitrate}kb/s Stream'
-        if camera.product_model == "WYZEDB3" and res_size == 1:
+        stream = f'{"SD" if res_size == 1 else "HD"} {bitrate}kb/s Stream'
+        if cam.product_model == "WYZEDB3" and res_size == 1:
             res_size = 4
-        iotc = [self.iotc.tutk_platform_lib, self.user, camera, res_size, bitrate]
-        if camera.product_model == "WYZEDB3" and res_size == 0:
+        iotc = [self.iotc.tutk_platform_lib, self.user, cam, res_size, bitrate]
+        if cam.product_model == "WYZEDB3" and res_size == 0:
             res_size = 4
+        rotate = cam.product_model in "WYZEDB3" and self.env_bool("ROTATE_DOOR", False)
         while True:
             try:
                 log.debug("⌛️ Connecting to cam..")
                 with wyzecam.iotc.WyzeIOTCSession(*iotc) as sess:
-                    if sess.session_check().mode != 2:
-                        if self.env_bool("LAN_ONLY"):
-                            raise Exception("☁️ NON-LAN MODE. WILL try again...")
+                    net_mode = self.env_bool("NET_MODE", "ANY").upper()
+                    if "P2P" in net_mode and sess.session_check().mode == 1:
+                        raise Exception("☁️ Connected via RELAY MODE! Reconnecting")
+                    if (
+                        "LAN" in net_mode or self.env_bool("LAN_ONLY")
+                    ) and sess.session_check().mode != 2:
+
+                        raise Exception("☁️ Connected via NON-LAN MODE! Reconnecting")
+                    if "ANY" in net_mode and sess.session_check().mode != 2:
                         log.warning(
                             f'☁️ WARNING: Camera is connected via "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode". Stream may consume additional bandwidth!'
                         )
@@ -268,9 +318,9 @@ class wyze_bridge:
                     ):
                         log.info(f"[videoParm] {sess.camera.camera_info['videoParm']}")
                     log.info(
-                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(camera.product_model,camera.product_model)} in "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {sess.camera.camera_info["basicInfo"].get("firmware","NA")} IP: {camera.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
+                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(cam.product_model,cam.product_model)} in "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {sess.camera.camera_info["basicInfo"].get("firmware","NA")} IP: {cam.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
                     )
-                    cmd = self.get_ffmpeg_cmd(uri)
+                    cmd = self.get_ffmpeg_cmd(uri, rotate)
                     if "ffmpeg" not in cmd[0].lower():
                         cmd.insert(0, "ffmpeg")
                     if self.env_bool("DEBUG_FFMPEG"):
@@ -284,12 +334,10 @@ class wyze_bridge:
                         try:
                             if skipped >= int(os.getenv("BAD_FRAMES", 30)):
                                 raise Exception(f"Wrong resolution: {info.frame_size}")
-                            if res_size != info.frame_size and not self.env_bool(
-                                "IGNORE_RES"
-                            ):
+                            if res_size != info.frame_size:
                                 skipped += 1
                                 log.debug(
-                                    f"Bad frame resolution: {res_size} != {info.frame_size} [{skipped}]"
+                                    f"Bad frame resolution: {info.frame_size} [{skipped}]"
                                 )
                                 continue
                             ffmpeg.stdin.write(frame)
@@ -325,47 +373,51 @@ class wyze_bridge:
                     ffmpeg.wait()
                 gc.collect()
 
-    def get_ffmpeg_cmd(self, uri: str) -> list:
-        return (
-            (os.getenv(f"FFMPEG_CMD_{uri}").strip("'\"\n ")).split()
-            if f"FFMPEG_CMD_{uri}" in os.environ
-            else (os.environ["FFMPEG_CMD"].strip("'\"\n ")).split()
-            if self.env_bool("FFMPEG_CMD")
-            else ["-loglevel"]
-            + ["verbose" if self.env_bool("DEBUG_FFMPEG") else "fatal"]
+    def get_ffmpeg_cmd(self, uri: str, rotate: bool = False) -> list:
+        return os.getenv(f"FFMPEG_CMD_{uri}", os.getenv("FFMPEG_CMD", "")).strip(
+            "'\"\n "
+        ).split() or (
+            ["-loglevel", "verbose" if self.env_bool("DEBUG_FFMPEG") else "fatal"]
             + os.getenv(f"FFMPEG_FLAGS_{uri}", os.getenv("FFMPEG_FLAGS", ""))
             .strip("'\"\n ")
             .split()
-            + [
-                "-i",
-                "-",
-                "-vcodec",
-                "copy",
-                "-rtsp_transport",
-                self.env_bool("RTSP_PROTOCOLS", "tcp"),
-                "-f",
-                "rtsp",
-                "rtsp://"
-                + (
-                    "0.0.0.0" + os.getenv("RTSP_RTSPADDRESS")
-                    if os.getenv("RTSP_RTSPADDRESS", "").startswith(":")
-                    else self.env_bool("RTSP_RTSPADDRESS", "0.0.0.0:8554")
-                ),
-            ]
+            + ["-i", "-"]
+            + ["-vcodec"]
+            + (["copy"] if not rotate else ["libx264", "-vf", "transpose=2"])
+            + ["-rtsp_transport", self.env_bool("RTSP_PROTOCOLS", "tcp")]
+            + ["-f", "rtsp"]
+            + ["rtsp://0.0.0.0:8554"]
         )
 
 
-if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
-    print(
-        "Set your "
-        + ("WYZE_EMAIL " if not os.getenv("WYZE_EMAIL") else "")
-        + ("WYZE_PASSWORD " if not os.getenv("WYZE_PASSWORD") else "")
-        + "credentials and restart the container."
-    )
-    sys.exit()
-
 if __name__ == "__main__":
+    if os.getenv("HASS"):
+        with open("/data/options.json") as f:
+            conf = json.load(f).items()
+        info = wyzecam.api.requests.get(
+            "http://supervisor/info",
+            headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
+        ).json()
+        if "ok" in info.get("result"):
+            os.environ["HOSTNAME"] = info["data"]["hostname"]
+        mqtt_conf = wyzecam.api.requests.get(
+            "http://supervisor/services/mqtt",
+            headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
+        ).json()
+        if "ok" in mqtt_conf.get("result"):
+            data = mqtt_conf["data"]
+            os.environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
+            os.environ["MQTT_AUTH"] = f'{data["username"]}:{data["password"]}'
+        [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf if v]
+    if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
+        print(
+            "Missing credentials:",
+            ("WYZE_EMAIL " if not os.getenv("WYZE_EMAIL") else "")
+            + ("WYZE_PASSWORD" if not os.getenv("WYZE_PASSWORD") else ""),
+        )
+        sys.exit()
     wb = wyze_bridge()
+    threading.current_thread().name = "WyzeBridge"
     logging.basicConfig(
         format="%(asctime)s [%(name)s][%(levelname)s][%(threadName)s] %(message)s"
         if wb.env_bool("DEBUG_LEVEL")

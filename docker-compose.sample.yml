@@ -2,7 +2,7 @@ version: '2.4'
 services:
     wyze-bridge:
         container_name: wyze-bridge
-        restart: always
+        restart: unless-stopped
         image: mrlt8/wyze-bridge:latest # Use a prebuilt image
         # build:  # Uncomment to build from source
         #     context: ./app # Uncomment to build from source
