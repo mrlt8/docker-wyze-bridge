@@ -4,7 +4,7 @@
     "slug": "docker-wyze-bridge",
     "url": "http://github.com/mrlt8/docker-wyze-bridge",
     "image": "mrlt8/wyze-bridge",
-    "version": "0.7.0",
+    "version": "0.7.1",
     "arch": [
         "armv7",
         "aarch64",
@@ -43,7 +43,7 @@
         "WYZE_EMAIL": "email",
         "WYZE_PASSWORD": "password",
         "NET_MODE": "list(LAN|P2P|ANY)",
-        "SNAPSHOT": "list(API|RTSP|Disable)",
+        "SNAPSHOT": "list(API|RTSP|RTSP15|RTSP30|RTSP60|Disable)",
         "MQTT_HOST": "str?",
         "MQTT_AUTH": "str?",
         "MQTT_TOPIC": "str?",

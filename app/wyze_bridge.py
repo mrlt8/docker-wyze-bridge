@@ -15,7 +15,7 @@ import paho.mqtt.publish
 
 class wyze_bridge:
     def run(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v0.7.0\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v0.7.1\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
         if os.environ.get("HASS"):
@@ -295,8 +295,8 @@ class wyze_bridge:
             res_size = 4
         iotc = [self.iotc.tutk_platform_lib, self.user, cam, res_size, bitrate]
         if cam.product_model == "WYZEDB3" and res_size == 0:
-            res_size = 4
-        rotate = cam.product_model in "WYZEDB3" and self.env_bool("ROTATE_DOOR", False)
+            res_size = 3
+        rotate = cam.product_model == "WYZEDB3" and self.env_bool("ROTATE_DOOR", False)
         while True:
             try:
                 log.debug("⌛️ Connecting to cam..")
@@ -374,6 +374,7 @@ class wyze_bridge:
                 gc.collect()
 
     def get_ffmpeg_cmd(self, uri: str, rotate: bool = False) -> list:
+        lib264 = ["libx264", "-vf", "transpose=1", "-preset", "veryfast", "-crf", "20"]
         return os.getenv(f"FFMPEG_CMD_{uri}", os.getenv("FFMPEG_CMD", "")).strip(
             "'\"\n "
         ).split() or (
@@ -383,7 +384,7 @@ class wyze_bridge:
             .split()
             + ["-i", "-"]
             + ["-vcodec"]
-            + (["copy"] if not rotate else ["libx264", "-vf", "transpose=2"])
+            + (["copy"] if not rotate else lib264)
             + ["-rtsp_transport", self.env_bool("RTSP_PROTOCOLS", "tcp")]
             + ["-f", "rtsp"]
             + ["rtsp://0.0.0.0:8554"]

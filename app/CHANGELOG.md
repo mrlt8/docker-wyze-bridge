@@ -1,3 +1,7 @@
+# Changes in v0.7.1
+
+- 🔨 Doorbell related changes - rotate other direction and set HD frame size.
+
 # Changes in v0.7.0
 
 - 💥 BREAKING: `API_THUMB` and `RTSP_THUMB` are now `SNAPSHOT=API` or `SNAPSHOT=RTSP` or `SNAPSHOT=RTSP30` for custom interval. [See Snapshot](https://github.com/mrlt8/docker-wyze-bridge#snapshotstill-images)
