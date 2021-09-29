@@ -19,6 +19,7 @@ RUN mkdir -p /build/app /build/tokens /build/img \
     && curl -L https://github.com/homebridge/ffmpeg-for-homebridge/releases/latest/download/ffmpeg-debian-${FFMPEG_ARCH:-x86_64}.tar.gz \
     | tar xzf - -C /build \
     && RTSP_TAG=$(curl -s https://api.github.com/repos/aler9/rtsp-simple-server/releases/latest | jq -r .tag_name) \
+    && echo -n $RTSP_TAG > /build/RTSP_TAG \
     && curl -L https://github.com/aler9/rtsp-simple-server/releases/download/${RTSP_TAG}/rtsp-simple-server_${RTSP_TAG}_linux_${RTSP_ARCH:-amd64}.tar.gz \
     | tar xzf - -C /build/app \
     && unzip -j /tmp/tutk.zip */lib/Linux/${TUTK_ARCH:-x64}/*.a -d /tmp/tutk/ \

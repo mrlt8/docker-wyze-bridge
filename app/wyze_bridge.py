@@ -15,7 +15,7 @@ import paho.mqtt.publish
 
 class wyze_bridge:
     def run(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v0.7x\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v0.7.0\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
         if os.environ.get("HASS"):
@@ -276,7 +276,11 @@ class wyze_bridge:
         return cams
 
     def start_rtsp_server(self):
-        log.info("starting rtsp-simple-server")
+        try:
+            with open("/RTSP_TAG", "r") as tag:
+                log.info(f"Starting rtsp-simple-server {tag.read().strip()}")
+        except:
+            log.info("starting rtsp-simple-server")
         subprocess.Popen(["/app/rtsp-simple-server", "/app/rtsp-simple-server.yml"])
 
     def start_stream(self, cam) -> None:
