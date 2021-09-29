@@ -38,14 +38,14 @@
     </Variable>
     <Variable>
       <Value/>
-      <Name>LAN_ONLY</Name>
+      <Name>NET_MODE</Name>
       <Mode/>
     </Variable>
   </Environment>
   <Labels/>
   <Config Name="WYZE_EMAIL" Target="WYZE_EMAIL" Default="" Mode="" Description="Container Variable: WYZE_EMAIL" Type="Variable" Display="always" Required="true" Mask="false"/>
   <Config Name="WYZE_PASSWORD" Target="WYZE_PASSWORD" Default="" Mode="" Description="Container Variable: WYZE_PASSWORD" Type="Variable" Display="always" Required="true" Mask="false"/>
-  <Config Name="LAN_ONLY" Target="LAN_ONLY" Default="False" Mode="" Description="Container Variable: LAN_ONLY" Type="Variable" Display="always" Required="false" Mask="false">False</Config>
+  <Config Name="NET_MODE" Target="NET_MODE" Default="ANY" Mode="" Description="Container Variable: NET_MODE" Type="Variable" Display="always" Required="false" Mask="false">Any</Config>
   <Config Name="RTSP Port" Target="8554" Default="8554" Mode="tcp" Description="RTSP Port" Type="Port" Display="always" Required="true" Mask="false">8554</Config>
   <Config Name="RTMP Port" Target="1935" Default="1935" Mode="tcp" Description="RTMP Port" Type="Port" Display="always" Required="true" Mask="false">1937</Config>
   <Config Name="HLS Port" Target="8888" Default="8888" Mode="tcp" Description="HLS Port" Type="Port" Display="always" Required="true" Mask="false">8888</Config>
