@@ -30,6 +30,8 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 
 The bridge currently has issues connecting to cameras on newer firmware with DTLS enabled.
 
+Some reports of DTLS being rolled out on the V3 beta firmware.
+
 If you wish to continue using your camera with the bridge, you should downgrade or remain on a firmware without DTLS.
 
 See [github](https://github.com/mrlt8/docker-wyze-bridge#%EF%B8%8F-firmware-compatibility) for latest non-DTLS firmware.

@@ -332,7 +332,7 @@ class wyze_bridge:
                     skipped = 0
                     for (frame, info) in sess.recv_video_data():
                         try:
-                            if skipped >= os.getenv("BAD_FRAMES", 30):
+                            if skipped >= int(os.getenv("BAD_FRAMES", 30)):
                                 raise Exception(f"Wrong resolution: {info.frame_size}")
                             if res_size != info.frame_size:
                                 skipped += 1
