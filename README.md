@@ -9,6 +9,11 @@ Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze 
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
+## Changes in v0.7.1
+
+- 🔨 Doorbell related changes - rotate other direction and set HD frame size. #150 #133
+- 🏠 Home Assistant: Add additional RTSP intervals.
+
 ## Changes in v0.7.0
 
 - 💥 BREAKING: `API_THUMB` and `RTSP_THUMB` are now `SNAPSHOT=API` or `SNAPSHOT=RTSP` or `SNAPSHOT=RTSP30` for custom interval. See [Snapshot](#snapshotstill-images)

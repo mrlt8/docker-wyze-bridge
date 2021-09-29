@@ -1,6 +1,7 @@
 # Changes in v0.7.1
 
 - 🔨 Doorbell related changes - rotate other direction and set HD frame size.
+- 🏠 Home Assistant: Add additional RTSP intervals.
 
 # Changes in v0.7.0
 
