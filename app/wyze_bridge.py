@@ -15,7 +15,7 @@ import paho.mqtt.publish
 
 class wyze_bridge:
     def run(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v0.7.1\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v0.7.2\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
         if os.environ.get("HASS"):
@@ -295,7 +295,7 @@ class wyze_bridge:
             res_size = 4
         iotc = [self.iotc.tutk_platform_lib, self.user, cam, res_size, bitrate]
         if cam.product_model == "WYZEDB3" and res_size == 0:
-            res_size = 3
+            res_size = 4
         rotate = cam.product_model == "WYZEDB3" and self.env_bool("ROTATE_DOOR", False)
         while True:
             try:

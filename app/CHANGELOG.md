@@ -1,3 +1,7 @@
+# Changes in v0.7.2
+
+- 🔨 Doorbell related changes: adjust HD frame size.
+
 # Changes in v0.7.1
 
 - 🔨 Doorbell related changes - rotate other direction and set HD frame size.
