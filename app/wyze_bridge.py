@@ -15,7 +15,7 @@ import paho.mqtt.publish
 
 class wyze_bridge:
     def run(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v0.7.2\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v0.7.3\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
         if os.environ.get("HASS"):
@@ -294,8 +294,6 @@ class wyze_bridge:
         if cam.product_model == "WYZEDB3" and res_size == 1:
             res_size = 4
         iotc = [self.iotc.tutk_platform_lib, self.user, cam, res_size, bitrate]
-        if cam.product_model == "WYZEDB3" and res_size == 0:
-            res_size = 4
         rotate = cam.product_model == "WYZEDB3" and self.env_bool("ROTATE_DOOR", False)
         while True:
             try:
@@ -307,16 +305,17 @@ class wyze_bridge:
                     if (
                         "LAN" in net_mode or self.env_bool("LAN_ONLY")
                     ) and sess.session_check().mode != 2:
-
                         raise Exception("☁️ Connected via NON-LAN MODE! Reconnecting")
                     if "ANY" in net_mode and sess.session_check().mode != 2:
                         log.warning(
                             f'☁️ WARNING: Camera is connected via "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode". Stream may consume additional bandwidth!'
                         )
-                    if self.env_bool("DEBUG_LEVEL") and sess.camera.camera_info.get(
-                        "videoParm", False
-                    ):
-                        log.info(f"[videoParm] {sess.camera.camera_info['videoParm']}")
+                    if sess.camera.camera_info.get("videoParm", False):
+                        videoParm = sess.camera.camera_info["videoParm"]
+                        if self.env_bool("DEBUG_LEVEL"):
+                            log.info(f"[videoParm] {videoParm}")
+                        if cam.product_model == "WYZEDB3" and res <= 1:
+                            res = videoParm["resolution"]
                     log.info(
                         f'🎉 Starting {stream} for WyzeCam {self.model_names.get(cam.product_model,cam.product_model)} in "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {sess.camera.camera_info["basicInfo"].get("firmware","NA")} IP: {cam.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
                     )
