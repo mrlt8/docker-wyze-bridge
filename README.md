@@ -9,7 +9,7 @@ Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze 
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
-## Changes in v0.7.2 and v0.7.3
+## Changes in v0.7.2 ~ v0.7.4
 
 - 🔨 Doorbell related changes: adjust HD frame size. Please post feedback [here](https://github.com/mrlt8/docker-wyze-bridge/issues/133)
 
