@@ -1,4 +1,4 @@
-# Changes in v0.7.2 ~ v0.7.4
+# Changes in v0.7.2 ~ v0.7.5
 
 - 🔨 Doorbell related changes: adjust HD frame size. Please post feedback [here](https://github.com/mrlt8/docker-wyze-bridge/issues/133)
 
