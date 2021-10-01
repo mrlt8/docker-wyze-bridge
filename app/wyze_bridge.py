@@ -1,3 +1,4 @@
+from ctypes import resize
 import gc
 import json
 import logging
@@ -15,7 +16,7 @@ import paho.mqtt.publish
 
 class wyze_bridge:
     def run(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v0.7.5\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v0.7.6\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
         if os.environ.get("HASS"):
@@ -293,7 +294,8 @@ class wyze_bridge:
         stream = f'{"SD" if res_size == 1 else "HD"} {bitrate}kb/s Stream'
         if cam.product_model == "WYZEDB3" and res_size == 1:
             res_size = 4
-        res_size = self.env_bool("FRAME_SIZE", res_size)
+        if cam.product_model == "WYZEDB3":
+            res_size = int(self.env_bool("DOOR_SIZE", res_size))
         iotc = [self.iotc.tutk_platform_lib, self.user, cam, res_size, bitrate]
         rotate = cam.product_model == "WYZEDB3" and self.env_bool("ROTATE_DOOR", False)
         while True:
@@ -315,8 +317,11 @@ class wyze_bridge:
                         videoParm = sess.camera.camera_info["videoParm"]
                         if self.env_bool("DEBUG_LEVEL"):
                             log.info(f"[videoParm] {videoParm}")
-                        if cam.product_model == "WYZEDB3":
-                            res_size = int(videoParm["resolution"]) + 1
+                        if (
+                            not self.env_bool("DOOR_SIZE")
+                            and cam.product_model == "WYZEDB3"
+                        ):
+                            res_size = int(videoParm["resolution"])
                     log.info(
                         f'🎉 Starting {stream} for WyzeCam {self.model_names.get(cam.product_model,cam.product_model)} in "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {sess.camera.camera_info["basicInfo"].get("firmware","NA")} IP: {cam.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
                     )
@@ -334,8 +339,10 @@ class wyze_bridge:
                         try:
                             if skipped >= int(os.getenv("BAD_FRAMES", 30)):
                                 raise Exception(f"Wrong resolution: {info.frame_size}")
-                            if res_size != info.frame_size and not self.env_bool(
-                                "IGNORE_RES"
+                            if (
+                                self.env_bool("IGNORE_RES", res_size)
+                                != str(info.frame_size)
+                                and res_size != info.frame_size
                             ):
                                 skipped += 1
                                 log.debug(
