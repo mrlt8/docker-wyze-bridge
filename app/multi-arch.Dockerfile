@@ -14,7 +14,7 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local mintotp paho-mqtt requests https://github.com/mrlt8/wyzecam/archive/refs/heads/main.zip
+RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local mintotp paho-mqtt requests https://github.com/mrlt8/wyzecam/archive/refs/heads/dev.zip
 COPY *.lib /tmp/lib/
 RUN mkdir -p /build/app /build/tokens /build/img \
     && curl -L https://github.com/homebridge/ffmpeg-for-homebridge/releases/latest/download/ffmpeg-debian-${FFMPEG_ARCH:-x86_64}.tar.gz \
