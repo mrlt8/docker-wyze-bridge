@@ -13,7 +13,7 @@ import json
 class rtsp_event:
     def __init__(self):
         signal.signal(signal.SIGQUIT, lambda n, f: sys.exit(0))
-        # signal.signal(signal.SIGINT, lambda n, f: sys.exit(0))
+        signal.signal(signal.SIGINT, lambda n, f: sys.exit(0))
         atexit.register(self.clean_up)
         self.__dict__.update(
             dict(zip(["uri", "type", "mac", "model", "firmware"], sys.argv[1:]))

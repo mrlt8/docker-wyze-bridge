@@ -16,7 +16,7 @@ import paho.mqtt.publish
 
 class wyze_bridge:
     def run(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v0.7.6\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.0 BETA\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
         if os.environ.get("HASS"):
@@ -32,8 +32,9 @@ class wyze_bridge:
             print("\n\n⚠️ 'LAN_ONLY' DEPRECATED.\nUSE 'NET_MODE'\n")
         self.user = self.get_wyze_data("user")
         self.cameras = self.get_filtered_cams()
-        self.iotc = wyzecam.WyzeIOTC(max_num_av_channels=len(self.cameras)).__enter__()
-        logging.debug(f"IOTC Version: {self.iotc.version}")
+        self.iotc = wyzecam.WyzeIOTC(
+            max_num_av_channels=len(self.cameras), sdk_key=os.getenv("SDK_KEY")
+        ).__enter__()
         for camera in self.cameras:
             self.add_rtsp_path(camera)
             self.mqtt_discovery(camera)
@@ -158,7 +159,13 @@ class wyze_bridge:
             try:
                 log.info(f"☁️ Fetching '{name}' from the Wyze API...")
                 if "auth" in name and refresh:
-                    self.auth = data = wyzecam.api.refresh_token(self.auth)
+                    try:
+                        self.auth = data = wyzecam.api.refresh_token(self.auth)
+                    except AssertionError:
+                        log.warning("Expired refresh token?")
+                        self.auth = self.get_wyze_data("auth")
+                    except Exception as ex:
+                        print(ex)
                 elif "auth" in name:
                     self.auth = data = self.auth_wyze()
                 if "user" in name:
@@ -249,9 +256,6 @@ class wyze_bridge:
     def get_filtered_cams(self) -> list:
         cams = self.get_wyze_data("cameras")
         for cam in cams:
-            if getattr(cam, "dtls") is not None and getattr(cam, "dtls", 0) > 0:
-                log.warning(f"💔 DTLS on {cam.nickname} FW:{cam.firmware_ver}")
-                cams.remove(cam)
             if cam.product_model == "WVOD1" or cam.product_model == "WYZEC1":
                 log.warning(f"💔 {cam.product_model} not fully supported yet")
                 if self.env_bool("IGNORE_OFFLINE"):

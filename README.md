@@ -9,25 +9,9 @@ Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze 
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
-## Changes in v0.7.2 ~ v0.7.6
+## Changes in v1.0.0
 
-- 🔨 Doorbell related changes: adjust HD frame size. Please post feedback [here](https://github.com/mrlt8/docker-wyze-bridge/issues/133)
-
-## Changes in v0.7.1
-
-- 🔨 Doorbell related changes - rotate other direction and set HD frame size. #150 #133
-- 🏠 Home Assistant: Add additional RTSP intervals.
-
-## Changes in v0.7.0
-
-- 💥 BREAKING: `API_THUMB` and `RTSP_THUMB` are now `SNAPSHOT=API` or `SNAPSHOT=RTSP` or `SNAPSHOT=RTSP30` for custom interval. See [Snapshot](#snapshotstill-images)
-- 💥 BREAKING: `LAN_ONLY` is now `NET_MODE=LAN`. See [LAN Mode](#lan-mode)
-- ✨ NEW: `NET_MODE=P2P` to block relay mode and stream from the camera using P2P mode for VPS/cloud and remote installs. see [P2P Mode](#p2p-mode)
-- ✨ NEW: Basic MQTT support with discovery - publishes camera status, connections to camera, and snapshot if available. See [MQTT](#mqtt-beta)
-- ✨ NEW: `ROTATE_DOOR` will use ffmpeg to roate the Doorbell (WYZEDB3) stream. NOTE: this will re-encoding rather than copy h264 stream, which may require additional processing power.
-- 🔀 Removed Supervisord
-- 📦 Switch to static build of [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge)
-- 🔨 Fixed broken rtsp auth
+- ✨ NEW: DTLS Firmware support - Bridge should now work with the latest firmware release.
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -48,9 +32,9 @@ The container can be run on its own, in [Portainer](https://github.com/mrlt8/doc
 ## Supported Cameras
 
 ![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
-![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-<4.9.6.241-important.svg)
+![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
 ![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
-![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-<4.10.6.241-important.svg)
+![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-yes-success.svg)
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
 ![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-no-inactive.svg)
 
@@ -58,16 +42,7 @@ Some reports of issues with v1 and WCO models that need further investigation.
 
 ### Firmware Compatibility
 
-The bridge currently has issues connecting to cameras on newer firmware with DTLS enabled.
-
-Some reports of DTLS being rolled out on the V3 beta firmware.
-
-If you wish to continue using your camera with the bridge, you should downgrade or remain on a firmware without DTLS:
-| Camera | Latest Firmware w/o DTLS    |
-| ------ | --------------------------- |
-| V2     | 4.9.6.241 (March 9, 2021)   |
-| V3     | 4.36.3.19 (August 26, 2021) |
-| PAN    | 4.10.6.241 (March 9, 2021)  |
+The bridge should be compatible with the latest firmware releases.
 
 ## Basic Usage
 
