@@ -163,7 +163,7 @@ class wyze_bridge:
                         self.auth = data = wyzecam.api.refresh_token(self.auth)
                     except AssertionError:
                         log.warning("Expired refresh token?")
-                        self.auth = self.get_wyze_data("auth")
+                        self.auth = self.get_wyze_data("auth", True)
                     except Exception as ex:
                         print(ex)
                 elif "auth" in name:
