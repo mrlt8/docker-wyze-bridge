@@ -60,6 +60,8 @@ Some reports of issues with v1 and WCO models that need further investigation.
 
 The bridge currently has issues connecting to cameras on newer firmware with DTLS enabled.
 
+This should be resolved in the next release which can be tested using `mrlt8/wyze-bridge:dev` or the [dev branch](https://github.com/mrlt8/docker-wyze-bridge/tree/dev)
+
 Some reports of DTLS being rolled out on the V3 beta firmware.
 
 If you wish to continue using your camera with the bridge, you should downgrade or remain on a firmware without DTLS:
