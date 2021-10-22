@@ -60,7 +60,7 @@ jobs:
           tags: |
             type=schedule
             type=semver,pattern={{ version }}
-            type=edge,branch=main
+            type=edge,branch=main,enable=${{ github.event_name == 'push' }}
             type=ref,event=branch,enable=${{ contains(github.ref,'dev') }}
 
       # Build and push Docker image with Buildx (don't push on PR)
