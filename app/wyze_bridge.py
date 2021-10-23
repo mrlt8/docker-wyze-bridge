@@ -256,7 +256,7 @@ class wyze_bridge:
     def get_filtered_cams(self) -> list:
         cams = self.get_wyze_data("cameras")
         for cam in cams:
-            if cam.product_model == "WVOD1" or cam.product_model == "WYZEC1":
+            if cam.product_model == "WYZEC1":
                 log.warning(f"💔 {cam.product_model} not fully supported yet")
                 if self.env_bool("IGNORE_OFFLINE"):
                     cams.remove(cam)
@@ -326,8 +326,11 @@ class wyze_bridge:
                             and cam.product_model == "WYZEDB3"
                         ):
                             res_size = int(videoParm["resolution"])
+                    fw_v = sess.camera.camera_info["basicInfo"].get("firmware", "NA")
+                    if sess.camera.dtls and sess.camera.dtls == 1:
+                        fw_v += " (DTLS)"
                     log.info(
-                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(cam.product_model,cam.product_model)} in "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {sess.camera.camera_info["basicInfo"].get("firmware","NA")} IP: {cam.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
+                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(cam.product_model,cam.product_model)} "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {fw_v} IP: {cam.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
                     )
                     cmd = self.get_ffmpeg_cmd(uri, rotate)
                     if "ffmpeg" not in cmd[0].lower():
