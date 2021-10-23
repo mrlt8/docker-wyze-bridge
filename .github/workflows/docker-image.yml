@@ -73,6 +73,7 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           file: ./app/multi-arch.Dockerfile
           platforms: linux/amd64,linux/arm64,linux/arm
+          # build-args: SDK_KEY=${{secrets.SDK_KEY}}
           labels: |
             ${{ steps.meta.outputs.labels }}
             io.hass.name=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.title'] }}

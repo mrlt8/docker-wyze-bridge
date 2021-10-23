@@ -1,4 +1,3 @@
-from ctypes import resize
 import gc
 import json
 import logging
@@ -16,7 +15,7 @@ import paho.mqtt.publish
 
 class wyze_bridge:
     def run(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v0.7.6\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.0\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
         if os.environ.get("HASS"):
@@ -26,14 +25,11 @@ class wyze_bridge:
             os.makedirs("/config/www/", exist_ok=True)
             os.makedirs(self.token_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
-        if os.getenv("API_THUMB") or os.getenv("RTSP_THUMB"):
-            print("\n\n⚠️ 'API_THUMB' and 'RTSP_THUMB' DEPRECATED.\nUSE 'SNAPSHOT'\n")
-        if os.getenv("LAN_ONLY"):
-            print("\n\n⚠️ 'LAN_ONLY' DEPRECATED.\nUSE 'NET_MODE'\n")
         self.user = self.get_wyze_data("user")
         self.cameras = self.get_filtered_cams()
-        self.iotc = wyzecam.WyzeIOTC(max_num_av_channels=len(self.cameras)).__enter__()
-        logging.debug(f"IOTC Version: {self.iotc.version}")
+        self.iotc = wyzecam.WyzeIOTC(
+            max_num_av_channels=len(self.cameras), sdk_key=os.getenv("SDK_KEY")
+        ).__enter__()
         for camera in self.cameras:
             self.add_rtsp_path(camera)
             self.mqtt_discovery(camera)
@@ -158,7 +154,13 @@ class wyze_bridge:
             try:
                 log.info(f"☁️ Fetching '{name}' from the Wyze API...")
                 if "auth" in name and refresh:
-                    self.auth = data = wyzecam.api.refresh_token(self.auth)
+                    try:
+                        self.auth = data = wyzecam.api.refresh_token(self.auth)
+                    except AssertionError:
+                        log.warning("Expired refresh token?")
+                        self.auth = self.get_wyze_data("auth", True)
+                    except Exception as ex:
+                        print(ex)
                 elif "auth" in name:
                     self.auth = data = self.auth_wyze()
                 if "user" in name:
@@ -249,10 +251,7 @@ class wyze_bridge:
     def get_filtered_cams(self) -> list:
         cams = self.get_wyze_data("cameras")
         for cam in cams:
-            if getattr(cam, "dtls") is not None and getattr(cam, "dtls", 0) > 0:
-                log.warning(f"💔 DTLS on {cam.nickname} FW:{cam.firmware_ver}")
-                cams.remove(cam)
-            if cam.product_model == "WVOD1" or cam.product_model == "WYZEC1":
+            if cam.product_model == "WYZEC1":
                 log.warning(f"💔 {cam.product_model} not fully supported yet")
                 if self.env_bool("IGNORE_OFFLINE"):
                     cams.remove(cam)
@@ -322,8 +321,11 @@ class wyze_bridge:
                             and cam.product_model == "WYZEDB3"
                         ):
                             res_size = int(videoParm["resolution"])
+                    fw_v = sess.camera.camera_info["basicInfo"].get("firmware", "NA")
+                    if sess.camera.dtls and sess.camera.dtls == 1:
+                        fw_v += " 🔒 (DTLS)"
                     log.info(
-                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(cam.product_model,cam.product_model)} in "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {sess.camera.camera_info["basicInfo"].get("firmware","NA")} IP: {cam.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
+                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(cam.product_model,cam.product_model)} "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {fw_v} IP: {cam.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
                     )
                     cmd = self.get_ffmpeg_cmd(uri, rotate)
                     if "ffmpeg" not in cmd[0].lower():
@@ -419,13 +421,16 @@ if __name__ == "__main__":
             os.environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
             os.environ["MQTT_AUTH"] = f'{data["username"]}:{data["password"]}'
         [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf if v]
+    if not os.getenv("SDK_KEY"):
+        print("Missing SDK_KEY")
+        sys.exit(1)
     if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
         print(
             "Missing credentials:",
             ("WYZE_EMAIL " if not os.getenv("WYZE_EMAIL") else "")
             + ("WYZE_PASSWORD" if not os.getenv("WYZE_PASSWORD") else ""),
         )
-        sys.exit()
+        sys.exit(1)
     wb = wyze_bridge()
     threading.current_thread().name = "WyzeBridge"
     logging.basicConfig(

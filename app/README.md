@@ -6,11 +6,15 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/mrlt8/wyze-bridge?logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 ![GitHub Repo stars](https://img.shields.io/github/stars/mrlt8/docker-wyze-bridge?style=social)
 
-Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze cameras including v3. No Third-party or special firmware required.
+Docker container to expose a local RTMP, RTSP, and HLS stream for ALL your Wyze cameras including the outdoor and doorbell cams. No third-party hacks or special firmware required.
 
-See [https://github.com/mrlt8/docker-wyze-bridge](https://github.com/mrlt8/docker-wyze-bridge) for further details.
+It just works!
 
-## Compatibility
+Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
+
+Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
+
+## System Compatibility
 
 ![Supports armv7 Architecture](https://img.shields.io/badge/armv7-yes-success.svg)
 ![Supports aarch64 Architecture](https://img.shields.io/badge/aarch64-yes-success.svg)
@@ -19,22 +23,23 @@ See [https://github.com/mrlt8/docker-wyze-bridge](https://github.com/mrlt8/docke
 
 Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi.
 
-### Firmware Compatibility
+## Supported Cameras
 
 ![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
-![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-<4.9.6.241-important.svg)
+![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
 ![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
-![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-<4.10.6.241-important.svg)
+![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-yes-success.svg)
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
-![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-no-inactive.svg)
+![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-yes-success.svg)
 
-The bridge currently has issues connecting to cameras on newer firmware with DTLS enabled.
-
-Some reports of DTLS being rolled out on the V3 beta firmware.
-
-If you wish to continue using your camera with the bridge, you should downgrade or remain on a firmware without DTLS.
-
-See [github](https://github.com/mrlt8/docker-wyze-bridge#%EF%B8%8F-firmware-compatibility) for latest non-DTLS firmware.
+| Camera            | Model          | Supported |
+| ----------------- | -------------- | --------- |
+| Wyze Cam v1       | WYZEC1         | ❌         |
+| Wyze Cam V2       | WYZEC1-JZ      | ✅         |
+| Wyze Cam V3       | WYZE_CAKP2JFUS | ✅         |
+| Wyze Cam Pan      | WYZECP1_JEF    | ✅         |
+| Wyze Cam Outdoor  | WVOD1          | ✅         |
+| Wyze Cam Doorbell | WYZEDB3        | ✅         |
 
 ---
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/J3J85TD3K)

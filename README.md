@@ -5,31 +5,48 @@
 [![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/mrlt8/wyze-bridge?sort=semver&logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 [![Docker Pulls](https://img.shields.io/docker/pulls/mrlt8/wyze-bridge?logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 
-Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze cameras including v3. No Third-party or special firmware required.
+Docker container to expose a local RTMP, RTSP, and HLS stream for ALL your Wyze cameras including the outdoor and doorbell cams. No third-party or special firmware required.
+
+It just works!
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
-## Changes in v0.7.2 ~ v0.7.6
+Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
 
-- 🔨 Doorbell related changes: adjust HD frame size. Please post feedback [here](https://github.com/mrlt8/docker-wyze-bridge/issues/133)
+## Changes in v1.0.0
 
-## Changes in v0.7.1
+⚠️ May need to use `FRESH_DATA=true` on first run if upgrading from an exsisting installation.
 
-- 🔨 Doorbell related changes - rotate other direction and set HD frame size. #150 #133
-- 🏠 Home Assistant: Add additional RTSP intervals.
-
-## Changes in v0.7.0
-
-- 💥 BREAKING: `API_THUMB` and `RTSP_THUMB` are now `SNAPSHOT=API` or `SNAPSHOT=RTSP` or `SNAPSHOT=RTSP30` for custom interval. See [Snapshot](#snapshotstill-images)
-- 💥 BREAKING: `LAN_ONLY` is now `NET_MODE=LAN`. See [LAN Mode](#lan-mode)
-- ✨ NEW: `NET_MODE=P2P` to block relay mode and stream from the camera using P2P mode for VPS/cloud and remote installs. see [P2P Mode](#p2p-mode)
-- ✨ NEW: Basic MQTT support with discovery - publishes camera status, connections to camera, and snapshot if available. See [MQTT](#mqtt-beta)
-- ✨ NEW: `ROTATE_DOOR` will use ffmpeg to roate the Doorbell (WYZEDB3) stream. NOTE: this will re-encoding rather than copy h264 stream, which may require additional processing power.
-- 🔀 Removed Supervisord
-- 📦 Switch to static build of [ffmpeg-for-homebridge](https://github.com/homebridge/ffmpeg-for-homebridge)
-- 🔨 Fixed broken rtsp auth
+- ✨ NEW: DTLS Firmware support - bridge should now work on cameras with the latest firmware
+- ✨ NEW: Wyze Cam Outdoor (WVOD1) support
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
+
+## Supported Cameras
+
+![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
+![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
+![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
+![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-yes-success.svg)
+![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
+![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-yes-success.svg)
+
+V1 is currently not supported due to lack of hardware for development.
+
+| Camera            | Model          | Supported |
+| ----------------- | -------------- | --------- |
+| Wyze Cam v1       | WYZEC1         | ⚠️         |
+| Wyze Cam V2       | WYZEC1-JZ      | ✅         |
+| Wyze Cam V3       | WYZE_CAKP2JFUS | ✅         |
+| Wyze Cam Pan      | WYZECP1_JEF    | ✅         |
+| Wyze Cam Doorbell | WYZEDB3        | ✅         |
+| Wyze Cam Outdoor  | WVOD1          | ✅         |
+
+### Firmware Compatibility
+
+The bridge should be compatible with the latest official firmware from wyze.
+
+Installing a firmware with DTLS enabled is **recommended** for secuirty purposes.
 
 ## Compatibility
 
@@ -44,32 +61,6 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 The container can be run on its own, in [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer), or as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant).
 
 [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmrlt8%2Fdocker-wyze-bridge)
-
-## Supported Cameras
-
-![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
-![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-<4.9.6.241-important.svg)
-![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
-![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-<4.10.6.241-important.svg)
-![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
-![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-no-inactive.svg)
-
-Some reports of issues with v1 and WCO models that need further investigation.
-
-### Firmware Compatibility
-
-The bridge currently has issues connecting to cameras on newer firmware with DTLS enabled.
-
-This should be resolved in the next release which can be tested using `mrlt8/wyze-bridge:dev` or the [dev branch](https://github.com/mrlt8/docker-wyze-bridge/tree/dev)
-
-Some reports of DTLS being rolled out on the V3 beta firmware.
-
-If you wish to continue using your camera with the bridge, you should downgrade or remain on a firmware without DTLS:
-| Camera | Latest Firmware w/o DTLS    |
-| ------ | --------------------------- |
-| V2     | 4.9.6.241 (March 9, 2021)   |
-| V3     | 4.36.3.19 (August 26, 2021) |
-| PAN    | 4.10.6.241 (March 9, 2021)  |
 
 ## Basic Usage
 
@@ -95,8 +86,6 @@ Once you're happy with your config you can use `docker-compose up -d` to run it 
 
 ### 🏠 Home Assistant
 
-[![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmrlt8%2Fdocker-wyze-bridge)
-
 Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on Home Assistant.
 
 ### Additional Info
@@ -106,6 +95,10 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 - [LAN mode](#LAN-Mode)
 - [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
 - [Home Assistant](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
+
+#### Audio Support
+
+Audio is not supported at this time.
 
 #### Special Characters
 
@@ -165,6 +158,14 @@ Two-factor authentication ("Two-Step Verification" in the wyze app) is supported
 ## ARM/Raspberry Pi
 
 The default `docker-compose.yml` will pull a multi-arch image that has support for both amrv7 and arm64, and no changes are required to run the container as is.
+
+### veth errors on ubuntu 21.10
+
+If you're having trouble starting docker on a raspberry pi running ubuntu 21.10, you may need to run:
+
+```bash
+sudo apt install linux-modules-extra-raspi
+```
 
 ### libseccomp2
 
