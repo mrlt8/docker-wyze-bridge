@@ -1,4 +1,3 @@
-from ctypes import resize
 import gc
 import json
 import logging
@@ -26,10 +25,6 @@ class wyze_bridge:
             os.makedirs("/config/www/", exist_ok=True)
             os.makedirs(self.token_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
-        if os.getenv("API_THUMB") or os.getenv("RTSP_THUMB"):
-            print("\n\n⚠️ 'API_THUMB' and 'RTSP_THUMB' DEPRECATED.\nUSE 'SNAPSHOT'\n")
-        if os.getenv("LAN_ONLY"):
-            print("\n\n⚠️ 'LAN_ONLY' DEPRECATED.\nUSE 'NET_MODE'\n")
         self.user = self.get_wyze_data("user")
         self.cameras = self.get_filtered_cams()
         self.iotc = wyzecam.WyzeIOTC(
@@ -426,13 +421,16 @@ if __name__ == "__main__":
             os.environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
             os.environ["MQTT_AUTH"] = f'{data["username"]}:{data["password"]}'
         [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf if v]
+    if not os.getenv("SDK_KEY"):
+        print("Missing SDK_KEY")
+        sys.exit(1)
     if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
         print(
             "Missing credentials:",
             ("WYZE_EMAIL " if not os.getenv("WYZE_EMAIL") else "")
             + ("WYZE_PASSWORD" if not os.getenv("WYZE_PASSWORD") else ""),
         )
-        sys.exit()
+        sys.exit(1)
     wb = wyze_bridge()
     threading.current_thread().name = "WyzeBridge"
     logging.basicConfig(

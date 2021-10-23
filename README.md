@@ -5,7 +5,9 @@
 [![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/mrlt8/wyze-bridge?sort=semver&logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 [![Docker Pulls](https://img.shields.io/docker/pulls/mrlt8/wyze-bridge?logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 
-Docker container to expose a local RTMP, RTSP, and HLS stream for ALL your Wyze cameras including the outdoor and doorbell cams. No third-party hacks or special firmware required.
+Docker container to expose a local RTMP, RTSP, and HLS stream for ALL your Wyze cameras including the outdoor and doorbell cams. No third-party or special firmware required.
+
+It just works!
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
@@ -13,7 +15,9 @@ Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found 
 
 ## Changes in v1.0.0
 
-- ✨ NEW: DTLS Firmware support - Bridge should now work with cameras the latest firmware
+⚠️ May need to use `FRESH_DATA=true` on first run if upgrading from an exsisting installation.
+
+- ✨ NEW: DTLS Firmware support - bridge should now work on cameras with the latest firmware
 - ✨ NEW: Wyze Cam Outdoor (WVOD1) support
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
@@ -31,16 +35,18 @@ V1 is currently not supported due to lack of hardware for development.
 
 | Camera            | Model          | Supported |
 | ----------------- | -------------- | --------- |
-| Wyze Cam v1       | WYZEC1         | ❌         |
+| Wyze Cam v1       | WYZEC1         | ⚠️         |
 | Wyze Cam V2       | WYZEC1-JZ      | ✅         |
 | Wyze Cam V3       | WYZE_CAKP2JFUS | ✅         |
 | Wyze Cam Pan      | WYZECP1_JEF    | ✅         |
-| Wyze Cam Outdoor  | WVOD1          | ✅         |
 | Wyze Cam Doorbell | WYZEDB3        | ✅         |
+| Wyze Cam Outdoor  | WVOD1          | ✅         |
 
 ### Firmware Compatibility
 
-The bridge should be compatible with the latest official firmware from wyze, and a DTLS enabled firmware is **recommended** for secuirty.
+The bridge should be compatible with the latest official firmware from wyze.
+
+Installing a firmware with DTLS enabled is **recommended** for secuirty purposes.
 
 ## Compatibility
 
@@ -80,8 +86,6 @@ Once you're happy with your config you can use `docker-compose up -d` to run it 
 
 ### 🏠 Home Assistant
 
-[![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmrlt8%2Fdocker-wyze-bridge)
-
 Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on Home Assistant.
 
 ### Additional Info
@@ -94,7 +98,7 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 
 #### Audio Support
 
-Audio is currently not supported at this time.
+Audio is not supported at this time.
 
 #### Special Characters
 
@@ -154,6 +158,14 @@ Two-factor authentication ("Two-Step Verification" in the wyze app) is supported
 ## ARM/Raspberry Pi
 
 The default `docker-compose.yml` will pull a multi-arch image that has support for both amrv7 and arm64, and no changes are required to run the container as is.
+
+### veth errors on ubuntu 21.10
+
+If you're having trouble starting docker on a raspberry pi running ubuntu 21.10, you may need to run:
+
+```bash
+sudo apt install linux-modules-extra-raspi
+```
 
 ### libseccomp2
 
