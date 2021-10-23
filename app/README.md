@@ -32,14 +32,5 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
 ![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-yes-success.svg)
 
-| Camera            | Model          | Supported |
-| ----------------- | -------------- | --------- |
-| Wyze Cam v1       | WYZEC1         | ❌         |
-| Wyze Cam V2       | WYZEC1-JZ      | ✅         |
-| Wyze Cam V3       | WYZE_CAKP2JFUS | ✅         |
-| Wyze Cam Pan      | WYZECP1_JEF    | ✅         |
-| Wyze Cam Outdoor  | WVOD1          | ✅         |
-| Wyze Cam Doorbell | WYZEDB3        | ✅         |
-
 ---
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/J3J85TD3K)
