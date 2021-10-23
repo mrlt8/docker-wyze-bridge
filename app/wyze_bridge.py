@@ -16,7 +16,7 @@ import paho.mqtt.publish
 
 class wyze_bridge:
     def run(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.0 BETA\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.0\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
         if os.environ.get("HASS"):
@@ -328,7 +328,7 @@ class wyze_bridge:
                             res_size = int(videoParm["resolution"])
                     fw_v = sess.camera.camera_info["basicInfo"].get("firmware", "NA")
                     if sess.camera.dtls and sess.camera.dtls == 1:
-                        fw_v += " (DTLS)"
+                        fw_v += " 🔒 (DTLS)"
                     log.info(
                         f'🎉 Starting {stream} for WyzeCam {self.model_names.get(cam.product_model,cam.product_model)} "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {fw_v} IP: {cam.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
                     )

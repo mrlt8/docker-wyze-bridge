@@ -5,15 +5,42 @@
 [![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/mrlt8/wyze-bridge?sort=semver&logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 [![Docker Pulls](https://img.shields.io/docker/pulls/mrlt8/wyze-bridge?logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 
-Docker container to expose a local RTMP, RTSP, and HLS stream for all your Wyze cameras including v3. No Third-party or special firmware required.
+Docker container to expose a local RTMP, RTSP, and HLS stream for ALL your Wyze cameras including the outdoor and doorbell cams. No third-party hacks or special firmware required.
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
+Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
+
 ## Changes in v1.0.0
 
-- ✨ NEW: DTLS Firmware support - Bridge should now work with the latest firmware release.
+- ✨ NEW: DTLS Firmware support - Bridge should now work with cameras the latest firmware
+- ✨ NEW: Wyze Cam Outdoor (WVOD1) support
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
+
+## Supported Cameras
+
+![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
+![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
+![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
+![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-yes-success.svg)
+![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
+![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-yes-success.svg)
+
+V1 is currently not supported due to lack of hardware for development.
+
+| Camera            | Model          | Supported |
+| ----------------- | -------------- | --------- |
+| Wyze Cam v1       | WYZEC1         | ❌         |
+| Wyze Cam V2       | WYZEC1-JZ      | ✅         |
+| Wyze Cam V3       | WYZE_CAKP2JFUS | ✅         |
+| Wyze Cam Pan      | WYZECP1_JEF    | ✅         |
+| Wyze Cam Outdoor  | WVOD1          | ✅         |
+| Wyze Cam Doorbell | WYZEDB3        | ✅         |
+
+### Firmware Compatibility
+
+The bridge should be compatible with the latest official firmware from wyze, and a DTLS enabled firmware is **recommended** for secuirty.
 
 ## Compatibility
 
@@ -28,21 +55,6 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 The container can be run on its own, in [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer), or as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant).
 
 [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmrlt8%2Fdocker-wyze-bridge)
-
-## Supported Cameras
-
-![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
-![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
-![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
-![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-yes-success.svg)
-![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
-![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-no-inactive.svg)
-
-Some reports of issues with v1 and WCO models that need further investigation.
-
-### Firmware Compatibility
-
-The bridge should be compatible with the latest firmware releases.
 
 ## Basic Usage
 
@@ -79,6 +91,10 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 - [LAN mode](#LAN-Mode)
 - [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
 - [Home Assistant](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
+
+#### Audio Support
+
+Audio is currently not supported at this time.
 
 #### Special Characters
 
