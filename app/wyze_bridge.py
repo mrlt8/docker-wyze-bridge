@@ -187,7 +187,7 @@ class wyze_bridge:
         uri_sep = "-"
         if os.getenv("URI_SEPARATOR") in ("-", "_", "#"):
             uri_sep = os.getenv("URI_SEPARATOR")
-        return name.replace(" ", uri_sep).replace("#", "").replace("'", "").upper()
+        return name.replace(" ", uri_sep).replace("#", "").replace("'", "").replace(",", "").upper()
 
     def save_api_thumb(self, camera) -> None:
         if not getattr(camera, "thumbnail", False):
