@@ -33,14 +33,16 @@ Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found 
 
 V1 is currently not supported due to lack of hardware for development.
 
-| Camera            | Model          | Supported |
-| ----------------- | -------------- | --------- |
-| Wyze Cam v1       | WYZEC1         | ⚠️         |
-| Wyze Cam V2       | WYZEC1-JZ      | ✅         |
-| Wyze Cam V3       | WYZE_CAKP2JFUS | ✅         |
-| Wyze Cam Pan      | WYZECP1_JEF    | ✅         |
-| Wyze Cam Doorbell | WYZEDB3        | ✅         |
-| Wyze Cam Outdoor  | WVOD1          | ✅         |
+| Camera              | Model          | Supported |
+| ------------------- | -------------- | --------- |
+| Wyze Cam v1         | WYZEC1         | ⚠️         |
+| Wyze Cam V2         | WYZEC1-JZ      | ✅         |
+| Wyze Cam V3         | WYZE_CAKP2JFUS | ✅         |
+| Wyze Cam Pan        | WYZECP1_JEF    | ✅         |
+| Wyze Cam Doorbell   | WYZEDB3        | ✅         |
+| Wyze Cam Outdoor    | WVOD1          | ✅         |
+| Wyze Cam Pan v2     | HL_PAN2        | ❓         |
+| Wyze Cam Outdoor v2 | HL_WCO2        | ❓         |
 
 ### Firmware Compatibility
 
