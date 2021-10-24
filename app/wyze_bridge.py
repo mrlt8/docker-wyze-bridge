@@ -41,12 +41,14 @@ class wyze_bridge:
 
     mode = {0: "P2P", 1: "RELAY", 2: "LAN"}
     model_names = {
-        "WYZECP1_JEF": "PAN",
         "WYZEC1": "V1",
         "WYZEC1-JZ": "V2",
         "WYZE_CAKP2JFUS": "V3",
-        "WYZEDB3": "DOORBELL",
-        "WVOD1": "OUTDOOR",
+        "WYZECP1_JEF": "Pan",
+        "HL_PAN2": "Pan V2",
+        "WYZEDB3": "Doorbell",
+        "WVOD1": "Outdoor",
+        "HL_WCO2": "Outdoor",
     }
 
     def env_bool(self, env: str, false: str = "") -> str:
