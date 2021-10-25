@@ -90,7 +90,7 @@ class rtsp_event:
             if "READ" in self.type:
                 self.mqtt.will_set(self.base + f"clients/{os.getpid()}", None)
             try:
-                self.mqtt.connect(host[0], int(host[1]), 60)
+                self.mqtt.connect(host[0], int(host[1] if len(host)>1 else 1883), 60)
                 self.mqtt.loop_start()
                 self.mqtt_connected = True
             except Exception as ex:
