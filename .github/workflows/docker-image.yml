@@ -55,7 +55,7 @@ jobs:
         uses: docker/metadata-action@v3
         with:
           images: |
-            mrlt8/wyze-bridge
+            DTTerastar/wyze-bridge
             ghcr.io/${{ github.repository }}
           tags: |
             type=schedule
