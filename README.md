@@ -13,6 +13,13 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
 
+## Changes in v1.0.1
+
+- 🏠 Home Assistant: Potential fix for DNS issue #107 - Thanks [@AlejandroRivera](https://github.com/mrlt8/docker-wyze-bridge/issues/107#issuecomment-950940320)!
+- ➕ Added: Camera names for Pan V2 and Outdoor V2
+- 🔧 Changed: Remove all special characters from URIs #189
+- 🔧 Changed: fflags as potential fix for FFMPEG freezes #187- Thanks [@AdiAbuAli](https://github.com/mrlt8/docker-wyze-bridge/issues/187#issuecomment-951331290)
+
 ## Changes in v1.0.0
 
 ⚠️ May need to use `FRESH_DATA=true` on first run if upgrading from an exsisting installation.

@@ -1,21 +1,22 @@
 import gc
 import json
 import logging
-import mintotp
 import os
 import pickle
+import re
 import subprocess
 import sys
 import threading
 import time
 import warnings
 import wyzecam
+import mintotp
 import paho.mqtt.publish
 
 
 class wyze_bridge:
     def run(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.0\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.1\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
         if os.environ.get("HASS"):
@@ -48,7 +49,7 @@ class wyze_bridge:
         "HL_PAN2": "Pan V2",
         "WYZEDB3": "Doorbell",
         "WVOD1": "Outdoor",
-        "HL_WCO2": "Outdoor",
+        "HL_WCO2": "Outdoor V2",
     }
 
     def env_bool(self, env: str, false: str = "") -> str:
@@ -79,7 +80,7 @@ class wyze_bridge:
         mfa_token = self.token_path + "mfa_token"
         mfa_token += ".txt" if os.getenv("HASS") else ""
         totp = self.token_path + "totp"
-        log.warning(f"🔐 MFA Token Required")
+        log.warning("🔐 MFA Token Required")
         while True:
             if "PrimaryPhone" in auth.mfa_options:
                 mfa_type = "PrimaryPhone"
@@ -182,12 +183,12 @@ class wyze_bridge:
                 log.warning(f"{ex}\nSleeping for 10s...")
                 time.sleep(10)
 
-    def clean_name(self, name: str) -> str:
-        name = name.strip()
+    def clean_name(self, name: str, upper: bool = False) -> str:
         uri_sep = "-"
         if os.getenv("URI_SEPARATOR") in ("-", "_", "#"):
             uri_sep = os.getenv("URI_SEPARATOR")
-        return name.replace(" ", uri_sep).replace("#", "").replace("'", "").upper()
+        clean = re.sub(r"[^\-\w+]", "", name.strip().replace(" ", uri_sep))
+        return clean.upper() if upper else clean.lower()
 
     def save_api_thumb(self, camera) -> None:
         if not getattr(camera, "thumbnail", False):
@@ -196,14 +197,14 @@ class wyze_bridge:
             with wyzecam.api.requests.get(camera.thumbnail) as thumb:
                 thumb.raise_for_status()
                 log.info(f'☁️ Pulling "{camera.nickname}" thumbnail')
-            img = self.img_path + self.clean_name(camera.nickname).lower() + ".jpg"
+            img = self.img_path + self.clean_name(camera.nickname) + ".jpg"
             with open(img, "wb") as f:
                 f.write(thumb.content)
         except Exception as ex:
             log.warning(ex)
 
     def add_rtsp_path(self, cam: str) -> None:
-        path = f"RTSP_PATHS_{self.clean_name(cam.nickname)}_"
+        path = f"RTSP_PATHS_{self.clean_name(cam.nickname, upper=True)}_"
         py_event = "python3 /app/rtsp_event.py $RTSP_PATH "
         for event in {"READ", "PUBLISH"}:
             if self.env_bool(path + "RUNON" + event):
@@ -218,7 +219,7 @@ class wyze_bridge:
 
     def mqtt_discovery(self, cam):
         if self.env_bool("MQTT_HOST"):
-            uri = f"{self.clean_name(cam.nickname).lower()}"
+            uri = f"{self.clean_name(cam.nickname)}"
             msgs = [(f"wyzebridge/{uri}/state", "offline")]
             if self.env_bool("MQTT_DTOPIC"):
                 topic = f"{os.getenv('MQTT_DTOPIC')}/camera/{cam.mac}/config"
@@ -286,7 +287,7 @@ class wyze_bridge:
         subprocess.Popen(["/app/rtsp-simple-server", "/app/rtsp-simple-server.yml"])
 
     def start_stream(self, cam) -> None:
-        uri = self.clean_name(cam.nickname)
+        uri = self.clean_name(cam.nickname, upper=True)
         if "API" in self.env_bool("SNAPSHOT").upper():
             self.save_api_thumb(cam)
         env_q = self.env_bool("QUALITY", "na").strip("'\"\n ").ljust(3, "0")
@@ -388,11 +389,12 @@ class wyze_bridge:
 
     def get_ffmpeg_cmd(self, uri: str, rotate: bool = False) -> list:
         lib264 = ["libx264", "-vf", "transpose=1", "-preset", "veryfast", "-crf", "20"]
+        flags = "-fflags +flush_packets+genpts+discardcorrupt+nobuffer"
         return os.getenv(f"FFMPEG_CMD_{uri}", os.getenv("FFMPEG_CMD", "")).strip(
             "'\"\n "
         ).split() or (
             ["-loglevel", "verbose" if self.env_bool("DEBUG_FFMPEG") else "fatal"]
-            + os.getenv(f"FFMPEG_FLAGS_{uri}", os.getenv("FFMPEG_FLAGS", ""))
+            + os.getenv(f"FFMPEG_FLAGS_{uri}", os.getenv("FFMPEG_FLAGS", flags))
             .strip("'\"\n ")
             .split()
             + ["-i", "-"]
