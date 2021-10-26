@@ -240,13 +240,14 @@ class wyze_bridge:
                     },
                 }
                 msgs.append((topic, json.dumps(payload)))
-            mqauth = os.getenv("MQTT_AUTH").split(":")
+            mqauth = os.getenv("MQTT_AUTH", ":").split(":")
             try:
+                mqhost = os.getenv("MQTT_HOST", "localhost").split(":")
                 paho.mqtt.publish.multiple(
                     msgs,
-                    hostname=os.getenv("MQTT_HOST").split(":")[0],
-                    port=int(os.getenv("MQTT_HOST").split(":")[1]),
-                    auth={"username": mqauth[0], "password": mqauth[1]},
+                    hostname=mqhost[0],
+                    port=int(mqhost[1]) if len(mqhost)>1 else 1883,
+                    auth=({"username": mqauth[0], "password": mqauth[1]} if self.env_bool("MQTT_AUTH") else None),
                 )
             except Exception as ex:
                 log.warning(f"[MQTT] {ex}")
