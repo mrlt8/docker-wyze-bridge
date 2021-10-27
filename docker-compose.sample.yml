@@ -11,6 +11,13 @@ services:
             - 1935:1935
             - 8554:8554
             - 8888:8888
+            - 9997:9997
         environment:
             - WYZE_EMAIL=${WYZE_EMAIL} # Replace with wyze email 
             - WYZE_PASSWORD=${WYZE_PASSWORD} # Replace with wyze password
+        healthcheck:
+            test: curl --fail http://127.0.0.1:9997/v1/paths/list || exit 1
+            interval: 10s
+            timeout: 10s
+            start_period: 10s
+            retries: 3
