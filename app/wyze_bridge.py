@@ -16,7 +16,7 @@ import paho.mqtt.publish
 
 class wyze_bridge:
     def run(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.1\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.2\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
         if os.environ.get("HASS"):
@@ -246,8 +246,12 @@ class wyze_bridge:
                 paho.mqtt.publish.multiple(
                     msgs,
                     hostname=mqhost[0],
-                    port=int(mqhost[1]) if len(mqhost)>1 else 1883,
-                    auth=({"username": mqauth[0], "password": mqauth[1]} if self.env_bool("MQTT_AUTH") else None),
+                    port=int(mqhost[1]) if len(mqhost) > 1 else 1883,
+                    auth=(
+                        {"username": mqauth[0], "password": mqauth[1]}
+                        if self.env_bool("MQTT_AUTH")
+                        else None
+                    ),
                 )
             except Exception as ex:
                 log.warning(f"[MQTT] {ex}")
@@ -291,9 +295,13 @@ class wyze_bridge:
         uri = self.clean_name(cam.nickname, upper=True)
         if "API" in self.env_bool("SNAPSHOT").upper():
             self.save_api_thumb(cam)
-        env_q = self.env_bool("QUALITY", "na").strip("'\"\n ").ljust(3, "0")
-        res_size = 1 if "sd" in env_q[:2] else 0
-        bitrate = int(env_q[2:]) if 30 <= int(env_q[2:]) <= 255 else 120
+        env_quality = (
+            self.env_bool(f"QUALITY_{uri}", self.env_bool("QUALITY", "na"))
+            .strip("'\"\n ")
+            .ljust(3, "0")
+        )
+        res_size = 1 if "sd" in env_quality[:2] else 0
+        bitrate = int(env_quality[2:]) if 30 <= int(env_quality[2:]) <= 255 else 120
         stream = f'{"SD" if res_size == 1 else "HD"} {bitrate}kb/s Stream'
         if cam.product_model == "WYZEDB3" and res_size == 1:
             res_size = 4
@@ -339,26 +347,30 @@ class wyze_bridge:
                     cmd[-1] = (
                         cmd[-1] + ("" if cmd[-1][-1] == "/" else "/") + uri.lower()
                     )
-                    ffmpeg = subprocess.Popen(cmd, stdin=subprocess.PIPE)
                     skipped = 0
-                    for (frame, info) in sess.recv_video_data():
-                        try:
-                            if skipped >= int(os.getenv("BAD_FRAMES", 30)):
-                                raise Exception(f"Wrong resolution: {info.frame_size}")
-                            if (
-                                self.env_bool("IGNORE_RES", res_size)
-                                != str(info.frame_size)
-                                and res_size != info.frame_size
-                            ):
-                                skipped += 1
-                                log.debug(
-                                    f"Bad frame resolution: {info.frame_size} [{skipped}]"
-                                )
-                                continue
-                            ffmpeg.stdin.write(frame)
-                            skipped = 0
-                        except Exception as ex:
-                            raise Exception(f"[FFMPEG] {ex}")
+                    with subprocess.Popen(cmd, stdin=subprocess.PIPE) as ffmpeg:
+                        for (frame, frame_info) in sess.recv_video_data():
+                            try:
+                                if skipped >= int(os.getenv("BAD_FRAMES", 30)):
+                                    raise Exception(
+                                        f"Wrong resolution: {frame_info.frame_size}"
+                                    )
+                                if (
+                                    self.env_bool("IGNORE_RES", res_size)
+                                    != str(frame_info.frame_size)
+                                    and res_size != frame_info.frame_size
+                                ):
+                                    skipped += 1
+                                    log.debug(
+                                        f"Bad frame resolution: {frame_info.frame_size} [{skipped}]"
+                                    )
+                                    continue
+                                ffmpeg.stdin.write(frame)
+                                skipped = 0
+                            except Exception as ex:
+                                log.info("🧹 Cleaning up FFMPEG...")
+                                ffmpeg.kill()
+                                raise Exception(f"[FFMPEG] {ex}")
             except Exception as ex:
                 log.info(ex)
                 if str(ex) in "Authentication did not succeed! {'connectionRes': '2'}":
@@ -382,10 +394,6 @@ class wyze_bridge:
                     log.info(f"👻 Camera offline. WILL retry in {offline_time}s.")
                     time.sleep(int(offline_time))
             finally:
-                while "ffmpeg" in locals() and ffmpeg.poll() is None:
-                    log.info("🧹 Cleaning up FFMPEG...")
-                    ffmpeg.kill()
-                    ffmpeg.wait()
                 gc.collect()
 
     def get_ffmpeg_cmd(self, uri: str, rotate: bool = False) -> list:
