@@ -23,6 +23,7 @@ RUN mkdir -p /build/app /build/tokens /build/img \
     && echo -n $RTSP_TAG > /build/RTSP_TAG \
     && curl -L https://github.com/aler9/rtsp-simple-server/releases/download/${RTSP_TAG}/rtsp-simple-server_${RTSP_TAG}_linux_${RTSP_ARCH:-amd64}.tar.gz \
     | tar xzf - -C /build/app \
+    && sed -i 's/api: no/api: yes/g' /build/app/rtsp-simple-server.yml
     && cp /tmp/lib/${LIB_ARCH:-amd}.lib /build/usr/local/lib/libIOTCAPIs_ALL.so\
     && rm -rf /tmp/*
 COPY *.py /build/app/
