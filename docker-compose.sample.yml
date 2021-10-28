@@ -13,6 +13,8 @@ services:
             - 8888:8888
             - 9997:9997
         environment:
+            - RTSP_APIADDRESS=0.0.0.0:9997
+            - RTSP_API=yes
             - WYZE_EMAIL=${WYZE_EMAIL} # Replace with wyze email 
             - WYZE_PASSWORD=${WYZE_PASSWORD} # Replace with wyze password
         healthcheck:
