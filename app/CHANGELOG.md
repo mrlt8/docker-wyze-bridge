@@ -1,3 +1,12 @@
+## Changes in v1.0.2
+
+- ✨ NEW: Camera specific QUALITY adjustments e.g. `QUALITY_CAM_NAME=SD30` #199
+- 🔧 MQTT related fixes and improvements #194 - Thanks @TTerastar!
+- 🔧 FIX: FFMPEG related freezes #200 - Thanks @AdiAbuAli!
+- 🔧 CHANGE: c_types for tutk library
+- ⬆️ UPDATE: iOS and Wyze App version for API
+- ⬆️ UPDATE: rtsp-simple-server v0.17.7
+
 ## Changes in v1.0.1
 
 - 🏠 Home Assistant: Potential fix for DNS issue #107 - Thanks [@AlejandroRivera](https://github.com/mrlt8/docker-wyze-bridge/issues/107#issuecomment-950940320)!

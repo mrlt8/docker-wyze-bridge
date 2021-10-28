@@ -13,6 +13,15 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
 
+## Changes in v1.0.2
+
+- ✨ NEW: Camera specific QUALITY adjustments e.g. `QUALITY_CAM_NAME=SD30` #199
+- 🔧 MQTT related fixes and improvements #194 - Thanks @TTerastar!
+- 🔧 FIX: FFMPEG related freezes #200 - Thanks @AdiAbuAli!
+- 🔧 CHANGE: c_types for tutk library
+- ⬆️ UPDATE: iOS and Wyze App version for API
+- ⬆️ UPDATE: rtsp-simple-server v0.17.7
+
 ## Changes in v1.0.1
 
 - 🏠 Home Assistant: Potential fix for DNS issue #107 - Thanks [@AlejandroRivera](https://github.com/mrlt8/docker-wyze-bridge/issues/107#issuecomment-950940320)!
@@ -295,16 +304,26 @@ MQTT auth and discovery should be automatic in Home Assistant mode - can be disa
 
 Bitrate and resolution of the stream from the wyze camera can be adjusted with:
 
+#### Set quality for all cameras
+
 ```yaml
 environment:
     - QUALITY=HD120
+```
+
+#### Set quality for single camera
+
+where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
+
+```yaml
+environment:
+    - QUALITY_CAM_NAME=HD120
 ```
 
 Additional info:
 
 - Resolution can be set to `SD` (360p in the app) or `HD` - 640x360/1920x1080 for cams or 480x640/1296x1728 for doorbells.
 - Bitrate can be set from 30 to 255. Some bitrates may not work with certain resolutions.
-- Bitrate and resolution changes will apply to ALL cameras.
 - Adjusting the bitrate and resolution in the bridge will also change the stream in the wyze app and vice versa.
 - App equivalents would be:
   - 360p - SD30
