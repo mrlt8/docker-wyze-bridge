@@ -29,6 +29,7 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 ![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
 ![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
 ![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-yes-success.svg)
+![Wyze Cam Pan V2](https://img.shields.io/badge/wyze_pan_v2-yes-success.svg)
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
 ![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-yes-success.svg)
 
