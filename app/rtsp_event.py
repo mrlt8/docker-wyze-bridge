@@ -1,20 +1,18 @@
-import atexit
 import datetime
 import os
-import paho.mqtt.client
 import signal
 import subprocess
 import sys
 import threading
 import time
 import json
+import paho.mqtt.client
 
 
 class rtsp_event:
     def __init__(self):
-        signal.signal(signal.SIGQUIT, lambda n, f: sys.exit(0))
-        signal.signal(signal.SIGINT, lambda n, f: sys.exit(0))
-        atexit.register(self.clean_up)
+        for sig in ["SIGQUIT", "SIGTERM", "SIGINT"]:
+            signal.signal(getattr(signal, sig), lambda n, f: self.clean_up())
         self.__dict__.update(
             dict(zip(["uri", "type", "mac", "model", "firmware"], sys.argv[1:]))
         )
@@ -90,7 +88,7 @@ class rtsp_event:
             if "READ" in self.type:
                 self.mqtt.will_set(self.base + f"clients/{os.getpid()}", None)
             try:
-                self.mqtt.connect(host[0], int(host[1] if len(host)>1 else 1883), 60)
+                self.mqtt.connect(host[0], int(host[1] if len(host) > 1 else 1883), 60)
                 self.mqtt.loop_start()
                 self.mqtt_connected = True
             except Exception as ex:
@@ -111,6 +109,7 @@ class rtsp_event:
         if self.mqtt_connected:
             self.mqtt.loop_stop()
             self.mqtt.disconnect()
+        sys.exit(0)
 
 
 if __name__ == "__main__" and len(sys.argv) > 2:
