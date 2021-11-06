@@ -4,6 +4,7 @@ import logging
 import os
 import pickle
 import re
+import signal
 import subprocess
 import sys
 import threading
@@ -14,31 +15,50 @@ import mintotp
 import paho.mqtt.publish
 
 
-class wyze_bridge:
-    def run(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.2\n")
-        self.token_path = "/tokens/"
-        self.img_path = "/img/"
-        if os.environ.get("HASS"):
+class WyzeBridge:
+    def __init__(self) -> None:
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.3\n")
+        signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
+        self.hass: bool = bool(os.environ.get("HASS"))
+        self.on_demand: bool = bool(os.environ.get("ON_DEMAND"))
+        self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
+        self.img_path: str = "/config/www/" if self.hass else "/img/"
+        self.cameras: list = []
+        self.threads: list = []
+        self.user = None
+        self.iotc = None
+        self.auth = None
+        self.rtsp = None
+        if self.hass:
             print("\n🏠 Home Assistant Mode")
-            self.token_path = "/config/wyze-bridge/"
-            self.img_path = "/config/www/"
-            os.makedirs("/config/www/", exist_ok=True)
             os.makedirs(self.token_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
+
+    def run(self) -> None:
         self.user = self.get_wyze_data("user")
         self.cameras = self.get_filtered_cams()
         self.iotc = wyzecam.WyzeIOTC(
             max_num_av_channels=len(self.cameras), sdk_key=os.getenv("SDK_KEY")
         ).__enter__()
-        for camera in self.cameras:
-            self.add_rtsp_path(camera)
-            self.mqtt_discovery(camera)
-            threading.Thread(
-                target=self.start_stream, args=[camera], name=camera.nickname.strip()
-            ).start()
-        os.environ["img_path"] = self.img_path
+        if not self.on_demand:
+            self.start_threads()
         self.start_rtsp_server()
+
+    def start_threads(self):
+        for thread in self.threads:
+            thread.start()
+
+    def clean_up(self) -> None:
+        if self.iotc:
+            # for thread in self.threads:
+            # thread.stop.set()
+
+            if self.rtsp.poll() is None:
+                self.rtsp.terminate()
+                self.rtsp.wait(1)
+            self.iotc.deinitialize()
+        print("bye!")
+        sys.exit(0)
 
     mode = {0: "P2P", 1: "RELAY", 2: "LAN"}
     model_names = {
@@ -78,28 +98,27 @@ class wyze_bridge:
         if not auth.mfa_options:
             return auth
         mfa_token = self.token_path + "mfa_token"
-        mfa_token += ".txt" if os.getenv("HASS") else ""
+        mfa_token += ".txt" if self.hass else ""
         totp = self.token_path + "totp"
         log.warning("🔐 MFA Token Required")
         while True:
+            mfa_type = "TotpVerificationCode"
+            verification_id = auth.mfa_details["totp_apps"][0]["app_id"]
             if "PrimaryPhone" in auth.mfa_options:
                 mfa_type = "PrimaryPhone"
                 verification_id = wyzecam.api.send_sms_code(auth)
                 log.info("💬 SMS code requested")
-            else:
-                mfa_type = "TotpVerificationCode"
-                verification_id = auth.mfa_details["totp_apps"][0]["app_id"]
             if os.path.exists(totp) and os.path.getsize(totp) > 1:
-                with open(totp, "r") as f:
-                    verification_code = mintotp.totp(f.read().strip("'\"\n "))
+                with open(totp, "r") as totp_f:
+                    verification_code = mintotp.totp(totp_f.read().strip("'\"\n "))
                 log.info(f"🔏 Using {totp} to generate TOTP")
             else:
                 log.warning(f"\n📝 Add verification code to {mfa_token}")
                 while not os.path.exists(mfa_token) or os.path.getsize(mfa_token) == 0:
                     time.sleep(1)
-                with open(mfa_token, "r+") as f:
-                    verification_code = f.read().replace(" ", "").strip("'\"\n")
-                    f.truncate(0)
+                with open(mfa_token, "r+") as mfa_f:
+                    verification_code = mfa_f.read().replace(" ", "").strip("'\"\n")
+                    mfa_f.truncate(0)
             log.info(f"🔑 Using {verification_code} for authentication")
             try:
                 mfa = wyzecam.api.requests.post(
@@ -132,8 +151,8 @@ class wyze_bridge:
                 raise Exception("♻️ Refreshing camera data for thumbnails")
             if "auth" in name and refresh:
                 raise Exception("♻️ Refresh auth tokens")
-            with open(pkl_file, "rb") as f:
-                pickle_data = pickle.load(f)
+            with open(pkl_file, "rb") as pkl_f:
+                pickle_data = pickle.load(pkl_f)
             if self.env_bool("FRESH_DATA"):
                 os.remove(pkl_file)
                 raise Exception(f"♻️ FORCED REFRESH - Removing local '{name}' data")
@@ -141,9 +160,9 @@ class wyze_bridge:
                 "user" in name
                 and pickle_data.email.upper() != os.getenv("WYZE_EMAIL").upper()
             ):
-                for f in os.listdir(self.token_path):
-                    if f.endswith("pickle"):
-                        os.remove(self.token_path + f)
+                for f_name in os.listdir(self.token_path):
+                    if f_name.endswith("pickle"):
+                        os.remove(self.token_path + f_name)
                 raise Exception("🕵️ Cached email doesn't match 'WYZE_EMAIL'")
             log.info(f"📚 Using '{name}' from local cache...")
             return pickle_data
@@ -170,8 +189,8 @@ class wyze_bridge:
                     data = wyzecam.get_user_info(self.auth)
                 if "cameras" in name:
                     data = wyzecam.get_camera_list(self.auth)
-                with open(pkl_file, "wb") as f:
-                    pickle.dump(data, f)
+                with open(pkl_file, "wb") as pkl_f:
+                    pickle.dump(data, pkl_f)
                     log.info(f"💾 Saving '{name}' to local cache...")
                 return data
             except AssertionError:
@@ -191,15 +210,18 @@ class wyze_bridge:
         return clean.upper() if upper else clean.lower()
 
     def save_api_thumb(self, camera) -> None:
-        if not getattr(camera, "thumbnail", False):
+        if (
+            not getattr(camera, "thumbnail", False)
+            or "API" not in self.env_bool("SNAPSHOT").upper()
+        ):
             return
         try:
             with wyzecam.api.requests.get(camera.thumbnail) as thumb:
                 thumb.raise_for_status()
                 log.info(f'☁️ Pulling "{camera.nickname}" thumbnail')
             img = self.img_path + self.clean_name(camera.nickname) + ".jpg"
-            with open(img, "wb") as f:
-                f.write(thumb.content)
+            with open(img, "wb") as img_f:
+                img_f.write(thumb.content)
         except Exception as ex:
             log.warning(ex)
 
@@ -217,44 +239,45 @@ class wyze_bridge:
             path + "READPASS", os.getenv("RTSP_PATHS_ALL_READPASS", "")
         )
 
-    def mqtt_discovery(self, cam):
-        if self.env_bool("MQTT_HOST"):
-            uri = f"{self.clean_name(cam.nickname)}"
-            msgs = [(f"wyzebridge/{uri}/state", "offline")]
-            if self.env_bool("MQTT_DTOPIC"):
-                topic = f"{os.getenv('MQTT_DTOPIC')}/camera/{cam.mac}/config"
-                payload = {
-                    "uniq_id": "WYZE" + cam.mac,
-                    "name": "Wyze Cam " + cam.nickname,
-                    "topic": f"wyzebridge/{uri}/image",
-                    "json_attributes_topic": f"wyzebridge/{uri}/attributes",
-                    "availability_topic": f"wyzebridge/{uri}/state",
-                    "icon": "mdi:image",
-                    "device": {
-                        "connections": [["mac", cam.mac]],
-                        "identifiers": cam.mac,
-                        "manufacturer": "Wyze",
-                        "model": cam.product_model,
-                        "sw_version": cam.firmware_ver,
-                        "via_device": "docker-wyze-bridge",
-                    },
-                }
-                msgs.append((topic, json.dumps(payload)))
-            mqauth = os.getenv("MQTT_AUTH", ":").split(":")
-            try:
-                mqhost = os.getenv("MQTT_HOST", "localhost").split(":")
-                paho.mqtt.publish.multiple(
-                    msgs,
-                    hostname=mqhost[0],
-                    port=int(mqhost[1]) if len(mqhost) > 1 else 1883,
-                    auth=(
-                        {"username": mqauth[0], "password": mqauth[1]}
-                        if self.env_bool("MQTT_AUTH")
-                        else None
-                    ),
-                )
-            except Exception as ex:
-                log.warning(f"[MQTT] {ex}")
+    def mqtt_discovery(self, cam) -> None:
+        if not self.env_bool("MQTT_HOST"):
+            return
+        uri = f"{self.clean_name(cam.nickname)}"
+        msgs = [(f"wyzebridge/{uri}/state", "offline")]
+        if self.env_bool("MQTT_DTOPIC"):
+            topic = f"{os.getenv('MQTT_DTOPIC')}/camera/{cam.mac}/config"
+            payload = {
+                "uniq_id": "WYZE" + cam.mac,
+                "name": "Wyze Cam " + cam.nickname,
+                "topic": f"wyzebridge/{uri}/image",
+                "json_attributes_topic": f"wyzebridge/{uri}/attributes",
+                "availability_topic": f"wyzebridge/{uri}/state",
+                "icon": "mdi:image",
+                "device": {
+                    "connections": [["mac", cam.mac]],
+                    "identifiers": cam.mac,
+                    "manufacturer": "Wyze",
+                    "model": cam.product_model,
+                    "sw_version": cam.firmware_ver,
+                    "via_device": "docker-wyze-bridge",
+                },
+            }
+            msgs.append((topic, json.dumps(payload)))
+        mqauth = os.getenv("MQTT_AUTH", ":").split(":")
+        mqhost = os.getenv("MQTT_HOST", "localhost").split(":")
+        try:
+            paho.mqtt.publish.multiple(
+                msgs,
+                hostname=mqhost[0],
+                port=int(mqhost[1]) if len(mqhost) > 1 else 1883,
+                auth=(
+                    {"username": mqauth[0], "password": mqauth[1]}
+                    if self.env_bool("MQTT_AUTH")
+                    else None
+                ),
+            )
+        except Exception as ex:
+            log.warning(f"[MQTT] {ex}")
 
     def get_filtered_cams(self) -> list:
         cams = self.get_wyze_data("cameras")
@@ -281,20 +304,32 @@ class wyze_bridge:
             sys.exit()
         msg = f"{len(cams)} OF" if len(cams) < total else "ALL"
         print(f"\n🎬 STARTING {msg} {total} CAMERAS")
+        for camera in cams:
+            self.add_rtsp_path(camera)
+            self.mqtt_discovery(camera)
+            self.threads.append(
+                threading.Thread(
+                    target=self.start_stream,
+                    args=[camera],
+                    name=camera.nickname.strip(),
+                )
+            )
         return cams
 
     def start_rtsp_server(self):
+        os.environ["img_path"] = self.img_path
         try:
             with open("/RTSP_TAG", "r") as tag:
                 log.info(f"Starting rtsp-simple-server {tag.read().strip()}")
-        except:
+        except Exception:
             log.info("starting rtsp-simple-server")
-        subprocess.Popen(["/app/rtsp-simple-server", "/app/rtsp-simple-server.yml"])
+        self.rtsp = subprocess.Popen(
+            ["/app/rtsp-simple-server", "/app/rtsp-simple-server.yml"]
+        )
 
     def start_stream(self, cam) -> None:
         uri = self.clean_name(cam.nickname, upper=True)
-        if "API" in self.env_bool("SNAPSHOT").upper():
-            self.save_api_thumb(cam)
+        self.save_api_thumb(cam)
         env_quality = (
             self.env_bool(f"QUALITY_{uri}", self.env_bool("QUALITY", "na"))
             .strip("'\"\n ")
@@ -310,8 +345,8 @@ class wyze_bridge:
         iotc = [self.iotc.tutk_platform_lib, self.user, cam, res_size, bitrate]
         rotate = cam.product_model == "WYZEDB3" and self.env_bool("ROTATE_DOOR", False)
         while True:
+            log.debug("⌛️ Connecting to cam..")
             try:
-                log.debug("⌛️ Connecting to cam..")
                 with wyzecam.iotc.WyzeIOTCSession(*iotc) as sess:
                     net_mode = self.env_bool("NET_MODE", "ANY").upper()
                     if "P2P" in net_mode and sess.session_check().mode == 1:
@@ -325,14 +360,9 @@ class wyze_bridge:
                             f'☁️ WARNING: Camera is connected via "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode". Stream may consume additional bandwidth!'
                         )
                     if sess.camera.camera_info.get("videoParm", False):
-                        videoParm = sess.camera.camera_info["videoParm"]
+                        video_parm = sess.camera.camera_info["videoParm"]
                         if self.env_bool("DEBUG_LEVEL"):
-                            log.info(f"[videoParm] {videoParm}")
-                        if (
-                            not self.env_bool("DOOR_SIZE")
-                            and cam.product_model == "WYZEDB3"
-                        ):
-                            res_size = int(videoParm["resolution"])
+                            log.info(f"[videoParm] {video_parm}")
                     fw_v = sess.camera.camera_info["basicInfo"].get("firmware", "NA")
                     if sess.camera.dtls and sess.camera.dtls == 1:
                         fw_v += " 🔒 (DTLS)"
@@ -348,29 +378,45 @@ class wyze_bridge:
                         cmd[-1] + ("" if cmd[-1][-1] == "/" else "/") + uri.lower()
                     )
                     skipped = 0
-                    with subprocess.Popen(cmd, stdin=subprocess.PIPE) as ffmpeg:
+                    with subprocess.Popen(
+                        cmd, stdin=subprocess.PIPE, bufsize=0
+                    ) as ffmpeg:
                         for (frame, frame_info) in sess.recv_video_data():
+                            # if stop_flag.is_set():
+                            #     raise KeyboardInterrupt
+                            if skipped >= int(os.getenv("BAD_FRAMES", "30")):
+                                log.warning(
+                                    f"Wrong resolution: {frame_info.frame_size}"
+                                )
+                                break
+                            if (
+                                self.env_bool("IGNORE_RES", res_size)
+                                != str(frame_info.frame_size)
+                                and res_size != frame_info.frame_size
+                            ):
+                                skipped += 1
+                                log.debug(
+                                    f"Bad frame resolution: {frame_info.frame_size} [{skipped}]"
+                                )
+                                continue
                             try:
-                                if skipped >= int(os.getenv("BAD_FRAMES", 30)):
-                                    raise Exception(
-                                        f"Wrong resolution: {frame_info.frame_size}"
-                                    )
-                                if (
-                                    self.env_bool("IGNORE_RES", res_size)
-                                    != str(frame_info.frame_size)
-                                    and res_size != frame_info.frame_size
-                                ):
-                                    skipped += 1
-                                    log.debug(
-                                        f"Bad frame resolution: {frame_info.frame_size} [{skipped}]"
-                                    )
-                                    continue
                                 ffmpeg.stdin.write(frame)
                                 skipped = 0
+                                # wyzecam.tutk.tutk.av_client_clean_local_buf(
+                                #     self.iotc.tutk_platform_lib, sess.av_chan_id
+                                # )
                             except Exception as ex:
-                                log.info("🧹 Cleaning up FFMPEG...")
-                                ffmpeg.kill()
+                                try:
+                                    ffmpeg.stdin.close()
+                                except BrokenPipeError:
+                                    pass
+                                ffmpeg.wait()
                                 raise Exception(f"[FFMPEG] {ex}")
+                        log.info("🧹 Cleaning up FFMPEG...")
+                        ffmpeg.terminate()
+            except KeyboardInterrupt:
+                log.info("shutting down")
+                sys.exit(0)
             except Exception as ex:
                 log.info(ex)
                 if str(ex) in "Authentication did not succeed! {'connectionRes': '2'}":
@@ -444,8 +490,8 @@ if __name__ == "__main__":
             + ("WYZE_PASSWORD" if not os.getenv("WYZE_PASSWORD") else ""),
         )
         sys.exit(1)
-    wb = wyze_bridge()
     threading.current_thread().name = "WyzeBridge"
+    wb = WyzeBridge()
     logging.basicConfig(
         format="%(asctime)s [%(name)s][%(levelname)s][%(threadName)s] %(message)s"
         if wb.env_bool("DEBUG_LEVEL")
@@ -457,7 +503,7 @@ if __name__ == "__main__":
     if wb.env_bool("DEBUG_LEVEL"):
         debug_level = getattr(logging, os.getenv("DEBUG_LEVEL").upper(), 10)
         logging.getLogger().setLevel(debug_level)
-    log = logging.getLogger("wyze_bridge")
+    log = logging.getLogger("WyzeBridge")
     log.setLevel(debug_level if "DEBUG_LEVEL" in os.environ else logging.INFO)
     if wb.env_bool("DEBUG_FRAMES"):
         warnings.simplefilter("always")

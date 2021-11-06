@@ -1,5 +1,5 @@
-FROM amd64/python:3.9-slim-buster as base_amd64
-FROM arm32v7/python:3.9-slim-buster as base_arm
+FROM amd64/python:3.10-slim-buster as base_amd64
+FROM arm32v7/python:3.10-slim-buster as base_arm
 ARG ARM=1
 FROM base_arm AS base_arm64
 
