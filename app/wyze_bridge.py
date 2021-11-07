@@ -16,7 +16,7 @@ import paho.mqtt.publish
 
 class wyze_bridge:
     def run(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.2\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.2.1\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
         if os.environ.get("HASS"):
@@ -369,7 +369,11 @@ class wyze_bridge:
                                 skipped = 0
                             except Exception as ex:
                                 log.info("🧹 Cleaning up FFMPEG...")
-                                ffmpeg.kill()
+                                try:
+                                    ffmpeg.stdin.close()
+                                except BrokenPipeError:
+                                    ffmpeg.communicate()
+                                ffmpeg.terminate()
                                 raise Exception(f"[FFMPEG] {ex}")
             except Exception as ex:
                 log.info(ex)
