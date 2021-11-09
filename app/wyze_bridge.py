@@ -16,7 +16,7 @@ import paho.mqtt.publish
 
 class wyze_bridge:
     def run(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.2.1\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.2.2\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
         if os.environ.get("HASS"):
@@ -349,8 +349,8 @@ class wyze_bridge:
                     )
                     skipped = 0
                     with subprocess.Popen(cmd, stdin=subprocess.PIPE) as ffmpeg:
-                        for (frame, frame_info) in sess.recv_video_data():
-                            try:
+                        try:
+                            for (frame, frame_info) in sess.recv_video_data():
                                 if skipped >= int(os.getenv("BAD_FRAMES", 30)):
                                     raise Exception(
                                         f"Wrong resolution: {frame_info.frame_size}"
@@ -367,14 +367,14 @@ class wyze_bridge:
                                     continue
                                 ffmpeg.stdin.write(frame)
                                 skipped = 0
-                            except Exception as ex:
-                                log.info("🧹 Cleaning up FFMPEG...")
-                                try:
-                                    ffmpeg.stdin.close()
-                                except BrokenPipeError:
-                                    ffmpeg.communicate()
-                                ffmpeg.terminate()
-                                raise Exception(f"[FFMPEG] {ex}")
+                        except Exception as ex:
+                            log.info("🧹 Cleaning up FFMPEG...")
+                            try:
+                                ffmpeg.stdin.close()
+                            except BrokenPipeError:
+                                ffmpeg.communicate()
+                            ffmpeg.terminate()
+                            raise Exception(f"[FFMPEG] {ex}")
             except Exception as ex:
                 log.info(ex)
                 if str(ex) in "Authentication did not succeed! {'connectionRes': '2'}":

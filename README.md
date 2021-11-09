@@ -62,6 +62,8 @@ V1 is currently not supported due to lack of hardware for development.
 
 ### Firmware Compatibility
 
+⚠️ May need to use `FRESH_DATA=true` after updating camera firmware.
+
 The bridge should be compatible with the latest official firmware from wyze.
 
 Installing a firmware with DTLS enabled is **recommended** for secuirty purposes.
