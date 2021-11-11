@@ -242,13 +242,13 @@ All options are case-insensitivE, and take single or comma separated values.
 - Whitelist by Camera Model:
 
   ```yaml
-  - FILTER_MODEL=WYZEC1-JZ
+  - FILTER_MODELS=WYZEC1-JZ
   ```
 
 - Whitelist by Camera Model Name:
 
   ```yaml
-  - FILTER_MODEL=V2, v3, Pan
+  - FILTER_MODELS=V2, v3, Pan
   ```
 
 - Blacklisting:
