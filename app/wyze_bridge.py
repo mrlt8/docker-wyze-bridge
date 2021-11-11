@@ -381,11 +381,6 @@ class wyze_bridge:
                     log.warning("Expired ENR? Removing local 'cameras' cache...")
                     os.remove(self.token_path + "cameras.pickle")
                     sys.exit()
-                if str(ex) in "IOTC_ER_CAN_NOT_FIND_DEVICE":
-                    log.info("Camera firmware may be incompatible")
-                    if self.env_bool("IGNORE_OFFLINE"):
-                        sys.exit()
-                    time.sleep(60)
                 if str(ex) in "IOTC_ER_DEVICE_OFFLINE":
                     if self.env_bool("IGNORE_OFFLINE"):
                         log.info("🪦 Camera is offline. Will NOT try again.")
@@ -398,7 +393,7 @@ class wyze_bridge:
                     log.info(f"👻 Camera offline. WILL retry in {offline_time}s.")
                     time.sleep(int(offline_time))
             finally:
-                gc.collect()
+                time.sleep(1)
 
     def get_ffmpeg_cmd(self, uri: str, rotate: bool = False) -> list:
         lib264 = ["libx264", "-vf", "transpose=1", "-preset", "veryfast", "-crf", "20"]
