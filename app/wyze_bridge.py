@@ -1,4 +1,3 @@
-import gc
 import json
 import logging
 import os
@@ -314,18 +313,16 @@ class wyze_bridge:
                 log.debug("⌛️ Connecting to cam..")
                 with wyzecam.iotc.WyzeIOTCSession(*iotc) as sess:
                     net_mode = self.env_bool("NET_MODE", "ANY").upper()
-                    if "P2P" in net_mode and sess.session_check().mode == 1:
+                    session_mode = sess.session_check().mode
+                    if "P2P" in net_mode and session_mode == 1:
                         raise Exception("☁️ Connected via RELAY MODE! Reconnecting")
-                    if (
-                        "LAN" in net_mode or self.env_bool("LAN_ONLY")
-                    ) and sess.session_check().mode != 2:
+                    if "LAN" in net_mode and session_mode != 2:
                         raise Exception("☁️ Connected via NON-LAN MODE! Reconnecting")
-                    if "ANY" in net_mode and sess.session_check().mode != 2:
+                    if session_mode != 2:
                         log.warning(
-                            f'☁️ WARNING: Camera is connected via "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode". Stream may consume additional bandwidth!'
+                            f'☁️ WARNING: Camera is connected via "{self.mode.get(session_mode,f"UNKNOWN ({session_mode})")} mode". Stream may consume additional bandwidth!'
                         )
-                    if sess.camera.camera_info.get("videoParm", False):
-                        videoParm = sess.camera.camera_info["videoParm"]
+                    if videoParm := sess.camera.camera_info.get("videoParm", False):
                         if self.env_bool("DEBUG_LEVEL"):
                             log.info(f"[videoParm] {videoParm}")
                         if (
@@ -337,10 +334,10 @@ class wyze_bridge:
                     if sess.camera.dtls and sess.camera.dtls == 1:
                         fw_v += " 🔒 (DTLS)"
                     wifi = sess.camera.camera_info["basicInfo"].get("wifidb", "NA")
-                    if sess.camera.camera_info["netInfo"]:
+                    if "netInfo" in sess.camera.camera_info:
                         wifi = sess.camera.camera_info["netInfo"].get("signal", wifi)
                     log.info(
-                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(cam.product_model,cam.product_model)} "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {fw_v} IP: {cam.ip} WiFi: {wifi}%'
+                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(cam.product_model,cam.product_model)} "{self.mode.get(session_mode,f"UNKNOWN ({session_mode})")} mode" FW: {fw_v} IP: {cam.ip} WiFi: {wifi}%'
                     )
                     cmd = self.get_ffmpeg_cmd(uri, rotate)
                     if "ffmpeg" not in cmd[0].lower():
@@ -386,7 +383,6 @@ class wyze_bridge:
                             except BrokenPipeError:
                                 ffmpeg.communicate()
                             ffmpeg.terminate()
-                            time.sleep(1)
             except Exception as ex:
                 log.info(ex)
                 if str(ex) in "Authentication did not succeed! {'connectionRes': '2'}":
@@ -405,7 +401,7 @@ class wyze_bridge:
                     log.info(f"👻 Camera offline. WILL retry in {offline_time}s.")
                     time.sleep(int(offline_time))
             finally:
-                time.sleep(1)
+                time.sleep(3)
 
     def get_ffmpeg_cmd(self, uri: str, rotate: bool = False) -> list:
         lib264 = ["libx264", "-vf", "transpose=1", "-preset", "veryfast", "-crf", "20"]
