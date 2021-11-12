@@ -336,8 +336,11 @@ class wyze_bridge:
                     fw_v = sess.camera.camera_info["basicInfo"].get("firmware", "NA")
                     if sess.camera.dtls and sess.camera.dtls == 1:
                         fw_v += " 🔒 (DTLS)"
+                    wifi = sess.camera.camera_info["basicInfo"].get("wifidb", "NA")
+                    if sess.camera.camera_info["netInfo"]:
+                        wifi = sess.camera.camera_info["netInfo"].get("signal", wifi)
                     log.info(
-                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(cam.product_model,cam.product_model)} "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {fw_v} IP: {cam.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
+                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(cam.product_model,cam.product_model)} "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {fw_v} IP: {cam.ip} WiFi: {wifi}%'
                     )
                     cmd = self.get_ffmpeg_cmd(uri, rotate)
                     if "ffmpeg" not in cmd[0].lower():
@@ -347,6 +350,7 @@ class wyze_bridge:
                     cmd[-1] = (
                         cmd[-1] + ("" if cmd[-1][-1] == "/" else "/") + uri.lower()
                     )
+                    first_run = True
                     skipped = 0
                     with subprocess.Popen(cmd, stdin=subprocess.PIPE) as ffmpeg:
                         try:
@@ -355,6 +359,12 @@ class wyze_bridge:
                                     raise Exception(
                                         f"Wrong resolution: {frame_info.frame_size}"
                                     )
+                                if first_run and res_size != frame_info.frame_size:
+                                    log.debug(
+                                        f"[First run] Wrong resolution: {frame_info.frame_size}"
+                                    )
+                                    continue
+                                first_run = False
                                 if (
                                     self.env_bool("IGNORE_RES", res_size)
                                     != str(frame_info.frame_size)
@@ -368,13 +378,15 @@ class wyze_bridge:
                                 ffmpeg.stdin.write(frame)
                                 skipped = 0
                         except Exception as ex:
+                            raise Exception(f"[FFMPEG] {ex}")
+                        finally:
                             log.info("🧹 Cleaning up FFMPEG...")
                             try:
                                 ffmpeg.stdin.close()
                             except BrokenPipeError:
                                 ffmpeg.communicate()
                             ffmpeg.terminate()
-                            raise Exception(f"[FFMPEG] {ex}")
+                            time.sleep(1)
             except Exception as ex:
                 log.info(ex)
                 if str(ex) in "Authentication did not succeed! {'connectionRes': '2'}":
