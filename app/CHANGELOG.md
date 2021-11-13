@@ -1,3 +1,13 @@
+## Changes in v1.0.3
+
+- 🔧 FIX: Memory leak in video buffer (#197)
+- 🔧 FIX: Display wifi signal for Outdoor cams
+- 🔧 FIX: Ignore wrong res on stream startup (#221, #133)
+- 🔧 FIX: rtsp_event related errors (#214, #228)
+- ⬆️ UPDATE: Add additional tutk errors (#228)
+- ⬆️ UPDATE: Wyze App version for API
+- 🚧 CHANGE: Kill stream if no video frames for 10+ seconds (#201)
+
 ## Changes in v1.0.2
 
 - ✨ NEW: Camera specific QUALITY adjustments e.g. `QUALITY_CAM_NAME=SD30` #199

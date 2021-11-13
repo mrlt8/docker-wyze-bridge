@@ -3,10 +3,9 @@ import os
 import signal
 import subprocess
 import sys
-import threading
 import time
 import json
-import paho.mqtt.client
+import paho.mqtt.client as mqtt
 
 
 class rtsp_event:
@@ -67,9 +66,7 @@ class rtsp_event:
     def read_start(self):
         self.write_log(f"📖 New client reading ")
         self.send_mqtt(f"clients/{os.getpid()}", "reading")
-        keep_alive = threading.Event()
-        keep_alive.daemon = True
-        keep_alive.wait()
+        signal.pause()
 
     def mqtt_connect(self):
         self.mqtt_connected = False
@@ -78,7 +75,7 @@ class rtsp_event:
             if self.env_bool("MQTT_TOPIC"):
                 self.base = f'{self.env_bool("MQTT_TOPIC")}/{self.base}'
             host = os.getenv("MQTT_HOST").split(":")
-            self.mqtt = paho.mqtt.client.Client()
+            self.mqtt = mqtt.Client()
             if self.env_bool("MQTT_AUTH"):
                 auth = os.getenv("MQTT_AUTH").split(":")
                 self.mqtt.username_pw_set(auth[0], auth[1] if len(auth) > 1 else None)

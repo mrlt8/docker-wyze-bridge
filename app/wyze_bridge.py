@@ -15,7 +15,7 @@ import paho.mqtt.publish
 
 class wyze_bridge:
     def run(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.2.2\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.3\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
         if os.environ.get("HASS"):
@@ -301,7 +301,7 @@ class wyze_bridge:
         )
         res_size = 1 if "sd" in env_quality[:2] else 0
         bitrate = int(env_quality[2:]) if 30 <= int(env_quality[2:]) <= 255 else 120
-        stream = f'{"SD" if res_size == 1 else "HD"} {bitrate}kb/s Stream'
+        stream = f'{"SD" if res_size == 1 else "HD"} {bitrate}kB/s Stream'
         if cam.product_model == "WYZEDB3" and res_size == 1:
             res_size = 4
         if cam.product_model == "WYZEDB3":
@@ -357,7 +357,7 @@ class wyze_bridge:
                                         f"Wrong resolution: {frame_info.frame_size}"
                                     )
                                 if first_run and res_size != frame_info.frame_size:
-                                    log.debug(
+                                    warnings.warn(
                                         f"[First run] Wrong resolution: {frame_info.frame_size}"
                                     )
                                     continue
