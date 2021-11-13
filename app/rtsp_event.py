@@ -1,11 +1,15 @@
-import datetime
-import os
-import signal
-import subprocess
 import sys
-import time
-import json
-import paho.mqtt.client as mqtt
+
+try:
+    import datetime
+    import os
+    import signal
+    import subprocess
+    import time
+    import json
+    import paho.mqtt.client as mqtt
+except:
+    sys.exit(1)
 
 
 class rtsp_event:
@@ -104,8 +108,8 @@ class rtsp_event:
             self.write_log(f"📕 Client stopped reading")
             self.send_mqtt(f"clients/{os.getpid()}", None)
         if self.mqtt_connected:
-            self.mqtt.loop_stop()
             self.mqtt.disconnect()
+            self.mqtt.loop_stop()
         sys.exit(0)
 
 
