@@ -4,10 +4,7 @@ try:
     import datetime
     import os
     import signal
-    import subprocess
     import time
-    import json
-    import paho.mqtt.client as mqtt
 except:
     sys.exit(1)
 
@@ -29,10 +26,14 @@ class rtsp_event:
         print(date, f"[RTSP][{self.uri.upper()}] {txt}")
 
     def pub_start(self):
-        host = self.env_bool("HOSTNAME", "localhost")
         self.write_log(f"✅ '/{self.uri}' stream is UP!")
         img_file = os.getenv("img_path") + self.uri + ".jpg"
         env_snap = os.getenv("SNAPSHOT", "NA").ljust(5, "0").upper()
+        if self.env_bool("HASS"):
+            host = self.env_bool("HOSTNAME", "localhost")
+            import json
+        if "RTSP" in env_snap[:4]:
+            import subprocess
         while True:
             self.send_mqtt("state", "online")
             if "RTSP" in env_snap[:4]:
@@ -75,6 +76,10 @@ class rtsp_event:
     def mqtt_connect(self):
         self.mqtt_connected = False
         if self.env_bool("MQTT_HOST"):
+            try:
+                import paho.mqtt.client as mqtt
+            except:
+                return
             self.base = f"wyzebridge/{self.uri}/"
             if self.env_bool("MQTT_TOPIC"):
                 self.base = f'{self.env_bool("MQTT_TOPIC")}/{self.base}'
