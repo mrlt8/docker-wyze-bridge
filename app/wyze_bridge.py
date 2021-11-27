@@ -5,7 +5,7 @@ import pickle
 import re
 import subprocess
 import sys
-import threading
+import multiprocessing
 import time
 import warnings
 import wyzecam
@@ -15,7 +15,7 @@ import paho.mqtt.publish
 
 class wyze_bridge:
     def run(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.3\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.3 MP\n")
         self.token_path = "/tokens/"
         self.img_path = "/img/"
         if os.environ.get("HASS"):
@@ -27,13 +27,10 @@ class wyze_bridge:
             open(self.token_path + "mfa_token.txt", "w").close()
         self.user = self.get_wyze_data("user")
         self.cameras = self.get_filtered_cams()
-        self.iotc = wyzecam.WyzeIOTC(
-            max_num_av_channels=len(self.cameras), sdk_key=os.getenv("SDK_KEY")
-        ).__enter__()
         for camera in self.cameras:
             self.add_rtsp_path(camera)
             self.mqtt_discovery(camera)
-            threading.Thread(
+            multiprocessing.Process(
                 target=self.start_stream, args=[camera], name=camera.nickname.strip()
             ).start()
         os.environ["img_path"] = self.img_path
@@ -306,10 +303,11 @@ class wyze_bridge:
             res_size = 4
         if cam.product_model == "WYZEDB3":
             res_size = int(self.env_bool("DOOR_SIZE", res_size))
-        iotc = [self.iotc.tutk_platform_lib, self.user, cam, res_size, bitrate]
         rotate = cam.product_model == "WYZEDB3" and self.env_bool("ROTATE_DOOR", False)
         while True:
             try:
+                Wyzeiotc = wyzecam.WyzeIOTC(sdk_key=os.getenv("SDK_KEY")).__enter__()
+                iotc = [Wyzeiotc.tutk_platform_lib, self.user, cam, res_size, bitrate]
                 log.debug("⌛️ Connecting to cam..")
                 with wyzecam.iotc.WyzeIOTCSession(*iotc) as sess:
                     net_mode = self.env_bool("NET_MODE", "ANY").upper()
@@ -401,7 +399,7 @@ class wyze_bridge:
                     log.info(f"👻 Camera offline. WILL retry in {offline_time}s.")
                     time.sleep(int(offline_time))
             finally:
-                time.sleep(3)
+                Wyzeiotc.deinitialize()
 
     def get_ffmpeg_cmd(self, uri: str, rotate: bool = False) -> list:
         lib264 = ["libx264", "-vf", "transpose=1", "-preset", "veryfast", "-crf", "20"]
@@ -452,11 +450,11 @@ if __name__ == "__main__":
         )
         sys.exit(1)
     wb = wyze_bridge()
-    threading.current_thread().name = "WyzeBridge"
+    multiprocessing.current_process().name = "WyzeBridge"
     logging.basicConfig(
-        format="%(asctime)s [%(name)s][%(levelname)s][%(threadName)s] %(message)s"
+        format="%(asctime)s [%(name)s][%(levelname)s][%(processName)s] %(message)s"
         if wb.env_bool("DEBUG_LEVEL")
-        else "%(asctime)s [%(threadName)s] %(message)s",
+        else "%(asctime)s [%(processName)s] %(message)s",
         datefmt="%Y/%m/%d %X",
         stream=sys.stdout,
         level=logging.WARNING,
