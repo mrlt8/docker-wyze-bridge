@@ -64,7 +64,7 @@ V1 is currently not supported due to lack of hardware for development.
 
 | Camera            | Model          | Supported |
 | ----------------- | -------------- | --------- |
-| Wyze Cam v1       | WYZEC1         | ⚠️         |
+| Wyze Cam v1       | WYZEC1         | ❌         |
 | Wyze Cam V2       | WYZEC1-JZ      | ✅         |
 | Wyze Cam V3       | WYZE_CAKP2JFUS | ✅         |
 | Wyze Cam Pan      | WYZECP1_JEF    | ✅         |
@@ -87,10 +87,11 @@ Installing a firmware with DTLS enabled is **recommended** for secuirty purposes
 ![Supports amd64 Architecture](https://img.shields.io/badge/amd64-yes-success.svg)
 [![Home Assistant Add-on](https://img.shields.io/badge/home_assistant-add--on-blue.svg?logo=homeassistant&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
 [![Portainer stack](https://img.shields.io/badge/portainer-stack-blue.svg?logo=portainer&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
+[![Unraid Community App](https://img.shields.io/badge/unraid-community--app-blue.svg?logo=unraid&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/issues/236)
 
 Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi.
 
-The container can be run on its own, in [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer), or as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant).
+The container can be run on its own, in [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer), [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236), or as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant).
 
 [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmrlt8%2Fdocker-wyze-bridge)
 
@@ -126,6 +127,7 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 - [ARM/Raspberry Pi](#armraspberry-pi)
 - [LAN mode](#LAN-Mode)
 - [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
+- [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236)
 - [Home Assistant](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
 - [HomeKit Secure Video](https://github.com/mrlt8/docker-wyze-bridge/wiki/HomeKit-Secure-Video)
 
