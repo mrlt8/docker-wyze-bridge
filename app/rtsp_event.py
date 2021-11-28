@@ -1,12 +1,12 @@
-import datetime
-import os
-import signal
-import subprocess
 import sys
-import threading
-import time
-import json
-import paho.mqtt.client
+
+try:
+    import datetime
+    import os
+    import signal
+    import time
+except ImportError:
+    sys.exit(1)
 
 
 class rtsp_event:
@@ -26,10 +26,14 @@ class rtsp_event:
         print(date, f"[RTSP][{self.uri.upper()}] {txt}")
 
     def pub_start(self):
-        host = self.env_bool("HOSTNAME", "localhost")
         self.write_log(f"✅ '/{self.uri}' stream is UP!")
         img_file = os.getenv("img_path") + self.uri + ".jpg"
         env_snap = os.getenv("SNAPSHOT", "NA").ljust(5, "0").upper()
+        if self.env_bool("HASS"):
+            host = self.env_bool("HOSTNAME", "localhost")
+            import json
+        if "RTSP" in env_snap[:4]:
+            import subprocess
         while True:
             self.send_mqtt("state", "online")
             if "RTSP" in env_snap[:4]:
@@ -67,18 +71,20 @@ class rtsp_event:
     def read_start(self):
         self.write_log(f"📖 New client reading ")
         self.send_mqtt(f"clients/{os.getpid()}", "reading")
-        keep_alive = threading.Event()
-        keep_alive.daemon = True
-        keep_alive.wait()
+        signal.pause()
 
     def mqtt_connect(self):
         self.mqtt_connected = False
         if self.env_bool("MQTT_HOST"):
+            try:
+                import paho.mqtt.client as mqtt
+            except ImportError:
+                return
             self.base = f"wyzebridge/{self.uri}/"
             if self.env_bool("MQTT_TOPIC"):
                 self.base = f'{self.env_bool("MQTT_TOPIC")}/{self.base}'
             host = os.getenv("MQTT_HOST").split(":")
-            self.mqtt = paho.mqtt.client.Client()
+            self.mqtt = mqtt.Client()
             if self.env_bool("MQTT_AUTH"):
                 auth = os.getenv("MQTT_AUTH").split(":")
                 self.mqtt.username_pw_set(auth[0], auth[1] if len(auth) > 1 else None)
@@ -107,8 +113,8 @@ class rtsp_event:
             self.write_log(f"📕 Client stopped reading")
             self.send_mqtt(f"clients/{os.getpid()}", None)
         if self.mqtt_connected:
-            self.mqtt.loop_stop()
             self.mqtt.disconnect()
+            self.mqtt.loop_stop()
         sys.exit(0)
 
 
