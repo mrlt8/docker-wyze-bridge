@@ -1,4 +1,3 @@
-import gc
 import json
 import logging
 import os
@@ -17,29 +16,31 @@ import paho.mqtt.publish
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.0.3\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.1.x\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.environ.get("HASS"))
         self.on_demand: bool = bool(os.environ.get("ON_DEMAND"))
         self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
         self.img_path: str = "/config/www/" if self.hass else "/img/"
-        self.cameras: list = []
         self.threads: list = []
-        self.user = None
-        self.iotc = None
+        self.cameras: list = []
         self.auth = None
+        self.iotc = None
         self.rtsp = None
+        self.user = None
         if self.hass:
             print("\n🏠 Home Assistant Mode")
             os.makedirs(self.token_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
 
     def run(self) -> None:
-        self.user = self.get_wyze_data("user")
-        self.cameras = self.get_filtered_cams()
+        self.get_wyze_data("user")
+        self.get_filtered_cams()
         self.iotc = wyzecam.WyzeIOTC(
-            max_num_av_channels=len(self.cameras), sdk_key=os.getenv("SDK_KEY")
+            max_num_av_channels=len(self.threads), sdk_key=os.getenv("SDK_KEY")
         ).__enter__()
+        if os.environ.get("WEBRTC"):
+            self.get_webrtc()
         if not self.on_demand:
             self.start_threads()
         self.start_rtsp_server()
@@ -144,13 +145,11 @@ class WyzeBridge:
                 log.warning(f"Error: {ex}\n\nPlease try again!\n")
                 time.sleep(3)
 
-    def get_wyze_data(self, name: str, refresh: bool = False):
+    def get_wyze_data(self, name: str, refresh: bool = False) -> any:
         pkl_file = self.token_path + name + ".pickle"
         try:
             if "cam" in name and "API" in self.env_bool("SNAPSHOT").upper():
                 raise Exception("♻️ Refreshing camera data for thumbnails")
-            if "auth" in name and refresh:
-                raise Exception("♻️ Refresh auth tokens")
             with open(pkl_file, "rb") as pkl_f:
                 pickle_data = pickle.load(pkl_f)
             if self.env_bool("FRESH_DATA"):
@@ -165,6 +164,9 @@ class WyzeBridge:
                         os.remove(self.token_path + f_name)
                 raise Exception("🕵️ Cached email doesn't match 'WYZE_EMAIL'")
             log.info(f"📚 Using '{name}' from local cache...")
+            setattr(self, name, pickle_data)
+            if "auth" in name and refresh:
+                raise Exception("♻️ Refresh auth tokens")
             return pickle_data
         except OSError:
             log.info(f"🔍 Could not find local cache for '{name}'")
@@ -175,16 +177,16 @@ class WyzeBridge:
                 self.auth = self.get_wyze_data("auth")
             try:
                 log.info(f"☁️ Fetching '{name}' from the Wyze API...")
-                if "auth" in name and refresh:
+                if "auth" in name and refresh and self.auth:
                     try:
-                        self.auth = data = wyzecam.api.refresh_token(self.auth)
+                        data = wyzecam.api.refresh_token(self.auth)
                     except AssertionError:
                         log.warning("Expired refresh token?")
-                        self.auth = self.get_wyze_data("auth", True)
+                        return self.get_wyze_data("auth")
                     except Exception as ex:
                         print(ex)
                 elif "auth" in name:
-                    self.auth = data = self.auth_wyze()
+                    data = self.auth_wyze()
                 if "user" in name:
                     data = wyzecam.get_user_info(self.auth)
                 if "cameras" in name:
@@ -192,6 +194,7 @@ class WyzeBridge:
                 with open(pkl_file, "wb") as pkl_f:
                     pickle.dump(data, pkl_f)
                     log.info(f"💾 Saving '{name}' to local cache...")
+                setattr(self, name, data)
                 return data
             except AssertionError:
                 log.warning(f"⚠️ Error getting {name} - Expired token?")
@@ -279,8 +282,8 @@ class WyzeBridge:
         except Exception as ex:
             log.warning(f"[MQTT] {ex}")
 
-    def get_filtered_cams(self) -> list:
-        cams = self.get_wyze_data("cameras")
+    def get_filtered_cams(self) -> None:
+        self.cameras = cams = self.get_wyze_data("cameras")
         for cam in cams:
             if cam.product_model == "WYZEC1":
                 log.warning(f"💔 {cam.product_model} not fully supported yet")
@@ -314,7 +317,6 @@ class WyzeBridge:
                     name=camera.nickname.strip(),
                 )
             )
-        return cams
 
     def start_rtsp_server(self):
         os.environ["img_path"] = self.img_path
@@ -349,25 +351,26 @@ class WyzeBridge:
             try:
                 with wyzecam.iotc.WyzeIOTCSession(*iotc) as sess:
                     net_mode = self.env_bool("NET_MODE", "ANY").upper()
-                    if "P2P" in net_mode and sess.session_check().mode == 1:
+                    session_mode = sess.session_check().mode
+                    if "P2P" in net_mode and session_mode == 1:
                         raise Exception("☁️ Connected via RELAY MODE! Reconnecting")
-                    if (
-                        "LAN" in net_mode or self.env_bool("LAN_ONLY")
-                    ) and sess.session_check().mode != 2:
+                    if "LAN" in net_mode and session_mode != 2:
                         raise Exception("☁️ Connected via NON-LAN MODE! Reconnecting")
-                    if "ANY" in net_mode and sess.session_check().mode != 2:
+                    if session_mode != 2:
                         log.warning(
-                            f'☁️ WARNING: Camera is connected via "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode". Stream may consume additional bandwidth!'
+                            f'☁️ WARNING: Camera is connected via "{self.mode.get(session_mode,f"UNKNOWN ({session_mode})")} mode". Stream may consume additional bandwidth!'
                         )
-                    if sess.camera.camera_info.get("videoParm", False):
-                        video_parm = sess.camera.camera_info["videoParm"]
+                    if videoParm := sess.camera.camera_info.get("videoParm", False):
                         if self.env_bool("DEBUG_LEVEL"):
-                            log.info(f"[videoParm] {video_parm}")
+                            log.info(f"[videoParm] {videoParm}")
                     fw_v = sess.camera.camera_info["basicInfo"].get("firmware", "NA")
                     if sess.camera.dtls and sess.camera.dtls == 1:
                         fw_v += " 🔒 (DTLS)"
+                    wifi = sess.camera.camera_info["basicInfo"].get("wifidb", "NA")
+                    if "netInfo" in sess.camera.camera_info:
+                        wifi = sess.camera.camera_info["netInfo"].get("signal", wifi)
                     log.info(
-                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(cam.product_model,cam.product_model)} "{self.mode.get(sess.session_check().mode,f"UNKNOWN ({sess.session_check().mode})")} mode" FW: {fw_v} IP: {cam.ip} WiFi: {sess.camera.camera_info["basicInfo"].get("wifidb", "NA")}%'
+                        f'🎉 Starting {stream} for WyzeCam {self.model_names.get(cam.product_model,cam.product_model)} "{self.mode.get(session_mode,f"UNKNOWN ({session_mode})")} mode" FW: {fw_v} IP: {cam.ip} WiFi: {wifi}%'
                     )
                     cmd = self.get_ffmpeg_cmd(uri, rotate)
                     if "ffmpeg" not in cmd[0].lower():
@@ -378,12 +381,18 @@ class WyzeBridge:
                         cmd[-1] + ("" if cmd[-1][-1] == "/" else "/") + uri.lower()
                     )
                     skipped = 0
-                    with subprocess.Popen(
-                        cmd, stdin=subprocess.PIPE, bufsize=0
-                    ) as ffmpeg:
+                    first_run = True
+                    with subprocess.Popen(cmd, stdin=subprocess.PIPE) as ffmpeg:
                         for (frame, frame_info) in sess.recv_video_data():
                             # if stop_flag.is_set():
                             #     raise KeyboardInterrupt
+
+                            if first_run and res_size != frame_info.frame_size:
+                                warnings.warn(
+                                    f"[First run] Wrong resolution: {frame_info.frame_size}"
+                                )
+                                continue
+
                             if skipped >= int(os.getenv("BAD_FRAMES", "30")):
                                 log.warning(
                                     f"Wrong resolution: {frame_info.frame_size}"
@@ -405,29 +414,25 @@ class WyzeBridge:
                                 # wyzecam.tutk.tutk.av_client_clean_local_buf(
                                 #     self.iotc.tutk_platform_lib, sess.av_chan_id
                                 # )
+                            except KeyboardInterrupt:
+                                log.info("shutting down")
+                                sys.exit(0)
                             except Exception as ex:
                                 try:
                                     ffmpeg.stdin.close()
+                                    first_run = False
                                 except BrokenPipeError:
                                     pass
                                 ffmpeg.wait()
                                 raise Exception(f"[FFMPEG] {ex}")
                         log.info("🧹 Cleaning up FFMPEG...")
-                        ffmpeg.terminate()
-            except KeyboardInterrupt:
-                log.info("shutting down")
-                sys.exit(0)
+                        ffmpeg.kill()
             except Exception as ex:
                 log.info(ex)
                 if str(ex) in "Authentication did not succeed! {'connectionRes': '2'}":
                     log.warning("Expired ENR? Removing local 'cameras' cache...")
                     os.remove(self.token_path + "cameras.pickle")
                     sys.exit()
-                if str(ex) in "IOTC_ER_CAN_NOT_FIND_DEVICE":
-                    log.info("Camera firmware may be incompatible")
-                    if self.env_bool("IGNORE_OFFLINE"):
-                        sys.exit()
-                    time.sleep(60)
                 if str(ex) in "IOTC_ER_DEVICE_OFFLINE":
                     if self.env_bool("IGNORE_OFFLINE"):
                         log.info("🪦 Camera is offline. Will NOT try again.")
@@ -440,7 +445,7 @@ class WyzeBridge:
                     log.info(f"👻 Camera offline. WILL retry in {offline_time}s.")
                     time.sleep(int(offline_time))
             finally:
-                gc.collect()
+                pass
 
     def get_ffmpeg_cmd(self, uri: str, rotate: bool = False) -> list:
         lib264 = ["libx264", "-vf", "transpose=1", "-preset", "veryfast", "-crf", "20"]
@@ -459,6 +464,18 @@ class WyzeBridge:
             + ["-f", "rtsp"]
             + ["rtsp://0.0.0.0:8554"]
         )
+
+    def get_webrtc(self):
+        if not self.auth:
+            self.get_wyze_data("auth")
+        log.info("\n======\nWebRTC\n======\n\n")
+        for i, cam in enumerate(self.cameras, 1):
+            if wss := wyzecam.api.get_cam_webrtc(self.auth, cam.mac):
+                print(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n{wss}\n---")
+            else:
+                log.info(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\nNA\n---")
+        print("goodbye")
+        signal.pause()
 
 
 if __name__ == "__main__":
