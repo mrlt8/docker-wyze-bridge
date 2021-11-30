@@ -13,6 +13,11 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
 
+## Changes in v1.0.4
+
+- 🚧 CHANGE: Use multiprocessing instead of multithreading for each camera - may use more resources, but should keep other streams alive (#211)
+- 🔧 FIX: import exceptions (#214, #228)
+
 ## Changes in v1.0.3
 
 - 🔧 FIX: Memory leak in video buffer (#197)

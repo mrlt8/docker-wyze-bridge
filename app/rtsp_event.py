@@ -5,7 +5,7 @@ try:
     import os
     import signal
     import time
-except:
+except ImportError:
     sys.exit(1)
 
 
@@ -78,7 +78,7 @@ class rtsp_event:
         if self.env_bool("MQTT_HOST"):
             try:
                 import paho.mqtt.client as mqtt
-            except:
+            except ImportError:
                 return
             self.base = f"wyzebridge/{self.uri}/"
             if self.env_bool("MQTT_TOPIC"):
