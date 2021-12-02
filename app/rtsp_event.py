@@ -1,12 +1,11 @@
-import sys
-
 try:
+    import sys
     import datetime
     import os
     import signal
     import time
-except ImportError:
-    sys.exit(1)
+except:
+    raise SystemExit
 
 
 class rtsp_event:
