@@ -420,23 +420,20 @@ class WyzeIOTCSession:
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
-                # time.sleep(1.0 / 30)
                 if errno == tutk.AV_ER_DATA_NOREADY:
                     if bad_frames > max_noready and last_frame > 0:
                         raise tutk.TutkError(errno)
-
                     logger.debug(f"Frame not available [{bad_frames}/{max_noready}]")
                     bad_frames += 1
                     time.sleep(1.0 / 32)
                     continue
-                elif errno == tutk.AV_ER_INCOMPLETE_FRAME:
+                if errno == tutk.AV_ER_INCOMPLETE_FRAME:
                     warnings.warn("Received incomplete frame")
                     continue
-                elif errno == tutk.AV_ER_LOSED_THIS_FRAME:
+                if errno == tutk.AV_ER_LOSED_THIS_FRAME:
                     warnings.warn("Lost frame")
                     continue
-                else:
-                    raise tutk.TutkError(errno)
+                raise tutk.TutkError(errno)
             assert frame_info is not None, "Got no frame info without an error!"
 
             if frame_info.frame_size not in [

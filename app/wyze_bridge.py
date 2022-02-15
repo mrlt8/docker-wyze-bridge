@@ -393,10 +393,9 @@ class WyzeBridge:
                     ffmpeg.kill()
         except Exception as ex:
             log.warning(ex)
-            exit_code = 99
             if ex.args[0] == -90:
                 exit_code = 90
-            if ex.args[0] in "Authentication did not succeed! {'connectionRes': '2'}":
+            elif ex.args[0] in "Authentication did not succeed! {'connectionRes': '2'}":
                 log.warning("⏰ Expired ENR?")
                 exit_code = 2
         finally:
