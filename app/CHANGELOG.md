@@ -1,20 +1,15 @@
-## Changes in v1.0.2
+## Changes in v1.1.0
 
-- ✨ NEW: Camera specific QUALITY adjustments e.g. `QUALITY_CAM_NAME=SD30` #199
-- 🔧 MQTT related fixes and improvements #194 - Thanks @TTerastar!
-- 🔧 FIX: FFMPEG related freezes #200 - Thanks @AdiAbuAli!
-- 🔧 CHANGE: c_types for tutk library
+- 🏠 Home Assistant: Specify snapshot dir using `IMG_DIR`.
+- ✨ NEW: ENV option `IMG_DIR` - Optional. Change snapshot dir.
+- ✨ NEW: ENV option `MAX_NOREADY` - Optional. Number of "NOREADY" frames before restarting the connection.
+- ✨ NEW: ENV option `MAX_BADRES` - Optional. Number of frames that have a wrong resolution before restarting the connection.
+- ✨ NEW: ENV option `WEBRTC=True` - Optional. Get WebRTC credentials for all cameras.
+- 🔨 Fixed: Change resolution without reconnecting.
+- 🔨 Fixed: Refresh expired tokens.
+- 🔨 Fixed: Compatibility with rtsp-simple-server changes.
+- 🔨 Fixed: Cleanup logging for reads and publish.
+- ⬆️ UPDATE: Switched to Python 3.10 base image.
 - ⬆️ UPDATE: iOS and Wyze App version for API
-- ⬆️ UPDATE: rtsp-simple-server v0.17.7
-
-## Changes in v1.0.1
-
-- 🏠 Home Assistant: Potential fix for DNS issue #107 - Thanks [@AlejandroRivera](https://github.com/mrlt8/docker-wyze-bridge/issues/107#issuecomment-950940320)!
-- ➕ Added: Camera names for Pan V2 and Outdoor V2
-- 🔧 Changed: Remove all special characters from URIs #189
-- 🔧 Changed: fflags as potential fix for FFMPEG freezes #187- Thanks [@AdiAbuAli](https://github.com/mrlt8/docker-wyze-bridge/issues/187#issuecomment-951331290)
-
-## Changes in v1.0.0
-
-- ✨ NEW: DTLS Firmware support - bridge should now work on cameras with the latest firmware
-- ✨ NEW: Wyze Cam Outdoor (WVOD1) support
+- ⬆️ UPDATE: rtsp-simple-server to v0.17.16.
+- 🧹Code refactoring and docstrings.

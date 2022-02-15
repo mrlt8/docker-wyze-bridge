@@ -13,28 +13,21 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
 
-## Changes in v1.0.2
+## Changes in v1.1.0
 
-- ✨ NEW: Camera specific QUALITY adjustments e.g. `QUALITY_CAM_NAME=SD30` #199
-- 🔧 MQTT related fixes and improvements #194 - Thanks @TTerastar!
-- 🔧 FIX: FFMPEG related freezes #200 - Thanks @AdiAbuAli!
-- 🔧 CHANGE: c_types for tutk library
+- 🏠 Home Assistant: Specify snapshot dir using `IMG_DIR`.
+- ✨ NEW: ENV option `IMG_DIR` - Optional. Change snapshot dir.
+- ✨ NEW: ENV option `MAX_NOREADY` - Optional. Number of "NOREADY" frames before restarting the connection.
+- ✨ NEW: ENV option `MAX_BADRES` - Optional. Number of frames that have a wrong resolution before restarting the connection.
+- ✨ NEW: ENV option `WEBRTC=True` - Optional. Get WebRTC credentials for all cameras.
+- 🔨 Fixed: Change resolution without reconnecting.
+- 🔨 Fixed: Refresh expired tokens.
+- 🔨 Fixed: Compatibility with rtsp-simple-server changes.
+- 🔨 Fixed: Cleanup logging for reads and publish.
+- ⬆️ UPDATE: Switched to Python 3.10 base image.
 - ⬆️ UPDATE: iOS and Wyze App version for API
-- ⬆️ UPDATE: rtsp-simple-server v0.17.7
-
-## Changes in v1.0.1
-
-- 🏠 Home Assistant: Potential fix for DNS issue #107 - Thanks [@AlejandroRivera](https://github.com/mrlt8/docker-wyze-bridge/issues/107#issuecomment-950940320)!
-- ➕ Added: Camera names for Pan V2 and Outdoor V2
-- 🔧 Changed: Remove all special characters from URIs #189
-- 🔧 Changed: fflags as potential fix for FFMPEG freezes #187- Thanks [@AdiAbuAli](https://github.com/mrlt8/docker-wyze-bridge/issues/187#issuecomment-951331290)
-
-## Changes in v1.0.0
-
-⚠️ May need to use `FRESH_DATA=true` on first run if upgrading from an exsisting installation.
-
-- ✨ NEW: DTLS Firmware support - bridge should now work on cameras with the latest firmware
-- ✨ NEW: Wyze Cam Outdoor (WVOD1) support
+- ⬆️ UPDATE: rtsp-simple-server to v0.17.16.
+- 🧹Code refactoring and docstrings.
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -47,25 +40,24 @@ Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found 
 ![Wyze Cam Pan V2](https://img.shields.io/badge/wyze_pan_v2-yes-success.svg)
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
 ![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-yes-success.svg)
+![Wyze Cam Doorbell Pro](https://img.shields.io/badge/wyze_doorbell_pro-no-inactive.svg)
 
 V1 is currently not supported due to lack of hardware for development.
 
-| Camera              | Model          | Supported |
-| ------------------- | -------------- | --------- |
-| Wyze Cam v1         | WYZEC1         | ⚠️         |
-| Wyze Cam V2         | WYZEC1-JZ      | ✅         |
-| Wyze Cam V3         | WYZE_CAKP2JFUS | ✅         |
-| Wyze Cam Pan        | WYZECP1_JEF    | ✅         |
-| Wyze Cam Pan v2     | HL_PAN2        | ✅         |
-| Wyze Cam Doorbell   | WYZEDB3        | ✅         |
-| Wyze Cam Outdoor    | WVOD1          | ✅         |
-| Wyze Cam Outdoor v2 | HL_WCO2        | ❓         |
+| Camera                | Model          | Supported |
+| --------------------- | -------------- | --------- |
+| Wyze Cam v1           | WYZEC1         | ⚠️         |
+| Wyze Cam V2           | WYZEC1-JZ      | ✅         |
+| Wyze Cam V3           | WYZE_CAKP2JFUS | ✅         |
+| Wyze Cam Pan          | WYZECP1_JEF    | ✅         |
+| Wyze Cam Pan v2       | HL_PAN2        | ✅         |
+| Wyze Cam Doorbell     | WYZEDB3        | ✅         |
+| Wyze Cam Outdoor      | WVOD1          | ✅         |
+| Wyze Cam Doorbell Pro | GW_BE1         | ❓         |
 
 ### Firmware Compatibility
 
 The bridge should be compatible with the latest official firmware from wyze.
-
-Installing a firmware with DTLS enabled is **recommended** for secuirty purposes.
 
 ## Compatibility
 
@@ -74,10 +66,11 @@ Installing a firmware with DTLS enabled is **recommended** for secuirty purposes
 ![Supports amd64 Architecture](https://img.shields.io/badge/amd64-yes-success.svg)
 [![Home Assistant Add-on](https://img.shields.io/badge/home_assistant-add--on-blue.svg?logo=homeassistant&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
 [![Portainer stack](https://img.shields.io/badge/portainer-stack-blue.svg?logo=portainer&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
+[![Unraid Community App](https://img.shields.io/badge/unraid-community--app-blue.svg?logo=unraid&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/issues/236)
 
 Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi.
 
-The container can be run on its own, in [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer), or as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant).
+The container can be run on its own, in [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer), [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236), or as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant).
 
 [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmrlt8%2Fdocker-wyze-bridge)
 
@@ -113,6 +106,7 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 - [ARM/Raspberry Pi](#armraspberry-pi)
 - [LAN mode](#LAN-Mode)
 - [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
+- [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236)
 - [Home Assistant](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
 - [HomeKit Secure Video](https://github.com/mrlt8/docker-wyze-bridge/wiki/HomeKit-Secure-Video)
 
@@ -126,31 +120,31 @@ If your email or password contains a `%` or `$` character, you may need to escap
 
 ## Camera Stream URIs
 
-By default, the bridge will create three streams for each of your cameras which can be acccessed at the following URIs, where `camera-nickname` is the name of the camera set in the Wyze app and converted to lower case with hyphens in place of spaces. e.g. 'Front Door' would be `/front-door`
+By default, the bridge will create three streams for each of your cameras which can be accessed at the following URIs, where `camera-nickname` is the name of the camera set in the Wyze app and converted to lower case with hyphens in place of spaces. e.g. 'Front Door' would be `/front-door`
 
 Replace localhost with the hostname or ip of the machine running the bridge:
 
 - RTMP:
 
-  ```
+  ```text
   rtmp://localhost:1935/camera-nickname
   ```
 
 - RTSP:
 
-  ```
+  ```text
   rtsp://localhost:8554/camera-nickname
   ```
 
 - HLS:
 
-  ```
+  ```text
   http://localhost:8888/camera-nickname/stream.m3u8
   ```
 
 - HLS can also be viewed in the browser using:
 
-  ```
+  ```text
   http://localhost:8888/camera-nickname
   ```
 
@@ -170,6 +164,8 @@ Two-factor authentication ("Two-Step Verification" in the wyze app) is supported
   volumes:
       - ./tokens:/tokens/
   ```
+
+You can also have the bridge auto generate and enter a Time-based One-Time Password (TOTP) by adding the secret key to the file `/tokens/totp` on standard installs or `/config/wyze-bridge/totp` for Home Assistant installs. You will need to create the file if it doesn't exist and mount it if necessary.
 
 - 🏠 Home Assistant:
 
@@ -241,13 +237,13 @@ All options are case-insensitivE, and take single or comma separated values.
 - Whitelist by Camera Model:
 
   ```yaml
-  - FILTER_MODEL=WYZEC1-JZ
+  - FILTER_MODELS=WYZEC1-JZ
   ```
 
 - Whitelist by Camera Model Name:
 
   ```yaml
-  - FILTER_MODEL=V2, v3, Pan
+  - FILTER_MODELS=V2, v3, Pan
   ```
 
 - Blacklisting:
@@ -287,6 +283,8 @@ environment:
 - `SNAPSHOT=API` Will run ONCE at startup and will grab a *high-quality* thumbnail from the wyze api and save it to `/img/cam-name.jpg` on docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
 
 - `SNAPSHOT=RTSP` Will run every 180 seconds (configurable) and wll grab a new frame from the RTSP stream every iteration and save it to `/img/cam-name.jpg` on standard docker installs or `/config/www/cam-name.jpg` in Home Assistant mode. Can specify a custom interval with `SNAPSHOT=RTSP(INT)` e.g. `SNAPSHOT=RTSP30` to run every 30 seconds
+
+- `IMG_DIR=/img/` Specify the directory where the snapshots will be saved *within the container*. Use volumes in docker to map to an external directory.
 
 ### MQTT (beta)
 
@@ -386,16 +384,22 @@ environment options:
 
 - `URI_SEPARATOR` (-|_|#) Customize the separator used to replace spaces in the URI; available values are `-`, `_`, or use `#` to remove spaces.
 
-- `IGNORE_OFFLINE` (string/bool) Ignore ofline cameras until container restarts
+- `MAX_NOREADY` (int) Adjust the consecutive number of "NOREADY" frames before restarting the connection. Default: `100`
+
+- `MAX_BADRES` (int) Adjust the consecutive number of frames that have a wrong resolution before restarting the connection. Default: `100`
+
+- `IGNORE_OFFLINE` (bool) Ignore offline cameras until container restarts
 
 - `OFFLINE_TIME` (int) Customize the sleep time when a camera is offline
 
-- `DEBUG_FRAMES` (string/bool) Show all lost/incomplete frames
+- `DEBUG_FRAMES` (bool) Show all lost/incomplete frames
 
 - `DEBUG_LEVEL` (debug|info|warning|error) Adjust the level of upstream logging
 
 - `RTSP_LOGLEVEL` (debug|info|warn) Adjust the verbosity of rtsp-simple-server; available values are "warn", "info", "debug".
 
-- `DEBUG_FFMPEG` (string/bool) Enable additional logging from FFmpeg
+- `DEBUG_FFMPEG` (bool) Enable additional logging from FFmpeg
 
-- `FRESH_DATA` (string/bool) Remove local cache and pull new data from wyze servers.
+- `FRESH_DATA` (bool) Remove local cache and pull new data from wyze servers.
+
+- `WEBRTC` (bool) Display WebRTC credentials for cameras.
