@@ -405,8 +405,8 @@ class WyzeIOTCSession:
         """
         assert self.av_chan_id is not None, "Please call _connect() first!"
 
-        max_noready = int(os.getenv("MAX_NOREADY", 500))
-        max_badres = int(os.getenv("MAX_BADRES", 300))
+        max_noready = int(os.getenv("MAX_NOREADY", 100))
+        max_badres = int(os.getenv("MAX_BADRES", 100))
 
         # wyze doorbell has weird rotated image sizes. We add 3 to compensate.
         ignore_res = int(os.getenv("IGNORE_RES", self.preferred_frame_size + 3))
@@ -419,13 +419,16 @@ class WyzeIOTCSession:
             errno, frame_data, frame_info = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
+
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
-                    if bad_frames > max_noready and last_frame > 0:
+                    if last_frame < 1:
+                        continue
+                    if bad_frames > max_noready:
                         raise tutk.TutkError(errno)
-                    logger.debug(f"Frame not available [{bad_frames}/{max_noready}]")
                     bad_frames += 1
-                    time.sleep(1.0 / 32)
+                    logger.debug(f"Frame not available [{bad_frames}/{max_noready}]")
+                    time.sleep(1.0 / 10)
                     continue
                 if errno == tutk.AV_ER_INCOMPLETE_FRAME:
                     warnings.warn("Received incomplete frame")
@@ -450,16 +453,13 @@ class WyzeIOTCSession:
                     raise Exception(msg)
                 warnings.warn(msg)
                 bad_res += 1
-
                 with self.iotctrl_mux() as mux:
                     iotc_msg = self.preferred_frame_size, self.preferred_bitrate
                     if self.camera.product_model in ["WYZEDB3", "WVOD1"]:
-                        resolving = mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg))
+                        mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result()
                     else:
-                        resolving = mux.send_ioctl(K10056SetResolvingBit(*iotc_msg))
-                    mux.waitfor(resolving)
-
-                time.sleep(1.0 / 5)
+                        mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result()
+                time.sleep(1.0 / 10)
                 continue
 
             bad_frames = bad_res = 0
@@ -470,17 +470,12 @@ class WyzeIOTCSession:
             if (
                 frame_info.frame_no - last_keyframe[1] > frame_info.framerate * 2
                 and frame_info.frame_no - last_frame > 6
-            ):
-                last_frame = frame_info.frame_no
+            ) or time.time() - frame_info.timestamp > 20:
                 warnings.warn("Dropping old frames")
                 continue
 
             if time.time() - last_keyframe[0] > 5:
                 warnings.warn("Dropping old key frame")
-                continue
-
-            if time.time() - frame_info.timestamp > 20:
-                warnings.warn("Skipping old frame")
                 continue
 
             yield frame_data
