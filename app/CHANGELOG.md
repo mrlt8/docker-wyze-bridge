@@ -10,6 +10,6 @@
 - 🔨 Fixed: Compatibility with rtsp-simple-server changes.
 - 🔨 Fixed: Cleanup logging for reads and publish.
 - ⬆️ UPDATE: Switched to Python 3.10 base image.
-- ⬆️ UPDATE: iOS and Wyze App version for API
-- ⬆️ UPDATE: rtsp-simple-server to v0.17.16.
+- ⬆️ UPDATE: iOS and Wyze App version for API.
+- ⬆️ UPDATE: rtsp-simple-server to v0.17.17.
 - 🧹Code refactoring and docstrings.
