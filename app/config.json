@@ -44,6 +44,7 @@
         "WYZE_PASSWORD": "password",
         "NET_MODE": "list(LAN|P2P|ANY)",
         "SNAPSHOT": "list(API|RTSP|RTSP15|RTSP30|RTSP60|Disable)",
+        "IMG_DIR": "str?",
         "MQTT_HOST": "str?",
         "MQTT_AUTH": "str?",
         "MQTT_TOPIC": "str?",
