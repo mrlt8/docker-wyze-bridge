@@ -71,7 +71,7 @@ class WyzeBridge:
                     if process.exitcode == 1:
                         self.start_stream(name)
                     elif process.exitcode == 2:
-                        self.get_wyze_data("camera", enable_cached=False)
+                        self.get_wyze_data("cameras", enable_cached=False)
                         self.start_stream(name)
                     elif process.exitcode in [90]:
                         if env_bool("IGNORE_OFFLINE"):
@@ -196,7 +196,7 @@ class WyzeBridge:
             log.info("♻️ Refreshing tokens")
             wyze_data = wyzecam.refresh_token(self.auth)
             self.set_wyze_data("auth", wyze_data)
-        except AssertionError as ex:
+        except AssertionError:
             log.warning("⏰ Expired refresh token?")
             self.get_wyze_data("auth", False)
 
@@ -236,6 +236,8 @@ class WyzeBridge:
             except requests.exceptions.HTTPError as ex:
                 if "400 Client Error" in str(ex):
                     log.warning("🚷 Invalid credentials?")
+                else:
+                    log.warning(ex)
                 time.sleep(60)
             except Exception as ex:
                 log.warning(ex)
@@ -389,16 +391,14 @@ class WyzeBridge:
                             raise Exception(f"[FFMPEG] {ex}")
                     log.info("🧹 Cleaning up FFMPEG...")
                     ffmpeg.kill()
-        except wyzecam.tutk.tutk.TutkError as ex:
-            if ex.args[0] == -90:
-                exit_code = 90
-        except AssertionError as ex:
-            if ex.args[0] in "Authentication did not succeed! {'connectionRes': '2'}":
-                log.warning("⏰ Expired ENR?")
-                exit_code = 2
         except Exception as ex:
             log.warning(ex)
             exit_code = 99
+            if ex.args[0] == -90:
+                exit_code = 90
+            if ex.args[0] in "Authentication did not succeed! {'connectionRes': '2'}":
+                log.warning("⏰ Expired ENR?")
+                exit_code = 2
         finally:
             wyze_iotc.deinitialize()
             sys.exit(exit_code)
