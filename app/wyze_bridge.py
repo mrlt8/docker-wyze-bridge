@@ -86,7 +86,6 @@ class WyzeBridge:
                         del self.streams[name]
 
                 if (sleep := stream["sleep"]) and sleep <= time.time():
-                    print("wake wake")
                     self.streams[name]["sleep"] = False
                     self.start_stream(name)
             time.sleep(1)
@@ -170,7 +169,7 @@ class WyzeBridge:
     def cache_check(
         self, name: str
     ) -> Union[wyzecam.WyzeCredential, wyzecam.WyzeAccount, List[wyzecam.WyzeCamera]]:
-        """Check if local cache exsists."""
+        """Check if local cache exists."""
         try:
             if "cameras" in name and "api" in env_bool("SNAPSHOT"):
                 raise Exception("♻️ Refreshing camera data for thumbnails")
@@ -409,7 +408,10 @@ class WyzeBridge:
         log.info("\n======\nWebRTC\n======\n\n")
         for i, cam in enumerate(self.cameras, 1):
             if wss := wyzecam.api.get_cam_webrtc(self.auth, cam.mac):
-                print(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n{wss}\n---")
+                creds = json.dumps(wss, separators=("\n\n", ":\n"))[1:-1].replace(
+                    '"', ""
+                )
+                print(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n\n{creds}\n---")
             else:
                 log.info(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\nNA\n---")
         print("goodbye")
