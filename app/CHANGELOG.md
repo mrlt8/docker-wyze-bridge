@@ -10,6 +10,7 @@
 - 🔨 Fixed: Refresh cams from API when unable to find device.
 - 🔨 Fixed: Compatibility with rtsp-simple-server changes (PUBLISH to READY)
 - 🔨 Fixed: Cleanup logging for reads and publish.
+- 🔨 Fixed: Attempt to cleanup and exit more gracefully.
 - ⬆️ UPDATE: Switched to Python 3.10 base image.
 - ⬆️ UPDATE: iOS and Wyze App version for API.
 - ⬆️ UPDATE: rtsp-simple-server to v0.17.17.

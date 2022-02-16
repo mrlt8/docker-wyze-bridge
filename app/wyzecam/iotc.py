@@ -409,7 +409,10 @@ class WyzeIOTCSession:
         max_badres = int(os.getenv("MAX_BADRES", 100))
 
         # wyze doorbell has weird rotated image sizes. We add 3 to compensate.
-        ignore_res = int(os.getenv("IGNORE_RES", self.preferred_frame_size + 3))
+        ignore_res = {
+            self.preferred_frame_size,
+            int(os.getenv("IGNORE_RES", self.preferred_frame_size + 3)),
+        }
         bad_frames = 0
         bad_res = 0
         last_frame = 0
@@ -439,12 +442,9 @@ class WyzeIOTCSession:
                 raise tutk.TutkError(errno)
             assert frame_info is not None, "Got no frame info without an error!"
 
-            if frame_info.frame_size not in [
-                self.preferred_frame_size,
-                ignore_res,
-            ]:
+            if frame_info.frame_size not in ignore_res:
                 if last_frame == 0:
-                    logger.warn(
+                    warnings.warn(
                         f"Skipping smaller frame at start of stream (frame_size={frame_info.frame_size})"
                     )
                     continue
