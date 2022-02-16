@@ -1,10 +1,10 @@
 import sys
 
 try:
+    import os
     import signal
+    import time
     from datetime import datetime as dt
-    from os import getenv, getpid, path
-    from time import sleep
     from typing import NoReturn
 
 except ImportError:
@@ -33,8 +33,8 @@ class RtspEvent:
     def pub_start(self) -> NoReturn:
         """Handle a 'PUBLISH' event when publishing a stream to rtsp-simple-server."""
         self.write_log(f"✅ '/{self.uri}' stream is UP!")
-        img_file = getenv("img_path") + self.uri + ".jpg"
-        env_snap = getenv("SNAPSHOT", "NA").ljust(5, "0").upper()
+        img_file = os.getenv("img_path") + self.uri + ".jpg"
+        env_snap = os.getenv("SNAPSHOT", "NA").ljust(5, "0").upper()
         if env_bool("HASS"):
             host = env_bool("HOSTNAME", "localhost")
             import json
@@ -54,7 +54,7 @@ class RtspEvent:
                 Popen(
                     f"ffmpeg -loglevel fatal -skip_frame nokey -rtsp_transport tcp -i rtsp://{rtsp_addr}/{self.uri} -vframes 1 -y {img_file}".split()
                 ).wait()
-            if path.exists(img_file) and path.getsize(img_file) > 1:
+            if os.path.exists(img_file) and os.path.getsize(img_file) > 1:
                 with open(img_file, "rb") as img:
                     self.send_mqtt("image", img.read())
             if env_bool("HASS"):
@@ -68,7 +68,7 @@ class RtspEvent:
                     ),
                 )
 
-            sleep(
+            time.sleep(
                 int(env_snap[4:])
                 if env_snap[4:].isdigit() and int(env_snap[4:]) > 1
                 else 180
@@ -77,7 +77,7 @@ class RtspEvent:
     def read_start(self) -> NoReturn:
         """Handle 'READ' events when a client starts consuming a stream fromrtsp-simple-server."""
         self.write_log("📖 New client reading ")
-        self.send_mqtt(f"clients/{getpid()}", "reading")
+        self.send_mqtt(f"clients/{os.getpid()}", "reading")
         signal.pause()
 
     def mqtt_connect(self) -> None:
@@ -91,16 +91,16 @@ class RtspEvent:
             self.base = f"wyzebridge/{self.uri}/"
             if env_bool("MQTT_TOPIC"):
                 self.base = f'{env_bool("MQTT_TOPIC")}/{self.base}'
-            host = getenv("MQTT_HOST").split(":")
+            host = os.getenv("MQTT_HOST").split(":")
             self.mqtt = mqtt.Client()
             if env_bool("MQTT_AUTH"):
-                auth = getenv("MQTT_AUTH").split(":")
+                auth = os.getenv("MQTT_AUTH").split(":")
                 self.mqtt.username_pw_set(auth[0], auth[1] if len(auth) > 1 else None)
             self.mqtt.will_set(self.base, None)
             if "PUBLISH" in self.type:
                 self.mqtt.will_set(self.base + "state", "disconnected")
             if "READ" in self.type:
-                self.mqtt.will_set(self.base + f"clients/{getpid()}", None)
+                self.mqtt.will_set(self.base + f"clients/{os.getpid()}", None)
             try:
                 self.mqtt.connect(host[0], int(host[1] if len(host) > 1 else 1883), 60)
                 self.mqtt.loop_start()
@@ -121,7 +121,7 @@ class RtspEvent:
             self.send_mqtt("image.jpg", None)
         if "READ" in self.type:
             self.write_log("📕 Client stopped reading")
-            self.send_mqtt(f"clients/{getpid()}", None)
+            self.send_mqtt(f"clients/{os.getpid()}", None)
         if self.mqtt_connected:
             self.mqtt.disconnect()
             self.mqtt.loop_stop()
@@ -130,7 +130,7 @@ class RtspEvent:
 
 def env_bool(env: str, false: str = "") -> str:
     """Return env variable or empty string if the variable contains 'false' or is empty."""
-    return getenv(env.upper(), "").lower().replace("false", "") or false
+    return os.getenv(env.upper(), "").lower().replace("false", "") or false
 
 
 if __name__ == "__main__" and len(sys.argv) > 2:

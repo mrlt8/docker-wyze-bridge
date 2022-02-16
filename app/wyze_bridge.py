@@ -66,14 +66,17 @@ class WyzeBridge:
         for cam_name in self.streams:
             self.start_stream(cam_name)
         while len(self.streams) > 0:
+            refresh_cams = True
             for name, stream in list(self.streams.items()):
                 if process := stream["process"]:
-                    if process.exitcode == 1:
-                        self.start_stream(name)
-                    elif process.exitcode == 2:
+                    if process.exitcode == 19 and refresh_cams:
+                        refresh_cams = False
+                        log.info("♻️ Attempting to refresh list of cameras")
                         self.get_wyze_data("cameras", enable_cached=False)
+
+                    if process.exitcode in {1, 19}:
                         self.start_stream(name)
-                    elif process.exitcode in [90]:
+                    elif process.exitcode in {90}:
                         if env_bool("IGNORE_OFFLINE"):
                             log.info(f"🪦 {name} is offline. Will NOT try again.")
                             del self.streams[name]
@@ -392,11 +395,12 @@ class WyzeBridge:
                     ffmpeg.kill()
         except Exception as ex:
             log.warning(ex)
-            if ex.args[0] == -90:
-                exit_code = 90
+            if ex.args[0] in (-19, -90):
+                exit_code = abs(ex.args[0])
+
             elif ex.args[0] in "Authentication did not succeed! {'connectionRes': '2'}":
                 log.warning("⏰ Expired ENR?")
-                exit_code = 2
+                exit_code = 19
         finally:
             wyze_iotc.deinitialize()
             sys.exit(exit_code)

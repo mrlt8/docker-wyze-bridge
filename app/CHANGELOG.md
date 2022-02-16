@@ -7,7 +7,8 @@
 - ✨ NEW: ENV option `WEBRTC=True` - Optional. Get WebRTC credentials for all cameras.
 - 🔨 Fixed: Change resolution without reconnecting.
 - 🔨 Fixed: Refresh expired tokens.
-- 🔨 Fixed: Compatibility with rtsp-simple-server changes.
+- 🔨 Fixed: Refresh cams from API when unable to find device.
+- 🔨 Fixed: Compatibility with rtsp-simple-server changes (PUBLISH to READY)
 - 🔨 Fixed: Cleanup logging for reads and publish.
 - ⬆️ UPDATE: Switched to Python 3.10 base image.
 - ⬆️ UPDATE: iOS and Wyze App version for API.
