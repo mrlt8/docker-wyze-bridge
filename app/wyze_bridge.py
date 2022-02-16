@@ -17,7 +17,6 @@ import requests
 
 import wyzecam
 
-
 class WyzeBridge:
     def __init__(self) -> None:
         print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.1.0\n")
