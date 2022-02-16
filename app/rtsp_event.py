@@ -1,56 +1,63 @@
+import sys
+
 try:
-    import sys
-    import datetime
     import os
     import signal
     import time
-except:
-    raise SystemExit
+    from datetime import datetime as dt
+    from typing import NoReturn
+
+except ImportError:
+    sys.exit(1)
 
 
-class rtsp_event:
-    def __init__(self):
+class RtspEvent:
+    """Handle events from rtsp-simple-server."""
+
+    def __init__(self) -> None:
+        """Run the script until it receives a termination signal."""
         for sig in ["SIGQUIT", "SIGTERM", "SIGINT"]:
             signal.signal(getattr(signal, sig), lambda n, f: self.clean_up())
+        self.uri: str
+        self.type: str
         self.__dict__.update(
             dict(zip(["uri", "type", "mac", "model", "firmware"], sys.argv[1:]))
         )
         self.mqtt_connect()
 
-    def env_bool(self, env: str, false: str = "") -> str:
-        return os.environ.get(env.upper(), "").lower().replace("false", "") or false
-
-    def write_log(self, txt):
-        date = datetime.datetime.now().strftime("%Y/%m/%d %X")
+    def write_log(self, txt: str) -> None:
+        """Format and print logging messages to stdout."""
+        date = dt.now().strftime("%Y/%m/%d %X")
         print(date, f"[RTSP][{self.uri.upper()}] {txt}")
 
-    def pub_start(self):
+    def pub_start(self) -> NoReturn:
+        """Handle a 'PUBLISH' event when publishing a stream to rtsp-simple-server."""
         self.write_log(f"✅ '/{self.uri}' stream is UP!")
         img_file = os.getenv("img_path") + self.uri + ".jpg"
         env_snap = os.getenv("SNAPSHOT", "NA").ljust(5, "0").upper()
-        if self.env_bool("HASS"):
-            host = self.env_bool("HOSTNAME", "localhost")
+        if env_bool("HASS"):
+            host = env_bool("HOSTNAME", "localhost")
             import json
         if "RTSP" in env_snap[:4]:
-            import subprocess
+            from subprocess import Popen
         while True:
             self.send_mqtt("state", "online")
             if "RTSP" in env_snap[:4]:
                 rtsp_addr = "127.0.0.1:8554"
-                if self.env_bool(f"RTSP_PATHS_{self.uri.upper()}_READUSER"):
+                if env_bool(f"RTSP_PATHS_{self.uri.upper()}_READUSER"):
                     rtsp_addr = (
-                        self.env_bool(f"RTSP_PATHS_{self.uri.upper()}_READUSER")
+                        env_bool(f"RTSP_PATHS_{self.uri.upper()}_READUSER")
                         + ":"
-                        + self.env_bool(f"RTSP_PATHS_{self.uri.upper()}_READPASS")
+                        + env_bool(f"RTSP_PATHS_{self.uri.upper()}_READPASS")
                         + f"@{rtsp_addr}"
                     )
-                subprocess.Popen(
+                Popen(
                     f"ffmpeg -loglevel fatal -skip_frame nokey -rtsp_transport tcp -i rtsp://{rtsp_addr}/{self.uri} -vframes 1 -y {img_file}".split()
                 ).wait()
             if os.path.exists(img_file) and os.path.getsize(img_file) > 1:
                 with open(img_file, "rb") as img:
                     self.send_mqtt("image", img.read())
-            if self.env_bool("HASS"):
+            if env_bool("HASS"):
                 self.send_mqtt(
                     "attributes",
                     json.dumps(
@@ -67,24 +74,26 @@ class rtsp_event:
                 else 180
             )
 
-    def read_start(self):
-        self.write_log(f"📖 New client reading ")
+    def read_start(self) -> NoReturn:
+        """Handle 'READ' events when a client starts consuming a stream fromrtsp-simple-server."""
+        self.write_log("📖 New client reading ")
         self.send_mqtt(f"clients/{os.getpid()}", "reading")
         signal.pause()
 
-    def mqtt_connect(self):
+    def mqtt_connect(self) -> None:
+        """Connect to an MQTT if the env option is enabled."""
         self.mqtt_connected = False
-        if self.env_bool("MQTT_HOST"):
+        if env_bool("MQTT_HOST"):
             try:
                 import paho.mqtt.client as mqtt
             except ImportError:
                 return
             self.base = f"wyzebridge/{self.uri}/"
-            if self.env_bool("MQTT_TOPIC"):
-                self.base = f'{self.env_bool("MQTT_TOPIC")}/{self.base}'
+            if env_bool("MQTT_TOPIC"):
+                self.base = f'{env_bool("MQTT_TOPIC")}/{self.base}'
             host = os.getenv("MQTT_HOST").split(":")
             self.mqtt = mqtt.Client()
-            if self.env_bool("MQTT_AUTH"):
+            if env_bool("MQTT_AUTH"):
                 auth = os.getenv("MQTT_AUTH").split(":")
                 self.mqtt.username_pw_set(auth[0], auth[1] if len(auth) > 1 else None)
             self.mqtt.will_set(self.base, None)
@@ -99,17 +108,19 @@ class rtsp_event:
             except Exception as ex:
                 self.write_log(f"[MQTT] {ex}")
 
-    def send_mqtt(self, topic, message):
+    def send_mqtt(self, topic: str, message: str) -> None:
+        """Publish a message to the MQTT server."""
         if self.mqtt_connected:
             self.mqtt.publish(self.base + topic, message)
 
-    def clean_up(self):
-        if "PUBLISH" in self.type:
+    def clean_up(self) -> NoReturn:
+        """Update the log and MQTT status when a termination signal is received."""
+        if "READY" in self.type:
             self.write_log(f"❌ '/{self.uri}' stream is down")
             self.send_mqtt("state", "offline")
             self.send_mqtt("image.jpg", None)
         if "READ" in self.type:
-            self.write_log(f"📕 Client stopped reading")
+            self.write_log("📕 Client stopped reading")
             self.send_mqtt(f"clients/{os.getpid()}", None)
         if self.mqtt_connected:
             self.mqtt.disconnect()
@@ -117,9 +128,14 @@ class rtsp_event:
         sys.exit(0)
 
 
+def env_bool(env: str, false: str = "") -> str:
+    """Return env variable or empty string if the variable contains 'false' or is empty."""
+    return os.getenv(env.upper(), "").lower().replace("false", "") or false
+
+
 if __name__ == "__main__" and len(sys.argv) > 2:
-    rtsp = rtsp_event()
-    if "PUBLISH" in rtsp.type:
+    rtsp = RtspEvent()
+    if "READY" in rtsp.type:
         rtsp.pub_start()
     if "READ" in rtsp.type:
         rtsp.read_start()

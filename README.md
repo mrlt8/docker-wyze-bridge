@@ -13,45 +13,22 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
 
-## Changes in v1.0.4
+## Changes in v1.1.0
 
-- 🚧 CHANGE: Use multiprocessing instead of multithreading for each camera - may use more resources, but should keep other streams alive (#211)
-- 🔧 FIX: import exceptions (#214, #228)
-
-## Changes in v1.0.3
-
-- 🔧 FIX: Memory leak in video buffer (#197)
-- 🔧 FIX: Display wifi signal for Outdoor cams
-- 🔧 FIX: Ignore wrong res on stream startup (#221, #133)
-- 🔧 FIX: rtsp_event related errors (#214, #228)
-- ⬆️ UPDATE: Add additional tutk errors (#228)
-- ⬆️ UPDATE: Wyze App version for API
-- 🚧 CHANGE: Kill stream if no video frames for 10+ seconds (#201)
-- 🚧 KNOWN BUGS: All streams die on reconnect (#201)
-
-
-## Changes in v1.0.2
-
-- ✨ NEW: Camera specific QUALITY adjustments e.g. `QUALITY_CAM_NAME=SD30` #199
-- 🔧 MQTT related fixes and improvements #194 - Thanks @TTerastar!
-- 🔧 FIX: FFMPEG related freezes #200 - Thanks @AdiAbuAli!
-- 🔧 CHANGE: c_types for tutk library
-- ⬆️ UPDATE: iOS and Wyze App version for API
-- ⬆️ UPDATE: rtsp-simple-server v0.17.7
-
-## Changes in v1.0.1
-
-- 🏠 Home Assistant: Potential fix for DNS issue #107 - Thanks [@AlejandroRivera](https://github.com/mrlt8/docker-wyze-bridge/issues/107#issuecomment-950940320)!
-- ➕ Added: Camera names for Pan V2 and Outdoor V2
-- 🔧 Changed: Remove all special characters from URIs #189
-- 🔧 Changed: fflags as potential fix for FFMPEG freezes #187- Thanks [@AdiAbuAli](https://github.com/mrlt8/docker-wyze-bridge/issues/187#issuecomment-951331290)
-
-## Changes in v1.0.0
-
-⚠️ May need to use `FRESH_DATA=true` on first run if upgrading from an exsisting installation.
-
-- ✨ NEW: DTLS Firmware support - bridge should now work on cameras with the latest firmware
-- ✨ NEW: Wyze Cam Outdoor (WVOD1) support
+- 🏠 Home Assistant: Specify snapshot dir using `IMG_DIR`.
+- ✨ NEW: ENV option `IMG_DIR` - Optional. Change snapshot dir.
+- ✨ NEW: ENV option `MAX_NOREADY` - Optional. Number of "NOREADY" frames before restarting the connection.
+- ✨ NEW: ENV option `MAX_BADRES` - Optional. Number of frames that have a wrong resolution before restarting the connection.
+- ✨ NEW: ENV option `WEBRTC=True` - Optional. Get WebRTC credentials for all cameras.
+- 🔨 Fixed: Change resolution without reconnecting.
+- 🔨 Fixed: Refresh expired tokens.
+- 🔨 Fixed: Refresh cams from API when unable to find device.
+- 🔨 Fixed: Compatibility with rtsp-simple-server changes (PUBLISH to READY)
+- 🔨 Fixed: Cleanup logging for reads and publish.
+- ⬆️ UPDATE: Switched to Python 3.10 base image.
+- ⬆️ UPDATE: iOS and Wyze App version for API.
+- ⬆️ UPDATE: rtsp-simple-server to v0.17.17.
+- 🧹Code refactoring and docstrings.
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -60,30 +37,32 @@ Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found 
 ![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
 ![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
 ![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
+![Wyze Cam Floodlight](https://img.shields.io/badge/wyze_floodlight-yes-success.svg)
 ![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-yes-success.svg)
 ![Wyze Cam Pan V2](https://img.shields.io/badge/wyze_pan_v2-yes-success.svg)
-![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
 ![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-yes-success.svg)
+![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
+![Wyze Cam Doorbell Pro](https://img.shields.io/badge/wyze_doorbell_pro-no-inactive.svg)
 
 V1 is currently not supported due to lack of hardware for development.
 
-| Camera            | Model          | Supported |
-| ----------------- | -------------- | --------- |
-| Wyze Cam v1       | WYZEC1         | ❌         |
-| Wyze Cam V2       | WYZEC1-JZ      | ✅         |
-| Wyze Cam V3       | WYZE_CAKP2JFUS | ✅         |
-| Wyze Cam Pan      | WYZECP1_JEF    | ✅         |
-| Wyze Cam Pan v2   | HL_PAN2        | ✅         |
-| Wyze Cam Doorbell | WYZEDB3        | ✅         |
-| Wyze Cam Outdoor  | WVOD1          | ✅         |
+| Camera                | Model          | Supported |
+| --------------------- | -------------- | --------- |
+| Wyze Cam v1           | WYZEC1         | ⚠️         |
+| Wyze Cam V2           | WYZEC1-JZ      | ✅         |
+| Wyze Cam V3           | WYZE_CAKP2JFUS | ✅         |
+| Wyze Cam Floodlight   | WYZE_CAKP2JFUS | ✅         |
+| Wyze Cam Pan          | WYZECP1_JEF    | ✅         |
+| Wyze Cam Pan v2       | HL_PAN2        | ✅         |
+| Wyze Cam Outdoor      | WVOD1          | ✅         |
+| Wyze Cam Doorbell     | WYZEDB3        | ✅         |
+| Wyze Cam Doorbell Pro | GW_BE1         | ❓         |
 
 ### Firmware Compatibility
 
 ⚠️ May need to use `FRESH_DATA=true` after updating camera firmware.
 
 The bridge should be compatible with the latest official firmware from wyze.
-
-Installing a firmware with DTLS enabled is **recommended** for secuirty purposes.
 
 ## Compatibility
 
@@ -146,31 +125,31 @@ If your email or password contains a `%` or `$` character, you may need to escap
 
 ## Camera Stream URIs
 
-By default, the bridge will create three streams for each of your cameras which can be acccessed at the following URIs, where `camera-nickname` is the name of the camera set in the Wyze app and converted to lower case with hyphens in place of spaces. e.g. 'Front Door' would be `/front-door`
+By default, the bridge will create three streams for each of your cameras which can be accessed at the following URIs, where `camera-nickname` is the name of the camera set in the Wyze app and converted to lower case with hyphens in place of spaces. e.g. 'Front Door' would be `/front-door`
 
 Replace localhost with the hostname or ip of the machine running the bridge:
 
 - RTMP:
 
-  ```
+  ```text
   rtmp://localhost:1935/camera-nickname
   ```
 
 - RTSP:
 
-  ```
+  ```text
   rtsp://localhost:8554/camera-nickname
   ```
 
 - HLS:
 
-  ```
+  ```text
   http://localhost:8888/camera-nickname/stream.m3u8
   ```
 
 - HLS can also be viewed in the browser using:
 
-  ```
+  ```text
   http://localhost:8888/camera-nickname
   ```
 
@@ -190,6 +169,8 @@ Two-factor authentication ("Two-Step Verification" in the wyze app) is supported
   volumes:
       - ./tokens:/tokens/
   ```
+
+You can also have the bridge auto generate and enter a Time-based One-Time Password (TOTP) by adding the secret key to the file `/tokens/totp` on standard installs or `/config/wyze-bridge/totp` for Home Assistant installs. You will need to create the file if it doesn't exist and mount it if necessary.
 
 - 🏠 Home Assistant:
 
@@ -308,6 +289,8 @@ environment:
 
 - `SNAPSHOT=RTSP` Will run every 180 seconds (configurable) and wll grab a new frame from the RTSP stream every iteration and save it to `/img/cam-name.jpg` on standard docker installs or `/config/www/cam-name.jpg` in Home Assistant mode. Can specify a custom interval with `SNAPSHOT=RTSP(INT)` e.g. `SNAPSHOT=RTSP30` to run every 30 seconds
 
+- `IMG_DIR=/img/` Specify the directory where the snapshots will be saved *within the container*. Use volumes in docker to map to an external directory.
+
 ### MQTT (beta)
 
 Some basic MQTT support is now available in v0.7.0.
@@ -406,16 +389,22 @@ environment options:
 
 - `URI_SEPARATOR` (-|_|#) Customize the separator used to replace spaces in the URI; available values are `-`, `_`, or use `#` to remove spaces.
 
-- `IGNORE_OFFLINE` (string/bool) Ignore ofline cameras until container restarts
+- `MAX_NOREADY` (int) Adjust the consecutive number of "NOREADY" frames before restarting the connection. Default: `100`
+
+- `MAX_BADRES` (int) Adjust the consecutive number of frames that have a wrong resolution before restarting the connection. Default: `100`
+
+- `IGNORE_OFFLINE` (bool) Ignore offline cameras until container restarts
 
 - `OFFLINE_TIME` (int) Customize the sleep time when a camera is offline
 
-- `DEBUG_FRAMES` (string/bool) Show all lost/incomplete frames
+- `DEBUG_FRAMES` (bool) Show all lost/incomplete frames
 
 - `DEBUG_LEVEL` (debug|info|warning|error) Adjust the level of upstream logging
 
 - `RTSP_LOGLEVEL` (debug|info|warn) Adjust the verbosity of rtsp-simple-server; available values are "warn", "info", "debug".
 
-- `DEBUG_FFMPEG` (string/bool) Enable additional logging from FFmpeg
+- `DEBUG_FFMPEG` (bool) Enable additional logging from FFmpeg
 
-- `FRESH_DATA` (string/bool) Remove local cache and pull new data from wyze servers.
+- `FRESH_DATA` (bool) Remove local cache and pull new data from wyze servers.
+
+- `WEBRTC` (bool) Display WebRTC credentials for cameras.
