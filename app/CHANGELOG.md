@@ -1,3 +1,10 @@
+## Changes in v1.1.1
+
+- 🔨 Fixed: Refresh cams on `WRONG_AUTH_KEY` error. #292
+- 🔨 Fixed: Faster cleanup on shutdown.
+- 🔧 Changed: ENV option: `MAX_NOREADY` - Optional. Can now be set to 0 to disable. #221
+- 🎨 Logging: Stream up info.
+
 ## Changes in v1.1.0
 
 - 🏠 Home Assistant: Specify snapshot dir using `IMG_DIR`.
