@@ -397,7 +397,7 @@ class WyzeIOTCSession:
             bad_frames = 0
             first_run = False
 
-    def recv_bridge_frame(self) -> Iterator[Optional[bytes]]:
+    def recv_bridge_frame(self, stop_flag) -> Iterator[Optional[bytes]]:
         """A generator for returning raw video frames for the bridge.
 
         Note that the format of this data is either raw h264 or HVEC H265 video. You will
@@ -418,14 +418,14 @@ class WyzeIOTCSession:
         last_frame = 0
         last_keyframe = 0, 0
 
-        while True:
+        while not stop_flag.is_set():
             errno, frame_data, frame_info = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
 
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
-                    if last_frame < 1:
+                    if 0 in {last_frame, max_noready}:
                         continue
                     if bad_frames > max_noready:
                         raise tutk.TutkError(errno)
@@ -440,6 +440,7 @@ class WyzeIOTCSession:
                     warnings.warn("Lost frame")
                     continue
                 raise tutk.TutkError(errno)
+            bad_frames = 0
             assert frame_info is not None, "Got no frame info without an error!"
 
             if frame_info.frame_size not in ignore_res:
@@ -461,9 +462,7 @@ class WyzeIOTCSession:
                         mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result()
                 time.sleep(1.0 / 10)
                 continue
-
-            bad_frames = bad_res = 0
-
+            bad_res = 0
             if frame_info.is_keyframe:
                 last_keyframe = int(time.time()), int(frame_info.frame_no)
 
@@ -478,8 +477,8 @@ class WyzeIOTCSession:
                 warnings.warn("Dropping old key frame")
                 continue
 
-            yield frame_data
             last_frame = frame_info.frame_no
+            yield frame_data
 
     def recv_video_frame(
         self,

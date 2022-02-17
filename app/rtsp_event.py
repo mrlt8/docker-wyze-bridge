@@ -32,7 +32,7 @@ class RtspEvent:
 
     def pub_start(self) -> NoReturn:
         """Handle a 'PUBLISH' event when publishing a stream to rtsp-simple-server."""
-        self.write_log(f"✅ '/{self.uri}' stream is UP!")
+        self.write_log(f"✅ '/{self.uri}' stream is UP! (3/3)")
         img_file = os.getenv("img_path") + self.uri + ".jpg"
         env_snap = os.getenv("SNAPSHOT", "NA").ljust(5, "0").upper()
         if env_bool("HASS"):

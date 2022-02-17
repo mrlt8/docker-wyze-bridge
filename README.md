@@ -13,6 +13,13 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
 
+## Changes in v1.1.1
+
+- 🔨 Fixed: Refresh cams on `WRONG_AUTH_KEY` error. #292
+- 🔨 Fixed: Faster cleanup on shutdown.
+- 🔧 Changed: ENV option: `MAX_NOREADY` - Optional. Can now be set to 0 to disable. #221
+- 🎨 Logging: Stream up info.
+
 ## Changes in v1.1.0
 
 - 🏠 Home Assistant: Specify snapshot dir using `IMG_DIR`.
@@ -25,6 +32,7 @@ Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found 
 - 🔨 Fixed: Refresh cams from API when unable to find device.
 - 🔨 Fixed: Compatibility with rtsp-simple-server changes (PUBLISH to READY)
 - 🔨 Fixed: Cleanup logging for reads and publish.
+- 🔨 Fixed: Attempt to cleanup and exit more gracefully.
 - ⬆️ UPDATE: Switched to Python 3.10 base image.
 - ⬆️ UPDATE: iOS and Wyze App version for API.
 - ⬆️ UPDATE: rtsp-simple-server to v0.17.17.
@@ -59,8 +67,6 @@ V1 is currently not supported due to lack of hardware for development.
 | Wyze Cam Doorbell Pro | GW_BE1         | ❓         |
 
 ### Firmware Compatibility
-
-⚠️ May need to use `FRESH_DATA=true` after updating camera firmware.
 
 The bridge should be compatible with the latest official firmware from wyze.
 
@@ -389,7 +395,7 @@ environment options:
 
 - `URI_SEPARATOR` (-|_|#) Customize the separator used to replace spaces in the URI; available values are `-`, `_`, or use `#` to remove spaces.
 
-- `MAX_NOREADY` (int) Adjust the consecutive number of "NOREADY" frames before restarting the connection. Default: `100`
+- `MAX_NOREADY` (int) Adjust the consecutive number of "NOREADY" frames before restarting the connection. Set `0` to disable. Default: `100`
 
 - `MAX_BADRES` (int) Adjust the consecutive number of frames that have a wrong resolution before restarting the connection. Default: `100`
 

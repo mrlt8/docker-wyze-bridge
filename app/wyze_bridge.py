@@ -19,7 +19,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.1.0\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.1.1\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -67,13 +67,15 @@ class WyzeBridge:
         while len(self.streams) > 0:
             refresh_cams = True
             for name, stream in list(self.streams.items()):
+                if self.stop_flag.is_set():
+                    return
                 if process := stream["process"]:
-                    if process.exitcode == 19 and refresh_cams:
+                    if process.exitcode in {19, 68} and refresh_cams:
                         refresh_cams = False
                         log.info("♻️ Attempting to refresh list of cameras")
                         self.get_wyze_data("cameras", enable_cached=False)
 
-                    if process.exitcode in {1, 19}:
+                    if process.exitcode in {1, 19, 68}:
                         self.start_stream(name)
                     elif process.exitcode in {90}:
                         if env_bool("IGNORE_OFFLINE"):
@@ -100,7 +102,7 @@ class WyzeBridge:
                 proc.join()
         cam = next(c for c in self.cameras if c.nickname == name)
         model = model_names.get(cam.product_model, cam.product_model)
-        log.info(f"⌛️ Connecting to WyzeCam {model} {name} on {cam.ip}.. (1/3)")
+        log.info(f"🎉 Connecting to WyzeCam {model} - {name} on {cam.ip} (1/3)")
         self.save_api_thumb(cam)
         stream = multiprocessing.Process(
             target=self.start_tutk_stream,
@@ -113,13 +115,12 @@ class WyzeBridge:
     def clean_up(self) -> NoReturn:
         """Stop all streams and clean up before shutdown."""
         self.stop_flag.set()
+        if self.rtsp.poll() is None:
+            self.rtsp.kill()
         if len(self.streams) > 0:
             for stream in self.streams.values():
-                if stream["process"] and stream["process"].is_alive():
-                    stream["process"].join()
-        if self.rtsp.poll() is None:
-            self.rtsp.terminate()
-            self.rtsp.wait(1)
+                if (process := stream["process"]) and process.is_alive():
+                    process.join()
         print("👋 bye!")
         sys.exit(0)
 
@@ -375,13 +376,8 @@ class WyzeBridge:
                 check_cam_sess(sess)
                 cmd = get_ffmpeg_cmd(uri, cam.product_model)
                 with Popen(cmd, stdin=PIPE) as ffmpeg:
-                    res = "SD" if frame_size == 1 else "HD"
-                    log.info(f"📡 Getting {bitrate}kb/s {res} stream.. (3/3)")
-                    for frame in sess.recv_bridge_frame():
+                    for frame in sess.recv_bridge_frame(stop_flag):
                         try:
-                            if stop_flag.is_set():
-                                log.info("Shutting down..")
-                                raise Exception("Recieved a stop flag")
                             ffmpeg.stdin.write(frame)
                         except Exception as ex:
                             try:
@@ -394,9 +390,8 @@ class WyzeBridge:
                     ffmpeg.kill()
         except Exception as ex:
             log.warning(ex)
-            if ex.args[0] in (-19, -90):
+            if ex.args[0] in {-19, -68, -90}:
                 exit_code = abs(ex.args[0])
-
             elif ex.args[0] in "Authentication did not succeed! {'connectionRes': '2'}":
                 log.warning("⏰ Expired ENR?")
                 exit_code = 19
@@ -500,6 +495,8 @@ def check_net_mode(session_mode: int) -> str:
 def check_cam_sess(sess: wyzecam.WyzeIOTCSession) -> None:
     """Check cam session and return connection mode, firmware, and wifidb from camera."""
     mode = check_net_mode(sess.session_check().mode)
+    frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
+    bit_frame = f"{sess.preferred_bitrate}kb/s {frame_size} stream"
     if video_param := sess.camera.camera_info.get("videoParm", False):
         if env_bool("DEBUG_LEVEL"):
             log.info(f"[videoParm] {video_param}")
@@ -510,7 +507,7 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession) -> None:
     if "netInfo" in sess.camera.camera_info:
         wifi = sess.camera.camera_info["netInfo"].get("signal", wifi)
     # return mode, firmware, wifi
-    log.info(f"🎉 Connected via {mode} FW: {firmware} WiFi: {wifi}% (2/3)")
+    log.info(f"📡 Getting {bit_frame} via {mode} (WiFi: {wifi}%) FW: {firmware} (2/3)")
 
 
 def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
