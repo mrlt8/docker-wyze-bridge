@@ -17,7 +17,6 @@ import requests
 
 import wyzecam
 
-
 class WyzeBridge:
     def __init__(self) -> None:
         print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.1.1\n")
@@ -496,7 +495,6 @@ def check_net_mode(session_mode: int) -> str:
 def check_cam_sess(sess: wyzecam.WyzeIOTCSession) -> None:
     """Check cam session and return connection mode, firmware, and wifidb from camera."""
     mode = check_net_mode(sess.session_check().mode)
-
     frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
     bit_frame = f"{sess.preferred_bitrate}kb/s {frame_size} stream"
     if video_param := sess.camera.camera_info.get("videoParm", False):

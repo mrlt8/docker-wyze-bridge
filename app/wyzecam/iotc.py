@@ -441,7 +441,6 @@ class WyzeIOTCSession:
                     continue
                 raise tutk.TutkError(errno)
             bad_frames = 0
-
             assert frame_info is not None, "Got no frame info without an error!"
 
             if frame_info.frame_size not in ignore_res:
