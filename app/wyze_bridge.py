@@ -38,6 +38,7 @@ class WyzeBridge:
         if self.hass:
             print("\n🏠 Home Assistant Mode")
             os.makedirs(self.token_path, exist_ok=True)
+            os.makedirs(self.img_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
 
     def run(self) -> None:
@@ -104,7 +105,6 @@ class WyzeBridge:
         cam = next(c for c in self.cameras if c.nickname == name)
         model = model_names.get(cam.product_model, cam.product_model)
         log.info(f"🎉 Connecting to WyzeCam {model} - {name} on {cam.ip} (1/3)")
-        self.save_api_thumb(cam)
         stream = multiprocessing.Process(
             target=self.start_tutk_stream,
             args=(cam, self.stop_flag),
@@ -349,6 +349,7 @@ class WyzeBridge:
         for cam in cams:
             self.add_rtsp_path(cam)
             self.mqtt_discovery(cam)
+            self.save_api_thumb(cam)
             self.streams[cam.nickname] = {"process": False, "sleep": False}
 
     def start_rtsp_server(self) -> None:
@@ -361,7 +362,7 @@ class WyzeBridge:
             log.info("starting rtsp-simple-server")
         self.rtsp = Popen(["/app/rtsp-simple-server", "/app/rtsp-simple-server.yml"])
 
-    def start_tutk_stream(self, cam, stop_flag) -> None:
+    def start_tutk_stream(self, cam: wyzecam.WyzeCamera, stop_flag) -> None:
         """Connect and communicate with the camera using TUTK."""
         uri = clean_name(cam.nickname, upper=True)
         exit_code = 1
@@ -375,8 +376,9 @@ class WyzeBridge:
                 ) as sess:
                     check_cam_sess(sess)
                     cmd = get_ffmpeg_cmd(uri, cam.product_model)
+                    keep_bad_frames = env_bool("KEEP_BADFRAMES", False)
                     with Popen(cmd, stdin=PIPE) as ffmpeg:
-                        for frame in sess.recv_bridge_frame(stop_flag):
+                        for frame in sess.recv_bridge_frame(stop_flag, keep_bad_frames):
                             ffmpeg.stdin.write(frame)
                         log.info("🧹 Cleaning up FFMPEG...")
         except Exception as ex:

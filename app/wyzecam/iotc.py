@@ -397,7 +397,9 @@ class WyzeIOTCSession:
             bad_frames = 0
             first_run = False
 
-    def recv_bridge_frame(self, stop_flag) -> Iterator[Optional[bytes]]:
+    def recv_bridge_frame(
+        self, stop_flag, keep_bad_frames: bool = True
+    ) -> Iterator[Optional[bytes]]:
         """A generator for returning raw video frames for the bridge.
 
         Note that the format of this data is either raw h264 or HVEC H265 video. You will
@@ -469,6 +471,7 @@ class WyzeIOTCSession:
             if (
                 frame_info.frame_no - last_keyframe[1] > frame_info.framerate * 2
                 and frame_info.frame_no - last_frame > 6
+                and not keep_bad_frames
             ) or time.time() - frame_info.timestamp > 20:
                 warnings.warn("Dropping old frames")
                 continue
