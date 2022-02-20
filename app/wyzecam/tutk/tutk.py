@@ -1,23 +1,22 @@
-import typing
-from typing import Optional, Union
-
 import pathlib
+import typing
 from ctypes import (
     CDLL,
     Structure,
+    byref,
     c_char,
     c_char_p,
     c_int,
-    c_int32,
     c_int8,
+    c_int32,
     c_uint,
     c_uint8,
     c_uint16,
     c_uint32,
     cdll,
-    pointer,
     sizeof,
 )
+from typing import Optional, Union
 
 BITRATE_360P = 0x1E
 """
@@ -536,14 +535,14 @@ def av_recv_frame_data(
 
     errno = tutk_platform_lib.avRecvFrameData2(
         av_chan_id,
-        pointer(frame_data),
+        byref(frame_data),
         c_int(frame_data_max_len),
-        pointer(frame_data_actual_len),
-        pointer(frame_data_expected_len),
-        pointer(frame_info),
+        byref(frame_data_actual_len),
+        byref(frame_data_expected_len),
+        byref(frame_info),
         c_int(frame_info_max_len),
-        pointer(frame_info_actual_len),
-        pointer(frame_index),
+        byref(frame_info_actual_len),
+        byref(frame_index),
     )
 
     if errno < 0:
@@ -582,7 +581,7 @@ def av_recv_io_ctrl(
     ctl_data = (c_char * ctl_data_len)()
     actual_len = tutk_platform_lib.avRecvIOCtrl(
         av_chan_id,
-        pointer(pn_io_ctrl_type),
+        byref(pn_io_ctrl_type),
         ctl_data,
         c_int(ctl_data_len),
         c_uint(timeout_ms),
@@ -708,7 +707,7 @@ def av_client_start(
     AVC_out = AVClientStartOutConfig()
     AVC_out.cb = sizeof(AVC_out)
 
-    av_chan_id = tutk_platform_lib.avClientStartEx(pointer(AVC_in), pointer(AVC_out))
+    av_chan_id = tutk_platform_lib.avClientStartEx(byref(AVC_in), byref(AVC_out))
     return av_chan_id
 
 
@@ -756,7 +755,7 @@ def iotc_session_check(
     """
     sess_info = SInfoStructEx()
     sess_info.size = sizeof(sess_info)
-    err_code = tutk_platform_lib.IOTC_Session_Check_Ex(session_id, pointer(sess_info))
+    err_code = tutk_platform_lib.IOTC_Session_Check_Ex(session_id, byref(sess_info))
     return err_code, sess_info
 
 
@@ -835,7 +834,7 @@ def iotc_connect_by_uid_ex(
     connect_input.timeout = 60
 
     resultant_session_id: c_int = tutk_platform_lib.IOTC_Connect_ByUIDEx(
-        c_char_p(p2p_id.encode("ascii")), session_id, pointer(connect_input)
+        c_char_p(p2p_id.encode("ascii")), session_id, byref(connect_input)
     )
     return resultant_session_id
 
@@ -889,7 +888,7 @@ def iotc_set_log_attr(
     log_attr.file_max_size = max_size
     log_attr.file_max_count = max_count
 
-    errno: int = tutk_platform_lib.IOTC_Set_Log_Attr(pointer(log_attr))
+    errno: int = tutk_platform_lib.IOTC_Set_Log_Attr(byref(log_attr))
     return errno
 
 
