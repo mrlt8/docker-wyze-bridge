@@ -376,7 +376,7 @@ class WyzeBridge:
                 ) as sess:
                     check_cam_sess(sess)
                     cmd = get_ffmpeg_cmd(uri, cam.product_model)
-                    keep_bad_frames = env_bool("KEEP_BADFRAMES", False)
+                    keep_bad_frames = env_bool("KEEP_BAD_FRAMES", False)
                     with Popen(cmd, stdin=PIPE) as ffmpeg:
                         for frame in sess.recv_bridge_frame(stop_flag, keep_bad_frames):
                             ffmpeg.stdin.write(frame)

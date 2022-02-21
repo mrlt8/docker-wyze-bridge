@@ -1,3 +1,11 @@
+## Changes in v1.1.2
+
+- 🏠 Home Assistant: Create the IMG_DIR at startup if it does not exist.
+- 🏠 Home Assistant: Added `KEEP_BAD_FRAMES`, `MAX_NOREADY`, `MAX_BADRES`, and `WEBRTC` options.
+- ✨ NEW: ENV option `KEEP_BAD_FRAMES` - Optional. Keep frames that may be missing a keyframe. May cause some video artifacts.
+- 🔨 Fixed: Get API snapshots one time at container startup to avoid expired thumbnails.
+- 🧹Code refactoring.
+
 ## Changes in v1.1.1
 
 - 🔨 Fixed: Refresh cams on `WRONG_AUTH_KEY` error. #292
