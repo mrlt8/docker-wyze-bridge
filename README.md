@@ -13,6 +13,14 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
 
+## Changes in v1.1.2
+
+- 🏠 Home Assistant: Create the IMG_DIR at startup if it does not exist.
+- 🏠 Home Assistant: Added `KEEP_BAD_FRAMES`, `MAX_NOREADY`, `MAX_BADRES`, and `WEBRTC` options.
+- ✨ NEW: ENV option `KEEP_BAD_FRAMES` - Optional. Keep frames that may be missing a keyframe. May cause some video artifacts.
+- 🔨 Fixed: Get API snapshots one time at container startup to avoid expired thumbnails.
+- 🧹Code refactoring.
+
 ## Changes in v1.1.1
 
 - 🔨 Fixed: Refresh cams on `WRONG_AUTH_KEY` error. #292
@@ -398,6 +406,8 @@ environment options:
 - `MAX_NOREADY` (int) Adjust the consecutive number of "NOREADY" frames before restarting the connection. Set `0` to disable. Default: `100`
 
 - `MAX_BADRES` (int) Adjust the consecutive number of frames that have a wrong resolution before restarting the connection. Default: `100`
+
+- `KEEP_BAD_FRAMES` (bool) Keep frames that may be missing a keyframe or preceding frames.
 
 - `IGNORE_OFFLINE` (bool) Ignore offline cameras until container restarts
 

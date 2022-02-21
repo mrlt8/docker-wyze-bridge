@@ -17,9 +17,10 @@ import requests
 
 import wyzecam
 
+
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.1.1\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.1.2\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -37,6 +38,7 @@ class WyzeBridge:
         if self.hass:
             print("\n🏠 Home Assistant Mode")
             os.makedirs(self.token_path, exist_ok=True)
+            os.makedirs(self.img_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
 
     def run(self) -> None:
@@ -103,7 +105,6 @@ class WyzeBridge:
         cam = next(c for c in self.cameras if c.nickname == name)
         model = model_names.get(cam.product_model, cam.product_model)
         log.info(f"🎉 Connecting to WyzeCam {model} - {name} on {cam.ip} (1/3)")
-        self.save_api_thumb(cam)
         stream = multiprocessing.Process(
             target=self.start_tutk_stream,
             args=(cam, self.stop_flag),
@@ -348,6 +349,7 @@ class WyzeBridge:
         for cam in cams:
             self.add_rtsp_path(cam)
             self.mqtt_discovery(cam)
+            self.save_api_thumb(cam)
             self.streams[cam.nickname] = {"process": False, "sleep": False}
 
     def start_rtsp_server(self) -> None:
@@ -360,43 +362,33 @@ class WyzeBridge:
             log.info("starting rtsp-simple-server")
         self.rtsp = Popen(["/app/rtsp-simple-server", "/app/rtsp-simple-server.yml"])
 
-    def start_tutk_stream(self, cam, stop_flag) -> None:
+    def start_tutk_stream(self, cam: wyzecam.WyzeCamera, stop_flag) -> None:
         """Connect and communicate with the camera using TUTK."""
         uri = clean_name(cam.nickname, upper=True)
         exit_code = 1
         frame_size, bitrate = get_env_quality(uri)
         if cam.product_model == "WYZEDB3":
             frame_size = int(env_bool("DOOR_SIZE", frame_size))
-        wyze_iotc = wyzecam.WyzeIOTC(sdk_key=os.getenv("SDK_KEY"))
-        wyze_iotc.initialize()
         try:
-            with wyzecam.WyzeIOTCSession(
-                wyze_iotc.tutk_platform_lib, self.user, cam, frame_size, bitrate
-            ) as sess:
-                check_cam_sess(sess)
-                cmd = get_ffmpeg_cmd(uri, cam.product_model)
-                with Popen(cmd, stdin=PIPE) as ffmpeg:
-                    for frame in sess.recv_bridge_frame(stop_flag):
-                        try:
+            with wyzecam.WyzeIOTC(sdk_key=os.getenv("SDK_KEY")) as wyze_iotc:
+                with wyzecam.WyzeIOTCSession(
+                    wyze_iotc.tutk_platform_lib, self.user, cam, frame_size, bitrate
+                ) as sess:
+                    check_cam_sess(sess)
+                    cmd = get_ffmpeg_cmd(uri, cam.product_model)
+                    keep_bad_frames = env_bool("KEEP_BAD_FRAMES", False)
+                    with Popen(cmd, stdin=PIPE) as ffmpeg:
+                        for frame in sess.recv_bridge_frame(stop_flag, keep_bad_frames):
                             ffmpeg.stdin.write(frame)
-                        except Exception as ex:
-                            try:
-                                ffmpeg.stdin.close()
-                            except BrokenPipeError:
-                                pass
-                            ffmpeg.wait()
-                            raise Exception(f"[FFMPEG] {ex}")
-                    log.info("🧹 Cleaning up FFMPEG...")
-                    ffmpeg.kill()
+                        log.info("🧹 Cleaning up FFMPEG...")
         except Exception as ex:
             log.warning(ex)
-            if ex.args[0] in {-19, -68, -90}:
+            if ex.args[0] in (-19, -68, -90):
                 exit_code = abs(ex.args[0])
             elif ex.args[0] in "Authentication did not succeed! {'connectionRes': '2'}":
                 log.warning("⏰ Expired ENR?")
                 exit_code = 19
         finally:
-            wyze_iotc.deinitialize()
             sys.exit(exit_code)
 
     def get_webrtc(self):
@@ -445,13 +437,11 @@ def env_list(env: str) -> list:
 
 def env_filter(cam) -> bool:
     """Check if cam is being filtered in any env."""
-    return (
-        True
-        if cam.nickname.upper() in env_list("FILTER_NAMES")
+    return bool(
+        cam.nickname.upper() in env_list("FILTER_NAMES")
         or cam.mac in env_list("FILTER_MACS")
         or cam.product_model in env_list("FILTER_MODELS")
         or model_names.get(cam.product_model) in env_list("FILTER_MODELS")
-        else False
     )
 
 
