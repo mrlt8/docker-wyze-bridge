@@ -594,19 +594,31 @@ def av_recv_io_ctrl(
     )
 
 
-def av_client_set_max_buf_size(
-    tutk_platform_lib: CDLL, channel_id: c_int, size: c_int
-) -> None:
+def av_client_set_max_buf_size(tutk_platform_lib: CDLL, size: int) -> None:
     """Set the maximum video frame buffer used in AV client.
+    AV client sets the maximum video frame buffer by this function. The size of
+    video frame buffer will affect the streaming fluency. The default size of
+    video frame buffer is 1MB.
+    :param tutk_platform_lib: the c library loaded from the 'load_library' call.
+    :param size: The maximum video frame buffer, in unit of kilo-byte
+    """
+    tutk_platform_lib.avClientSetMaxBufSize(c_int(size))
+
+
+def av_client_set_recv_buf_size(
+    tutk_platform_lib: CDLL, channel_id: int, size: int
+) -> int:
+    """Set the maximum frame buffer size used in AV client with specific AV channel ID.
 
     AV client sets the maximum video frame buffer by this function. The size of
     video frame buffer will affect the streaming fluency. The default size of
     video frame buffer is 1MB.
 
     :param tutk_platform_lib: the c library loaded from the 'load_library' call.
+    :param channel_id: The channel ID of the AV channel to setup max buffer size
     :param size: The maximum video frame buffer, in unit of kilo-byte
     """
-    tutk_platform_lib.avClientSetRecvBufMaxSize(channel_id, size)
+    return tutk_platform_lib.avClientSetRecvBufMaxSize(c_int(channel_id), c_uint(size))
 
 
 def av_client_clean_buf(tutk_platform_lib: CDLL, channel_id: c_int) -> None:
