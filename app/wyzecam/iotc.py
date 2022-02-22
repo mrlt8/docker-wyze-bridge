@@ -787,9 +787,7 @@ class WyzeIOTCSession:
             f"expected_chan={channel_id}"
         )
 
-        tutk.av_client_set_recv_buf_size(
-            self.tutk_platform_lib, self.av_chan_id, max_buf_size
-        )
+        tutk.av_client_set_max_buf_size(self.tutk_platform_lib, max_buf_size)
 
     def _auth(self):
         if self.state == WyzeIOTCSessionState.CONNECTING_FAILED:
