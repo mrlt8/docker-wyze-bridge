@@ -514,6 +514,7 @@ def av_recv_frame_data(
     int,
     Optional[bytes],
     Optional[Union[FrameInfoStruct, FrameInfo3Struct]],
+    Optional[int],
 ]:
     """A new version AV client receives frame data from an AV server.
 
@@ -546,7 +547,7 @@ def av_recv_frame_data(
     )
 
     if errno < 0:
-        return errno, None, None
+        return errno, None, None, 0
 
     frame_data_actual: bytes = frame_data[: frame_data_actual_len.value]  # type: ignore
     frame_info_actual: Union[FrameInfoStruct, FrameInfo3Struct]
@@ -555,13 +556,11 @@ def av_recv_frame_data(
     elif frame_info_actual_len.value == sizeof(FrameInfoStruct):
         frame_info_actual = FrameInfoStruct.from_buffer(frame_info)
     else:
-        from wyzecam.tutk.tutk_protocol import TutkWyzeProtocolError
-
-        raise TutkWyzeProtocolError(
+        raise Exception(
             f"Unknown frame info structure format! len={frame_info_actual_len}"
         )
 
-    return (0, frame_data_actual, frame_info_actual)
+    return (0, frame_data_actual, frame_info_actual, frame_index.value)
 
 
 def av_recv_io_ctrl(
@@ -596,6 +595,7 @@ def av_recv_io_ctrl(
 
 def av_client_set_max_buf_size(tutk_platform_lib: CDLL, size: int) -> None:
     """Set the maximum video frame buffer used in AV client.
+
     AV client sets the maximum video frame buffer by this function. The size of
     video frame buffer will affect the streaming fluency. The default size of
     video frame buffer is 1MB.
@@ -606,8 +606,8 @@ def av_client_set_max_buf_size(tutk_platform_lib: CDLL, size: int) -> None:
 
 
 def av_client_set_recv_buf_size(
-    tutk_platform_lib: CDLL, channel_id: int, size: int
-) -> int:
+    tutk_platform_lib: CDLL, channel_id: c_int, size: int
+) -> None:
     """Set the maximum frame buffer size used in AV client with specific AV channel ID.
 
     AV client sets the maximum video frame buffer by this function. The size of
@@ -618,12 +618,11 @@ def av_client_set_recv_buf_size(
     :param channel_id: The channel ID of the AV channel to setup max buffer size
     :param size: The maximum video frame buffer, in unit of kilo-byte
     """
-    return tutk_platform_lib.avClientSetRecvBufMaxSize(c_int(channel_id), c_uint(size))
+    tutk_platform_lib.avClientSetRecvBufMaxSize(channel_id, c_uint(size))
 
 
 def av_client_clean_buf(tutk_platform_lib: CDLL, channel_id: c_int) -> None:
-    """Clean the video buffer both in client and device, and clean the audio
-    buffer of the client.
+    """Clean the video buffer both in client and device, and clean the audio buffer of the client.
 
     A client with multiple device connection application should call
     this function to clean AV buffer while switch to another devices.
@@ -632,6 +631,17 @@ def av_client_clean_buf(tutk_platform_lib: CDLL, channel_id: c_int) -> None:
     :param channel_id: The channel ID of the AV channel to clean buffer
     """
     tutk_platform_lib.avClientCleanBuf(channel_id)
+
+
+def av_client_clean_local_buf(tutk_platform_lib: CDLL, channel_id: c_int) -> None:
+    """Clean the local video and audio buffer of the client.
+
+    This function is used to clean the video and audio buffer that the client
+    has already received
+
+    :param channel_id: The channel ID of the AV channel to clean buffer
+    """
+    tutk_platform_lib.avClientCleanLocalBuf(channel_id)
 
 
 def av_client_stop(tutk_platform_lib: CDLL, av_chan_id: c_int) -> None:

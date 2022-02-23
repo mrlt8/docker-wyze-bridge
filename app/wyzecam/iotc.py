@@ -421,9 +421,11 @@ class WyzeIOTCSession:
         last_keyframe = 0, 0
 
         while not stop_flag.is_set():
-            errno, frame_data, frame_info = tutk.av_recv_frame_data(
+            errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
+            if frame_index > 1 and frame_index % 500 == 0:
+                tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
 
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
@@ -787,7 +789,9 @@ class WyzeIOTCSession:
             f"expected_chan={channel_id}"
         )
 
-        tutk.av_client_set_max_buf_size(self.tutk_platform_lib, max_buf_size)
+        tutk.av_client_set_recv_buf_size(
+            self.tutk_platform_lib, self.av_chan_id, max_buf_size
+        )
 
     def _auth(self):
         if self.state == WyzeIOTCSessionState.CONNECTING_FAILED:
