@@ -78,6 +78,11 @@ AV_ER_SESSION_CLOSE_BY_REMOTE = -20015
 An error raised when the camera closes the connection.
 """
 
+AV_ER_REMOTE_TIMEOUT_DISCONNECT = -20016
+"""
+An error raised when the IOTC session is disconnected because of no response from the camera.
+"""
+
 AV_ER_DATA_NOREADY = -20012
 """
 An error raised when the client asks for data not yet available on the camera.
@@ -514,6 +519,7 @@ def av_recv_frame_data(
     int,
     Optional[bytes],
     Optional[Union[FrameInfoStruct, FrameInfo3Struct]],
+    Optional[int],
 ]:
     """A new version AV client receives frame data from an AV server.
 
@@ -546,7 +552,7 @@ def av_recv_frame_data(
     )
 
     if errno < 0:
-        return errno, None, None
+        return errno, None, None, None
 
     frame_data_actual: bytes = frame_data[: frame_data_actual_len.value]  # type: ignore
     frame_info_actual: Union[FrameInfoStruct, FrameInfo3Struct]
@@ -555,13 +561,11 @@ def av_recv_frame_data(
     elif frame_info_actual_len.value == sizeof(FrameInfoStruct):
         frame_info_actual = FrameInfoStruct.from_buffer(frame_info)
     else:
-        from wyzecam.tutk.tutk_protocol import TutkWyzeProtocolError
-
-        raise TutkWyzeProtocolError(
+        raise Exception(
             f"Unknown frame info structure format! len={frame_info_actual_len}"
         )
 
-    return (0, frame_data_actual, frame_info_actual)
+    return (0, frame_data_actual, frame_info_actual, frame_index.value)
 
 
 def av_recv_io_ctrl(
@@ -594,24 +598,36 @@ def av_recv_io_ctrl(
     )
 
 
-def av_client_set_max_buf_size(
-    tutk_platform_lib: CDLL, channel_id: c_int, size: c_int
-) -> None:
+def av_client_set_max_buf_size(tutk_platform_lib: CDLL, size: int) -> None:
     """Set the maximum video frame buffer used in AV client.
+
+    AV client sets the maximum video frame buffer by this function. The size of
+    video frame buffer will affect the streaming fluency. The default size of
+    video frame buffer is 1MB.
+    :param tutk_platform_lib: the c library loaded from the 'load_library' call.
+    :param size: The maximum video frame buffer, in unit of kilo-byte
+    """
+    tutk_platform_lib.avClientSetMaxBufSize(c_int(size))
+
+
+def av_client_set_recv_buf_size(
+    tutk_platform_lib: CDLL, channel_id: c_int, size: int
+) -> None:
+    """Set the maximum frame buffer size used in AV client with specific AV channel ID.
 
     AV client sets the maximum video frame buffer by this function. The size of
     video frame buffer will affect the streaming fluency. The default size of
     video frame buffer is 1MB.
 
     :param tutk_platform_lib: the c library loaded from the 'load_library' call.
+    :param channel_id: The channel ID of the AV channel to setup max buffer size
     :param size: The maximum video frame buffer, in unit of kilo-byte
     """
-    tutk_platform_lib.avClientSetRecvBufMaxSize(channel_id, size)
+    tutk_platform_lib.avClientSetRecvBufMaxSize(channel_id, c_uint(size))
 
 
 def av_client_clean_buf(tutk_platform_lib: CDLL, channel_id: c_int) -> None:
-    """Clean the video buffer both in client and device, and clean the audio
-    buffer of the client.
+    """Clean the video buffer both in client and device, and clean the audio buffer of the client.
 
     A client with multiple device connection application should call
     this function to clean AV buffer while switch to another devices.
@@ -620,6 +636,28 @@ def av_client_clean_buf(tutk_platform_lib: CDLL, channel_id: c_int) -> None:
     :param channel_id: The channel ID of the AV channel to clean buffer
     """
     tutk_platform_lib.avClientCleanBuf(channel_id)
+
+
+def av_client_clean_local_buf(tutk_platform_lib: CDLL, channel_id: c_int) -> None:
+    """Clean the local video and audio buffer of the client.
+
+    This function is used to clean the video and audio buffer that the client
+    has already received
+
+    :param channel_id: The channel ID of the AV channel to clean buffer
+    """
+    tutk_platform_lib.avClientCleanLocalBuf(channel_id)
+
+
+def av_client_clean_local_video_buf(tutk_platform_lib: CDLL, channel_id: c_int) -> None:
+    """Clean the local video buffer of the client.
+
+    This function is used to clean the video buffer that the client
+    has already received
+
+    :param channel_id: The channel ID of the AV channel to clean buffer
+    """
+    tutk_platform_lib.avClientCleanLocalVideoBuf(channel_id)
 
 
 def av_client_stop(tutk_platform_lib: CDLL, av_chan_id: c_int) -> None:

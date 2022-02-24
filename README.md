@@ -13,6 +13,15 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
 
+## Changes in v1.2.0
+
+Improved video performance to help with the buffering/frame drops introduced in v.1.0.3. Thanks to @Ceer123 and everyone who helped identify and test the fixes!
+
+Also in this release:
+
+- 🔨 Fixed: logging and other issues related when stream stopped publishing to rtsp-simple-server.
+- 🔨 Fixed: `AV_ER_REMOTE_TIMEOUT_DISCONNECT` error on connection timeout.
+
 ## Changes in v1.1.2
 
 - 🏠 Home Assistant: Create the IMG_DIR at startup if it does not exist.

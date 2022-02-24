@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.1.2\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.0\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -72,14 +72,14 @@ class WyzeBridge:
                 if self.stop_flag.is_set():
                     return
                 if process := stream["process"]:
-                    if process.exitcode in {19, 68} and refresh_cams:
+                    if process.exitcode in (19, 68) and refresh_cams:
                         refresh_cams = False
                         log.info("♻️ Attempting to refresh list of cameras")
                         self.get_wyze_data("cameras", enable_cached=False)
 
-                    if process.exitcode in {1, 19, 68}:
+                    if process.exitcode in (1, 19, 68):
                         self.start_stream(name)
-                    elif process.exitcode in {90}:
+                    elif process.exitcode in (90,):
                         if env_bool("IGNORE_OFFLINE"):
                             log.info(f"🪦 {name} is offline. Will NOT try again.")
                             del self.streams[name]
@@ -181,7 +181,7 @@ class WyzeBridge:
                 pickle_data = pickle.load(pkl_f)
             if env_bool("FRESH_DATA"):
                 raise Exception(f"♻️ FORCED REFRESH - Ignoring local '{name}' data")
-            if "user" in name and pickle_data.email.lower() != env_bool("WYZE_EMAIL"):
+            if name == "user" and pickle_data.email.lower() != env_bool("WYZE_EMAIL"):
                 for f_name in os.listdir(self.token_path):
                     if f_name.endswith("pickle"):
                         os.remove(self.token_path + f_name)
@@ -221,17 +221,17 @@ class WyzeBridge:
             log.info(f"📚 Using '{name}' from local cache...")
             self.set_wyze_data(name, wyze_data, cache=False)
             return wyze_data
-        if not self.auth and "auth" not in name:
+        if not self.auth and name != "auth":
             self.get_wyze_data("auth")
         wyze_data = False
         while not wyze_data:
             log.info(f"☁️ Fetching '{name}' from the Wyze API...")
             try:
-                if "auth" in name:
+                if name == "auth":
                     wyze_data = self.auth_wyze()
-                elif "user" in name:
+                elif name == "user":
                     wyze_data = wyzecam.get_user_info(self.auth)
-                elif "cameras" in name:
+                elif name == "cameras":
                     wyze_data = wyzecam.get_camera_list(self.auth)
             except AssertionError as ex:
                 log.warning(f"⚠️ Error getting {name} - Expired token?")
@@ -250,7 +250,7 @@ class WyzeBridge:
 
     def save_api_thumb(self, camera) -> None:
         """Grab a thumbnail for the camera from the wyze api."""
-        if "api" not in env_bool("SNAPSHOT") or not getattr(camera, "thumbnail", False):
+        if env_bool("SNAPSHOT") != "api" or not getattr(camera, "thumbnail", False):
             return
         try:
             with requests.get(camera.thumbnail) as thumb:
@@ -268,7 +268,7 @@ class WyzeBridge:
         py_event = "python3 /app/rtsp_event.py $RTSP_PATH "
         if self.on_demand:
             os.environ[path + "RUNONDEMAND"] = py_event + cam.mac
-        for event in {"READ", "READY"}:
+        for event in ("READ", "READY"):
             env = path + "RUNON" + event
             if alt := env_bool(env):
                 event += " & " + alt
@@ -354,7 +354,7 @@ class WyzeBridge:
 
     def start_rtsp_server(self) -> None:
         """Start rtsp-simple-server in its own subprocess."""
-        os.environ["img_path"] = self.img_path
+        os.environ["IMG_PATH"] = self.img_path
         try:
             with open("/RTSP_TAG", "r") as tag:
                 log.info(f"Starting rtsp-simple-server {tag.read().strip()}")
@@ -380,14 +380,15 @@ class WyzeBridge:
                     with Popen(cmd, stdin=PIPE) as ffmpeg:
                         for frame in sess.recv_bridge_frame(stop_flag, keep_bad_frames):
                             ffmpeg.stdin.write(frame)
-                        log.info("🧹 Cleaning up FFMPEG...")
         except Exception as ex:
             log.warning(ex)
             if ex.args[0] in (-19, -68, -90):
                 exit_code = abs(ex.args[0])
-            elif ex.args[0] in "Authentication did not succeed! {'connectionRes': '2'}":
+            elif ex.args[0] == "Authentication did not succeed! {'connectionRes': '2'}":
                 log.warning("⏰ Expired ENR?")
                 exit_code = 19
+        else:
+            log.warning("Stream is down.")
         finally:
             sys.exit(exit_code)
 
@@ -452,7 +453,7 @@ def get_env_quality(uri) -> Tuple[int, int]:
         .strip("'\"\n ")
         .ljust(3, "0")
     )
-    frame_size = 1 if "sd" in env_quality[:2] else 0
+    frame_size = 1 if env_quality[:2] == "sd" else 0
     bitrate = int(env_quality[2:]) if 30 <= int(env_quality[2:]) <= 255 else 120
     return frame_size, bitrate
 

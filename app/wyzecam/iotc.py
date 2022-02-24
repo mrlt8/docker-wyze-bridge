@@ -411,23 +411,25 @@ class WyzeIOTCSession:
         max_badres = int(os.getenv("MAX_BADRES", 100))
 
         # wyze doorbell has weird rotated image sizes. We add 3 to compensate.
-        ignore_res = {
+        ignore_res = (
             self.preferred_frame_size,
             int(os.getenv("IGNORE_RES", self.preferred_frame_size + 3)),
-        }
+        )
         bad_frames = 0
         bad_res = 0
         last_frame = 0
         last_keyframe = 0, 0
 
         while not stop_flag.is_set():
-            errno, frame_data, frame_info = tutk.av_recv_frame_data(
+            errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
+            if frame_index and frame_index % 500 == 0:
+                tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
 
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
-                    if 0 in {last_frame, max_noready}:
+                    if 0 in (last_frame, max_noready):
                         continue
                     if bad_frames > max_noready:
                         raise tutk.TutkError(errno)
@@ -458,7 +460,7 @@ class WyzeIOTCSession:
                 bad_res += 1
                 with self.iotctrl_mux() as mux:
                     iotc_msg = self.preferred_frame_size, self.preferred_bitrate
-                    if self.camera.product_model in ["WYZEDB3", "WVOD1"]:
+                    if self.camera.product_model in ("WYZEDB3", "WVOD1"):
                         mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result()
                     else:
                         mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result()
@@ -713,7 +715,7 @@ class WyzeIOTCSession:
         channel_id: int = 0,
         username: str = "admin",
         password: str = "888888",
-        max_buf_size=5 * 1024 * 1024,
+        max_buf_size: int = 5 * 1024 * 1024,
     ):
         try:
             self.state = WyzeIOTCSessionState.IOTC_CONNECTING
@@ -769,7 +771,6 @@ class WyzeIOTCSession:
                 channel_id,
                 resend,
             )
-            tutk.av_client_clean_buf(self.tutk_platform_lib, av_chan_id)
 
             if av_chan_id < 0:  # type: ignore
                 raise tutk.TutkError(av_chan_id)
@@ -786,6 +787,10 @@ class WyzeIOTCSession:
             f"AV Client Start: "
             f"chan_id={self.av_chan_id} "
             f"expected_chan={channel_id}"
+        )
+
+        tutk.av_client_set_recv_buf_size(
+            self.tutk_platform_lib, self.av_chan_id, max_buf_size
         )
 
     def _auth(self):
