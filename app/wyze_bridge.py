@@ -380,7 +380,6 @@ class WyzeBridge:
                     with Popen(cmd, stdin=PIPE) as ffmpeg:
                         for frame in sess.recv_bridge_frame(stop_flag, keep_bad_frames):
                             ffmpeg.stdin.write(frame)
-                        log.info("🧹 Cleaning up FFMPEG...")
         except Exception as ex:
             log.warning(ex)
             if ex.args[0] in (-19, -68, -90):
@@ -388,6 +387,8 @@ class WyzeBridge:
             elif ex.args[0] == "Authentication did not succeed! {'connectionRes': '2'}":
                 log.warning("⏰ Expired ENR?")
                 exit_code = 19
+        else:
+            log.warning("Stream is down.")
         finally:
             sys.exit(exit_code)
 

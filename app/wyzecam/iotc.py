@@ -424,10 +424,8 @@ class WyzeIOTCSession:
             errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
-            if frame_index and frame_index % 1000 == 0:
-                tutk.av_client_clean_local_video_buf(
-                    self.tutk_platform_lib, self.av_chan_id
-                )
+            if frame_index and frame_index % 500 == 0:
+                tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
 
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
