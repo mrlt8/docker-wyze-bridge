@@ -16,7 +16,7 @@ class RtspEvent:
 
     def __init__(self) -> None:
         """Run the script until it receives a termination signal."""
-        for sig in ["SIGQUIT", "SIGTERM", "SIGINT"]:
+        for sig in ("SIGQUIT", "SIGTERM", "SIGINT"):
             signal.signal(getattr(signal, sig), lambda n, f: self.clean_up())
         self.uri: str
         self.type: str
@@ -31,18 +31,18 @@ class RtspEvent:
         print(date, f"[RTSP][{self.uri.upper()}] {txt}")
 
     def pub_start(self) -> NoReturn:
-        """Handle a 'PUBLISH' event when publishing a stream to rtsp-simple-server."""
+        """Handle a 'READY' event when publishing a stream to rtsp-simple-server."""
         self.write_log(f"✅ '/{self.uri}' stream is UP! (3/3)")
-        img_file = os.getenv("img_path") + self.uri + ".jpg"
+        img_file = os.getenv("IMG_PATH", "/img/") + self.uri + ".jpg"
         env_snap = os.getenv("SNAPSHOT", "NA").ljust(5, "0").upper()
         if env_bool("HASS"):
             host = env_bool("HOSTNAME", "localhost")
             import json
-        if "RTSP" in env_snap[:4]:
+        if env_snap[:4] == "RTSP":
             from subprocess import Popen
         while True:
             self.send_mqtt("state", "online")
-            if "RTSP" in env_snap[:4]:
+            if env_snap[:4] == "RTSP":
                 rtsp_addr = "127.0.0.1:8554"
                 if env_bool(f"RTSP_PATHS_{self.uri.upper()}_READUSER"):
                     rtsp_addr = (
@@ -97,9 +97,9 @@ class RtspEvent:
                 auth = os.getenv("MQTT_AUTH").split(":")
                 self.mqtt.username_pw_set(auth[0], auth[1] if len(auth) > 1 else None)
             self.mqtt.will_set(self.base, None)
-            if "PUBLISH" in self.type:
+            if self.type == "READY":
                 self.mqtt.will_set(self.base + "state", "disconnected")
-            if "READ" in self.type:
+            if self.type == "READ":
                 self.mqtt.will_set(self.base + f"clients/{os.getpid()}", None)
             try:
                 self.mqtt.connect(host[0], int(host[1] if len(host) > 1 else 1883), 60)
@@ -115,11 +115,11 @@ class RtspEvent:
 
     def clean_up(self) -> NoReturn:
         """Update the log and MQTT status when a termination signal is received."""
-        if "READY" in self.type:
+        if self.type == "READY":
             self.write_log(f"❌ '/{self.uri}' stream is down")
             self.send_mqtt("state", "offline")
             self.send_mqtt("image.jpg", None)
-        if "READ" in self.type:
+        elif self.type == "READ":
             self.write_log("📕 Client stopped reading")
             self.send_mqtt(f"clients/{os.getpid()}", None)
         if self.mqtt_connected:
@@ -135,7 +135,7 @@ def env_bool(env: str, false: str = "") -> str:
 
 if __name__ == "__main__" and len(sys.argv) > 2:
     rtsp = RtspEvent()
-    if "READY" in rtsp.type:
+    if rtsp.type == "READY":
         rtsp.pub_start()
-    if "READ" in rtsp.type:
+    elif rtsp.type == "READ":
         rtsp.read_start()
