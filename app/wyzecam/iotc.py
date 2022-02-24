@@ -411,10 +411,10 @@ class WyzeIOTCSession:
         max_badres = int(os.getenv("MAX_BADRES", 100))
 
         # wyze doorbell has weird rotated image sizes. We add 3 to compensate.
-        ignore_res = {
+        ignore_res = (
             self.preferred_frame_size,
             int(os.getenv("IGNORE_RES", self.preferred_frame_size + 3)),
-        }
+        )
         bad_frames = 0
         bad_res = 0
         last_frame = 0
@@ -425,7 +425,9 @@ class WyzeIOTCSession:
                 self.tutk_platform_lib, self.av_chan_id
             )
             if frame_index and frame_index % 1000 == 0:
-                tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
+                tutk.av_client_clean_local_video_buf(
+                    self.tutk_platform_lib, self.av_chan_id
+                )
 
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
