@@ -547,7 +547,7 @@ def av_recv_frame_data(
     )
 
     if errno < 0:
-        return errno, None, None, 0
+        return errno, None, None, None
 
     frame_data_actual: bytes = frame_data[: frame_data_actual_len.value]  # type: ignore
     frame_info_actual: Union[FrameInfoStruct, FrameInfo3Struct]
@@ -642,6 +642,17 @@ def av_client_clean_local_buf(tutk_platform_lib: CDLL, channel_id: c_int) -> Non
     :param channel_id: The channel ID of the AV channel to clean buffer
     """
     tutk_platform_lib.avClientCleanLocalBuf(channel_id)
+
+
+def av_client_clean_local_video_buf(tutk_platform_lib: CDLL, channel_id: c_int) -> None:
+    """Clean the local video buffer of the client.
+
+    This function is used to clean the video buffer that the client
+    has already received
+
+    :param channel_id: The channel ID of the AV channel to clean buffer
+    """
+    tutk_platform_lib.avClientCleanLocalVideoBuf(channel_id)
 
 
 def av_client_stop(tutk_platform_lib: CDLL, av_chan_id: c_int) -> None:
