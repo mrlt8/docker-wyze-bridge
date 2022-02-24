@@ -78,6 +78,11 @@ AV_ER_SESSION_CLOSE_BY_REMOTE = -20015
 An error raised when the camera closes the connection.
 """
 
+AV_ER_REMOTE_TIMEOUT_DISCONNECT = -20016
+"""
+An error raised when the IOTC session is disconnected because of no response from the camera.
+"""
+
 AV_ER_DATA_NOREADY = -20012
 """
 An error raised when the client asks for data not yet available on the camera.
