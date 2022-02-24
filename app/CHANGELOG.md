@@ -1,6 +1,6 @@
 ## Changes in v1.2.0
 
-Improved video performance to help with the buffering/frame drops introduced in v.1.0.3. Thanks to @Ceer123 everyone who helped identify and test the fixes!
+Improved video performance to help with the buffering/frame drops introduced in v.1.0.3. Thanks to @Ceer123 and everyone who helped identify and test the fixes!
 
 Also in this release:
 
