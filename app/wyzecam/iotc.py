@@ -400,16 +400,18 @@ class WyzeIOTCSession:
             first_run = False
 
     def recv_bridge_frame(
-        self, stop_flag, keep_bad_frames: bool = True
+        self, stop_flag, keep_bad_frames: bool = False, timeout: int = 10
     ) -> Iterator[Optional[bytes]]:
         """A generator for returning raw video frames for the bridge.
 
         Note that the format of this data is either raw h264 or HVEC H265 video. You will
         have to introspect the frame_info object to determine the format!
+
+        :param keep_bad_frames: Don't drop frames that are missing a keyframe.
+        :param timeout: Number of seconds since the last yield before raising an exception.
         """
         assert self.av_chan_id is not None, "Please call _connect() first!"
 
-        max_noready = int(os.getenv("MAX_NOREADY", 100))
         max_badres = int(os.getenv("MAX_BADRES", 100))
 
         # wyze doorbell has weird rotated image sizes. We add 3 to compensate.
@@ -417,24 +419,21 @@ class WyzeIOTCSession:
             self.preferred_frame_size,
             int(os.getenv("IGNORE_RES", self.preferred_frame_size + 3)),
         )
-        bad_frames = 0
-        bad_res = 0
-        last_frame = 0
-        last_keyframe = 0, 0
+        bad_res = 1
+        last_keyframe = last_frame = 0, 0
 
         while not stop_flag.is_set():
+            if last_keyframe[1] and time.time() - last_frame[1] >= timeout:
+                raise Exception(f"Stream did not receive a frame for over {timeout}s")
             errno, frame_data, frame_info = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
-                    if 0 in (last_frame, max_noready):
-                        continue
-                    if bad_frames > max_noready:
-                        raise tutk.TutkError(errno)
-                    bad_frames += 1
-                    logger.debug(f"Frame not available [{bad_frames}/{max_noready}]")
-                    time.sleep(1.0 / 10)
+                    if last_keyframe[0]:
+                        if time.time() - last_frame[1] >= 0.4:
+                            warnings.warn("Frame not available yet")
+                        time.sleep(1.0 / 5)
                     continue
                 if errno == tutk.AV_ER_INCOMPLETE_FRAME:
                     warnings.warn("Received incomplete frame")
@@ -443,11 +442,10 @@ class WyzeIOTCSession:
                     warnings.warn("Lost frame")
                     continue
                 raise tutk.TutkError(errno)
-            bad_frames = 0
             assert frame_info is not None, "Got no frame info without an error!"
 
             if frame_info.frame_size not in ignore_res:
-                if last_frame == 0:
+                if last_keyframe[0] == 0:
                     warnings.warn(
                         f"Skipping smaller frame at start of stream (frame_size={frame_info.frame_size})"
                     )
@@ -463,26 +461,24 @@ class WyzeIOTCSession:
                         mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result()
                     else:
                         mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result()
-                time.sleep(1.0 / 10)
+                time.sleep(1.0 / 3)
                 continue
             bad_res = 0
             if frame_info.is_keyframe:
-                last_keyframe = int(time.time()), int(frame_info.frame_no)
-
-            if (
-                frame_info.frame_no - last_keyframe[1] > frame_info.framerate * 2
-                and frame_info.frame_no - last_frame > 6
+                last_keyframe = frame_info.frame_no, int(time.time())
+            elif (
+                frame_info.frame_no - last_keyframe[0] > frame_info.framerate * 2
+                and frame_info.frame_no - last_frame[0] > 6
                 and not keep_bad_frames
             ) or time.time() - frame_info.timestamp > 20:
                 warnings.warn("Dropping old frames")
                 continue
-
-            if time.time() - last_keyframe[0] > 5:
+            elif time.time() - last_keyframe[1] > 5:
                 warnings.warn("Dropping old key frame")
                 continue
 
-            last_frame = frame_info.frame_no
             yield frame_data
+            last_frame = frame_info.frame_no, time.time()
 
     def recv_video_frame(
         self,
