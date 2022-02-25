@@ -20,10 +20,12 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.0 DEV 1\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.0 DEV 2\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
+        self.timeout: int = int(env_bool("TIMEOUT", 15))
+        self.keep_bad_frames: bool = env_bool("KEEP_BAD_FRAMES", False)
         self.healthcheck: bool = bool(os.getenv("HEALTHCHECK"))
         self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
         self.img_path: str = env_bool(
@@ -40,6 +42,8 @@ class WyzeBridge:
             os.makedirs(self.token_path, exist_ok=True)
             os.makedirs(self.img_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
+        if os.getenv("MAX_NOREADY"):
+            print("\n\n⚠️ 'MAX_NOREADY' DEPRECATED.\nUSE 'TIMEOUT'\n")
 
     def run(self) -> None:
         """Start the bridge."""
@@ -122,7 +126,7 @@ class WyzeBridge:
             for stream in self.streams.values():
                 if (process := stream["process"]) and process.is_alive():
                     process.join()
-        print("👋 bye!")
+        print("👋 goodbye!")
         sys.exit(0)
 
     def auth_wyze(self) -> wyzecam.WyzeCredential:
@@ -381,9 +385,10 @@ class WyzeBridge:
                 ) as sess:
                     check_cam_sess(sess)
                     cmd = get_ffmpeg_cmd(uri, cam.product_model)
-                    keep_bad_frames = env_bool("KEEP_BAD_FRAMES", False)
                     with Popen(cmd, stdin=PIPE) as ffmpeg:
-                        for frame in sess.recv_bridge_frame(stop_flag, keep_bad_frames):
+                        for frame in sess.recv_bridge_frame(
+                            stop_flag, self.keep_bad_frames, self.timeout
+                        ):
                             ffmpeg.stdin.write(frame)
         except Exception as ex:
             log.warning(ex)
@@ -399,18 +404,18 @@ class WyzeBridge:
 
     def get_webrtc(self):
         """Print out WebRTC related information for all available cameras."""
-        if not self.auth:
-            self.get_wyze_data("auth")
+        self.get_wyze_data("auth", False)
         log.info("\n======\nWebRTC\n======\n\n")
         for i, cam in enumerate(self.cameras, 1):
-            if wss := wyzecam.api.get_cam_webrtc(self.auth, cam.mac):
+            try:
+                wss = wyzecam.api.get_cam_webrtc(self.auth, cam.mac)
                 creds = json.dumps(wss, separators=("\n\n", ":\n"))[1:-1].replace(
                     '"', ""
                 )
                 print(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n\n{creds}\n---")
-            else:
-                log.info(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\nNA\n---")
-        print("goodbye")
+            except requests.exceptions.HTTPError as ex:
+                log.warning(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n{ex}\n---")
+        print("👋 goodbye!")
         signal.pause()
 
 
