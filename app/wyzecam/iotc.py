@@ -245,6 +245,7 @@ class WyzeIOTCSession:
         camera: WyzeCamera,
         frame_size: int = tutk.FRAME_SIZE_1080P,
         bitrate: int = tutk.BITRATE_HD,
+        enable_audio: bool = True,
     ) -> None:
         """Construct a wyze iotc session.
 
@@ -268,6 +269,7 @@ class WyzeIOTCSession:
 
         self.preferred_frame_size: int = frame_size
         self.preferred_bitrate: int = bitrate
+        self.enable_audio: bool = enable_audio
 
     def session_check(self) -> tutk.SInfoStructEx:
         """Used by a device or a client to check the IOTC session info.
@@ -421,12 +423,9 @@ class WyzeIOTCSession:
         last_keyframe = 0, 0
 
         while not stop_flag.is_set():
-            errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
+            errno, frame_data, frame_info = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
-            if frame_index and frame_index % 500 == 0:
-                tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
-
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
                     if 0 in (last_frame, max_noready):
@@ -817,6 +816,7 @@ class WyzeIOTCSession:
                     self.camera.mac,
                     self.account.phone_id,
                     self.account.open_user_id,
+                    self.enable_audio,
                 )
                 auth_response = mux.send_ioctl(challenge_response).result()
                 assert (

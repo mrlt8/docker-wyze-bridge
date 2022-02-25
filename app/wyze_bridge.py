@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.0\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.0 DEV 1\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -372,7 +372,12 @@ class WyzeBridge:
         try:
             with wyzecam.WyzeIOTC(sdk_key=os.getenv("SDK_KEY")) as wyze_iotc:
                 with wyzecam.WyzeIOTCSession(
-                    wyze_iotc.tutk_platform_lib, self.user, cam, frame_size, bitrate
+                    wyze_iotc.tutk_platform_lib,
+                    self.user,
+                    cam,
+                    frame_size,
+                    bitrate,
+                    enable_audio=False,
                 ) as sess:
                     check_cam_sess(sess)
                     cmd = get_ffmpeg_cmd(uri, cam.product_model)

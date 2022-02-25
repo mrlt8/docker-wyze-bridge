@@ -519,7 +519,6 @@ def av_recv_frame_data(
     int,
     Optional[bytes],
     Optional[Union[FrameInfoStruct, FrameInfo3Struct]],
-    Optional[int],
 ]:
     """A new version AV client receives frame data from an AV server.
 
@@ -552,7 +551,7 @@ def av_recv_frame_data(
     )
 
     if errno < 0:
-        return errno, None, None, None
+        return errno, None, None
 
     frame_data_actual: bytes = frame_data[: frame_data_actual_len.value]  # type: ignore
     frame_info_actual: Union[FrameInfoStruct, FrameInfo3Struct]
@@ -565,7 +564,7 @@ def av_recv_frame_data(
             f"Unknown frame info structure format! len={frame_info_actual_len}"
         )
 
-    return (0, frame_data_actual, frame_info_actual, frame_index.value)
+    return (0, frame_data_actual, frame_info_actual)
 
 
 def av_recv_io_ctrl(
