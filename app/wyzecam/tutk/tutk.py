@@ -850,14 +850,13 @@ def iotc_connect_by_uid_parallel(
 def iotc_connect_by_uid_ex(
     tutk_platform_lib: CDLL, p2p_id: str, session_id: c_int, auth_key: bytes
 ) -> c_int:
-    """Used by a client to connect a device and bind to a specified session ID.
+    """Used by a client to connect a device.
 
-    This function is for a client to connect a device by specifying the UID of that device,
-    and bind to a tutk_platform_free session ID from IOTC_Get_SessionID(). If connection is
-    established with the help of IOTC servers, the IOTC_ER_NoERROR will be returned in this
-    function and then device and client can communicate for the other later by using this
-    IOTC session ID. If this function is called by multiple threads, the connections will
-    be processed concurrently.
+    This function is for a client to connect a device by specifying
+    the UID and password of that device. If connection is established with the
+    help of IOTC servers, the IOTC session ID will be returned in this
+    function and then device and client can communicate for the other
+    later by using this IOTC session ID.This function will wake up device if it's sleeping.
 
     :param tutk_platform_lib: The underlying c library (from tutk.load_library())
     :param p2p_id: The UID of a device that client wants to connect
@@ -866,9 +865,7 @@ def iotc_connect_by_uid_ex(
     """
     connect_input = St_IOTCConnectInput()
     connect_input.cb = sizeof(connect_input)
-    connect_input.authenticationType = 0
     connect_input.authKey = auth_key
-    connect_input.timeout = 60
 
     resultant_session_id: c_int = tutk_platform_lib.IOTC_Connect_ByUIDEx(
         c_char_p(p2p_id.encode("ascii")), session_id, byref(connect_input)
