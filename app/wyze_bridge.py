@@ -383,7 +383,7 @@ class WyzeBridge:
                     bitrate,
                     enable_audio=False,
                 ) as sess:
-                    check_cam_sess(sess)
+                    check_cam_sess(sess, uri)
                     cmd = get_ffmpeg_cmd(uri, cam.product_model)
                     with Popen(cmd, stdin=PIPE) as ffmpeg:
                         for frame in sess.recv_bridge_frame(
@@ -477,9 +477,9 @@ def clean_name(name: str, upper: bool = False) -> str:
     return clean.upper() if upper else clean.lower()
 
 
-def check_net_mode(session_mode: int) -> str:
+def check_net_mode(session_mode: int, uri: str) -> str:
     """Check if the connection mode is allowed."""
-    net_mode = env_bool("NET_MODE", "ANY").upper()
+    net_mode = env_bool(f"NET_MODE_{uri}", env_bool("NET_MODE", "ANY")).upper()
     if "P2P" in net_mode and session_mode == 1:
         raise Exception("☁️ Connected via RELAY MODE! Reconnecting")
     if "LAN" in net_mode and session_mode != 2:
@@ -493,9 +493,9 @@ def check_net_mode(session_mode: int) -> str:
     return mode
 
 
-def check_cam_sess(sess: wyzecam.WyzeIOTCSession) -> None:
+def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> None:
     """Check cam session and return connection mode, firmware, and wifidb from camera."""
-    mode = check_net_mode(sess.session_check().mode)
+    mode = check_net_mode(sess.session_check().mode, uri)
     frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
     bit_frame = f"{sess.preferred_bitrate}kb/s {frame_size} stream"
     if video_param := sess.camera.camera_info.get("videoParm", False):
