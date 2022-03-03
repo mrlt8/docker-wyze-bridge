@@ -1,14 +1,13 @@
-import os
-from typing import Any, Dict, Iterator, Optional, Tuple, Union
-
-import hashlib
 import base64
 import enum
+import hashlib
 import logging
+import os
 import pathlib
 import time
 import warnings
 from ctypes import CDLL, c_int
+from typing import Any, Dict, Iterator, Optional, Tuple, Union
 
 from wyzecam.api_models import WyzeAccount, WyzeCamera
 
@@ -63,8 +62,8 @@ class WyzeIOTC:
     def __init__(
         self,
         tutk_platform_lib: Optional[Union[str, CDLL]] = None,
-        udp_port: Optional[int] = None,
-        max_num_av_channels: Optional[int] = None,
+        udp_port: Optional[int] = 0,
+        max_num_av_channels: Optional[int] = 1,
         sdk_key: Optional[str] = "",
         debug: bool = False,
     ) -> None:
@@ -84,12 +83,14 @@ class WyzeIOTC:
         if isinstance(tutk_platform_lib, str):
             path = pathlib.Path(tutk_platform_lib)
             tutk_platform_lib = tutk.load_library(str(path.absolute()))
+        license_status = tutk.TUTK_SDK_Set_License_Key(tutk_platform_lib, sdk_key)
+        if license_status < 0:
+            raise tutk.TutkError(license_status)
 
         self.tutk_platform_lib: CDLL = tutk_platform_lib
         self.initd = False
         self.udp_port = udp_port
         self.max_num_av_channels = max_num_av_channels
-        self.sdk_key = sdk_key
 
         if debug:
             logging.basicConfig()
@@ -108,11 +109,6 @@ class WyzeIOTC:
         if self.initd:
             return
         self.initd = True
-        license_status = tutk.TUTK_SDK_Set_License_Key(
-            self.tutk_platform_lib, self.sdk_key
-        )
-        if license_status < 0:
-            raise tutk.TutkError(license_status)
 
         errno = tutk.iotc_initialize(
             self.tutk_platform_lib, udp_port=self.udp_port or 0
@@ -433,7 +429,7 @@ class WyzeIOTCSession:
                     if last_keyframe[0]:
                         if time.time() - last_frame[1] >= 0.4:
                             warnings.warn("Frame not available yet")
-                        time.sleep(1.0 / 5)
+                        time.sleep(1.0 / 6)
                     continue
                 if errno == tutk.AV_ER_INCOMPLETE_FRAME:
                     warnings.warn("Received incomplete frame")
@@ -473,8 +469,8 @@ class WyzeIOTCSession:
             ) or time.time() - frame_info.timestamp > 20:
                 warnings.warn("Dropping old frames")
                 continue
-            elif time.time() - last_keyframe[1] > 5:
-                warnings.warn("Dropping old key frame")
+            elif time.time() - last_keyframe[1] > 5 and not keep_bad_frames:
+                warnings.warn("Keyframe too old")
                 continue
 
             yield frame_data
@@ -714,11 +710,20 @@ class WyzeIOTCSession:
     ):
         try:
             self.state = WyzeIOTCSessionState.IOTC_CONNECTING
+
+            auth_key = self.get_auth_key()
+            online = tutk.iotc_check_device_online(
+                self.tutk_platform_lib, self.camera.p2p_id, auth_key
+            )
+            if online < 0:
+                raise tutk.TutkError(online)
+
             session_id = tutk.iotc_get_session_id(self.tutk_platform_lib)
             if session_id < 0:  # type: ignore
                 raise tutk.TutkError(session_id)
             self.session_id = session_id
-            if not hasattr(self.camera, "dtls") or self.camera.dtls == 0:
+
+            if not hasattr(self.camera, "dtls") and self.camera.dtls == 0:
                 logger.debug("Connect via IOTC_Connect_ByUID_Parallel")
                 session_id = tutk.iotc_connect_by_uid_parallel(
                     self.tutk_platform_lib, self.camera.p2p_id, self.session_id
@@ -726,24 +731,11 @@ class WyzeIOTCSession:
             else:
                 logger.debug("Connect via IOTC_Connect_ByUIDEx")
                 password = self.camera.enr
-                auth = self.camera.enr + self.camera.mac.upper()
-                hash = hashlib.sha256(auth.encode("utf-8"))
-                bArr = bytearray(hash.digest())[0:6]
-
-                authKey = (
-                    base64.standard_b64encode(bArr)
-                    .decode()
-                    .replace("+", "Z")
-                    .replace("/", "9")
-                    .replace("=", "A")
-                    .encode("ascii")
-                )
-
                 session_id = tutk.iotc_connect_by_uid_ex(
                     self.tutk_platform_lib,
                     self.camera.p2p_id,
                     self.session_id,
-                    authKey,
+                    auth_key,
                 )
 
             if session_id < 0:  # type: ignore
@@ -786,6 +778,20 @@ class WyzeIOTCSession:
 
         tutk.av_client_set_recv_buf_size(
             self.tutk_platform_lib, self.av_chan_id, max_buf_size
+        )
+
+    def get_auth_key(self) -> bytes:
+        """Generate authkey using enr and mac address."""
+        auth = self.camera.enr + self.camera.mac.upper()
+        hash = hashlib.sha256(auth.encode("utf-8"))
+        bArr = bytearray(hash.digest())[0:6]
+        return (
+            base64.standard_b64encode(bArr)
+            .decode()
+            .replace("+", "Z")
+            .replace("/", "9")
+            .replace("=", "A")
+            .encode("ascii")
         )
 
     def _auth(self):

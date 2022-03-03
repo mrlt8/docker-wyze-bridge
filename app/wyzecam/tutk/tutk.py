@@ -469,11 +469,26 @@ class FrameInfo3Struct(FormattedStructure):
     ]
 
 
+class St_IOTCCheckDeviceInput(FormattedStructure):
+    _fields_ = [
+        ("cb", c_uint32),
+        ("auth_type", c_uint32),
+        ("auth_key", c_char * 8),
+    ]
+
+
+class St_IOTCCheckDeviceOutput(FormattedStructure):
+    _fields_ = [
+        ("status", c_uint32),
+        ("last_login", c_uint32),
+    ]
+
+
 class St_IOTCConnectInput(FormattedStructure):
     _fields_ = [
         ("cb", c_uint32),
-        ("authenticationType", c_uint32),
-        ("authKey", c_char * 8),
+        ("auth_type", c_uint32),
+        ("auth_key", c_char * 8),
         ("timeout", c_uint32),
     ]
 
@@ -748,9 +763,7 @@ def av_client_start(
     return av_chan_id
 
 
-def av_initialize(
-    tutk_platform_lib: CDLL, max_num_channels: Optional[c_int] = 1
-) -> int:
+def av_initialize(tutk_platform_lib: CDLL, max_num_channels: c_int = 1) -> int:
     """Initialize AV module.
 
     This function is used by AV servers or AV clients to initialize AV module
@@ -762,7 +775,7 @@ def av_initialize(
 
     :return:The actual maximum number of AV channels to be set. Error code if return value < 0.
     """
-    max_chans: c_int = tutk_platform_lib.avInitialize(max_num_channels)
+    max_chans: int = tutk_platform_lib.avInitialize(max_num_channels)
     return max_chans
 
 
@@ -809,7 +822,7 @@ def iotc_connect_by_uid(tutk_platform_lib: CDLL, p2p_id: str) -> c_int:
     :return: IOTC session ID if return value >= 0, error code if return value < 0
     """
     session_id: c_int = tutk_platform_lib.IOTC_Connect_ByUID(
-        c_char_p(p2p_id.encode("ascii")), p2p_id
+        c_char_p(p2p_id.encode("ascii"))
     )
     return session_id
 
@@ -822,6 +835,30 @@ def iotc_get_session_id(tutk_platform_lib: CDLL) -> c_int:
     """
     session_id: c_int = tutk_platform_lib.IOTC_Get_SessionID()
     return session_id
+
+
+def iotc_check_device_online(
+    tutk_platform_lib: CDLL,
+    p2p_id: str,
+    auth_key: bytes,
+    timeout_ms: Optional[int] = 5000,
+) -> c_int:
+    """Checking device online or not."""
+    device_in = St_IOTCCheckDeviceInput()
+    device_in.cb = sizeof(device_in)
+    device_in.auth_key = auth_key
+
+    device_out = St_IOTCCheckDeviceOutput()
+
+    status: c_int = tutk_platform_lib.IOTC_Check_Device_OnlineEx(
+        c_char_p(p2p_id.encode("ascii")),
+        byref(device_in),
+        byref(device_out),
+        c_uint(timeout_ms),
+        c_int32(),
+    )
+    # return status, device_out
+    return status
 
 
 def iotc_connect_by_uid_parallel(
@@ -865,7 +902,7 @@ def iotc_connect_by_uid_ex(
     """
     connect_input = St_IOTCConnectInput()
     connect_input.cb = sizeof(connect_input)
-    connect_input.authKey = auth_key
+    connect_input.auth_key = auth_key
 
     resultant_session_id: c_int = tutk_platform_lib.IOTC_Connect_ByUIDEx(
         c_char_p(p2p_id.encode("ascii")), session_id, byref(connect_input)
@@ -954,7 +991,7 @@ def iotc_initialize(tutk_platform_lib: CDLL, udp_port: int = 0) -> int:
     :return: 0 if successful, Error code if return value < 0
     """
 
-    errno: int = tutk_platform_lib.IOTC_Initialize2(udp_port)
+    errno: int = tutk_platform_lib.IOTC_Initialize2(c_uint16(udp_port))
     return errno
 
 
@@ -987,8 +1024,8 @@ def load_library(
     :return: the tutk_platform_lib, suitable for passing to other functions in this module
     """
     if shared_lib_path is None:
-        if pathlib.Path("/usr/local/lib/libIOTCAPIs_ALL.dylib").exists():
-            shared_lib_path = "/usr/local/lib/libIOTCAPIs_ALL.dylib"
+        # if pathlib.Path("/usr/local/lib/libIOTCAPIs_ALL.dylib").exists():
+        #     shared_lib_path = "/usr/local/lib/libIOTCAPIs_ALL.dylib"
         if pathlib.Path("/usr/local/lib/libIOTCAPIs_ALL.so").exists():
             shared_lib_path = "/usr/local/lib/libIOTCAPIs_ALL.so"
 
