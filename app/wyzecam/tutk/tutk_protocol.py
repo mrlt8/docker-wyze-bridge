@@ -308,7 +308,9 @@ class K10056SetResolvingBit(TutkWyzeProtocolMessage):
 
     expected_response_code = 10057
 
-    def __init__(self, frame_size=tutk.FRAME_SIZE_1080P, bitrate=tutk.BITRATE_HD):
+    def __init__(
+        self, frame_size=tutk.FRAME_SIZE_1080P, bitrate=tutk.BITRATE_HD, fps: int = 0
+    ):
         """
         Construct a K10056SetResolvingBit message, with a given frame size and bitrate.
 
@@ -331,9 +333,10 @@ class K10056SetResolvingBit(TutkWyzeProtocolMessage):
         super().__init__(10056)
         self.frame_size = frame_size
         self.bitrate = bitrate
+        self.fps = fps
 
     def encode(self) -> bytes:
-        payload = bytes([1 + self.frame_size, self.bitrate, 0])
+        payload = bytes([1 + self.frame_size, self.bitrate, self.fps])
 
         return encode(10056, 3, payload)
 
@@ -350,7 +353,9 @@ class K10052DBSetResolvingBit(TutkWyzeProtocolMessage):
 
     expected_response_code = 10053
 
-    def __init__(self, frame_size=tutk.FRAME_SIZE_1080P, bitrate=tutk.BITRATE_HD):
+    def __init__(
+        self, frame_size=tutk.FRAME_SIZE_1080P, bitrate=tutk.BITRATE_HD, fps: int = 0
+    ):
         """
         Construct a K10052DBSetResolvingBit message, with a given frame size and bitrate.
 
@@ -376,9 +381,10 @@ class K10052DBSetResolvingBit(TutkWyzeProtocolMessage):
         super().__init__(10052)
         self.frame_size = frame_size
         self.bitrate = bitrate
+        self.fps = fps
 
     def encode(self) -> bytes:
-        payload = bytes([self.bitrate, 0, 1 + self.frame_size, 0, 0, 0])
+        payload = bytes([self.bitrate, 0, 1 + self.frame_size, self.fps, 0, 0])
 
         return encode(self.code, 6, payload)
 

@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.0 DEV 2\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.0 DEV 3\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -479,10 +479,10 @@ def clean_name(name: str, upper: bool = False) -> str:
 
 def check_net_mode(session_mode: int, uri: str) -> str:
     """Check if the connection mode is allowed."""
-    net_mode = env_bool(f"NET_MODE_{uri}", env_bool("NET_MODE", "ANY")).upper()
-    if "P2P" in net_mode and session_mode == 1:
+    net_mode = env_bool(f"NET_MODE_{uri}", env_bool("NET_MODE", "any"))
+    if "p2p" in net_mode and session_mode == 1:
         raise Exception("☁️ Connected via RELAY MODE! Reconnecting")
-    if "LAN" in net_mode and session_mode != 2:
+    if "lan" in net_mode and session_mode != 2:
         raise Exception("☁️ Connected via NON-LAN MODE! Reconnecting")
 
     mode = mode_type.get(session_mode, f"UNKNOWN ({session_mode})") + " mode"
@@ -499,6 +499,13 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> None:
     frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
     bit_frame = f"{sess.preferred_bitrate}kb/s {frame_size} stream"
     if video_param := sess.camera.camera_info.get("videoParm", False):
+        if fps := int(video_param.get("fps", 0)):
+            bit_frame += f" @{fps}fps"
+            if fps % 5 != 0:
+                log.error(f"⚠️ Unusual FPS detected: {fps}")
+        if (force_fps := int(env_bool(f"FORCE_FPS_{uri}", 0))) and force_fps != fps:
+            log.info(f"Attempting to change FPS to {force_fps}")
+            sess.change_fps(force_fps)
         if env_bool("DEBUG_LEVEL"):
             log.info(f"[videoParm] {video_param}")
     firmware = sess.camera.camera_info["basicInfo"].get("firmware", "NA")
