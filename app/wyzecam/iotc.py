@@ -410,7 +410,6 @@ class WyzeIOTCSession:
 
         max_badres = int(os.getenv("MAX_BADRES", 100))
 
-        # wyze doorbell has weird rotated image sizes. We add 3 to compensate.
         ignore_res = (
             self.preferred_frame_size,
             int(os.getenv("IGNORE_RES", self.preferred_frame_size + 3)),
@@ -475,6 +474,16 @@ class WyzeIOTCSession:
 
             yield frame_data
             last_frame = frame_info.frame_no, time.time()
+
+    def change_fps(self, fps: int) -> None:
+        """Change camera FPS."""
+
+        with self.iotctrl_mux() as mux:
+            mux.send_ioctl(
+                K10052DBSetResolvingBit(
+                    self.preferred_frame_size, self.preferred_bitrate, fps
+                )
+            ).result()
 
     def recv_video_frame(
         self,
@@ -715,7 +724,7 @@ class WyzeIOTCSession:
             online = tutk.iotc_check_device_online(
                 self.tutk_platform_lib, self.camera.p2p_id, auth_key
             )
-            if online < 0:
+            if online < 0 and online != -13:
                 raise tutk.TutkError(online)
 
             session_id = tutk.iotc_get_session_id(self.tutk_platform_lib)
@@ -723,7 +732,7 @@ class WyzeIOTCSession:
                 raise tutk.TutkError(session_id)
             self.session_id = session_id
 
-            if not hasattr(self.camera, "dtls") and self.camera.dtls == 0:
+            if not hasattr(self.camera, "dtls") or self.camera.dtls == 0:
                 logger.debug("Connect via IOTC_Connect_ByUID_Parallel")
                 session_id = tutk.iotc_connect_by_uid_parallel(
                     self.tutk_platform_lib, self.camera.p2p_id, self.session_id
