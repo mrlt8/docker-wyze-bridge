@@ -13,6 +13,17 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
 
+## Changes in v1.2.1
+
+- 💥 Breaking: `MAX_NOREADY` and `MAX_BADRES` are being replaced with the time-based `RTSP_READTIMEOUT`.
+- ✨ New: ENV option `CONNECT_TIMEOUT` - Force the stream to timeout and close if if can't connect to the cam. Potential fix for #306 and #211 where a stream would get stuck trying to connect until the bridge restarted.
+- ✨ New: ENV option `NET_MODE_NAME` - camera-specific net mode filter #309.
+- ✨ New: ENV option `FORCE_FPS_NAME` - camera-specific option to force the camera to use a different FPS. Can be used to correct slow/fast SD/cloud recordings.
+- 🔨 Fixed: Auth issue when using WEBRTC.
+- 🚧 Changed: Additional tweaks to prevent memory leaks.
+- 🚧 Changed: Default `RTSP_READTIMEOUT` has been reduced to 20s.
+- 🎨 Logging: Stream will now display the fps that the camera is using.
+
 ## Changes in v1.2.0
 
 Improved video performance to help with the buffering/frame drops introduced in v.1.0.3. Thanks to @Ceer123 and everyone who helped identify and test the fixes!
@@ -21,39 +32,6 @@ Also in this release:
 
 - 🔨 Fixed: logging and other issues related when stream stopped publishing to rtsp-simple-server.
 - 🔨 Fixed: `AV_ER_REMOTE_TIMEOUT_DISCONNECT` error on connection timeout.
-
-## Changes in v1.1.2
-
-- 🏠 Home Assistant: Create the IMG_DIR at startup if it does not exist.
-- 🏠 Home Assistant: Added `KEEP_BAD_FRAMES`, `MAX_NOREADY`, `MAX_BADRES`, and `WEBRTC` options.
-- ✨ NEW: ENV option `KEEP_BAD_FRAMES` - Optional. Keep frames that may be missing a keyframe. May cause some video artifacts.
-- 🔨 Fixed: Get API snapshots one time at container startup to avoid expired thumbnails.
-- 🧹Code refactoring.
-
-## Changes in v1.1.1
-
-- 🔨 Fixed: Refresh cams on `WRONG_AUTH_KEY` error. #292
-- 🔨 Fixed: Faster cleanup on shutdown.
-- 🔧 Changed: ENV option: `MAX_NOREADY` - Optional. Can now be set to 0 to disable. #221
-- 🎨 Logging: Stream up info.
-
-## Changes in v1.1.0
-
-- 🏠 Home Assistant: Specify snapshot dir using `IMG_DIR`.
-- ✨ NEW: ENV option `IMG_DIR` - Optional. Change snapshot dir.
-- ✨ NEW: ENV option `MAX_NOREADY` - Optional. Number of "NOREADY" frames before restarting the connection.
-- ✨ NEW: ENV option `MAX_BADRES` - Optional. Number of frames that have a wrong resolution before restarting the connection.
-- ✨ NEW: ENV option `WEBRTC=True` - Optional. Get WebRTC credentials for all cameras.
-- 🔨 Fixed: Change resolution without reconnecting.
-- 🔨 Fixed: Refresh expired tokens.
-- 🔨 Fixed: Refresh cams from API when unable to find device.
-- 🔨 Fixed: Compatibility with rtsp-simple-server changes (PUBLISH to READY)
-- 🔨 Fixed: Cleanup logging for reads and publish.
-- 🔨 Fixed: Attempt to cleanup and exit more gracefully.
-- ⬆️ UPDATE: Switched to Python 3.10 base image.
-- ⬆️ UPDATE: iOS and Wyze App version for API.
-- ⬆️ UPDATE: rtsp-simple-server to v0.17.17.
-- 🧹Code refactoring and docstrings.
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -306,6 +284,19 @@ environment:
 
 `NET_MODE=P2P` is ideal when running the bridge remotely on a different network or on a VPS and will allow the bridge to stream directly from the camera over the internet while blocking "Relay Mode".
 
+#### ANY Mode
+
+`NET_MODE=ANY` is the equivalent to leaving `NET_MODE` unset and will allow the connection to fallback to P2P or relay mode.
+
+#### `NET_MODE` for a specific camera
+
+In the event that you need to allow the bridge to access a select number of cameras outside of your LAN, you can specify them by appending the camera name to `NET_MODE`, where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
+```yaml
+    ..
+    - NET_MODE=LAN
+    - NET_MODE_CAM_NAME=P2P
+```
+
 ### Snapshot/Still Images
 
 - `SNAPSHOT=API` Will run ONCE at startup and will grab a *high-quality* thumbnail from the wyze api and save it to `/img/cam-name.jpg` on docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
@@ -410,26 +401,28 @@ or `- RTSP_PATHS_ALL_READUSER=123` to customize a path specific option like `pat
 
 environment options:
 
+- `FRESH_DATA` (bool) Remove local cache and pull new data from wyze servers.
+
 - `URI_SEPARATOR` (-|_|#) Customize the separator used to replace spaces in the URI; available values are `-`, `_`, or use `#` to remove spaces.
 
-- `MAX_NOREADY` (int) Adjust the consecutive number of "NOREADY" frames before restarting the connection. Set `0` to disable. Default: `100`
-
-- `MAX_BADRES` (int) Adjust the consecutive number of frames that have a wrong resolution before restarting the connection. Default: `100`
+- `CONNECT_TIMEOUT` (int) Adjust the number of seconds to wait before timing out when connecting to camera. Default: `15`
 
 - `KEEP_BAD_FRAMES` (bool) Keep frames that may be missing a keyframe or preceding frames.
 
-- `IGNORE_OFFLINE` (bool) Ignore offline cameras until container restarts
+- `IGNORE_OFFLINE` (bool) Ignore offline cameras until container restarts.
 
-- `OFFLINE_TIME` (int) Customize the sleep time when a camera is offline
+- `OFFLINE_TIME` (int) Customize the sleep time when a camera is offline. Default: `10`
 
-- `DEBUG_FRAMES` (bool) Show all lost/incomplete frames
+- `DEBUG_FRAMES` (bool) Show all lost/incomplete frames.
 
-- `DEBUG_LEVEL` (debug|info|warning|error) Adjust the level of upstream logging
+- `DEBUG_LEVEL` (debug|info|warning|error) Adjust the level of upstream logging.
+
+- `RTSP_READTIMEOUT` (str) Adjust the max number of seconds of missing frames allowed before a stream is restarted. Be sure to include the s after the number. Default: `20s`
 
 - `RTSP_LOGLEVEL` (debug|info|warn) Adjust the verbosity of rtsp-simple-server; available values are "warn", "info", "debug".
 
-- `DEBUG_FFMPEG` (bool) Enable additional logging from FFmpeg
+- `DEBUG_FFMPEG` (bool) Enable additional logging from FFmpeg.
 
-- `FRESH_DATA` (bool) Remove local cache and pull new data from wyze servers.
+- `FORCE_FPS_CAM_NAME` (int) Force a specific camera to use a different FPS, where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens.
 
 - `WEBRTC` (bool) Display WebRTC credentials for cameras.
