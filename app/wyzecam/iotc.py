@@ -1,14 +1,13 @@
-import os
-from typing import Any, Dict, Iterator, Optional, Tuple, Union
-
-import hashlib
 import base64
 import enum
+import hashlib
 import logging
+import os
 import pathlib
 import time
 import warnings
 from ctypes import CDLL, c_int
+from typing import Any, Dict, Iterator, Optional, Tuple, Union
 
 from wyzecam.api_models import WyzeAccount, WyzeCamera
 
@@ -63,8 +62,8 @@ class WyzeIOTC:
     def __init__(
         self,
         tutk_platform_lib: Optional[Union[str, CDLL]] = None,
-        udp_port: Optional[int] = None,
-        max_num_av_channels: Optional[int] = None,
+        udp_port: Optional[int] = 0,
+        max_num_av_channels: Optional[int] = 1,
         sdk_key: Optional[str] = "",
         debug: bool = False,
     ) -> None:
@@ -84,12 +83,14 @@ class WyzeIOTC:
         if isinstance(tutk_platform_lib, str):
             path = pathlib.Path(tutk_platform_lib)
             tutk_platform_lib = tutk.load_library(str(path.absolute()))
+        license_status = tutk.TUTK_SDK_Set_License_Key(tutk_platform_lib, sdk_key)
+        if license_status < 0:
+            raise tutk.TutkError(license_status)
 
         self.tutk_platform_lib: CDLL = tutk_platform_lib
         self.initd = False
         self.udp_port = udp_port
         self.max_num_av_channels = max_num_av_channels
-        self.sdk_key = sdk_key
 
         if debug:
             logging.basicConfig()
@@ -108,11 +109,6 @@ class WyzeIOTC:
         if self.initd:
             return
         self.initd = True
-        license_status = tutk.TUTK_SDK_Set_License_Key(
-            self.tutk_platform_lib, self.sdk_key
-        )
-        if license_status < 0:
-            raise tutk.TutkError(license_status)
 
         errno = tutk.iotc_initialize(
             self.tutk_platform_lib, udp_port=self.udp_port or 0
@@ -245,6 +241,7 @@ class WyzeIOTCSession:
         camera: WyzeCamera,
         frame_size: int = tutk.FRAME_SIZE_1080P,
         bitrate: int = tutk.BITRATE_HD,
+        enable_audio: bool = True,
     ) -> None:
         """Construct a wyze iotc session.
 
@@ -268,6 +265,7 @@ class WyzeIOTCSession:
 
         self.preferred_frame_size: int = frame_size
         self.preferred_bitrate: int = bitrate
+        self.enable_audio: bool = enable_audio
 
     def session_check(self) -> tutk.SInfoStructEx:
         """Used by a device or a client to check the IOTC session info.
@@ -398,44 +396,35 @@ class WyzeIOTCSession:
             first_run = False
 
     def recv_bridge_frame(
-        self, stop_flag, keep_bad_frames: bool = True
+        self, stop_flag, keep_bad_frames: bool = False, timeout: int = 15
     ) -> Iterator[Optional[bytes]]:
         """A generator for returning raw video frames for the bridge.
 
         Note that the format of this data is either raw h264 or HVEC H265 video. You will
         have to introspect the frame_info object to determine the format!
+
+        :param keep_bad_frames: Don't drop frames that are missing a keyframe.
+        :param timeout: Number of seconds since the last yield before raising an exception.
         """
         assert self.av_chan_id is not None, "Please call _connect() first!"
-
-        max_noready = int(os.getenv("MAX_NOREADY", 100))
-        max_badres = int(os.getenv("MAX_BADRES", 100))
-
-        # wyze doorbell has weird rotated image sizes. We add 3 to compensate.
         ignore_res = (
             self.preferred_frame_size,
             int(os.getenv("IGNORE_RES", self.preferred_frame_size + 3)),
         )
-        bad_frames = 0
-        bad_res = 0
-        last_frame = 0
-        last_keyframe = 0, 0
+        last_keyframe = last_frame = 0, 0
 
         while not stop_flag.is_set():
-            errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
+            if last_keyframe[1] and timeout and time.time() - last_frame[1] >= timeout:
+                raise Exception(f"Stream did not receive a frame for over {timeout}s")
+            errno, frame_data, frame_info = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
-            if frame_index and frame_index % 500 == 0:
-                tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
-
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
-                    if 0 in (last_frame, max_noready):
-                        continue
-                    if bad_frames > max_noready:
-                        raise tutk.TutkError(errno)
-                    bad_frames += 1
-                    logger.debug(f"Frame not available [{bad_frames}/{max_noready}]")
-                    time.sleep(1.0 / 10)
+                    if last_keyframe[0]:
+                        if time.time() - last_frame[1] >= 0.4:
+                            warnings.warn("Frame not available yet")
+                        time.sleep(1.0 / 6)
                     continue
                 if errno == tutk.AV_ER_INCOMPLETE_FRAME:
                     warnings.warn("Received incomplete frame")
@@ -444,46 +433,48 @@ class WyzeIOTCSession:
                     warnings.warn("Lost frame")
                     continue
                 raise tutk.TutkError(errno)
-            bad_frames = 0
             assert frame_info is not None, "Got no frame info without an error!"
 
             if frame_info.frame_size not in ignore_res:
-                if last_frame == 0:
+                if last_keyframe[0] == 0:
                     warnings.warn(
                         f"Skipping smaller frame at start of stream (frame_size={frame_info.frame_size})"
                     )
                     continue
-                msg = f"Wrong resolution (frame_size={frame_info.frame_size}) [{bad_res}/{max_badres}]"
-                if bad_res >= max_badres:
-                    raise Exception(msg)
-                warnings.warn(msg)
-                bad_res += 1
+                warnings.warn(f"Wrong resolution (frame_size={frame_info.frame_size})")
                 with self.iotctrl_mux() as mux:
                     iotc_msg = self.preferred_frame_size, self.preferred_bitrate
                     if self.camera.product_model in ("WYZEDB3", "WVOD1"):
                         mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result()
                     else:
                         mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result()
-                time.sleep(1.0 / 10)
+                time.sleep(0.5)
                 continue
-            bad_res = 0
             if frame_info.is_keyframe:
-                last_keyframe = int(time.time()), int(frame_info.frame_no)
-
-            if (
-                frame_info.frame_no - last_keyframe[1] > frame_info.framerate * 2
-                and frame_info.frame_no - last_frame > 6
+                last_keyframe = frame_info.frame_no, int(time.time())
+            elif (
+                frame_info.frame_no - last_keyframe[0] > frame_info.framerate * 2
+                and frame_info.frame_no - last_frame[0] > 6
                 and not keep_bad_frames
             ) or time.time() - frame_info.timestamp > 20:
                 warnings.warn("Dropping old frames")
                 continue
-
-            if time.time() - last_keyframe[0] > 5:
-                warnings.warn("Dropping old key frame")
+            elif time.time() - last_keyframe[1] > 5 and not keep_bad_frames:
+                warnings.warn("Keyframe too old")
                 continue
 
-            last_frame = frame_info.frame_no
             yield frame_data
+            last_frame = frame_info.frame_no, time.time()
+
+    def change_fps(self, fps: int) -> None:
+        """Change camera FPS."""
+
+        with self.iotctrl_mux() as mux:
+            mux.send_ioctl(
+                K10052DBSetResolvingBit(
+                    self.preferred_frame_size, self.preferred_bitrate, fps
+                )
+            ).result()
 
     def recv_video_frame(
         self,
@@ -719,10 +710,12 @@ class WyzeIOTCSession:
     ):
         try:
             self.state = WyzeIOTCSessionState.IOTC_CONNECTING
+
             session_id = tutk.iotc_get_session_id(self.tutk_platform_lib)
             if session_id < 0:  # type: ignore
                 raise tutk.TutkError(session_id)
             self.session_id = session_id
+
             if not hasattr(self.camera, "dtls") or self.camera.dtls == 0:
                 logger.debug("Connect via IOTC_Connect_ByUID_Parallel")
                 session_id = tutk.iotc_connect_by_uid_parallel(
@@ -731,24 +724,11 @@ class WyzeIOTCSession:
             else:
                 logger.debug("Connect via IOTC_Connect_ByUIDEx")
                 password = self.camera.enr
-                auth = self.camera.enr + self.camera.mac.upper()
-                hash = hashlib.sha256(auth.encode("utf-8"))
-                bArr = bytearray(hash.digest())[0:6]
-
-                authKey = (
-                    base64.standard_b64encode(bArr)
-                    .decode()
-                    .replace("+", "Z")
-                    .replace("/", "9")
-                    .replace("=", "A")
-                    .encode("ascii")
-                )
-
                 session_id = tutk.iotc_connect_by_uid_ex(
                     self.tutk_platform_lib,
                     self.camera.p2p_id,
                     self.session_id,
-                    authKey,
+                    self.get_auth_key(),
                 )
 
             if session_id < 0:  # type: ignore
@@ -793,6 +773,20 @@ class WyzeIOTCSession:
             self.tutk_platform_lib, self.av_chan_id, max_buf_size
         )
 
+    def get_auth_key(self) -> bytes:
+        """Generate authkey using enr and mac address."""
+        auth = self.camera.enr + self.camera.mac.upper()
+        hash = hashlib.sha256(auth.encode("utf-8"))
+        bArr = bytearray(hash.digest())[0:6]
+        return (
+            base64.standard_b64encode(bArr)
+            .decode()
+            .replace("+", "Z")
+            .replace("/", "9")
+            .replace("=", "A")
+            .encode("ascii")
+        )
+
     def _auth(self):
         if self.state == WyzeIOTCSessionState.CONNECTING_FAILED:
             return
@@ -817,6 +811,7 @@ class WyzeIOTCSession:
                     self.camera.mac,
                     self.account.phone_id,
                     self.account.open_user_id,
+                    self.enable_audio,
                 )
                 auth_response = mux.send_ioctl(challenge_response).result()
                 assert (

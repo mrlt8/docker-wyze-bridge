@@ -4,7 +4,7 @@
     "slug": "docker-wyze-bridge",
     "url": "http://github.com/mrlt8/docker-wyze-bridge",
     "image": "mrlt8/wyze-bridge",
-    "version": "1.2.0",
+    "version": "1.2.1",
     "arch": [
         "armv7",
         "aarch64",
@@ -68,8 +68,7 @@
         "DOOR_SIZE": "int?",
         "IGNORE_RES": "int?",
         "KEEP_BAD_FRAMES": "bool?",
-        "MAX_NOREADY": "int?",
-        "MAX_BADRES": "int?",
+        "RTSP_READTIMEOUT": "list(5s|10s|15s|20s|25s|30s)",
         "WEBRTC": "bool?"
     }
 }

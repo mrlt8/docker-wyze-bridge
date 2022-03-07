@@ -114,7 +114,7 @@ class K10000ConnectRequest(TutkWyzeProtocolMessage):
 
     expected_response_code = 10001
 
-    def __init__(self, mac):
+    def __init__(self, mac: str):
         """Construct a new K10000ConnectRequest"""
         super().__init__(10000)
         self.mac = mac
@@ -128,9 +128,7 @@ class K10000ConnectRequest(TutkWyzeProtocolMessage):
                     "wakeupFlag": 1,
                 }
             }
-            wake_json = json.dumps(wake_dict, separators=(",", ":")).encode(
-                "ascii"
-            )
+            wake_json = json.dumps(wake_dict, separators=(",", ":")).encode("ascii")
             return encode(10000, len(wake_json), wake_json)
         return encode(10000, 0, bytes())
 
@@ -311,7 +309,7 @@ class K10056SetResolvingBit(TutkWyzeProtocolMessage):
     expected_response_code = 10057
 
     def __init__(
-        self, frame_size=tutk.FRAME_SIZE_1080P, bitrate=tutk.BITRATE_HD
+        self, frame_size=tutk.FRAME_SIZE_1080P, bitrate=tutk.BITRATE_HD, fps: int = 0
     ):
         """
         Construct a K10056SetResolvingBit message, with a given frame size and bitrate.
@@ -335,9 +333,10 @@ class K10056SetResolvingBit(TutkWyzeProtocolMessage):
         super().__init__(10056)
         self.frame_size = frame_size
         self.bitrate = bitrate
+        self.fps = fps
 
     def encode(self) -> bytes:
-        payload = bytes([1 + self.frame_size, self.bitrate, 0])
+        payload = bytes([1 + self.frame_size, self.bitrate, self.fps])
 
         return encode(10056, 3, payload)
 
@@ -355,7 +354,7 @@ class K10052DBSetResolvingBit(TutkWyzeProtocolMessage):
     expected_response_code = 10053
 
     def __init__(
-        self, frame_size=tutk.FRAME_SIZE_1080P, bitrate=tutk.BITRATE_HD
+        self, frame_size=tutk.FRAME_SIZE_1080P, bitrate=tutk.BITRATE_HD, fps: int = 0
     ):
         """
         Construct a K10052DBSetResolvingBit message, with a given frame size and bitrate.
@@ -382,9 +381,10 @@ class K10052DBSetResolvingBit(TutkWyzeProtocolMessage):
         super().__init__(10052)
         self.frame_size = frame_size
         self.bitrate = bitrate
+        self.fps = fps
 
     def encode(self) -> bytes:
-        payload = bytes([self.bitrate, 0, 1 + self.frame_size, 0, 0, 0])
+        payload = bytes([self.bitrate, 0, 1 + self.frame_size, self.fps, 0, 0])
 
         return encode(self.code, 6, payload)
 
@@ -453,9 +453,7 @@ def encode(code: int, data_len: int, data: Optional[bytes]) -> bytes:
     encoded_msg[0:2] = [72, 76]
     encoded_msg[2:4] = int(1).to_bytes(2, byteorder="little", signed=False)
     encoded_msg[4:6] = int(code).to_bytes(2, byteorder="little", signed=False)
-    encoded_msg[6:8] = int(data_len).to_bytes(
-        2, byteorder="little", signed=False
-    )
+    encoded_msg[6:8] = int(data_len).to_bytes(2, byteorder="little", signed=False)
     if data is not None and data_len > 0:
         encoded_msg[16 : len(encoded_msg)] = data
     return bytes(encoded_msg)
@@ -493,6 +491,7 @@ def respond_to_ioctrl_10001(
     mac: str,
     phone_id: str,
     open_userid: str,
+    enable_audio: bool = True,
 ) -> Optional[TutkWyzeProtocolMessage]:
     camera_status = data[0]
     if camera_status == 2:
@@ -518,16 +517,14 @@ def respond_to_ioctrl_10001(
         camera_enr_b = xxtea.decrypt(camera_enr_b, secret_key, padding=False)
         camera_secret_key = enr.encode("ascii")[16:32]
 
-    challenge_response = xxtea.decrypt(
-        camera_enr_b, camera_secret_key, padding=False
-    )
+    challenge_response = xxtea.decrypt(camera_enr_b, camera_secret_key, padding=False)
 
     if supports(product_model, protocol, 10008):
         response: TutkWyzeProtocolMessage = K10008ConnectUserAuth(
-            challenge_response, phone_id, open_userid
+            challenge_response, phone_id, open_userid, open_audio=enable_audio
         )
     else:
-        response = K10002ConnectAuth(challenge_response, mac)
+        response = K10002ConnectAuth(challenge_response, mac, open_audio=enable_audio)
     logger.debug(f"Sending response: {response}")
     return response
 
