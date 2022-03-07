@@ -396,7 +396,7 @@ class WyzeIOTCSession:
             first_run = False
 
     def recv_bridge_frame(
-        self, stop_flag, keep_bad_frames: bool = False, timeout: int = 10
+        self, stop_flag, keep_bad_frames: bool = False, timeout: int = 15
     ) -> Iterator[Optional[bytes]]:
         """A generator for returning raw video frames for the bridge.
 
@@ -407,18 +407,14 @@ class WyzeIOTCSession:
         :param timeout: Number of seconds since the last yield before raising an exception.
         """
         assert self.av_chan_id is not None, "Please call _connect() first!"
-
-        max_badres = int(os.getenv("MAX_BADRES", 100))
-
         ignore_res = (
             self.preferred_frame_size,
             int(os.getenv("IGNORE_RES", self.preferred_frame_size + 3)),
         )
-        bad_res = 1
         last_keyframe = last_frame = 0, 0
 
         while not stop_flag.is_set():
-            if last_keyframe[1] and time.time() - last_frame[1] >= timeout:
+            if last_keyframe[1] and timeout and time.time() - last_frame[1] >= timeout:
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
             errno, frame_data, frame_info = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
@@ -445,20 +441,15 @@ class WyzeIOTCSession:
                         f"Skipping smaller frame at start of stream (frame_size={frame_info.frame_size})"
                     )
                     continue
-                msg = f"Wrong resolution (frame_size={frame_info.frame_size}) [{bad_res}/{max_badres}]"
-                if bad_res >= max_badres:
-                    raise Exception(msg)
-                warnings.warn(msg)
-                bad_res += 1
+                warnings.warn(f"Wrong resolution (frame_size={frame_info.frame_size})")
                 with self.iotctrl_mux() as mux:
                     iotc_msg = self.preferred_frame_size, self.preferred_bitrate
                     if self.camera.product_model in ("WYZEDB3", "WVOD1"):
                         mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result()
                     else:
                         mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result()
-                time.sleep(1.0 / 3)
+                time.sleep(0.5)
                 continue
-            bad_res = 0
             if frame_info.is_keyframe:
                 last_keyframe = frame_info.frame_no, int(time.time())
             elif (
@@ -720,13 +711,6 @@ class WyzeIOTCSession:
         try:
             self.state = WyzeIOTCSessionState.IOTC_CONNECTING
 
-            auth_key = self.get_auth_key()
-            online = tutk.iotc_check_device_online(
-                self.tutk_platform_lib, self.camera.p2p_id, auth_key
-            )
-            if online < 0 and online != -13:
-                raise tutk.TutkError(online)
-
             session_id = tutk.iotc_get_session_id(self.tutk_platform_lib)
             if session_id < 0:  # type: ignore
                 raise tutk.TutkError(session_id)
@@ -744,7 +728,7 @@ class WyzeIOTCSession:
                     self.tutk_platform_lib,
                     self.camera.p2p_id,
                     self.session_id,
-                    auth_key,
+                    self.get_auth_key(),
                 )
 
             if session_id < 0:  # type: ignore
