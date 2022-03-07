@@ -20,11 +20,11 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.0 DEV 3\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.1\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
-        self.timeout: int = int(env_bool("TIMEOUT", 15))
+        self.timeout: int = int(env_bool("RTSP_READTIMEOUT", 15).replace("s", ""))
         self.keep_bad_frames: bool = env_bool("KEEP_BAD_FRAMES", False)
         self.healthcheck: bool = bool(os.getenv("HEALTHCHECK"))
         self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
@@ -70,12 +70,21 @@ class WyzeBridge:
             signal.pause()
         for cam_name in self.streams:
             self.start_stream(cam_name)
+        timeout = int(env_bool("CONNECT_TIMEOUT", 15))
+        cooldown = int(env_bool("OFFLINE_TIME", 10))
         while len(self.streams) > 0:
             refresh_cams = True
             for name, stream in list(self.streams.items()):
                 if self.stop_flag.is_set():
                     return
-                if process := stream["process"]:
+                if (
+                    "connected" in stream
+                    and not stream["connected"].is_set()
+                    and time.time() - stream["started"] > timeout
+                ):
+                    log.info(f"⏰ Timed out connecting to {name} ({timeout}s).")
+                    self.streams[name] = {"sleep": int(time.time() + cooldown)}
+                elif process := stream.get("process"):
                     if process.exitcode in (19, 68) and refresh_cams:
                         refresh_cams = False
                         log.info("♻️ Attempting to refresh list of cameras")
@@ -88,33 +97,36 @@ class WyzeBridge:
                             log.info(f"🪦 {name} is offline. Will NOT try again.")
                             del self.streams[name]
                             continue
-                        cooldown = int(env_bool("OFFLINE_TIME", 10))
                         log.info(f"👻 {name} offline. WILL retry in {cooldown}s.")
-                        self.streams[name]["process"] = False
-                        self.streams[name]["sleep"] = int(time.time() + cooldown)
+                        self.streams[name] = {"sleep": int(time.time() + cooldown)}
                     elif process.exitcode:
                         del self.streams[name]
-
-                if (sleep := stream["sleep"]) and sleep <= time.time():
-                    self.streams[name]["sleep"] = False
+                elif (sleep := stream["sleep"]) and sleep <= time.time():
                     self.start_stream(name)
             time.sleep(1)
 
     def start_stream(self, name: str) -> None:
         """Start a single stream by cam name."""
-        if name in self.streams and (proc := self.streams[name]["process"]):
+        if name in self.streams and (proc := self.streams[name].get("process")):
             if hasattr(proc, "alive") and proc.alive():
                 proc.terminate()
                 proc.join()
         cam = next(c for c in self.cameras if c.nickname == name)
         model = model_names.get(cam.product_model, cam.product_model)
         log.info(f"🎉 Connecting to WyzeCam {model} - {name} on {cam.ip} (1/3)")
+        connected = multiprocessing.Event()
+
         stream = multiprocessing.Process(
             target=self.start_tutk_stream,
-            args=(cam, self.stop_flag),
+            args=(cam, self.stop_flag, connected),
             name=name,
         )
-        self.streams[name]["process"] = stream
+        self.streams[name] = {
+            "process": stream,
+            "sleep": False,
+            "connected": connected,
+            "started": time.time(),
+        }
         stream.start()
 
     def clean_up(self) -> NoReturn:
@@ -354,7 +366,7 @@ class WyzeBridge:
             self.add_rtsp_path(cam)
             self.mqtt_discovery(cam)
             self.save_api_thumb(cam)
-            self.streams[cam.nickname] = {"process": False, "sleep": False}
+            self.streams[cam.nickname] = {}
 
     def start_rtsp_server(self) -> None:
         """Start rtsp-simple-server in its own subprocess."""
@@ -366,7 +378,7 @@ class WyzeBridge:
             log.info("starting rtsp-simple-server")
         self.rtsp = Popen(["/app/rtsp-simple-server", "/app/rtsp-simple-server.yml"])
 
-    def start_tutk_stream(self, cam: wyzecam.WyzeCamera, stop_flag) -> None:
+    def start_tutk_stream(self, cam: wyzecam.WyzeCamera, stop_flag, connected) -> None:
         """Connect and communicate with the camera using TUTK."""
         uri = clean_name(cam.nickname, upper=True)
         exit_code = 1
@@ -383,6 +395,7 @@ class WyzeBridge:
                     bitrate,
                     enable_audio=False,
                 ) as sess:
+                    connected.set()
                     check_cam_sess(sess, uri)
                     cmd = get_ffmpeg_cmd(uri, cam.product_model)
                     with Popen(cmd, stdin=PIPE) as ffmpeg:
@@ -404,7 +417,7 @@ class WyzeBridge:
 
     def get_webrtc(self):
         """Print out WebRTC related information for all available cameras."""
-        self.get_wyze_data("auth", False)
+        self.get_wyze_data("cameras", False)
         log.info("\n======\nWebRTC\n======\n\n")
         for i, cam in enumerate(self.cameras, 1):
             try:
@@ -414,6 +427,8 @@ class WyzeBridge:
                 )
                 print(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n\n{creds}\n---")
             except requests.exceptions.HTTPError as ex:
+                if ex.response.status_code == 404:
+                    ex = "UNAVAILABLE"
                 log.warning(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n{ex}\n---")
         print("👋 goodbye!")
         signal.pause()
