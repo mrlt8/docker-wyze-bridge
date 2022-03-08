@@ -70,7 +70,7 @@ class WyzeBridge:
             signal.pause()
         for cam_name in self.streams:
             self.start_stream(cam_name)
-        timeout = int(env_bool("CONNECT_TIMEOUT", 15))
+        timeout = int(env_bool("CONNECT_TIMEOUT", 25))
         cooldown = int(env_bool("OFFLINE_TIME", 10))
         while len(self.streams) > 0:
             refresh_cams = True

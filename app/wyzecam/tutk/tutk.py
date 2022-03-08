@@ -903,6 +903,7 @@ def iotc_connect_by_uid_ex(
     connect_input = St_IOTCConnectInput()
     connect_input.cb = sizeof(connect_input)
     connect_input.auth_key = auth_key
+    connect_input.timeout = 20
 
     resultant_session_id: c_int = tutk_platform_lib.IOTC_Connect_ByUIDEx(
         c_char_p(p2p_id.encode("ascii")), session_id, byref(connect_input)
