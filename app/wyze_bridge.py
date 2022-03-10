@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.1 DEV 1\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.1 DEV 2\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -405,7 +405,9 @@ class WyzeBridge:
                             ffmpeg.stdin.write(frame)
         except Exception as ex:
             log.warning(ex)
-            if ex.args[0] in (-19, -68, -90):
+            if ex.args[0] == -13:  # IOTC_ER_TIMEOUT
+                time.sleep(2)
+            elif ex.args[0] in (-19, -68, -90):
                 exit_code = abs(ex.args[0])
             elif ex.args[0] == "Authentication did not succeed! {'connectionRes': '2'}":
                 log.warning("⏰ Expired ENR?")
