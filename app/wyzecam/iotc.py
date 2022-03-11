@@ -442,15 +442,13 @@ class WyzeIOTCSession:
                     )
                     continue
                 warnings.warn(f"Wrong resolution (frame_size={frame_info.frame_size})")
-                with self.iotctrl_mux() as mux:
-                    iotc_msg = self.preferred_frame_size, self.preferred_bitrate
-                    if self.camera.product_model in ("WYZEDB3", "WVOD1"):
-                        mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result()
-                    else:
-                        mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result()
+                self.update_frame_size_rate()
                 time.sleep(0.5)
                 continue
             if frame_info.is_keyframe:
+                if last_keyframe[0] and frame_info.bitrate != self.preferred_bitrate:
+                    warnings.warn(f"Wrong bitrate (bitrate={frame_info.bitrate})")
+                    self.update_frame_size_rate()
                 last_keyframe = frame_info.frame_no, int(time.time())
             elif (
                 frame_info.frame_no - last_keyframe[0] > frame_info.framerate * 2
@@ -466,9 +464,17 @@ class WyzeIOTCSession:
             yield frame_data
             last_frame = frame_info.frame_no, time.time()
 
-    def change_fps(self, fps: int) -> None:
-        """Change camera FPS."""
+    def update_frame_size_rate(self) -> None:
+        """Send a message to the camera to update the frame_size and bitrate."""
+        with self.iotctrl_mux() as mux:
+            iotc_msg = self.preferred_frame_size, self.preferred_bitrate
+            if self.camera.product_model in ("WYZEDB3", "WVOD1"):
+                mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result()
+            else:
+                mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result()
 
+    def change_fps(self, fps: int) -> None:
+        """Send a message to the camera to update the FPS."""
         with self.iotctrl_mux() as mux:
             mux.send_ioctl(
                 K10052DBSetResolvingBit(
