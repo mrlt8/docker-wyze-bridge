@@ -446,7 +446,11 @@ class WyzeIOTCSession:
                 time.sleep(0.5)
                 continue
             if frame_info.is_keyframe:
-                if last_keyframe[0] and frame_info.bitrate != self.preferred_bitrate:
+                if (
+                    last_keyframe[0]
+                    and frame_info.bitrate
+                    and frame_info.bitrate != self.preferred_bitrate
+                ):
                     warnings.warn(f"Wrong bitrate (bitrate={frame_info.bitrate})")
                     self.update_frame_size_rate()
                 last_keyframe = frame_info.frame_no, int(time.time())
