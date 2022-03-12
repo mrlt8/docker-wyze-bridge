@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.1 DEV 2\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.1 DEV 3\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -538,7 +538,7 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> None:
 def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
     """Return the ffmpeg cmd with options from the env."""
     lib264 = ["libx264", "-vf", "transpose=1", "-preset", "veryfast", "-crf", "20"]
-    flags = "-fflags +flush_packets+genpts+discardcorrupt+nobuffer"
+    flags = "-fflags +genpts+discardcorrupt+nobuffer"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
     cmd = os.getenv(f"FFMPEG_CMD_{uri}", os.getenv("FFMPEG_CMD", "")).strip(
         "'\"\n "
@@ -548,6 +548,7 @@ def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
         .strip("'\"\n ")
         .split()
         + ["-i", "-"]
+        + get_record_cmd(uri)
         + ["-vcodec"]
         + (["copy"] if not rotate else lib264)
         + ["-rtsp_transport", env_bool("RTSP_PROTOCOLS", "tcp")]
@@ -560,6 +561,25 @@ def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
         log.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
     cmd[-1] = cmd[-1] + ("" if cmd[-1][-1] == "/" else "/") + uri.lower()
     return cmd
+
+
+def get_record_cmd(uri: str) -> list:
+    """Check if recording is enabled and return ffmpeg cmd as a list."""
+    if not os.getenv(f"RECORD_{uri}", os.getenv("RECORD_ALL", False)):
+        return []
+    seg_time = os.getenv("RECORD_LENGTH", "180")
+    path = os.getenv("RECORD_PATH", "record").strip("/")
+    file_name = os.getenv("RECORD_FILE_NAME", "_%Y-%m-%d_%H-%M-%S%Z")
+    return (
+        ["-vcodec", "copy"]
+        + ["-f", "segment"]
+        + ["-segment_time", seg_time]
+        + ["-segment_atclocktime", "1"]
+        + ["-segment_format", "mp4"]
+        + ["-reset_timestamps", "1"]
+        + ["-strftime", "1"]
+        + [f"/{path}/{uri}{file_name}.mp4"]
+    )
 
 
 def setup_hass():
