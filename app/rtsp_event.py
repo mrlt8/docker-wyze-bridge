@@ -5,7 +5,6 @@ try:
     import signal
     import time
     from datetime import datetime as dt
-    from typing import NoReturn
 
 except ImportError:
     sys.exit(1)
@@ -30,7 +29,7 @@ class RtspEvent:
         date = dt.now().strftime("%Y/%m/%d %X")
         print(date, f"[RTSP][{self.uri.upper()}] {txt}")
 
-    def pub_start(self) -> NoReturn:
+    def pub_start(self) -> None:
         """Handle a 'READY' event when publishing a stream to rtsp-simple-server."""
         self.write_log(f"✅ '/{self.uri}' stream is UP! (3/3)")
         img_file = os.getenv("IMG_PATH", "/img/") + self.uri + ".jpg"
@@ -74,7 +73,7 @@ class RtspEvent:
                 else 180
             )
 
-    def read_start(self) -> NoReturn:
+    def read_start(self) -> None:
         """Handle 'READ' events when a client starts consuming a stream fromrtsp-simple-server."""
         self.write_log("📖 New client reading ")
         self.send_mqtt(f"clients/{os.getpid()}", "reading")
@@ -113,7 +112,7 @@ class RtspEvent:
         if self.mqtt_connected:
             self.mqtt.publish(self.base + topic, message)
 
-    def clean_up(self) -> NoReturn:
+    def clean_up(self) -> None:
         """Update the log and MQTT status when a termination signal is received."""
         if self.type == "READY":
             self.write_log(f"❌ '/{self.uri}' stream is down")
