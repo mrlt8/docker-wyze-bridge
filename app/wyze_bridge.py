@@ -25,6 +25,7 @@ class WyzeBridge:
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
         self.timeout: int = int(env_bool("RTSP_READTIMEOUT", 15).replace("s", ""))
+        self.connect_timeout: int = int(env_bool("CONNECT_TIMEOUT", 20))
         self.keep_bad_frames: bool = env_bool("KEEP_BAD_FRAMES", False)
         self.healthcheck: bool = bool(os.getenv("HEALTHCHECK"))
         self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
@@ -70,7 +71,6 @@ class WyzeBridge:
             signal.pause()
         for cam_name in self.streams:
             self.start_stream(cam_name)
-        timeout = int(env_bool("CONNECT_TIMEOUT", 25))
         cooldown = int(env_bool("OFFLINE_TIME", 10))
         while len(self.streams) > 0:
             refresh_cams = True
@@ -80,9 +80,11 @@ class WyzeBridge:
                 if (
                     "connected" in stream
                     and not stream["connected"].is_set()
-                    and time.time() - stream["started"] > timeout
+                    and time.time() - stream["started"] > (self.connect_timeout + 2)
                 ):
-                    log.info(f"⏰ Timed out connecting to {name} ({timeout}s).")
+                    log.info(
+                        f"⏰ Timed out connecting to {name} ({self.connect_timeout}s)."
+                    )
                     self.streams[name] = {"sleep": int(time.time() + cooldown)}
                 elif process := stream.get("process"):
                     if process.exitcode in (19, 68) and refresh_cams:
@@ -394,6 +396,7 @@ class WyzeBridge:
                     frame_size,
                     bitrate,
                     enable_audio=False,
+                    connect_timeout=self.connect_timeout,
                 ) as sess:
                     connected.set()
                     check_cam_sess(sess, uri)
@@ -569,7 +572,7 @@ def get_record_cmd(uri: str) -> list:
         return []
     seg_time = os.getenv("RECORD_LENGTH", "180")
     path = os.getenv("RECORD_PATH", "record").strip("/")
-    file_name = os.getenv("RECORD_FILE_NAME", "_%Y-%m-%d_%H-%M-%S%Z")
+    file_name = os.getenv("RECORD_FILE_NAME", "_%Y%m%d_%H_%M_%S%Z")
     return (
         ["-vcodec", "copy"]
         + ["-f", "segment"]
