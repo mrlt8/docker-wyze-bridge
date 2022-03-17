@@ -674,6 +674,17 @@ def av_client_clean_local_video_buf(tutk_platform_lib: CDLL, channel_id: c_int) 
     tutk_platform_lib.avClientCleanLocalVideoBuf(channel_id)
 
 
+def av_client_clean_local_audio_buf(tutk_platform_lib: CDLL, channel_id: c_int) -> None:
+    """Clean the local audio buffer of the client.
+
+    This function is used to clean the audio buffer that the client
+    has already received
+
+    :param channel_id: The channel ID of the AV channel to clean buffer
+    """
+    tutk_platform_lib.avClientCleanAudioBuf(channel_id)
+
+
 def av_client_stop(tutk_platform_lib: CDLL, av_chan_id: c_int) -> None:
     """Stop an AV client.
 
@@ -885,7 +896,11 @@ def iotc_connect_by_uid_parallel(
 
 
 def iotc_connect_by_uid_ex(
-    tutk_platform_lib: CDLL, p2p_id: str, session_id: c_int, auth_key: bytes
+    tutk_platform_lib: CDLL,
+    p2p_id: str,
+    session_id: c_int,
+    auth_key: bytes,
+    timeout: int = 20,
 ) -> c_int:
     """Used by a client to connect a device.
 
@@ -903,7 +918,7 @@ def iotc_connect_by_uid_ex(
     connect_input = St_IOTCConnectInput()
     connect_input.cb = sizeof(connect_input)
     connect_input.auth_key = auth_key
-    connect_input.timeout = 20
+    connect_input.timeout = timeout
 
     resultant_session_id: c_int = tutk_platform_lib.IOTC_Connect_ByUIDEx(
         c_char_p(p2p_id.encode("ascii")), session_id, byref(connect_input)
