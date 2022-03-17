@@ -243,6 +243,7 @@ class WyzeIOTCSession:
         frame_size: int = tutk.FRAME_SIZE_1080P,
         bitrate: int = tutk.BITRATE_HD,
         enable_audio: bool = True,
+        connect_timeout: int = 20,
     ) -> None:
         """Construct a wyze iotc session.
 
@@ -266,6 +267,7 @@ class WyzeIOTCSession:
 
         self.preferred_frame_size: int = frame_size
         self.preferred_bitrate: int = bitrate
+        self.connect_timeout: int = connect_timeout
         self.enable_audio: bool = enable_audio
 
     def session_check(self) -> tutk.SInfoStructEx:
@@ -435,7 +437,11 @@ class WyzeIOTCSession:
                     continue
                 raise tutk.TutkError(errno)
             assert frame_info is not None, "Got no frame info without an error!"
-
+            if last_keyframe[0] and frame_info.frame_no % 500 == 0:
+                self.update_frame_size_rate(check_bitrate=True)
+                tutk.av_client_clean_local_audio_buf(
+                    self.tutk_platform_lib, self.av_chan_id
+                )
             if frame_info.frame_size not in ignore_res:
                 if last_keyframe[0] == 0:
                     warnings.warn(
@@ -447,8 +453,6 @@ class WyzeIOTCSession:
                 last_keyframe = 0, 0
                 continue
             if frame_info.is_keyframe:
-                if last_keyframe[0] and (last_keyframe[0] - 1) % 500 == 0:
-                    self.update_frame_size_rate(check_bitrate=True)
                 last_keyframe = frame_info.frame_no, int(time.time())
             elif (
                 frame_info.frame_no - last_keyframe[0] > frame_info.framerate * 2
@@ -744,6 +748,7 @@ class WyzeIOTCSession:
                     self.camera.p2p_id,
                     self.session_id,
                     self.get_auth_key(),
+                    self.connect_timeout,
                 )
 
             if session_id < 0:  # type: ignore
