@@ -1,3 +1,17 @@
+## Changes in v1.3.0
+
+### ✨ NEW
+
+- Recording directly in the bridge is now here! [Details](#recording-streams-beta).
+
+### 🚧 Changed
+
+- Reverted to clearing audio buffer every 500 frames to prevent memory leak #323.
+- Adjusted connection timeout #306 #319.
+- Check bitrate every 500 frames to detect any external changes #320.
+- Fixed import error #324.
+- IOS and wyze app version number bump.
+
 ## Changes in v1.2.1
 
 - 💥 Breaking: `MAX_NOREADY` and `MAX_BADRES` are being replaced with the time-based `RTSP_READTIMEOUT`.
