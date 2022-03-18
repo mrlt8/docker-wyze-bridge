@@ -384,16 +384,16 @@ class WyzeIOTCSession:
                 else:
                     raise tutk.TutkError(errno)
             assert frame_info is not None, "Got no frame info without an error!"
-            # if frame_info.frame_size != self.preferred_frame_size:
-            #     if frame_info.frame_size < 2:
-            #         logger.debug(
-            #             f"skipping smaller frame at start of stream (frame_size={frame_info.frame_size})"
-            #         )
-            #         continue
-            #     else:
-            #         # wyze doorbell has weird rotated image sizes.
-            #         if frame_info.frame_size - 3 != self.preferred_frame_size:
-            #             continue
+            if frame_info.frame_size != self.preferred_frame_size:
+                if frame_info.frame_size < 2:
+                    logger.debug(
+                        f"skipping smaller frame at start of stream (frame_size={frame_info.frame_size})"
+                    )
+                    continue
+                else:
+                    # wyze doorbell has weird rotated image sizes.
+                    if frame_info.frame_size - 3 != self.preferred_frame_size:
+                        continue
             yield frame_data, frame_info
             bad_frames = 0
             first_run = False
@@ -439,9 +439,6 @@ class WyzeIOTCSession:
             assert frame_info is not None, "Got no frame info without an error!"
             if last_keyframe[0] and frame_info.frame_no % 500 == 0:
                 self.update_frame_size_rate(check_bitrate=True)
-                tutk.av_client_clean_local_audio_buf(
-                    self.tutk_platform_lib, self.av_chan_id
-                )
             if frame_info.frame_size not in ignore_res:
                 if last_keyframe[0] == 0:
                     warnings.warn(
@@ -458,33 +455,29 @@ class WyzeIOTCSession:
                 frame_info.frame_no - last_keyframe[0] > frame_info.framerate * 2
                 and frame_info.frame_no - last_frame[0] > 6
                 and not keep_bad_frames
-            ) or time.time() - frame_info.timestamp > 20:
-                warnings.warn("Dropping old frames")
+            ):
+                warnings.warn("Waiting for keyframe")
                 continue
-            elif time.time() - last_keyframe[1] > 5 and not keep_bad_frames:
-                warnings.warn("Keyframe too old")
-                continue
-
             yield frame_data
             last_frame = frame_info.frame_no, time.time()
 
     def update_frame_size_rate(self, check_bitrate: bool = False) -> None:
         """Send a message to the camera to update the frame_size and bitrate."""
-        if check_bitrate:
-            with self.iotctrl_mux() as mux:
-                param = mux.send_ioctl(K10020CheckCameraParam(3)).result()
-                if int(param.get("3")) == self.preferred_bitrate:
-                    return
-                warnings.warn(f"Wrong bitrate (bitrate={param.get('3')})")
+        iotc_msg = self.preferred_frame_size, self.preferred_bitrate
         with self.iotctrl_mux() as mux:
-            warnings.warn(
-                f"Requesting frame_size={self.preferred_frame_size} and bitrate={self.preferred_bitrate}"
-            )
-            iotc_msg = self.preferred_frame_size, self.preferred_bitrate
-            if self.camera.product_model in ("WYZEDB3", "WVOD1"):
-                mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result()
-            else:
-                mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result()
+            if check_bitrate:
+                param = mux.send_ioctl(K10020CheckCameraParam(3)).result()
+                if int(param.get("3")) != self.preferred_bitrate:
+                    warnings.warn(f"Wrong bitrate (bitrate={param.get('3')})")
+                else:
+                    iotc_msg = False
+            if iotc_msg:
+                warnings.warn("Requesting frame_size=%d and bitrate=%d" % iotc_msg)
+                if self.camera.product_model in ("WYZEDB3", "WVOD1"):
+                    mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result()
+                else:
+                    mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result()
+        tutk.av_client_clean_local_audio_buf(self.tutk_platform_lib, self.av_chan_id)
 
     def change_fps(self, fps: int) -> None:
         """Send a message to the camera to update the FPS."""
