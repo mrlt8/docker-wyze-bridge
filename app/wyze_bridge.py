@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.1 DEV 3\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.0 DEV\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -29,9 +29,9 @@ class WyzeBridge:
         self.keep_bad_frames: bool = env_bool("KEEP_BAD_FRAMES", False)
         self.healthcheck: bool = bool(os.getenv("HEALTHCHECK"))
         self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
-        self.img_path: str = env_bool(
-            "IMG_DIR", "/config/www/" if self.hass else "/img/"
-        )
+        self.img_path: str = "/%s/" % env_bool(
+            "IMG_DIR", "config/www" if self.hass else "img"
+        ).strip("/")
         self.cameras: list = []
         self.streams: dict = {}
         self.rtsp = None
@@ -568,11 +568,11 @@ def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
 
 def get_record_cmd(uri: str) -> list:
     """Check if recording is enabled and return ffmpeg cmd as a list."""
-    if not os.getenv(f"RECORD_{uri}", os.getenv("RECORD_ALL", False)):
+    if not env_bool(f"RECORD_{uri}", env_bool("RECORD_ALL", False)):
         return []
-    seg_time = os.getenv("RECORD_LENGTH", "180")
-    path = os.getenv("RECORD_PATH", "record").strip("/")
-    file_name = os.getenv("RECORD_FILE_NAME", "_%Y%m%d_%H_%M_%S%Z")
+    seg_time = env_bool("RECORD_LENGTH", "180")
+    path = env_bool("RECORD_PATH", "record").strip("/")
+    file_name = env_bool("RECORD_FILE_NAME", "_%Y%m%d_%H_%M_%S_%Z")
     return (
         ["-vcodec", "copy"]
         + ["-f", "segment"]
