@@ -344,6 +344,8 @@ The bridge can be configured to record all or select camera streams to the conta
 environment:
   - TZ=America/New_York
   - RECORD_ALL=True
+volume:
+  - /local/path/:/record/
 ```
 
 Or to specify select cameras, where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
@@ -356,6 +358,7 @@ Or to specify select cameras, where `CAM_NAME` is the camera name in UPPERCASE a
 #### Recording configuration
 
 - Recording location:
+
   You can specify the directory where the videos will be saved by mapping your `/local/path/` to the `/record/` directory in the container:
 
   ```yaml
@@ -364,6 +367,7 @@ Or to specify select cameras, where `CAM_NAME` is the camera name in UPPERCASE a
   ```
 
 - File name config:
+  
   By default, the bridge will name the files with the current date time using the format: `CAM_NAME_YYYYMMDD_HH_MM_SS_TZ.mp4`. The time portion of the name can be customized using the [strftime](https://strftime.org) format:
 
   ```yaml
@@ -377,6 +381,7 @@ Or to specify select cameras, where `CAM_NAME` is the camera name in UPPERCASE a
   ```
 
 - File segment length:
+  
   The bridge will split the recordings into 180 second clips from the top of the hour by default, however, this can be changed using:
 
   ```yaml
