@@ -3,14 +3,16 @@
 ### ✨ NEW
 
 - Recording directly in the bridge is now here! [Details](#recording-streams-beta).
+  🏠 Default settings will save recordings to `/media/wyze/` in Home Assistant mode.
 
 ### 🚧 Changed
 
-- Reverted to clearing audio buffer every 500 frames to prevent memory leak #323.
+- Reverted to clearing buffer every 500 frames to prevent memory leak #323.
 - Adjusted connection timeout #306 #319.
 - Check bitrate every 500 frames to detect any external changes #320.
 - Fixed import error #324.
 - IOS and wyze app version number bump.
+- 🏠 HA: `RTSP_READTIMEOUT` is now optional and will use the standard default of `20s`.
 
 ## Changes in v1.2.1
 
