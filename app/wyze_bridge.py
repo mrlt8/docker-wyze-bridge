@@ -29,9 +29,7 @@ class WyzeBridge:
         self.keep_bad_frames: bool = env_bool("KEEP_BAD_FRAMES", False)
         self.healthcheck: bool = bool(os.getenv("HEALTHCHECK"))
         self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
-        self.img_path: str = "/%s/" % env_bool(
-            "IMG_DIR", "config/www" if self.hass else "img"
-        ).strip("/")
+        self.img_path: str = "/%s/" % env_bool("IMG_DIR", "img").strip("/")
         self.cameras: list = []
         self.streams: dict = {}
         self.rtsp = None
@@ -43,6 +41,8 @@ class WyzeBridge:
             os.makedirs(self.token_path, exist_ok=True)
             os.makedirs(self.img_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
+            if os.getenv("RECORD_ALL"):
+                os.makedirs("/" + os.getenv("RECORD_PATH").strip("/"), exist_ok=True)
         if os.getenv("MAX_NOREADY"):
             print("\n\n⚠️ 'MAX_NOREADY' DEPRECATED.\nUSE 'TIMEOUT'\n")
 
