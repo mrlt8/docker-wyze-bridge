@@ -3,6 +3,7 @@
 ### ✨ NEW
 
 - Recording directly in the bridge is now here! [Details](#recording-streams-beta).
+  
   🏠 Default settings will save recordings to `/media/wyze/` in Home Assistant mode.
 
 ### 🚧 Changed
