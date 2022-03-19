@@ -477,7 +477,7 @@ class WyzeIOTCSession:
                     mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result()
                 else:
                     mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result()
-        tutk.av_client_clean_local_audio_buf(self.tutk_platform_lib, self.av_chan_id)
+        tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
 
     def change_fps(self, fps: int) -> None:
         """Send a message to the camera to update the FPS."""

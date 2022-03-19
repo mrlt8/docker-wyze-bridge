@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.0 DEV\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.0 DEV 2\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -72,7 +72,7 @@ class WyzeBridge:
         for cam_name in self.streams:
             self.start_stream(cam_name)
         cooldown = int(env_bool("OFFLINE_TIME", 10))
-        while len(self.streams) > 0:
+        while self.streams:
             refresh_cams = True
             for name, stream in list(self.streams.items()):
                 if self.stop_flag.is_set():
