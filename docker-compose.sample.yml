@@ -3,14 +3,11 @@ services:
     wyze-bridge:
         container_name: wyze-bridge
         restart: unless-stopped
-        image: mrlt8/wyze-bridge:latest # Use a prebuilt image
-        # build:  # Uncomment to build from source
-        #     context: ./app # Uncomment to build from source
-        #     # dockerfile: Dockerfile.arm # Uncomment to build for arm
+        image: mrlt8/wyze-bridge:latest
         ports:
-            - 1935:1935
-            - 8554:8554
-            - 8888:8888
+            - 1935:1935 # RTMP
+            - 8554:8554 # RTSP
+            - 8888:8888 # HLS
         environment:
             - WYZE_EMAIL=${WYZE_EMAIL} # Replace with wyze email 
             - WYZE_PASSWORD=${WYZE_PASSWORD} # Replace with wyze password
