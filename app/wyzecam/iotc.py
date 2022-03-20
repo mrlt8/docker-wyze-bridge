@@ -419,14 +419,13 @@ class WyzeIOTCSession:
         while not stop_flag.is_set():
             if last_keyframe[1] and timeout and time.time() - last_frame[1] >= timeout:
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
-            errno, frame_data, frame_info = tutk.av_recv_frame_data(
+            errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
-                    if last_keyframe[0]:
-                        if time.time() - last_frame[1] >= 0.4:
-                            warnings.warn("Frame not available yet")
+                    if last_keyframe[1] and time.time() - last_frame[1] >= 0.4:
+                        warnings.warn("Frame not available yet")
                         time.sleep(1.0 / 6)
                     continue
                 if errno == tutk.AV_ER_INCOMPLETE_FRAME:
@@ -437,8 +436,17 @@ class WyzeIOTCSession:
                     continue
                 raise tutk.TutkError(errno)
             assert frame_info is not None, "Got no frame info without an error!"
-            if last_keyframe[0] and frame_info.frame_no % 500 == 0:
-                self.update_frame_size_rate(check_bitrate=True)
+
+            if frame_info.is_keyframe:
+                last_keyframe = frame_info.frame_no, int(time.time())
+            elif (
+                frame_info.frame_no - last_keyframe[0] > frame_info.framerate * 2
+                and frame_info.frame_no - last_frame[0] > 6
+                and not keep_bad_frames
+            ):
+                warnings.warn("Waiting for keyframe")
+                continue
+
             if frame_info.frame_size not in ignore_res:
                 if last_keyframe[0] == 0:
                     warnings.warn(
@@ -449,15 +457,9 @@ class WyzeIOTCSession:
                 self.update_frame_size_rate()
                 last_keyframe = 0, 0
                 continue
-            if frame_info.is_keyframe:
-                last_keyframe = frame_info.frame_no, int(time.time())
-            elif (
-                frame_info.frame_no - last_keyframe[0] > frame_info.framerate * 2
-                and frame_info.frame_no - last_frame[0] > 6
-                and not keep_bad_frames
-            ):
-                warnings.warn("Waiting for keyframe")
-                continue
+            if last_keyframe[0] and frame_index % 500 == 0:
+                self.update_frame_size_rate(check_bitrate=True)
+
             yield frame_data
             last_frame = frame_info.frame_no, time.time()
 
