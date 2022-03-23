@@ -31,7 +31,7 @@ from wyzecam.tutk import tutk, tutk_ioctl_mux, tutk_protocol
 from wyzecam.tutk.tutk_ioctl_mux import TutkIOCtrlMux
 from wyzecam.tutk.tutk_protocol import (
     K10000ConnectRequest,
-    K10020CheckCameraParam,
+    K10020CheckCameraParams,
     K10052DBSetResolvingBit,
     K10056SetResolvingBit,
     respond_to_ioctrl_10001,
@@ -417,18 +417,18 @@ class WyzeIOTCSession:
         last_keyframe = last_frame = 0, 0
         fps = 10
         while not stop_flag.is_set():
-            if last_keyframe[1] and timeout and time.time() - last_frame[1] >= timeout:
+            if last_keyframe[1] and (delta := time.time() - last_frame[1]) >= timeout:
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
-            time.sleep(0.9 / fps)
+            time.sleep(1.0 / fps)
             errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
-                    if last_keyframe[1] and time.time() - last_frame[1] >= 0.4:
+                    if last_keyframe[1] and delta >= 1.0:
+                        time.sleep(1.0 / fps)
                         warnings.warn("Frame not available yet")
-                        time.sleep(1 / fps)
-                    time.sleep(1 / fps)
+                    time.sleep(0.5 / fps)
                     continue
                 if errno == tutk.AV_ER_INCOMPLETE_FRAME:
                     warnings.warn("Received incomplete frame")
@@ -438,18 +438,6 @@ class WyzeIOTCSession:
                     continue
                 raise tutk.TutkError(errno)
             assert frame_info is not None, "Got no frame info without an error!"
-
-            if frame_info.is_keyframe:
-                fps = frame_info.framerate
-                last_keyframe = frame_info.frame_no, int(time.time())
-            elif (
-                frame_info.frame_no - last_keyframe[0] > frame_info.framerate * 2
-                and frame_info.frame_no - last_frame[0] > 6
-                and not keep_bad_frames
-            ):
-                warnings.warn("Waiting for keyframe")
-                continue
-
             if frame_info.frame_size not in ignore_res:
                 if last_keyframe[0] == 0:
                     warnings.warn(
@@ -460,18 +448,35 @@ class WyzeIOTCSession:
                 self.update_frame_size_rate()
                 last_keyframe = 0, 0
                 continue
-            if last_keyframe[0] and frame_index % 500 == 0:
-                self.update_frame_size_rate(check_bitrate=True)
+            if frame_index and frame_index % 500 == 0:
+                self.update_frame_size_rate(fps=frame_info.framerate, bitrate=True)
+
+            if frame_info.is_keyframe:
+                fps = frame_info.framerate or fps
+                last_keyframe = frame_info.frame_no, time.time()
+            elif (
+                frame_info.frame_no - last_keyframe[0] > frame_info.framerate * 2
+                and frame_info.frame_no - last_frame[0] > 6
+                and not keep_bad_frames
+            ):
+                warnings.warn("Waiting for keyframe")
+                if last_keyframe[0]:
+                    self.clear_local_buffer()
+                    last_keyframe = 0, 0
+                continue
 
             yield frame_data
             last_frame = frame_info.frame_no, time.time()
 
-    def update_frame_size_rate(self, check_bitrate: bool = False) -> None:
+    def update_frame_size_rate(self, fps: int = None, bitrate: bool = False) -> None:
         """Send a message to the camera to update the frame_size and bitrate."""
         iotc_msg = self.preferred_frame_size, self.preferred_bitrate
         with self.iotctrl_mux() as mux:
-            if check_bitrate:
-                param = mux.send_ioctl(K10020CheckCameraParam(3)).result()
+            if bitrate:
+                param = mux.send_ioctl(K10020CheckCameraParams(3, 5)).result()
+                if fps and int(param.get("5")) != fps:
+                    warnings.warn(f"FPS param mismatch (framerate={param.get('5')})")
+                    return self.change_fps(fps)
                 if int(param.get("3")) != self.preferred_bitrate:
                     warnings.warn(f"Wrong bitrate (bitrate={param.get('3')})")
                 else:
@@ -482,6 +487,11 @@ class WyzeIOTCSession:
                     mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result()
                 else:
                     mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result()
+        return self.clear_local_buffer()
+
+    def clear_local_buffer(self) -> None:
+        """Clear local buffer."""
+        warnings.warn("clear buffer")
         tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
 
     def change_fps(self, fps: int) -> None:
