@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.0 (BETA 2)\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.0 (BETA 3)\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -541,7 +541,7 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> None:
 def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
     """Return the ffmpeg cmd with options from the env."""
     lib264 = ["libx264", "-vf", "transpose=1", "-preset", "veryfast", "-crf", "20"]
-    flags = "-fflags +genpts+discardcorrupt+nobuffer"
+    flags = "-fflags +flush_packets+genpts+discardcorrupt+nobuffer"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
     cmd = os.getenv(f"FFMPEG_CMD_{uri}", os.getenv("FFMPEG_CMD", "")).strip(
         "'\"\n "
