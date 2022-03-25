@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.0 (BETA 3)\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.0 (BETA 4)\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -85,6 +85,8 @@ class WyzeBridge:
                     log.info(
                         f"⏰ Timed out connecting to {name} ({self.connect_timeout}s)."
                     )
+                    if stream.get("process"):
+                        stream["process"].kill()
                     self.streams[name] = {"sleep": int(time.time() + cooldown)}
                 elif process := stream.get("process"):
                     if process.exitcode in (19, 68) and refresh_cams:
@@ -251,7 +253,7 @@ class WyzeBridge:
                     wyze_data = wyzecam.get_user_info(self.auth)
                 elif name == "cameras":
                     wyze_data = wyzecam.get_camera_list(self.auth)
-            except AssertionError as ex:
+            except AssertionError:
                 log.warning(f"⚠️ Error getting {name} - Expired token?")
                 self.refresh_token()
             except requests.exceptions.HTTPError as ex:
@@ -403,7 +405,7 @@ class WyzeBridge:
                     cmd = get_ffmpeg_cmd(uri, cam.product_model)
                     with Popen(cmd, stdin=PIPE) as ffmpeg:
                         for frame in sess.recv_bridge_frame(
-                            stop_flag, self.keep_bad_frames, self.timeout
+                            stop_flag, self.keep_bad_frames, (self.timeout - 2)
                         ):
                             ffmpeg.stdin.write(frame)
         except Exception as ex:

@@ -415,7 +415,7 @@ class WyzeIOTCSession:
             int(os.getenv("IGNORE_RES", self.preferred_frame_size + 3)),
         )
         last_keyframe = last_frame = 0, 0
-        fps = 10
+        fps = 15
         while not stop_flag.is_set():
             if last_keyframe[1] and (delta := time.time() - last_frame[1]) >= timeout:
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
@@ -449,7 +449,7 @@ class WyzeIOTCSession:
                 last_keyframe = 0, 0
                 continue
             if frame_index and frame_index % 500 == 0:
-                self.update_frame_size_rate(fps=frame_info.framerate, bitrate=True)
+                self.update_frame_size_rate(bitrate=True, fps=frame_info.framerate)
 
             if frame_info.is_keyframe:
                 fps = frame_info.framerate or fps
@@ -468,13 +468,13 @@ class WyzeIOTCSession:
             yield frame_data
             last_frame = frame_info.frame_no, time.time()
 
-    def update_frame_size_rate(self, fps: int = None, bitrate: bool = False) -> None:
+    def update_frame_size_rate(self, bitrate: bool = False, fps: int = None) -> None:
         """Send a message to the camera to update the frame_size and bitrate."""
         iotc_msg = self.preferred_frame_size, self.preferred_bitrate
         with self.iotctrl_mux() as mux:
             if bitrate:
                 param = mux.send_ioctl(K10020CheckCameraParams(3, 5)).result()
-                if fps and int(param.get("5")) != fps:
+                if fps and int(param.get("5", fps)) != fps:
                     warnings.warn(f"FPS param mismatch (framerate={param.get('5')})")
                     return self.change_fps(fps)
                 if int(param.get("3")) != self.preferred_bitrate:

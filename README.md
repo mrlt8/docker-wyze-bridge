@@ -36,9 +36,11 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 ### 🚧 Changed
 
-- Reverted to clearing buffer every 500 frames to prevent memory leak #323.
+- Fix memory leak issue when a camera is offline #323.
 - Adjusted connection timeout #306 #319.
 - Check bitrate every 500 frames to detect any external changes #320.
+- Check reported FPS against actual FPS every 500 frames.
+- Add sleep between frames to lower CPU usage.
 - Fixed import error #324.
 - IOS and wyze app version number bump.
 - 🏠 HA: `RTSP_READTIMEOUT` is now optional and will use the standard default of `20s`.
