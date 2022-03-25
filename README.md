@@ -13,6 +13,11 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
 
+## Changes in v1.2.2
+
+- Potential fix for memory leak and connection issues when connecting to a camera #306 #319 #323.
+- 🏠 HA: `RTSP_READTIMEOUT` is now optional and will use the standard default of `20s`.
+
 ## Changes in v1.2.1
 
 - 💥 Breaking: `MAX_NOREADY` and `MAX_BADRES` are being replaced with the time-based `RTSP_READTIMEOUT`.

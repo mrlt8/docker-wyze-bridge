@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.1\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.2\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -83,6 +83,8 @@ class WyzeBridge:
                     and time.time() - stream["started"] > timeout
                 ):
                     log.info(f"⏰ Timed out connecting to {name} ({timeout}s).")
+                    if stream.get("process"):
+                        stream["process"].kill()
                     self.streams[name] = {"sleep": int(time.time() + cooldown)}
                 elif process := stream.get("process"):
                     if process.exitcode in (19, 68) and refresh_cams:
