@@ -43,6 +43,10 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 - Add sleep between frames to lower CPU usage.
 - Fixed import error #324.
 - IOS and wyze app version number bump.
+
+## Changes in v1.2.2
+
+- Potential fix for memory leak and connection issues when connecting to a camera #306 #319 #323.
 - 🏠 HA: `RTSP_READTIMEOUT` is now optional and will use the standard default of `20s`.
 
 ## Changes in v1.2.1
