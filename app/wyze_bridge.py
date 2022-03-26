@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.0 (BETA 4)\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.0 (BETA 5)\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -67,22 +67,18 @@ class WyzeBridge:
 
     def start_all_streams(self) -> None:
         """Start all streams and keep them alive."""
-        if self.on_demand:
-            signal.pause()
         for cam_name in self.streams:
             self.start_stream(cam_name)
         cooldown = int(env_bool("OFFLINE_TIME", 10))
-        while self.streams:
+        while self.streams and not self.stop_flag.is_set():
             refresh_cams = True
             for name, stream in list(self.streams.items()):
-                if self.stop_flag.is_set():
-                    return
                 if (
                     "connected" in stream
                     and not stream["connected"].is_set()
                     and time.time() - stream["started"] > (self.connect_timeout + 2)
                 ):
-                    log.info(
+                    log.warning(
                         f"⏰ Timed out connecting to {name} ({self.connect_timeout}s)."
                     )
                     if stream.get("process"):
@@ -375,6 +371,7 @@ class WyzeBridge:
     def start_rtsp_server(self) -> None:
         """Start rtsp-simple-server in its own subprocess."""
         os.environ["IMG_PATH"] = self.img_path
+        os.environ["RTSP_READTIMEOUT"] = f"{self.timeout + 2}s"
         try:
             with open("/RTSP_TAG", "r") as tag:
                 log.info(f"Starting rtsp-simple-server {tag.read().strip()}")
@@ -405,7 +402,7 @@ class WyzeBridge:
                     cmd = get_ffmpeg_cmd(uri, cam.product_model)
                     with Popen(cmd, stdin=PIPE) as ffmpeg:
                         for frame in sess.recv_bridge_frame(
-                            stop_flag, self.keep_bad_frames, (self.timeout - 2)
+                            stop_flag, self.keep_bad_frames, self.timeout
                         ):
                             ffmpeg.stdin.write(frame)
         except Exception as ex:
