@@ -1,3 +1,20 @@
+## Changes in v1.3.0
+
+### ✨ NEW
+
+- Recording directly in the bridge is now here! [Details](#recording-streams-beta).
+  
+  🏠 Default settings will save recordings to `/media/wyze/` in Home Assistant mode.
+
+### 🚧 Changed
+
+- Adjusted connection timeout #306 #319.
+- Check bitrate every 500 frames to detect any external changes #320.
+- Correct mismatched FPS camera parameter with ENV: `FPS_FIX`.
+- Add sleep between frames to lower CPU usage.
+- Fixed import error #324.
+- IOS and wyze app version number bump.
+
 ## Changes in v1.2.2
 
 - Potential fix for memory leak and connection issues when connecting to a camera #306 #319 #323.

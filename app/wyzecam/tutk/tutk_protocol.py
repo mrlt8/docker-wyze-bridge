@@ -299,6 +299,27 @@ class K10020CheckCameraInfo(TutkWyzeProtocolMessage):
         return json.loads(resp_data)
 
 
+class K10020CheckCameraParams(TutkWyzeProtocolMessage):
+    """
+    A command used to read multiple parameters from the camera.
+
+    Not terribly well understood.
+    """
+
+    expected_response_code = 10021
+
+    def __init__(self, *param_id: int):
+        super().__init__(10020)
+        self.param_id = param_id
+
+    def encode(self) -> bytes:
+        arr = bytearray([len(self.param_id), *self.param_id])
+        return encode(self.code, len(arr), arr)
+
+    def parse_response(self, resp_data):
+        return json.loads(resp_data)
+
+
 class K10056SetResolvingBit(TutkWyzeProtocolMessage):
     """
     A message used to set the resolution and bitrate of the camera.

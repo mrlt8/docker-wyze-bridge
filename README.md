@@ -13,6 +13,36 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
 
+## Quick Start
+
+Install [docker](https://docs.docker.com/get-docker/) and use your Wyze credentials to run:
+
+```bash
+docker run \
+  -e WYZE_EMAIL=you@email.com \
+  -e WYZE_PASSWORD=yourpassw0rd \
+  -p 8888:8888 mrlt8/wyze-bridge:latest
+```
+
+You can view your stream by visiting: `http://localhost:8888/cam-nickname` where localhost is the hostname or ip of the machine running the bridge followed by the cam nickname in lowercase with `-` in place of spaces.
+
+## Changes in v1.3.0
+
+### ✨ NEW
+
+- Recording directly in the bridge is now here! [Details](#recording-streams-beta).
+  
+  🏠 Default settings will save recordings to `/media/wyze/` in Home Assistant mode.
+
+### 🚧 Changed
+
+- Adjusted connection timeout #306 #319.
+- Check bitrate every 500 frames to detect any external changes #320.
+- Correct mismatched FPS camera parameter with ENV: `FPS_FIX`.
+- Add sleep between frames to lower CPU usage.
+- Fixed import error #324.
+- IOS and wyze app version number bump.
+
 ## Changes in v1.2.2
 
 - Potential fix for memory leak and connection issues when connecting to a camera #306 #319 #323.
@@ -63,6 +93,7 @@ V1 is currently not supported due to lack of hardware for development.
 | Wyze Cam Pan          | WYZECP1_JEF    | ✅         |
 | Wyze Cam Pan v2       | HL_PAN2        | ✅         |
 | Wyze Cam Outdoor      | WVOD1          | ✅         |
+| Wyze Cam Outdoor v2   | HL_WCO2        | ❓         |
 | Wyze Cam Doorbell     | WYZEDB3        | ✅         |
 | Wyze Cam Doorbell Pro | GW_BE1         | ❓         |
 
@@ -76,6 +107,7 @@ The bridge should be compatible with the latest official firmware from wyze.
 ![Supports aarch64 Architecture](https://img.shields.io/badge/aarch64-yes-success.svg)
 ![Supports amd64 Architecture](https://img.shields.io/badge/amd64-yes-success.svg)
 [![Home Assistant Add-on](https://img.shields.io/badge/home_assistant-add--on-blue.svg?logo=homeassistant&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
+[![Homebridge](https://img.shields.io/badge/homebridge-camera--ffmpeg-blue.svg?logo=homebridge&logoColor=white)](https://sunoo.github.io/homebridge-camera-ffmpeg/configs/WyzeCam.html)
 [![Portainer stack](https://img.shields.io/badge/portainer-stack-blue.svg?logo=portainer&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
 [![Unraid Community App](https://img.shields.io/badge/unraid-community--app-blue.svg?logo=unraid&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/issues/236)
 
@@ -87,25 +119,25 @@ The container can be run on its own, in [Portainer](https://github.com/mrlt8/doc
 
 ## Basic Usage
 
-### docker run
-
-Use your Wyze credentials and run:
-
-```bash
-docker run -p 8888:8888 -e WYZE_EMAIL= -e WYZE_PASSWORD=  mrlt8/wyze-bridge:latest
-```
-
-This will start the bridge with the HLS ports open and you can view your stream by visiting: `http://localhost:8888/cam-nickname` where localhost is the hostname or ip of the machine running the bridge followed by the cam nickname in lowercase with `-` in place of spaces.
-
 ### docker-compose (recommended)
 
 This is similar to the docker run command, but will save all your options in a yaml file.
 
-1. [Download](https://raw.githubusercontent.com/mrlt8/docker-wyze-bridge/main/docker-compose.sample.yml) and rename or create a `docker-compose.yml` file
-2. Edit `docker-compose.yml` with your wyze credentials
-3. run `docker-compose up`
+1. Install [Docker Compose](https://docs.docker.com/compose/install/).
+2. Use the [sample](https://raw.githubusercontent.com/mrlt8/docker-wyze-bridge/main/docker-compose.sample.yml) as a guide to create a `docker-compose.yml` file with your wyze credentials.
+3. Run `docker-compose up`.
 
 Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
+
+#### Updating your container
+
+To update your container, `cd` into the directory where your `docker-compose.yml` is located and run:
+
+```bash
+docker-compose pull # Pull new image
+docker-compose up -d # Restart container in detached mode
+docker image prune # Remove old images
+```
 
 ### 🏠 Home Assistant
 
@@ -119,6 +151,7 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 - [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
 - [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236)
 - [Home Assistant](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
+- [Homebridge Camera FFmpeg](https://sunoo.github.io/homebridge-camera-ffmpeg/configs/WyzeCam.html)
 - [HomeKit Secure Video](https://github.com/mrlt8/docker-wyze-bridge/wiki/HomeKit-Secure-Video)
 
 #### Audio Support
@@ -129,7 +162,7 @@ Audio is not supported at this time.
 
 If your email or password contains a `%` or `$` character, you may need to escape them with an extra character. e.g., `pa$$word` should be entered as `pa$$$$word`
 
-## Camera Stream URIs
+### Camera Stream URIs
 
 By default, the bridge will create three streams for each of your cameras which can be accessed at the following URIs, where `camera-nickname` is the name of the camera set in the Wyze app and converted to lower case with hyphens in place of spaces. e.g. 'Front Door' would be `/front-door`
 
@@ -296,6 +329,7 @@ environment:
 #### `NET_MODE` for a specific camera
 
 In the event that you need to allow the bridge to access a select number of cameras outside of your LAN, you can specify them by appending the camera name to `NET_MODE`, where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
+
 ```yaml
     ..
     - NET_MODE=LAN
@@ -309,6 +343,61 @@ In the event that you need to allow the bridge to access a select number of came
 - `SNAPSHOT=RTSP` Will run every 180 seconds (configurable) and wll grab a new frame from the RTSP stream every iteration and save it to `/img/cam-name.jpg` on standard docker installs or `/config/www/cam-name.jpg` in Home Assistant mode. Can specify a custom interval with `SNAPSHOT=RTSP(INT)` e.g. `SNAPSHOT=RTSP30` to run every 30 seconds
 
 - `IMG_DIR=/img/` Specify the directory where the snapshots will be saved *within the container*. Use volumes in docker to map to an external directory.
+
+### Recording Streams (BETA)
+
+The bridge can be configured to record all or select camera streams to the container which can be mapped to a local directory.
+
+#### Enable recording
+
+```yaml
+environment:
+...
+  - TZ=America/New_York
+  - RECORD_ALL=True
+volume:
+  - /local/path/:/record/
+```
+
+Or to specify select cameras, where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
+
+```yaml
+  - RECORD_CAM_NAME=True
+  - RECORD_OTHER_CAM=True
+```
+
+#### Recording configuration
+
+- Recording location:
+
+  You can specify the directory where the videos will be saved by mapping your `/local/path/on/host/` to the `/record/` directory in the container:
+
+  ```yaml
+  volume:
+        - /local/path/on/host/:/record/
+  ```
+
+- File name config:
+  
+  By default, the bridge will name the files with the current date time using the format: `CAM_NAME_YYYY-MM-DD_HH-MM-SS_TZ.mp4`. The time portion of the name can be customized using the [strftime](https://strftime.org) format:
+
+  ```yaml
+    - RECORD_FILE_NAME=_%Y%m%d_%H_%M_%S
+  ```
+
+  The timezone used for the name can be configured using [TZ database name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones):
+
+  ```yaml
+    - TZ=America/New_York
+  ```
+
+- File segment length:
+  
+  The bridge will split the recordings into 60 second clips from the top of the hour by default, however, this can be changed using:
+
+  ```yaml
+    - RECORD_LENGTH=300
+  ```
 
 ### MQTT (beta)
 
@@ -429,5 +518,7 @@ environment options:
 - `DEBUG_FFMPEG` (bool) Enable additional logging from FFmpeg.
 
 - `FORCE_FPS_CAM_NAME` (int) Force a specific camera to use a different FPS, where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens.
+
+- `FPS_FIX` (bool) Set camera parameter to match the actual FPS being sent by the camera. Potential fix slow/fast SD card and cloud recordings.
 
 - `WEBRTC` (bool) Display WebRTC credentials for cameras.

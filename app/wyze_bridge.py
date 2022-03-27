@@ -20,17 +20,16 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.2.2\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.0\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
         self.timeout: int = int(env_bool("RTSP_READTIMEOUT", 15).replace("s", ""))
+        self.connect_timeout: int = int(env_bool("CONNECT_TIMEOUT", 20))
         self.keep_bad_frames: bool = env_bool("KEEP_BAD_FRAMES", False)
         self.healthcheck: bool = bool(os.getenv("HEALTHCHECK"))
         self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
-        self.img_path: str = env_bool(
-            "IMG_DIR", "/config/www/" if self.hass else "/img/"
-        )
+        self.img_path: str = "/%s/" % env_bool("IMG_DIR", "img").strip("/")
         self.cameras: list = []
         self.streams: dict = {}
         self.rtsp = None
@@ -42,6 +41,8 @@ class WyzeBridge:
             os.makedirs(self.token_path, exist_ok=True)
             os.makedirs(self.img_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
+            if os.getenv("RECORD_ALL"):
+                os.makedirs("/" + os.getenv("RECORD_PATH").strip("/"), exist_ok=True)
         if os.getenv("MAX_NOREADY"):
             print("\n\n⚠️ 'MAX_NOREADY' DEPRECATED.\nUSE 'TIMEOUT'\n")
 
@@ -66,23 +67,20 @@ class WyzeBridge:
 
     def start_all_streams(self) -> None:
         """Start all streams and keep them alive."""
-        if self.on_demand:
-            signal.pause()
         for cam_name in self.streams:
             self.start_stream(cam_name)
-        timeout = int(env_bool("CONNECT_TIMEOUT", 15))
         cooldown = int(env_bool("OFFLINE_TIME", 10))
-        while len(self.streams) > 0:
+        while self.streams and not self.stop_flag.is_set():
             refresh_cams = True
             for name, stream in list(self.streams.items()):
-                if self.stop_flag.is_set():
-                    return
                 if (
                     "connected" in stream
                     and not stream["connected"].is_set()
-                    and time.time() - stream["started"] > timeout
+                    and time.time() - stream["started"] > (self.connect_timeout + 2)
                 ):
-                    log.info(f"⏰ Timed out connecting to {name} ({timeout}s).")
+                    log.warning(
+                        f"⏰ Timed out connecting to {name} ({self.connect_timeout}s)."
+                    )
                     if stream.get("process"):
                         stream["process"].kill()
                     self.streams[name] = {"sleep": int(time.time() + cooldown)}
@@ -251,7 +249,7 @@ class WyzeBridge:
                     wyze_data = wyzecam.get_user_info(self.auth)
                 elif name == "cameras":
                     wyze_data = wyzecam.get_camera_list(self.auth)
-            except AssertionError as ex:
+            except AssertionError:
                 log.warning(f"⚠️ Error getting {name} - Expired token?")
                 self.refresh_token()
             except requests.exceptions.HTTPError as ex:
@@ -373,6 +371,7 @@ class WyzeBridge:
     def start_rtsp_server(self) -> None:
         """Start rtsp-simple-server in its own subprocess."""
         os.environ["IMG_PATH"] = self.img_path
+        os.environ["RTSP_READTIMEOUT"] = f"{self.timeout + 2}s"
         try:
             with open("/RTSP_TAG", "r") as tag:
                 log.info(f"Starting rtsp-simple-server {tag.read().strip()}")
@@ -396,6 +395,7 @@ class WyzeBridge:
                     frame_size,
                     bitrate,
                     enable_audio=False,
+                    connect_timeout=self.connect_timeout,
                 ) as sess:
                     connected.set()
                     check_cam_sess(sess, uri)
@@ -407,7 +407,9 @@ class WyzeBridge:
                             ffmpeg.stdin.write(frame)
         except Exception as ex:
             log.warning(ex)
-            if ex.args[0] in (-19, -68, -90):
+            if ex.args[0] == -13:  # IOTC_ER_TIMEOUT
+                time.sleep(2)
+            elif ex.args[0] in (-19, -68, -90):
                 exit_code = abs(ex.args[0])
             elif ex.args[0] == "Authentication did not succeed! {'connectionRes': '2'}":
                 log.warning("⏰ Expired ENR?")
@@ -517,7 +519,7 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> None:
     bit_frame = f"{sess.preferred_bitrate}kb/s {frame_size} stream"
     if video_param := sess.camera.camera_info.get("videoParm", False):
         if fps := int(video_param.get("fps", 0)):
-            bit_frame += f" @{fps}fps"
+            bit_frame += f" ({fps}fps)"
             if fps % 5 != 0:
                 log.error(f"⚠️ Unusual FPS detected: {fps}")
         if (force_fps := int(env_bool(f"FORCE_FPS_{uri}", 0))) and force_fps != fps:
@@ -548,6 +550,7 @@ def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
         .strip("'\"\n ")
         .split()
         + ["-i", "-"]
+        + get_record_cmd(uri)
         + ["-vcodec"]
         + (["copy"] if not rotate else lib264)
         + ["-rtsp_transport", env_bool("RTSP_PROTOCOLS", "tcp")]
@@ -560,6 +563,26 @@ def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
         log.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
     cmd[-1] = cmd[-1] + ("" if cmd[-1][-1] == "/" else "/") + uri.lower()
     return cmd
+
+
+def get_record_cmd(uri: str) -> list:
+    """Check if recording is enabled and return ffmpeg cmd as a list."""
+    if not env_bool(f"RECORD_{uri}", env_bool("RECORD_ALL", False)):
+        return []
+    seg_time = env_bool("RECORD_LENGTH", "60")
+    path = "/%s/" % env_bool("RECORD_PATH", "record").strip("/")
+    file_name = env_bool("RECORD_FILE_NAME", "_%Y-%m-%d_%H-%M-%S_%Z")
+    log.info(f"📹 Will record {seg_time}s clips to {path}")
+    return (
+        ["-vcodec", "copy"]
+        + ["-f", "segment"]
+        + ["-segment_time", seg_time]
+        + ["-segment_atclocktime", "1"]
+        + ["-segment_format", "mp4"]
+        + ["-reset_timestamps", "1"]
+        + ["-strftime", "1"]
+        + [f"{path}{uri}{file_name}.mp4"]
+    )
 
 
 def setup_hass():
