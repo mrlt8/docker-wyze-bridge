@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.0 (BETA 5)\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.0\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -569,9 +569,9 @@ def get_record_cmd(uri: str) -> list:
     """Check if recording is enabled and return ffmpeg cmd as a list."""
     if not env_bool(f"RECORD_{uri}", env_bool("RECORD_ALL", False)):
         return []
-    seg_time = env_bool("RECORD_LENGTH", "180")
+    seg_time = env_bool("RECORD_LENGTH", "60")
     path = "/%s/" % env_bool("RECORD_PATH", "record").strip("/")
-    file_name = env_bool("RECORD_FILE_NAME", "_%Y%m%d_%H_%M_%S_%Z")
+    file_name = env_bool("RECORD_FILE_NAME", "_%Y-%m-%d_%H-%M-%S_%Z")
     log.info(f"📹 Will record {seg_time}s clips to {path}")
     return (
         ["-vcodec", "copy"]
