@@ -476,7 +476,9 @@ class WyzeIOTCSession:
                 param = mux.send_ioctl(K10020CheckCameraParams(3, 5)).result()
                 if fps and int(param.get("5", fps)) != fps:
                     warnings.warn(f"FPS param mismatch (framerate={param.get('5')})")
-                    return self.change_fps(fps)
+                    if os.getenv("FPS_FIX"):
+                        self.change_fps(fps)
+                    return
                 if int(param.get("3")) != self.preferred_bitrate:
                     warnings.warn(f"Wrong bitrate (bitrate={param.get('3')})")
                 else:

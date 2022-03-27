@@ -8,9 +8,10 @@
 
 ### 🚧 Changed
 
-- Reverted to clearing buffer every 500 frames to prevent memory leak #323.
 - Adjusted connection timeout #306 #319.
 - Check bitrate every 500 frames to detect any external changes #320.
+- Correct mismatched FPS camera parameter with ENV: `FPS_FIX`.
+- Add sleep between frames to lower CPU usage.
 - Fixed import error #324.
 - IOS and wyze app version number bump.
 

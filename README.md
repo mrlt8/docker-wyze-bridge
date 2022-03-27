@@ -36,10 +36,9 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 ### 🚧 Changed
 
-- Fix memory leak issue when a camera is offline #323.
 - Adjusted connection timeout #306 #319.
 - Check bitrate every 500 frames to detect any external changes #320.
-- Check reported FPS against actual FPS every 500 frames.
+- Correct mismatched FPS camera parameter with ENV: `FPS_FIX`.
 - Add sleep between frames to lower CPU usage.
 - Fixed import error #324.
 - IOS and wyze app version number bump.
@@ -108,6 +107,7 @@ The bridge should be compatible with the latest official firmware from wyze.
 ![Supports aarch64 Architecture](https://img.shields.io/badge/aarch64-yes-success.svg)
 ![Supports amd64 Architecture](https://img.shields.io/badge/amd64-yes-success.svg)
 [![Home Assistant Add-on](https://img.shields.io/badge/home_assistant-add--on-blue.svg?logo=homeassistant&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
+[![Homebridge](https://img.shields.io/badge/homebridge-camera--ffmpeg-blue.svg?logo=homebridge&logoColor=white)](https://sunoo.github.io/homebridge-camera-ffmpeg/configs/WyzeCam.html)
 [![Portainer stack](https://img.shields.io/badge/portainer-stack-blue.svg?logo=portainer&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
 [![Unraid Community App](https://img.shields.io/badge/unraid-community--app-blue.svg?logo=unraid&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/issues/236)
 
@@ -151,6 +151,7 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 - [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
 - [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236)
 - [Home Assistant](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
+- [Homebridge Camera FFmpeg](https://sunoo.github.io/homebridge-camera-ffmpeg/configs/WyzeCam.html)
 - [HomeKit Secure Video](https://github.com/mrlt8/docker-wyze-bridge/wiki/HomeKit-Secure-Video)
 
 #### Audio Support
@@ -378,7 +379,7 @@ Or to specify select cameras, where `CAM_NAME` is the camera name in UPPERCASE a
 
 - File name config:
   
-  By default, the bridge will name the files with the current date time using the format: `CAM_NAME_YYYYMMDD_HH_MM_SS_TZ.mp4`. The time portion of the name can be customized using the [strftime](https://strftime.org) format:
+  By default, the bridge will name the files with the current date time using the format: `CAM_NAME_YYYY-MM-DD_HH-MM-SS_TZ.mp4`. The time portion of the name can be customized using the [strftime](https://strftime.org) format:
 
   ```yaml
     - RECORD_FILE_NAME=_%Y%m%d_%H_%M_%S
@@ -392,7 +393,7 @@ Or to specify select cameras, where `CAM_NAME` is the camera name in UPPERCASE a
 
 - File segment length:
   
-  The bridge will split the recordings into 180 second clips from the top of the hour by default, however, this can be changed using:
+  The bridge will split the recordings into 60 second clips from the top of the hour by default, however, this can be changed using:
 
   ```yaml
     - RECORD_LENGTH=300
@@ -517,5 +518,7 @@ environment options:
 - `DEBUG_FFMPEG` (bool) Enable additional logging from FFmpeg.
 
 - `FORCE_FPS_CAM_NAME` (int) Force a specific camera to use a different FPS, where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens.
+
+- `FPS_FIX` (bool) Set camera parameter to match the actual FPS being sent by the camera. Potential fix slow/fast SD card and cloud recordings.
 
 - `WEBRTC` (bool) Display WebRTC credentials for cameras.
