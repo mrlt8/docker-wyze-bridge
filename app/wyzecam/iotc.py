@@ -419,16 +419,16 @@ class WyzeIOTCSession:
         while not stop_flag.is_set():
             if last_keyframe[1] and (delta := time.time() - last_frame[1]) >= timeout:
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
-            time.sleep(1.0 / fps)
+            time.sleep(0.25 / fps)
             errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
                     if last_keyframe[1] and delta >= 1.0:
-                        time.sleep(1.0 / fps)
                         warnings.warn("Frame not available yet")
-                    time.sleep(0.5 / fps)
+                        time.sleep(0.5 / fps)
+                    time.sleep(0.25 / fps)
                     continue
                 if errno == tutk.AV_ER_INCOMPLETE_FRAME:
                     warnings.warn("Received incomplete frame")
@@ -448,7 +448,7 @@ class WyzeIOTCSession:
                 self.update_frame_size_rate()
                 last_keyframe = 0, 0
                 continue
-            if frame_index and frame_index % 500 == 0:
+            if frame_index and frame_index % 1000 == 0:
                 self.update_frame_size_rate(bitrate=True, fps=frame_info.framerate)
 
             if frame_info.is_keyframe:
