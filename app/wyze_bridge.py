@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.0\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.1\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -453,8 +453,9 @@ model_names = {
 
 
 def env_bool(env: str, false: str = "") -> str:
-    """Return env variable or  empty string if the variable contains 'false' or is empty."""
-    return os.getenv(env.upper(), "").lower().replace("false", "") or false
+    """Return env variable or empty string if the variable contains 'false' or is empty."""
+    env = os.getenv(env.upper().replace("-", "_"), "").lower().replace("false", "")
+    return env or false
 
 
 def env_list(env: str) -> list:
@@ -540,7 +541,7 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> None:
 def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
     """Return the ffmpeg cmd with options from the env."""
     lib264 = ["libx264", "-vf", "transpose=1", "-preset", "veryfast", "-crf", "20"]
-    flags = "-fflags +flush_packets+genpts+discardcorrupt+nobuffer"
+    flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
     cmd = os.getenv(f"FFMPEG_CMD_{uri}", os.getenv("FFMPEG_CMD", "")).strip(
         "'\"\n "
@@ -549,11 +550,12 @@ def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
         + os.getenv(f"FFMPEG_FLAGS_{uri}", os.getenv("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
         .split()
-        + ["-i", "-"]
+        + ["-analyzeduration", "0", "-probesize", "32", "-i", "-"]
         + get_record_cmd(uri)
-        + ["-vcodec"]
+        + ["-c:v"]
         + (["copy"] if not rotate else lib264)
         + ["-rtsp_transport", env_bool("RTSP_PROTOCOLS", "tcp")]
+        + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
         + ["-f", "rtsp"]
         + ["rtsp://0.0.0.0:8554"]
     )
@@ -574,7 +576,7 @@ def get_record_cmd(uri: str) -> list:
     file_name = env_bool("RECORD_FILE_NAME", "_%Y-%m-%d_%H-%M-%S_%Z")
     log.info(f"📹 Will record {seg_time}s clips to {path}")
     return (
-        ["-vcodec", "copy"]
+        ["-c:v", "copy"]
         + ["-f", "segment"]
         + ["-segment_time", seg_time]
         + ["-segment_atclocktime", "1"]

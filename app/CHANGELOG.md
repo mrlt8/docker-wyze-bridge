@@ -1,3 +1,14 @@
+## Changes in v1.3.1
+
+### 🚧 Changed
+
+- Adjusted sleep time between frames that could cause the stream to fall behind. (#330) Thanks @bbobrian, @dreondre, and everyone who helped with reporting and testing!
+- Additional FFMPEG commands to help reduce lag.
+- Fixed spaces in ENV/YAML so that they use `_` instead of `-`. Thanks @ronald-mendoza!
+- Updated typos in README. Thanks @ronald-mendoza! (#332)
+- Wyze app version number bump (2.29.1).
+
+
 ## Changes in v1.3.0
 
 ### ✨ NEW
