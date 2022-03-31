@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.1 (BETA 2)\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.1\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -453,8 +453,9 @@ model_names = {
 
 
 def env_bool(env: str, false: str = "") -> str:
-    """Return env variable or  empty string if the variable contains 'false' or is empty."""
-    return os.getenv(env.upper(), "").lower().replace("false", "") or false
+    """Return env variable or empty string if the variable contains 'false' or is empty."""
+    env = os.getenv(env.upper().replace("-", "_"), "").lower().replace("false", "")
+    return env or false
 
 
 def env_list(env: str) -> list:

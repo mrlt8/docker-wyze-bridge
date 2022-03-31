@@ -26,6 +26,16 @@ docker run \
 
 You can view your stream by visiting: `http://localhost:8888/cam-nickname` where localhost is the hostname or ip of the machine running the bridge followed by the cam nickname in lowercase with `-` in place of spaces.
 
+## Changes in v1.3.1
+
+### 🚧 Changed
+
+- Adjusted sleep time between frames that could cause the stream to fall behind. (#330) Thanks @bbobrian, @dreondre, and everyone who helped with reporting and testing!
+- Additional FFMPEG commands to help reduce lag.
+- Fixed spaces in ENV/YAML so that they use `_` instead of `-`. Thanks @ronald-mendoza!
+- Updated typos in README. Thanks @ronald-mendoza! (#332)
+- Wyze app version number bump (2.29.1).
+
 ## Changes in v1.3.0
 
 ### ✨ NEW
@@ -43,36 +53,11 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 - Fixed import error #324.
 - IOS and wyze app version number bump.
 
-## Changes in v1.2.2
-
-- Potential fix for memory leak and connection issues when connecting to a camera #306 #319 #323.
-- 🏠 HA: `RTSP_READTIMEOUT` is now optional and will use the standard default of `20s`.
-
-## Changes in v1.2.1
-
-- 💥 Breaking: `MAX_NOREADY` and `MAX_BADRES` are being replaced with the time-based `RTSP_READTIMEOUT`.
-- ✨ New: ENV option `CONNECT_TIMEOUT` - Force the stream to timeout and close if if can't connect to the cam. Potential fix for #306 and #211 where a stream would get stuck trying to connect until the bridge restarted.
-- ✨ New: ENV option `NET_MODE_NAME` - camera-specific net mode filter #309.
-- ✨ New: ENV option `FORCE_FPS_NAME` - camera-specific option to force the camera to use a different FPS. Can be used to correct slow/fast SD/cloud recordings.
-- 🔨 Fixed: Auth issue when using WEBRTC.
-- 🚧 Changed: Additional tweaks to prevent memory leaks.
-- 🚧 Changed: Default `RTSP_READTIMEOUT` has been reduced to 20s.
-- 🎨 Logging: Stream will now display the fps that the camera is using.
-
-## Changes in v1.2.0
-
-Improved video performance to help with the buffering/frame drops introduced in v.1.0.3. Thanks to @Ceer123 and everyone who helped identify and test the fixes!
-
-Also in this release:
-
-- 🔨 Fixed: logging and other issues related when stream stopped publishing to rtsp-simple-server.
-- 🔨 Fixed: `AV_ER_REMOTE_TIMEOUT_DISCONNECT` error on connection timeout.
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
 ## Supported Cameras
 
-![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
 ![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
 ![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
 ![Wyze Cam Floodlight](https://img.shields.io/badge/wyze_floodlight-yes-success.svg)
@@ -80,9 +65,10 @@ Also in this release:
 ![Wyze Cam Pan V2](https://img.shields.io/badge/wyze_pan_v2-yes-success.svg)
 ![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-yes-success.svg)
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
+
+![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
 ![Wyze Cam Doorbell Pro](https://img.shields.io/badge/wyze_doorbell_pro-no-inactive.svg)
 
-V1 is currently not supported due to lack of hardware for development.
 
 | Camera                | Model          | Supported |
 | --------------------- | -------------- | --------- |
@@ -99,13 +85,14 @@ V1 is currently not supported due to lack of hardware for development.
 
 ### Firmware Compatibility
 
-The bridge should be compatible with the latest official firmware from wyze.
+The bridge should be compatible with official firmware from wyze.
 
 ## Compatibility
 
 ![Supports armv7 Architecture](https://img.shields.io/badge/armv7-yes-success.svg)
 ![Supports aarch64 Architecture](https://img.shields.io/badge/aarch64-yes-success.svg)
 ![Supports amd64 Architecture](https://img.shields.io/badge/amd64-yes-success.svg)
+
 [![Home Assistant Add-on](https://img.shields.io/badge/home_assistant-add--on-blue.svg?logo=homeassistant&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
 [![Homebridge](https://img.shields.io/badge/homebridge-camera--ffmpeg-blue.svg?logo=homebridge&logoColor=white)](https://sunoo.github.io/homebridge-camera-ffmpeg/configs/WyzeCam.html)
 [![Portainer stack](https://img.shields.io/badge/portainer-stack-blue.svg?logo=portainer&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
@@ -355,7 +342,7 @@ environment:
 ...
   - TZ=America/New_York
   - RECORD_ALL=True
-volume:
+volumes:
   - /local/path/:/record/
 ```
 
