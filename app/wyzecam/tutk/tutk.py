@@ -583,6 +583,38 @@ def av_recv_frame_data(
     return (0, frame_data_actual, frame_info_actual, frame_index.value)
 
 
+def av_recv_audio_data(tutk_platform_lib: CDLL, av_chan_id: c_int):
+    """An AV client receives audio data from an AV server.
+
+    An AV client uses this function to receive audio data from AV server
+
+    :param tutk_platform_lib: the c library loaded from the 'load_library' call.
+    :param av_chan_id: The channel ID of the AV channel to recv data on.
+    :return: a 4-tuple of errno, audio_data, frame_info, and frame_index
+    """
+
+    audio_data_max_size = 51_200
+    frame_info_max_size = 1024
+
+    audio_data = (c_char * audio_data_max_size)()
+    frame_info = FrameInfo3Struct()
+    frame_index = c_uint()
+
+    frame_len = tutk_platform_lib.avRecvAudioData(
+        av_chan_id,
+        byref(audio_data),
+        c_int(audio_data_max_size),
+        byref(frame_info),
+        c_int(frame_info_max_size),
+        byref(frame_index),
+    )
+
+    if frame_len < 0:
+        return frame_len, None, None
+    actual_audio_data: bytes = audio_data[:frame_len]
+    return 0, actual_audio_data, frame_info
+
+
 def av_recv_io_ctrl(
     tutk_platform_lib: CDLL, av_chan_id: c_int, timeout_ms: int
 ) -> typing.Tuple[int, int, Optional[typing.List[bytes]]]:
