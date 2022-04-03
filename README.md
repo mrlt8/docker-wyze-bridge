@@ -26,6 +26,15 @@ docker run \
 
 You can view your stream by visiting: `http://localhost:8888/cam-nickname` where localhost is the hostname or ip of the machine running the bridge followed by the cam nickname in lowercase with `-` in place of spaces.
 
+## Changes in v1.3.2
+
+⚠️ Potentially breaking for custom FFMPEG commands.
+
+- Fixed custom ffmpeg ENV for camera names with spaces. #332
+- Camera name variable for custom ffmpeg commands with `{cam_name}` for lowercase and `{CAM_NAME}` for uppercase. #334
+- Camera name variable for `RECORD_FILE_NAME` and `RECORD_PATH` with `{cam_name}` for lowercase and `{CAM_NAME}` for uppercase.
+- Changed default `RECORD_PATH` to `/record/{CAM_NAME}` and to `/media/wyze/{CAM_NAME}` for Home Assistant.
+  
 ## Changes in v1.3.1
 
 ### 🚧 Changed
@@ -52,6 +61,7 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 - Add sleep between frames to lower CPU usage.
 - Fixed import error #324.
 - IOS and wyze app version number bump.
+- FFMPEG bumped to 4.4.
 
 
 [View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
@@ -364,12 +374,18 @@ Or to specify select cameras, where `CAM_NAME` is the camera name in UPPERCASE a
         - /local/path/on/host/:/record/
   ```
 
-- File name config:
-  
-  By default, the bridge will name the files with the current date time using the format: `CAM_NAME_YYYY-MM-DD_HH-MM-SS_TZ.mp4`. The time portion of the name can be customized using the [strftime](https://strftime.org) format:
+  You can also configure the path where the clips will be saved using `RECORD_PATH`. The camera name is available as an optional variable `{cam_name}` for lowercase and `{CAM_NAME}` for uppercase
 
   ```yaml
-    - RECORD_FILE_NAME=_%Y%m%d_%H_%M_%S
+    - RECORD_PATH=/record/{cam_name}
+  ```
+
+- File name config:
+  
+  By default, the bridge will name the files with the current date time using the format: `CAM_NAME_YYYY-MM-DD_HH-MM-SS_TZ.mp4`. The camera name is available as an optional variable `{cam_name}` for lowercase and `{CAM_NAME}` for uppercase, and the time portion of the name can be customized using the [strftime](https://strftime.org) format:
+
+  ```yaml
+    - RECORD_FILE_NAME={cam_name}_%Y%m%d_%H_%M_%S
   ```
 
   The timezone used for the name can be configured using [TZ database name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones):
@@ -438,7 +454,7 @@ You can pass a custom [command](https://ffmpeg.org/ffmpeg.html) to FFmpeg by usi
 ```YAML
 environment:
     ..
-    - FFMPEG_CMD=-f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/
+    - FFMPEG_CMD=-f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/{cam_name}
 ```
 
 #### For a specific camera
@@ -446,13 +462,13 @@ environment:
 where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
 
 ```yaml
-- FFMPEG_CMD_CAM_NAME=ffmpeg -f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/
+- FFMPEG_CMD_CAM_NAME=ffmpeg -f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/{cam_name}
 ```
 
 Additional info:
 
 - The `ffmpeg` command is implied and is optional.
-- The camera name will automatically be appended to the end of the command.
+- The camera name is available as a variable `{cam_name}` for lowercase and `{CAM_NAME}` for uppercase.
 
 ### Custom FFmpeg Flags
 

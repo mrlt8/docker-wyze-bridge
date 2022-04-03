@@ -1,3 +1,12 @@
+## Changes in v1.3.2
+
+⚠️ Potentially breaking for custom FFMPEG commands.
+
+- Fixed custom ffmpeg ENV for camera names with spaces. #332
+- Camera name variable for custom ffmpeg commands with `{cam_name}` for lowercase and `{CAM_NAME}` for uppercase. #334
+- Camera name variable for `RECORD_FILE_NAME` and `RECORD_PATH` with `{cam_name}` for lowercase and `{CAM_NAME}` for uppercase.
+- Changed default `RECORD_PATH` to `/record/{CAM_NAME}` and to `/media/wyze/{CAM_NAME}` for Home Assistant.
+  
 ## Changes in v1.3.1
 
 ### 🚧 Changed

@@ -4,7 +4,7 @@
     "slug": "docker-wyze-bridge",
     "url": "http://github.com/mrlt8/docker-wyze-bridge",
     "image": "mrlt8/wyze-bridge",
-    "version": "1.3.1",
+    "version": "1.3.2",
     "arch": [
         "armv7",
         "aarch64",
@@ -26,7 +26,7 @@
     "environment": {
         "HASS": "true",
         "IMG_DIR": "config/www",
-        "RECORD_PATH": "media/wyze"
+        "RECORD_PATH": "media/wyze/{CAM_NAME}"
     },
     "map": [
         "config:rw",

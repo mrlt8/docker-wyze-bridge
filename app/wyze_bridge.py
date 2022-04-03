@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.1\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.2\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -41,8 +41,6 @@ class WyzeBridge:
             os.makedirs(self.token_path, exist_ok=True)
             os.makedirs(self.img_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
-            if os.getenv("RECORD_ALL"):
-                os.makedirs("/" + os.getenv("RECORD_PATH").strip("/"), exist_ok=True)
         if os.getenv("MAX_NOREADY"):
             print("\n\n⚠️ 'MAX_NOREADY' DEPRECATED.\nUSE 'TIMEOUT'\n")
 
@@ -543,11 +541,11 @@ def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
     lib264 = ["libx264", "-vf", "transpose=1", "-preset", "veryfast", "-crf", "20"]
     flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
-    cmd = os.getenv(f"FFMPEG_CMD_{uri}", os.getenv("FFMPEG_CMD", "")).strip(
+    cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD", "")).strip(
         "'\"\n "
-    ).split() or (
+    ).format(cam_name=uri.lower(), CAM_NAME=uri).split() or (
         ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "fatal"]
-        + os.getenv(f"FFMPEG_FLAGS_{uri}", os.getenv("FFMPEG_FLAGS", flags))
+        + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
         .split()
         + ["-analyzeduration", "0", "-probesize", "32", "-i", "-"]
@@ -557,13 +555,12 @@ def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
         + ["-rtsp_transport", env_bool("RTSP_PROTOCOLS", "tcp")]
         + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
         + ["-f", "rtsp"]
-        + ["rtsp://0.0.0.0:8554"]
+        + [f"rtsp://0.0.0.0:8554/{uri.lower()}"]
     )
     if "ffmpeg" not in cmd[0].lower():
         cmd.insert(0, "ffmpeg")
     if env_bool("DEBUG_FFMPEG"):
         log.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
-    cmd[-1] = cmd[-1] + ("" if cmd[-1][-1] == "/" else "/") + uri.lower()
     return cmd
 
 
@@ -572,8 +569,12 @@ def get_record_cmd(uri: str) -> list:
     if not env_bool(f"RECORD_{uri}", env_bool("RECORD_ALL", False)):
         return []
     seg_time = env_bool("RECORD_LENGTH", "60")
-    path = "/%s/" % env_bool("RECORD_PATH", "record").strip("/")
-    file_name = env_bool("RECORD_FILE_NAME", "_%Y-%m-%d_%H-%M-%S_%Z")
+    file_name = "{CAM_NAME}_%Y-%m-%d_%H-%M-%S_%Z"
+    file_name = env_bool("RECORD_FILE_NAME", file_name).rstrip(".mp4")
+    path = "/%s/" % env_bool(
+        f"RECORD_PATH_{uri}", env_bool("RECORD_PATH", "record/{CAM_NAME}")
+    ).format(cam_name=uri.lower(), CAM_NAME=uri).strip("/")
+    os.makedirs(path, exist_ok=True)
     log.info(f"📹 Will record {seg_time}s clips to {path}")
     return (
         ["-c:v", "copy"]
@@ -583,7 +584,7 @@ def get_record_cmd(uri: str) -> list:
         + ["-segment_format", "mp4"]
         + ["-reset_timestamps", "1"]
         + ["-strftime", "1"]
-        + [f"{path}{uri}{file_name}.mp4"]
+        + [f"{path}{file_name.format(cam_name=uri.lower(),CAM_NAME=uri)}.mp4"]
     )
 
 
