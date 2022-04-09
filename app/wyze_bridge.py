@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.2 AUDIO 1\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.2 AUDIO 2\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -423,7 +423,8 @@ class WyzeBridge:
         else:
             log.warning("Stream is down.")
         finally:
-            audio_thread.join()
+            if "audio_thread" in locals() and audio_thread.is_alive():
+                audio_thread.join()
             sys.exit(exit_code)
 
     def get_webrtc(self):
@@ -551,6 +552,7 @@ def get_ffmpeg_cmd(uri: str, mac: str, cam_model: str = None) -> list:
     flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
     fifo = f"/tmp/{mac}.wav"
+    ff_audio = env_bool(f"FFAUDIO_{uri}") or "s16le -ar 8000"
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD", "")).strip(
         "'\"\n "
     ).format(cam_name=uri.lower(), CAM_NAME=uri).split() or (
@@ -559,7 +561,9 @@ def get_ffmpeg_cmd(uri: str, mac: str, cam_model: str = None) -> list:
         .strip("'\"\n ")
         .split()
         + ["-analyzeduration", "0", "-probesize", "32", "-i", "-"]
-        + ["-f", "s16le", "-ar", "8000", "-i", fifo]
+        + ["-f"]
+        + ff_audio.split()
+        + ["-i", fifo]
         + get_record_cmd(uri)
         + ["-c:v"]
         + (["copy"] if not rotate else lib264)
