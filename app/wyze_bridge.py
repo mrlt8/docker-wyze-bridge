@@ -6,6 +6,7 @@ import pickle
 import re
 import signal
 import sys
+from threading import Thread, Event
 import time
 import warnings
 from subprocess import PIPE, Popen
@@ -20,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.2\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.2 AUDIO 1\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -384,6 +385,8 @@ class WyzeBridge:
         frame_size, bitrate = get_env_quality(uri)
         if cam.product_model == "WYZEDB3":
             frame_size = int(env_bool("DOOR_SIZE", frame_size))
+        stop_audio = Event()
+
         try:
             with wyzecam.WyzeIOTC(sdk_key=os.getenv("SDK_KEY")) as wyze_iotc:
                 with wyzecam.WyzeIOTCSession(
@@ -392,19 +395,24 @@ class WyzeBridge:
                     cam,
                     frame_size,
                     bitrate,
-                    enable_audio=False,
+                    enable_audio=True,
                     connect_timeout=self.connect_timeout,
                 ) as sess:
                     connected.set()
                     check_cam_sess(sess, uri)
-                    cmd = get_ffmpeg_cmd(uri, cam.product_model)
+                    cmd = get_ffmpeg_cmd(uri, cam.mac, cam.product_model)
+                    audio_thread = Thread(
+                        target=sess.recv_audio_frames, args=(stop_audio,)
+                    )
                     with Popen(cmd, stdin=PIPE) as ffmpeg:
+                        audio_thread.start()
                         for frame in sess.recv_bridge_frame(
                             stop_flag, self.keep_bad_frames, self.timeout
                         ):
                             ffmpeg.stdin.write(frame)
         except Exception as ex:
             log.warning(ex)
+            stop_audio.set()
             if ex.args[0] == -13:  # IOTC_ER_TIMEOUT
                 time.sleep(2)
             elif ex.args[0] in (-19, -68, -90):
@@ -415,6 +423,7 @@ class WyzeBridge:
         else:
             log.warning("Stream is down.")
         finally:
+            audio_thread.join()
             sys.exit(exit_code)
 
     def get_webrtc(self):
@@ -486,10 +495,10 @@ def get_env_quality(uri) -> Tuple[int, int]:
     return frame_size, bitrate
 
 
-def clean_name(name: str, upper: bool = False) -> str:
+def clean_name(name: str, upper: bool = False, env_sep: bool = False) -> str:
     """Return a URI friendly name by removing special characters and spaces."""
-    uri_sep = "-"
-    if os.getenv("URI_SEPARATOR") in ("-", "_", "#"):
+    uri_sep = "_" if env_sep else "-"
+    if not env_sep and os.getenv("URI_SEPARATOR") in ("-", "_", "#"):
         uri_sep = os.getenv("URI_SEPARATOR")
     clean = re.sub(r"[^\-\w+]", "", name.strip().replace(" ", uri_sep))
     return clean.upper() if upper else clean.lower()
@@ -536,11 +545,12 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> None:
     log.info(f"📡 Getting {bit_frame} via {mode} (WiFi: {wifi}%) FW: {firmware} (2/3)")
 
 
-def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
+def get_ffmpeg_cmd(uri: str, mac: str, cam_model: str = None) -> list:
     """Return the ffmpeg cmd with options from the env."""
     lib264 = ["libx264", "-vf", "transpose=1", "-preset", "veryfast", "-crf", "20"]
     flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
+    fifo = f"/tmp/{mac}.wav"
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD", "")).strip(
         "'\"\n "
     ).format(cam_name=uri.lower(), CAM_NAME=uri).split() or (
@@ -549,9 +559,11 @@ def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
         .strip("'\"\n ")
         .split()
         + ["-analyzeduration", "0", "-probesize", "32", "-i", "-"]
+        + ["-f", "s16le", "-ar", "8000", "-i", fifo]
         + get_record_cmd(uri)
         + ["-c:v"]
         + (["copy"] if not rotate else lib264)
+        + ["-c:a", "aac"]
         + ["-rtsp_transport", env_bool("RTSP_PROTOCOLS", "tcp")]
         + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
         + ["-f", "rtsp"]

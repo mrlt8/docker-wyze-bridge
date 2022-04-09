@@ -4,6 +4,7 @@ import hashlib
 import logging
 import os
 import pathlib
+from tempfile import mktemp
 import time
 import warnings
 from ctypes import CDLL, c_int
@@ -511,6 +512,38 @@ class WyzeIOTCSession:
                     self.preferred_frame_size, self.preferred_bitrate, fps
                 )
             ).result()
+
+    def recv_audio_frames(self, stop_flag) -> Iterator[Optional[bytes]]:
+        """A generator for returning raw audio frames for the bridge."""
+        FIFO = f"/tmp/{self.camera.mac}.wav"
+        try:
+            os.mkfifo(FIFO, os.O_NONBLOCK)
+        except OSError as e:
+            if e.errno != 17:
+                raise e
+        with open(FIFO, "wb") as audio_pipe:
+            while not stop_flag.is_set():
+                errno, frame_data, _ = tutk.av_recv_audio_data(
+                    self.tutk_platform_lib, self.av_chan_id
+                )
+                if errno < 0:
+                    if errno == tutk.AV_ER_DATA_NOREADY:
+                        time.sleep(1 / 40)
+                        continue
+                    if errno == tutk.AV_ER_INCOMPLETE_FRAME:
+                        warnings.warn("Received incomplete frame")
+                        continue
+                    if errno == tutk.AV_ER_LOSED_THIS_FRAME:
+                        warnings.warn("Lost frame")
+                        continue
+                    warnings.warn(f"Error: {errno}")
+                    break
+                try:
+                    audio_pipe.write(frame_data)
+                except IOError as e:
+                    print(e)
+                    break
+        print("exit audio")
 
     def recv_video_frame(
         self,
