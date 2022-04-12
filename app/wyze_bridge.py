@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.3 DEV 2\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.3 DEV 3\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -538,11 +538,13 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> None:
 
 def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
     """Return the ffmpeg cmd with options from the env."""
-    lib264 = ["libx264", "-vf", "transpose=1", "-tune", "zerolatency", "-preset"]
-    if env_bool("ROTATE_DOOR") in ("superfast", "veryfast", "faster", "fast", "medium"):
-        lib264.append(os.getenv("ROTATE_DOOR"))
-    else:
-        lib264.append(["ultrafast"])
+    lib264 = (
+        ["libx264"]
+        + ["-vf", "transpose=1"]
+        + ["-tune", "zerolatency"]
+        + ["-x264-params", "keyint=20:min-keyint=10:scenecut=0"]
+        + ["-preset", "ultrafast"]
+    )
     flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
     rtsp_ss = f"[select=v:f=rtsp]rtsp://0.0.0.0:8554/{uri.lower()}"
