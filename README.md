@@ -26,45 +26,23 @@ docker run \
 
 You can view your stream by visiting: `http://localhost:8888/cam-nickname` where localhost is the hostname or ip of the machine running the bridge followed by the cam nickname in lowercase with `-` in place of spaces.
 
-## Changes in v1.3.2
-
-⚠️ Potentially breaking for custom FFMPEG commands.
-
-- Fixed custom ffmpeg ENV for camera names with spaces. #332
-- Camera name variable for custom ffmpeg commands with `{cam_name}` for lowercase and `{CAM_NAME}` for uppercase. #334
-- Camera name variable for `RECORD_FILE_NAME` and `RECORD_PATH` with `{cam_name}` for lowercase and `{CAM_NAME}` for uppercase.
-- Changed default `RECORD_PATH` to `/record/{CAM_NAME}` and to `/media/wyze/{CAM_NAME}` for Home Assistant.
-  
-## Changes in v1.3.1
-
-### 🚧 Changed
-
-- Adjusted sleep time between frames that could cause the stream to fall behind. (#330) Thanks @bbobrian, @dreondre, and everyone who helped with reporting and testing!
-- Additional FFMPEG commands to help reduce lag.
-- Fixed spaces in ENV/YAML so that they use `_` instead of `-`. Thanks @ronald-mendoza!
-- Updated typos in README. Thanks @ronald-mendoza! (#332)
-- Wyze app version number bump (2.29.1).
-
-## Changes in v1.3.0
+## Changes in v1.3.3
 
 ### ✨ NEW
 
-- Recording directly in the bridge is now here! [Details](#recording-streams-beta).
-  
-  🏠 Default settings will save recordings to `/media/wyze/` in Home Assistant mode.
+- Livestreaming option now available. [Details](https://github.com/mrlt8/docker-wyze-bridge#livestream)
 
 ### 🚧 Changed
 
-- Adjusted connection timeout #306 #319.
-- Check bitrate every 500 frames to detect any external changes #320.
-- Correct mismatched FPS camera parameter with ENV: `FPS_FIX`.
-- Add sleep between frames to lower CPU usage.
-- Fixed import error #324.
-- IOS and wyze app version number bump.
-- FFMPEG bumped to 4.4.
+- Tweaked doorbell rotation command for performance. #330
+- HA: make `SNAPSHOT` optional and add `RTSP5`. #336
+- Tweaked FFmpeg commands to use [tee muxer](https://ffmpeg.org/ffmpeg-formats.html#tee). 
+- Update rtsp-simple-server (from v0.17.17 to v0.18.0).
+- Update FFmpeg (from 4.4 to 5.0).
+- iOS version bump (15.4.1).
+- Wyze app version number bump (2.29.2).
 
-
-[View older changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
+[View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
 ## Supported Cameras
 
@@ -78,7 +56,6 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 ![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
 ![Wyze Cam Doorbell Pro](https://img.shields.io/badge/wyze_doorbell_pro-no-inactive.svg)
-
 
 | Camera                | Model          | Supported |
 | --------------------- | -------------- | --------- |
@@ -143,7 +120,7 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 ### Additional Info
 
 - [Two-Step Verification](#Multi-Factor-Authentication)
-- [ARM/Raspberry Pi](#armraspberry-pi)
+- [ARM/Raspberry Pi](https://github.com/mrlt8/docker-wyze-bridge/wiki/Raspberry-Pi-(armv7-and-arm64))
 - [LAN mode](#LAN-Mode)
 - [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
 - [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236)
@@ -153,7 +130,7 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 
 #### Audio Support
 
-Audio is not supported at this time.
+Audio is coming soon.
 
 #### Special Characters
 
@@ -212,46 +189,17 @@ You can also have the bridge auto generate and enter a Time-based One-Time Passw
 
   Add your code to the text file: `/config/wyze-bridge/mfa_token.txt`.
 
-## ARM/Raspberry Pi
+- Portainer:
+  
+  Use the console to echo your code to the container:
 
-The default `docker-compose.yml` will pull a multi-arch image that has support for both amrv7 and arm64, and no changes are required to run the container as is.
-
-### veth errors on ubuntu 21.10
-
-If you're having trouble starting docker on a raspberry pi running ubuntu 21.10, you may need to run:
-
-```bash
-sudo apt install linux-modules-extra-raspi
-```
-
-### libseccomp2
-
-arm/arm64 users on 32-bit Debian-based distros may experience errors such as `can't initialize time` which can be resolved by updating libseccomp2:
-
-```bash
-apt-get -y install libseccomp2/unstable
-```
-
-or
-
-```bash
-wget http://ftp.us.debian.org/debian/pool/main/libs/libseccomp/libseccomp2_2.5.1-1_armhf.deb
-sudo dpkg -i libseccomp2_2.5.1-1_armhf.deb
-```
-
-### Build from source
-
-If you would like to build the container from source, you will need to edit your `docker-compose.yml` to use the arm libraries by removing or commenting out the line `image: mrlt8/wyze-bridge:latest` and add or uncomment the following three lines:
-
-```YAML
-build:
-    context: ./app
-    dockerfile: Dockerfile.arm
-```
+  ```bash
+  echo "123456" > /tokens/mfa_token
+  ```
 
 ## Advanced Options
 
-**WYZE_EMAIL** and **WYZE_PASSWORD** are the only two required environment variables. The following envs are optional.
+**WYZE_EMAIL** and **WYZE_PASSWORD** are the only two required environment variables. The following envs are all optional.
 
 ### Filtering
 
@@ -341,7 +289,7 @@ In the event that you need to allow the bridge to access a select number of came
 
 - `IMG_DIR=/img/` Specify the directory where the snapshots will be saved *within the container*. Use volumes in docker to map to an external directory.
 
-### Recording Streams (BETA)
+### Stream Recording
 
 The bridge can be configured to record all or select camera streams to the container which can be mapped to a local directory.
 
@@ -363,44 +311,20 @@ Or to specify select cameras, where `CAM_NAME` is the camera name in UPPERCASE a
   - RECORD_OTHER_CAM=True
 ```
 
-#### Recording configuration
+See the [Stream Recording wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Stream-Recording#recording-configuration) page for additional options.
 
-- Recording location:
+### Livestream
 
-  You can specify the directory where the videos will be saved by mapping your `/local/path/on/host/` to the `/record/` directory in the container:
+Basic livestream support is available for YouTube and Facebook, but you can also specify any custom rtmp server for other services like Twitch.
 
-  ```yaml
-  volume:
-        - /local/path/on/host/:/record/
-  ```
+To use this feature, set a new env in your docker-compose.yml with the service (`YOUTUBE_` or `FACEBOOK_`) prefix followed by the camera name in UPPERCASE with `_` in place of spaces and hyphens, and set your stream key as the value. Custom rtmp servers can be specified using the `LIVESTREAM_` prefix:
 
-  You can also configure the path where the clips will be saved using `RECORD_PATH`. The camera name is available as an optional variable `{cam_name}` for lowercase and `{CAM_NAME}` for uppercase
-
-  ```yaml
-    - RECORD_PATH=/record/{cam_name}
-  ```
-
-- File name config:
-  
-  By default, the bridge will name the files with the current date time using the format: `CAM_NAME_YYYY-MM-DD_HH-MM-SS_TZ.mp4`. The camera name is available as an optional variable `{cam_name}` for lowercase and `{CAM_NAME}` for uppercase, and the time portion of the name can be customized using the [strftime](https://strftime.org) format:
-
-  ```yaml
-    - RECORD_FILE_NAME={cam_name}_%Y%m%d_%H_%M_%S
-  ```
-
-  The timezone used for the name can be configured using [TZ database name](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones):
-
-  ```yaml
-    - TZ=America/New_York
-  ```
-
-- File segment length:
-  
-  The bridge will split the recordings into 60 second clips from the top of the hour by default, however, this can be changed using:
-
-  ```yaml
-    - RECORD_LENGTH=300
-  ```
+```yaml
+  - YOUTUBE_FRONT_DOOR=MY-STREAM-KEY
+  - FACEBOOK_OTHER_CAM=MY-STREAM-KEY
+  # twitch example:
+  - LIVESTREAM_CAM_NAME=rtmp://jfk.contribute.live-video.net/app/MY-STREAM-KEY
+```
 
 ### MQTT (beta)
 
@@ -493,6 +417,14 @@ or where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces a
 e.g. use `- RTSP_RTSPADDRESS=:8555` to overwrite the default `rtspAddress`.
 
 or `- RTSP_PATHS_ALL_READUSER=123` to customize a path specific option like `paths: all: readuser:123`
+
+For camera specific options with spaces in the name of the camera (e.g. `Front Door`), be sure to replace the spaces with the `URI_SEPARATOR` which defaults to `-`.  So `Front Door` would be represented as `FRONT-DOOR`, and `paths: Front Door: runOnReady: ffmpeg...` could be set in your docker-compose as:
+
+```yaml
+environment:
+  ...
+  - RTSP_PATHS_FRONT-DOOR_RUNONREADY=ffmpeg...
+```
 
 ### Debugging options
 
