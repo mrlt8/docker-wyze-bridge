@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.3 DEV 3\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.3\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -396,11 +396,11 @@ class WyzeBridge:
                     connect_timeout=self.connect_timeout,
                 ) as sess:
                     connected.set()
-                    check_cam_sess(sess, uri)
+                    fps = check_cam_sess(sess, uri)
                     cmd = get_ffmpeg_cmd(uri, cam.product_model)
                     with Popen(cmd, stdin=PIPE) as ffmpeg:
                         for frame in sess.recv_bridge_frame(
-                            stop_flag, self.keep_bad_frames, self.timeout
+                            stop_flag, self.keep_bad_frames, self.timeout, fps
                         ):
                             ffmpeg.stdin.write(frame)
         except Exception as ex:
@@ -511,7 +511,7 @@ def check_net_mode(session_mode: int, uri: str) -> str:
     return mode
 
 
-def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> None:
+def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> int:
     """Check cam session and return connection mode, firmware, and wifidb from camera."""
     mode = check_net_mode(sess.session_check().mode, uri)
     frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
@@ -534,16 +534,15 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> None:
         wifi = sess.camera.camera_info["netInfo"].get("signal", wifi)
     # return mode, firmware, wifi
     log.info(f"📡 Getting {bit_frame} via {mode} (WiFi: {wifi}%) FW: {firmware} (2/3)")
+    return fps or 15
 
 
 def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
     """Return the ffmpeg cmd with options from the env."""
     lib264 = (
-        ["libx264"]
-        + ["-vf", "transpose=1"]
-        + ["-tune", "zerolatency"]
-        + ["-x264-params", "keyint=20:min-keyint=10:scenecut=0"]
-        + ["-preset", "ultrafast"]
+        ["libx264", "-vf", "transpose=1"]
+        + ["-tune", "zerolatency", "-preset", "ultrafast"]
+        + ["-x264-params", "keyint=20:min-keyint=10:scenecut=-1"]
     )
     flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
@@ -556,7 +555,7 @@ def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
         + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
         .split()
-        + ["-analyzeduration", "0", "-probesize", "32", "-f", "h264", "-i", "-"]
+        + ["-analyzeduration", "0", "-probesize", "32", "-f", "h264", "-i", "pipe:"]
         + (["-f", "lavfi", "-i", "anullsrc=cl=mono"] if livestream else [])
         + ["-c:v"]
         + (["copy"] if not rotate else lib264)
@@ -603,12 +602,6 @@ def get_livestream_cmd(uri: str) -> str:
     if len(yt_key := env_bool(f"YOUTUBE_{uri}")) > 5:
         log.info("📺 YouTube livestream enabled")
         cmd += f"|[f=flv:select=v,a]rtmp://a.rtmp.youtube.com/live2/{yt_key}"
-    if len(twitch_key := env_bool(f"TWITCH_{uri}")) > 5:
-        log.info("📺 Twitch livestream enabled")
-        cmd += f"|[f=flv:select=v,a]rtmp://live-jfk.twitch.tv/app/{twitch_key}"
-    if len(vimeo_key := env_bool(f"VIMEO_{uri}")) > 5:
-        log.info("📺 Vimeo livestream enabled")
-        cmd += f"|[f=flv:select=v,a]rtmp://rtmp.cloud.vimeo.com/{vimeo_key}"
     if len(fb_key := env_bool(f"FACEBOOK_{uri}")) > 5:
         log.info("📺 Facebook livestream enabled")
         cmd += f"|[f=flv:select=v,a]rtmps://live-api-s.facebook.com:443/rtmp/{fb_key}"
