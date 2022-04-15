@@ -399,7 +399,7 @@ class WyzeIOTCSession:
             first_run = False
 
     def recv_bridge_frame(
-        self, stop_flag, keep_bad_frames: bool = False, timeout: int = 15
+        self, stop_flag, keep_bad_frames: bool = False, timeout: int = 15, fps: int = 15
     ) -> Iterator[Optional[bytes]]:
         """A generator for returning raw video frames for the bridge.
 
@@ -415,7 +415,6 @@ class WyzeIOTCSession:
             int(os.getenv("IGNORE_RES", self.preferred_frame_size + 3)),
         )
         last_keyframe = last_frame = 0, 0
-        fps = 15
         while not stop_flag.is_set():
             if last_keyframe[1] and (delta := time.time() - last_frame[1]) >= timeout:
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
