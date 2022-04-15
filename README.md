@@ -34,13 +34,13 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 ### 🚧 Changed
 
+- Update FFmpeg to 5.0.
+- Update rtsp-simple-server to v0.18.0.
 - Tweaked doorbell rotation command for performance. #330
 - HA: make `SNAPSHOT` optional and add `RTSP5`. #336
-- Tweaked FFmpeg commands to use [tee muxer](https://ffmpeg.org/ffmpeg-formats.html#tee). 
-- Update rtsp-simple-server (from v0.17.17 to v0.18.0).
-- Update FFmpeg (from 4.4 to 5.0).
-- iOS version bump (15.4.1).
-- Wyze app version number bump (2.29.2).
+- Tweaked FFmpeg commands to use [tee muxer](https://ffmpeg.org/ffmpeg-formats.html#tee).
+- API: iOS version bump to 15.4.1.
+- API: Wyze app version number bump to 2.29.2.
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
