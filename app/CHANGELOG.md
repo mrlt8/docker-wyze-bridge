@@ -1,3 +1,19 @@
+## Changes in v1.3.3
+
+### ✨ NEW
+
+- Livestreaming option now available. [Details](https://github.com/mrlt8/docker-wyze-bridge#livestream)
+
+### 🚧 Changed
+
+- Update FFmpeg to 5.0.
+- Update rtsp-simple-server to v0.18.0.
+- Tweaked doorbell rotation command for performance. #330
+- HA: make `SNAPSHOT` optional and add `RTSP5`. #336
+- Tweaked FFmpeg commands to use [tee muxer](https://ffmpeg.org/ffmpeg-formats.html#tee).
+- API: iOS version bump to 15.4.1.
+- API: Wyze app version number bump to 2.29.2.
+
 ## Changes in v1.3.2
 
 ⚠️ Potentially breaking for custom FFMPEG commands.

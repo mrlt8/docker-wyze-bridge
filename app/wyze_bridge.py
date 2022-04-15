@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.2 AUDIO 2\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.3 AUDIO 2\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -399,15 +399,15 @@ class WyzeBridge:
                     connect_timeout=self.connect_timeout,
                 ) as sess:
                     connected.set()
-                    check_cam_sess(sess, uri)
-                    cmd = get_ffmpeg_cmd(uri, cam.mac, cam.product_model)
+                    fps = check_cam_sess(sess, uri)
+                    cmd = get_ffmpeg_cmd(uri, cam.product_model)
                     audio_thread = Thread(
                         target=sess.recv_audio_frames, args=(stop_audio,)
                     )
                     with Popen(cmd, stdin=PIPE) as ffmpeg:
                         audio_thread.start()
                         for frame in sess.recv_bridge_frame(
-                            stop_flag, self.keep_bad_frames, self.timeout
+                            stop_flag, self.keep_bad_frames, self.timeout, fps
                         ):
                             ffmpeg.stdin.write(frame)
         except Exception as ex:
@@ -521,7 +521,7 @@ def check_net_mode(session_mode: int, uri: str) -> str:
     return mode
 
 
-def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> None:
+def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> int:
     """Check cam session and return connection mode, firmware, and wifidb from camera."""
     mode = check_net_mode(sess.session_check().mode, uri)
     frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
@@ -544,15 +544,22 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> None:
         wifi = sess.camera.camera_info["netInfo"].get("signal", wifi)
     # return mode, firmware, wifi
     log.info(f"📡 Getting {bit_frame} via {mode} (WiFi: {wifi}%) FW: {firmware} (2/3)")
+    return fps or 15
 
 
 def get_ffmpeg_cmd(uri: str, mac: str, cam_model: str = None) -> list:
     """Return the ffmpeg cmd with options from the env."""
-    lib264 = ["libx264", "-vf", "transpose=1", "-preset", "veryfast", "-crf", "20"]
+    lib264 = (
+        ["libx264", "-vf", "transpose=1"]
+        + ["-tune", "zerolatency", "-preset", "ultrafast"]
+        + ["-x264-params", "keyint=20:min-keyint=10:scenecut=-1"]
+    )
     flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
     fifo = f"/tmp/{mac}.wav"
     ff_audio = env_bool(f"FFAUDIO_{uri}") or "s16le -ar 8000"
+    rtsp_ss = f"[select=v:f=rtsp]rtsp://0.0.0.0:8554/{uri.lower()}"
+    livestream = get_livestream_cmd(uri)
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD", "")).strip(
         "'\"\n "
     ).format(cam_name=uri.lower(), CAM_NAME=uri).split() or (
@@ -560,18 +567,17 @@ def get_ffmpeg_cmd(uri: str, mac: str, cam_model: str = None) -> list:
         + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
         .split()
-        + ["-analyzeduration", "0", "-probesize", "32", "-i", "-"]
-        + ["-f"]
+        + ["-analyzeduration", "0", "-probesize", "32", "-f", "h264", "-i", "pipe:"]
         + ff_audio.split()
         + ["-i", fifo]
-        + get_record_cmd(uri)
         + ["-c:v"]
         + (["copy"] if not rotate else lib264)
-        + ["-c:a", "aac"]
-        + ["-rtsp_transport", env_bool("RTSP_PROTOCOLS", "tcp")]
+        + (["-c:a", "aac"] if livestream else [])
         + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
-        + ["-f", "rtsp"]
-        + [f"rtsp://0.0.0.0:8554/{uri.lower()}"]
+        + ["-f", "tee"]
+        + ["-map", "0:v"]
+        + (["-map", "1:a"] if livestream else [])
+        + [rtsp_ss + get_record_cmd(uri) + livestream]
     )
     if "ffmpeg" not in cmd[0].lower():
         cmd.insert(0, "ffmpeg")
@@ -580,10 +586,10 @@ def get_ffmpeg_cmd(uri: str, mac: str, cam_model: str = None) -> list:
     return cmd
 
 
-def get_record_cmd(uri: str) -> list:
-    """Check if recording is enabled and return ffmpeg cmd as a list."""
+def get_record_cmd(uri: str) -> str:
+    """Check if recording is enabled and return ffmpeg tee cmd."""
     if not env_bool(f"RECORD_{uri}", env_bool("RECORD_ALL", False)):
-        return []
+        return ""
     seg_time = env_bool("RECORD_LENGTH", "60")
     file_name = "{CAM_NAME}_%Y-%m-%d_%H-%M-%S_%Z"
     file_name = env_bool("RECORD_FILE_NAME", file_name).rstrip(".mp4")
@@ -593,15 +599,29 @@ def get_record_cmd(uri: str) -> list:
     os.makedirs(path, exist_ok=True)
     log.info(f"📹 Will record {seg_time}s clips to {path}")
     return (
-        ["-c:v", "copy"]
-        + ["-f", "segment"]
-        + ["-segment_time", seg_time]
-        + ["-segment_atclocktime", "1"]
-        + ["-segment_format", "mp4"]
-        + ["-reset_timestamps", "1"]
-        + ["-strftime", "1"]
-        + [f"{path}{file_name.format(cam_name=uri.lower(),CAM_NAME=uri)}.mp4"]
+        "|[onfail=ignore:select=v:f=segment"
+        f":segment_time={seg_time}"
+        ":segment_atclocktime=1"
+        ":segment_format=mp4"
+        ":reset_timestamps=1"
+        ":strftime=1]"
+        f"{path}{file_name.format(cam_name=uri.lower(),CAM_NAME=uri)}.mp4"
     )
+
+
+def get_livestream_cmd(uri: str) -> str:
+    """Check if livestream is enabled and return ffmpeg tee cmd."""
+    cmd = ""
+    if len(yt_key := env_bool(f"YOUTUBE_{uri}")) > 5:
+        log.info("📺 YouTube livestream enabled")
+        cmd += f"|[f=flv:select=v,a]rtmp://a.rtmp.youtube.com/live2/{yt_key}"
+    if len(fb_key := env_bool(f"FACEBOOK_{uri}")) > 5:
+        log.info("📺 Facebook livestream enabled")
+        cmd += f"|[f=flv:select=v,a]rtmps://live-api-s.facebook.com:443/rtmp/{fb_key}"
+    if len(tee_cmd := env_bool(f"LIVESTREAM_{uri}")) > 5:
+        log.info(f"📺 Custom ({tee_cmd}) livestream enabled")
+        cmd += f"|[f=flv:select=v,a]{tee_cmd}"
+    return cmd
 
 
 def setup_hass():
