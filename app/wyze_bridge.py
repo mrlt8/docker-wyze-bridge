@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.3 AUDIO 2\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.3 AUDIO 3\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -400,7 +400,7 @@ class WyzeBridge:
                 ) as sess:
                     connected.set()
                     fps = check_cam_sess(sess, uri)
-                    cmd = get_ffmpeg_cmd(uri, cam.product_model)
+                    cmd = get_ffmpeg_cmd(uri, cam.mac, cam.product_model)
                     audio_thread = Thread(
                         target=sess.recv_audio_frames, args=(stop_audio,)
                     )
@@ -557,8 +557,7 @@ def get_ffmpeg_cmd(uri: str, mac: str, cam_model: str = None) -> list:
     flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
     fifo = f"/tmp/{mac}.wav"
-    ff_audio = env_bool(f"FFAUDIO_{uri}") or "s16le -ar 8000"
-    rtsp_ss = f"[select=v:f=rtsp]rtsp://0.0.0.0:8554/{uri.lower()}"
+    rtsp_ss = f"[select=v,a:f=rtsp]rtsp://0.0.0.0:8554/{uri.lower()}"
     livestream = get_livestream_cmd(uri)
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD", "")).strip(
         "'\"\n "
@@ -568,15 +567,15 @@ def get_ffmpeg_cmd(uri: str, mac: str, cam_model: str = None) -> list:
         .strip("'\"\n ")
         .split()
         + ["-analyzeduration", "0", "-probesize", "32", "-f", "h264", "-i", "pipe:"]
-        + ff_audio.split()
+        + ["-f"]
+        + (env_bool(f"FFAUDIO_{uri}") or "s16le -ar 8000").split()
         + ["-i", fifo]
         + ["-c:v"]
         + (["copy"] if not rotate else lib264)
-        + (["-c:a", "aac"] if livestream else [])
+        + ["-c:a", "aac"]
         + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
         + ["-f", "tee"]
-        + ["-map", "0:v"]
-        + (["-map", "1:a"] if livestream else [])
+        + ["-map", "0:v", "-map", "1:a"]
         + [rtsp_ss + get_record_cmd(uri) + livestream]
     )
     if "ffmpeg" not in cmd[0].lower():
