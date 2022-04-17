@@ -34,9 +34,20 @@ class RtspEvent:
         self.write_log(f"✅ '/{self.uri}' stream is UP! (3/3)")
         img_file = os.getenv("IMG_PATH", "/img/") + self.uri + ".jpg"
         env_snap = os.getenv("SNAPSHOT", "NA").ljust(5, "0").upper()
+        self.send_mqtt("image", None)
         if env_bool("HASS"):
-            host = env_bool("HOSTNAME", "localhost")
             import json
+
+            host = env_bool("HOSTNAME", "localhost")
+            self.send_mqtt(
+                "attributes",
+                json.dumps(
+                    {
+                        "stream": f"rtsp://{host}:8554/{self.uri}",
+                        "image": f"http://{host}:8123/local/{self.uri}.jpg",
+                    }
+                ),
+            )
         if env_snap[:4] == "RTSP":
             from subprocess import Popen
         while True:
@@ -52,26 +63,11 @@ class RtspEvent:
                     )
                 Popen(
                     f"ffmpeg -loglevel fatal -skip_frame nokey -rtsp_transport tcp -i rtsp://{rtsp_addr}/{self.uri} -vframes 1 -y {img_file}".split()
-                ).wait()
+                ).wait(10)
             if os.path.exists(img_file) and os.path.getsize(img_file) > 1:
                 with open(img_file, "rb") as img:
                     self.send_mqtt("image", img.read())
-            if env_bool("HASS"):
-                self.send_mqtt(
-                    "attributes",
-                    json.dumps(
-                        {
-                            "stream": f"rtsp://{host}:8554/{self.uri}",
-                            "image": f"http://{host}:8123/local/{self.uri}.jpg",
-                        }
-                    ),
-                )
-
-            time.sleep(
-                int(env_snap[4:])
-                if env_snap[4:].isdigit() and int(env_snap[4:]) > 1
-                else 180
-            )
+            time.sleep(int(env_snap[4:]) if env_snap[4:].isdigit() else 180)
 
     def read_start(self) -> None:
         """Handle 'READ' events when a client starts consuming a stream fromrtsp-simple-server."""
@@ -81,43 +77,47 @@ class RtspEvent:
 
     def mqtt_connect(self) -> None:
         """Connect to an MQTT if the env option is enabled."""
-        self.mqtt_connected = False
-        if env_bool("MQTT_HOST"):
-            try:
-                import paho.mqtt.client as mqtt
-            except ImportError:
-                return
-            self.base = f"wyzebridge/{self.uri}/"
-            if env_bool("MQTT_TOPIC"):
-                self.base = f'{env_bool("MQTT_TOPIC")}/{self.base}'
-            host = os.getenv("MQTT_HOST").split(":")
-            self.mqtt = mqtt.Client()
-            if env_bool("MQTT_AUTH"):
-                auth = os.getenv("MQTT_AUTH").split(":")
-                self.mqtt.username_pw_set(auth[0], auth[1] if len(auth) > 1 else None)
-            self.mqtt.will_set(self.base, None)
-            if self.type == "READY":
-                self.mqtt.will_set(self.base + "state", "disconnected")
-            if self.type == "READ":
-                self.mqtt.will_set(self.base + f"clients/{os.getpid()}", None)
-            try:
-                self.mqtt.connect(host[0], int(host[1] if len(host) > 1 else 1883), 60)
-                self.mqtt.loop_start()
-                self.mqtt_connected = True
-            except Exception as ex:
-                self.write_log(f"[MQTT] {ex}")
+        if not env_bool("MQTT_HOST"):
+            self.mqtt_connected = False
+            return
+        try:
+            import paho.mqtt.client as mqtt
+        except ImportError:
+            return
+        self.base = f"wyzebridge/{self.uri}/"
+        if env_bool("MQTT_TOPIC"):
+            self.base = f'{env_bool("MQTT_TOPIC")}/{self.base}'
+        host = os.getenv("MQTT_HOST").split(":")
+        self.mqtt = mqtt.Client()
+        if env_bool("MQTT_AUTH"):
+            auth = os.getenv("MQTT_AUTH").split(":")
+            self.mqtt.username_pw_set(auth[0], auth[1] if len(auth) > 1 else None)
+        if self.type == "READY":
+            self.mqtt.will_set(self.base + "state", "disconnected", 0, True)
+        if self.type == "READ":
+            self.mqtt.will_set(self.base + f"clients/{os.getpid()}", None, 0, True)
+        try:
+            self.mqtt.connect(host[0], int(host[1] if len(host) > 1 else 1883), 60)
+            self.mqtt.loop_start()
+            self.mqtt_connected = True
+        except Exception as ex:
+            self.write_log(f"[MQTT] {ex}")
 
     def send_mqtt(self, topic: str, message: str) -> None:
         """Publish a message to the MQTT server."""
         if self.mqtt_connected:
-            self.mqtt.publish(self.base + topic, message)
+            if message:
+                self.mqtt.publish(self.base + topic, message)
+            else:
+                self.mqtt.publish(self.base + topic, None, 0, True)
 
     def clean_up(self) -> None:
         """Update the log and MQTT status when a termination signal is received."""
         if self.type == "READY":
             self.write_log(f"❌ '/{self.uri}' stream is down")
             self.send_mqtt("state", "offline")
-            self.send_mqtt("image.jpg", None)
+            self.send_mqtt("attributes", None)
+            self.send_mqtt(f"clients/{os.getpid()}", None)
         elif self.type == "READ":
             self.write_log("📕 Client stopped reading")
             self.send_mqtt(f"clients/{os.getpid()}", None)
