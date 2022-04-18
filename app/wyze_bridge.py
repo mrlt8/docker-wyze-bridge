@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.4 DEV 1\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.4 DEV 2\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -542,9 +542,9 @@ def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
     lib264 = (
         ["libx264", "-vf", "transpose=1"]
         + ["-tune", "zerolatency", "-preset", "ultrafast"]
-        + ["-x264-params", "keyint=20:min-keyint=10:scenecut=-1"]
+        + ["-force_key_frames", "expr:gte(t,n_forced*2)"]
     )
-    flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
+    flags = "-fflags +genpts+flush_packets+nobuffer -flags +low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
     rtsp_ss = f"[select=v:f=rtsp]rtsp://0.0.0.0:8554/{uri.lower()}"
     livestream = get_livestream_cmd(uri)

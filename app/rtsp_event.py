@@ -35,35 +35,42 @@ class RtspEvent:
         img_file = os.getenv("IMG_PATH", "/img/") + self.uri + ".jpg"
         env_snap = os.getenv("SNAPSHOT", "NA").ljust(5, "0").upper()
         self.send_mqtt("image", None)
-        if env_bool("HASS"):
-            import json
+        # if env_bool("HASS"):
+        #     import json
 
-            host = env_bool("HOSTNAME", "localhost")
-            self.send_mqtt(
-                "attributes",
-                json.dumps(
-                    {
-                        "stream": f"rtsp://{host}:8554/{self.uri}",
-                        "image": f"http://{host}:8123/local/{self.uri}.jpg",
-                    }
-                ),
-            )
-        if env_snap[:4] == "RTSP":
-            from subprocess import Popen
+        #     if (host := env_bool("HOSTNAME", "localhost")) == "homeassistant":
+        #         host += ".local"
+        #     self.send_mqtt(
+        #         "attributes",
+        #         json.dumps(
+        #             {
+        #                 "stream": f"rtsp://{host}:8554/{self.uri}",
+        #                 "image": f"http://{host}:8123/local/{self.uri}.jpg",
+        #             }
+        #         ),
+        #     )
+        if rtsp := (env_snap[:4] == "RTSP"):
+            from subprocess import Popen, TimeoutExpired
+
+            rtsp_addr = "127.0.0.1:8554"
+            if env_bool(f"RTSP_PATHS_{self.uri.upper()}_READUSER"):
+                rtsp_addr = (
+                    env_bool(f"RTSP_PATHS_{self.uri.upper()}_READUSER")
+                    + ":"
+                    + env_bool(f"RTSP_PATHS_{self.uri.upper()}_READPASS")
+                    + f"@{rtsp_addr}"
+                )
+            ffmpeg_cmd = f"ffmpeg -loglevel fatal -skip_frame nokey -rtsp_transport tcp -i rtsp://{rtsp_addr}/{self.uri} -vframes 1 -y {img_file}"
         while True:
             self.send_mqtt("state", "online")
-            if env_snap[:4] == "RTSP":
-                rtsp_addr = "127.0.0.1:8554"
-                if env_bool(f"RTSP_PATHS_{self.uri.upper()}_READUSER"):
-                    rtsp_addr = (
-                        env_bool(f"RTSP_PATHS_{self.uri.upper()}_READUSER")
-                        + ":"
-                        + env_bool(f"RTSP_PATHS_{self.uri.upper()}_READPASS")
-                        + f"@{rtsp_addr}"
-                    )
-                Popen(
-                    f"ffmpeg -loglevel fatal -skip_frame nokey -rtsp_transport tcp -i rtsp://{rtsp_addr}/{self.uri} -vframes 1 -y {img_file}".split()
-                ).wait(10)
+            if rtsp:
+                ffmpeg_sub = Popen(ffmpeg_cmd.split())
+                try:
+                    ffmpeg_sub.wait(25)
+                except TimeoutExpired:
+                    ffmpeg_sub.kill()
+                    self.write_log("snapshot timed out")
+                    continue
             if os.path.exists(img_file) and os.path.getsize(img_file) > 1:
                 with open(img_file, "rb") as img:
                     self.send_mqtt("image", img.read())
