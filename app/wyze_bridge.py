@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.4 DEV 2\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.4 DEV 3\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -555,7 +555,7 @@ def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
         + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
         .split()
-        + ["-analyzeduration", "0", "-probesize", "32", "-f", "h264", "-i", "pipe:"]
+        + ["-analyzeduration", "1", "-f", "h264", "-i", "pipe:"]
         + (["-f", "lavfi", "-i", "anullsrc=cl=mono"] if livestream else [])
         + ["-c:v"]
         + (["copy"] if not rotate else lib264)

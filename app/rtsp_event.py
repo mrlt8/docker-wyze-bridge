@@ -60,7 +60,7 @@ class RtspEvent:
                     + env_bool(f"RTSP_PATHS_{self.uri.upper()}_READPASS")
                     + f"@{rtsp_addr}"
                 )
-            ffmpeg_cmd = f"ffmpeg -loglevel fatal -skip_frame nokey -rtsp_transport tcp -i rtsp://{rtsp_addr}/{self.uri} -vframes 1 -y {img_file}"
+            ffmpeg_cmd = f"ffmpeg -loglevel fatal -threads 1 -analyzeduration 1 -rtsp_transport tcp -i rtsp://{rtsp_addr}/{self.uri} -f:v h264 -an -f image2 -frames:v 1 -y {img_file}"
         while True:
             self.send_mqtt("state", "online")
             if rtsp:
@@ -84,8 +84,8 @@ class RtspEvent:
 
     def mqtt_connect(self) -> None:
         """Connect to an MQTT if the env option is enabled."""
+        self.mqtt_connected = False
         if not env_bool("MQTT_HOST"):
-            self.mqtt_connected = False
             return
         try:
             import paho.mqtt.client as mqtt
