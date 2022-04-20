@@ -60,7 +60,7 @@ class RtspEvent:
                     + env_bool(f"RTSP_PATHS_{self.uri.upper()}_READPASS")
                     + f"@{rtsp_addr}"
                 )
-            ffmpeg_cmd = f"ffmpeg -loglevel fatal -threads 1 -analyzeduration 1 -rtsp_transport tcp -i rtsp://{rtsp_addr}/{self.uri} -f:v h264 -an -f image2 -frames:v 1 -y {img_file}"
+            ffmpeg_cmd = f"ffmpeg -loglevel error -threads 1 -analyzeduration 50 -probesize 50 -rtsp_transport tcp -i rtsp://{rtsp_addr}/{self.uri} -an -f image2 -frames:v 1 -y {img_file}"
         while True:
             self.send_mqtt("state", "online")
             if rtsp:
