@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.4 DEV 4\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.4 DEV 5\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -518,13 +518,13 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> int:
     bit_frame = f"{sess.preferred_bitrate}kb/s {frame_size} stream"
     if video_param := sess.camera.camera_info.get("videoParm", False):
         if fps := int(video_param.get("fps", 0)):
-            bit_frame += f" ({fps}fps)"
             if fps % 5 != 0:
                 log.error(f"⚠️ Unusual FPS detected: {fps}")
         if (force_fps := int(env_bool(f"FORCE_FPS_{uri}", 0))) and force_fps != fps:
             log.info(f"Attempting to change FPS to {force_fps}")
             sess.change_fps(force_fps)
             fps = force_fps
+        bit_frame += f" ({fps}fps)"
         if env_bool("DEBUG_LEVEL"):
             log.info(f"[videoParm] {video_param}")
     firmware = sess.camera.camera_info["basicInfo"].get("firmware", "NA")
@@ -535,7 +535,7 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> int:
         wifi = sess.camera.camera_info["netInfo"].get("signal", wifi)
     # return mode, firmware, wifi
     log.info(f"📡 Getting {bit_frame} via {mode} (WiFi: {wifi}%) FW: {firmware} (2/3)")
-    return fps or 15
+    return fps or 20
 
 
 def get_ffmpeg_cmd(uri: str, cam_model: str = None, fps: int = None) -> list:

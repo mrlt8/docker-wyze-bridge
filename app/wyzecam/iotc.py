@@ -491,10 +491,15 @@ class WyzeIOTCSession:
                     iotc_msg = False
             if iotc_msg:
                 warnings.warn("Requesting frame_size=%d and bitrate=%d" % iotc_msg)
-                if self.camera.product_model in ("WYZEDB3", "WVOD1"):
-                    mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result()
-                else:
-                    mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result()
+                try:
+                    if self.camera.product_model in ("WYZEDB3", "WVOD1"):
+                        mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result(False)
+                    else:
+                        mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result(False)
+                except tutk_ioctl_mux.Empty:
+                    pass  # Ignore queue.Empty
+                time.sleep(0.5)
+
         return
 
     def clear_local_buffer(self) -> None:
@@ -504,12 +509,12 @@ class WyzeIOTCSession:
 
     def change_fps(self, fps: int) -> None:
         """Send a message to the camera to update the FPS."""
+        warnings.warn("Requesting frame_rate=%d" % fps)
         with self.iotctrl_mux() as mux:
-            mux.send_ioctl(
-                K10052DBSetResolvingBit(
-                    self.preferred_frame_size, self.preferred_bitrate, fps
-                )
-            ).result()
+            try:
+                mux.send_ioctl(K10052DBSetResolvingBit(0, 0, fps)).result(block=False)
+            except tutk_ioctl_mux.Empty:
+                pass  # Ignore queue.Empty
 
     def recv_video_frame(
         self,
