@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.4 DEV 5\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.4 DEV 6\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -470,7 +470,7 @@ def env_filter(cam) -> bool:
         cam.nickname.upper() in env_list("FILTER_NAMES")
         or cam.mac in env_list("FILTER_MACS")
         or cam.product_model in env_list("FILTER_MODELS")
-        or model_names.get(cam.product_model) in env_list("FILTER_MODELS")
+        or model_names.get(cam.product_model).upper() in env_list("FILTER_MODELS")
     )
 
 
