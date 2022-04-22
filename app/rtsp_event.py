@@ -32,23 +32,17 @@ class RtspEvent:
     def pub_start(self) -> None:
         """Handle a 'READY' event when publishing a stream to rtsp-simple-server."""
         self.write_log(f"✅ '/{self.uri}' stream is UP! (3/3)")
-        img_file = os.getenv("IMG_PATH", "/img/") + self.uri + ".jpg"
+
+        img_file = (
+            os.getenv("IMG_PATH", "/img/")
+            + self.uri
+            + "."
+            + env_bool("IMG_TYPE", "jpg")
+        )
+
         env_snap = os.getenv("SNAPSHOT", "NA").ljust(5, "0").upper()
         self.send_mqtt("image", None)
-        # if env_bool("HASS"):
-        #     import json
 
-        #     if (host := env_bool("HOSTNAME", "localhost")) == "homeassistant":
-        #         host += ".local"
-        #     self.send_mqtt(
-        #         "attributes",
-        #         json.dumps(
-        #             {
-        #                 "stream": f"rtsp://{host}:8554/{self.uri}",
-        #                 "image": f"http://{host}:8123/local/{self.uri}.jpg",
-        #             }
-        #         ),
-        #     )
         if rtsp := (env_snap[:4] == "RTSP"):
             from subprocess import Popen, TimeoutExpired
 
@@ -60,11 +54,16 @@ class RtspEvent:
                     + env_bool(f"RTSP_PATHS_{self.uri.upper()}_READPASS")
                     + f"@{rtsp_addr}"
                 )
-            ffmpeg_cmd = f"ffmpeg -loglevel error -threads 1 -analyzeduration 50 -probesize 50 -rtsp_transport tcp -i rtsp://{rtsp_addr}/{self.uri} -an -f image2 -frames:v 1 -y {img_file}"
+            ffmpeg_cmd = (
+                ["ffmpeg", "-loglevel", "error", "-threads", "1"]
+                + ["-analyzeduration", "50", "-probesize", "50"]
+                + ["-rtsp_transport", "tcp", "-i", f"rtsp://{rtsp_addr}/{self.uri}"]
+                + ["-f", "image2", "-frames:v", "1", "-y", img_file]
+            )
         while True:
             self.send_mqtt("state", "online")
             if rtsp:
-                ffmpeg_sub = Popen(ffmpeg_cmd.split())
+                ffmpeg_sub = Popen(ffmpeg_cmd)
                 try:
                     ffmpeg_sub.wait(25)
                 except TimeoutExpired:
