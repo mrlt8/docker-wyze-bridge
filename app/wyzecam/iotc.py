@@ -4,7 +4,6 @@ import hashlib
 import logging
 import os
 import pathlib
-from tempfile import mktemp
 import time
 import warnings
 from ctypes import CDLL, c_int
@@ -66,7 +65,7 @@ class WyzeIOTC:
         tutk_platform_lib: Optional[Union[str, CDLL]] = None,
         udp_port: Optional[int] = 0,
         max_num_av_channels: Optional[int] = 1,
-        sdk_key: Optional[str] = "",
+        sdk_key: Optional[str] = None,
         debug: bool = False,
     ) -> None:
         """Construct a WyzeIOTC session object.
@@ -85,6 +84,8 @@ class WyzeIOTC:
         if isinstance(tutk_platform_lib, str):
             path = pathlib.Path(tutk_platform_lib)
             tutk_platform_lib = tutk.load_library(str(path.absolute()))
+        if not sdk_key:
+            sdk_key = os.getenv("SDK_KEY")
         license_status = tutk.TUTK_SDK_Set_License_Key(tutk_platform_lib, sdk_key)
         if license_status < 0:
             raise tutk.TutkError(license_status)
@@ -482,7 +483,7 @@ class WyzeIOTCSession:
             if bitrate:
                 param = mux.send_ioctl(K10020CheckCameraParams(3, 5)).result()
                 if fps and int(param.get("5", fps)) != fps:
-                    warnings.warn(f"FPS param mismatch (framerate={param.get('5')})")
+                    warnings.warn(f"FPS param mismatch (avRecv FPS={fps})")
                     if os.getenv("FPS_FIX"):
                         self.change_fps(fps)
                     return
@@ -491,11 +492,16 @@ class WyzeIOTCSession:
                 else:
                     iotc_msg = False
             if iotc_msg:
-                warnings.warn("Requesting frame_size=%d and bitrate=%d" % iotc_msg)
-                if self.camera.product_model in ("WYZEDB3", "WVOD1"):
-                    mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result()
-                else:
-                    mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result()
+                logger.info("Requesting frame_size=%d and bitrate=%d" % iotc_msg)
+                try:
+                    if self.camera.product_model in ("WYZEDB3", "WVOD1"):
+                        mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result(False)
+                    else:
+                        mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result(False)
+                except tutk_ioctl_mux.Empty:
+                    pass  # Ignore queue.Empty
+                time.sleep(0.5)
+
         return
 
     def clear_local_buffer(self) -> None:
@@ -505,12 +511,12 @@ class WyzeIOTCSession:
 
     def change_fps(self, fps: int) -> None:
         """Send a message to the camera to update the FPS."""
+        logger.info("Requesting frame_rate=%d" % fps)
         with self.iotctrl_mux() as mux:
-            mux.send_ioctl(
-                K10052DBSetResolvingBit(
-                    self.preferred_frame_size, self.preferred_bitrate, fps
-                )
-            ).result()
+            try:
+                mux.send_ioctl(K10052DBSetResolvingBit(0, 0, fps)).result(block=False)
+            except tutk_ioctl_mux.Empty:
+                pass  # Ignore queue.Empty
 
     def recv_audio_frames(self, stop_flag) -> Iterator[Optional[bytes]]:
         """A generator for returning raw audio frames for the bridge."""
@@ -540,9 +546,33 @@ class WyzeIOTCSession:
                 try:
                     audio_pipe.write(frame_data)
                 except IOError as e:
-                    print(e)
-                    break
+                    raise Exception(e)
         print("exit audio")
+
+    def get_audio_codec(self, limit: int = 25):
+        """Identify audio codec."""
+        bit = 16000 if self.camera.product_model == "WYZE_CAKP2JFUS" else 8000
+        for _ in range(limit):
+            errno, _, frame_info = tutk.av_recv_audio_data(
+                self.tutk_platform_lib, self.av_chan_id
+            )
+            if errno == 0 and frame_info.codec_id:
+                codec = False
+                if frame_info.codec_id == 140:  # MEDIA_CODEC_AUDIO_PCM
+                    codec = "s16le"
+                elif frame_info.codec_id == 141:  # MEDIA_CODEC_AUDIO_AAC
+                    codec = "copy"
+                elif frame_info.codec_id == 143:  # MEDIA_CODEC_AUDIO_G711_ALAW
+                    codec = "alaw"
+                else:
+                    raise Exception(f"\nUnknown codec_id={frame_info.codec_id}\n")
+                if codec:
+                    logger.info(
+                        f"codec={codec} bit_rate={bit} codec_id={frame_info.codec_id}"
+                    )
+                    return codec, bit
+            time.sleep(0.5)
+        raise Exception("Unable to identify audio.")
 
     def recv_video_frame(
         self,
