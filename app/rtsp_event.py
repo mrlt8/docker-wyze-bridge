@@ -19,6 +19,7 @@ class RtspEvent:
             signal.signal(getattr(signal, sig), lambda n, f: self.clean_up())
         self.uri: str
         self.type: str
+        self.state: int = 0
         self.__dict__.update(
             dict(zip(["uri", "type", "mac", "model", "firmware"], sys.argv[1:]))
         )
@@ -43,7 +44,7 @@ class RtspEvent:
         env_snap = os.getenv("SNAPSHOT", "NA").ljust(5, "0").upper()
         self.send_mqtt("image", None)
 
-        if rtsp := (env_snap[:4] == "RTSP"):
+        if rtsp_snap := (env_snap[:4] == "RTSP"):
             from subprocess import Popen, TimeoutExpired
 
             rtsp_addr = "127.0.0.1:8554"
@@ -62,7 +63,7 @@ class RtspEvent:
             )
         while True:
             self.send_mqtt("state", "online")
-            if rtsp:
+            if rtsp_snap:
                 ffmpeg_sub = Popen(ffmpeg_cmd)
                 try:
                     ffmpeg_sub.wait(25)
@@ -77,8 +78,11 @@ class RtspEvent:
 
     def read_start(self) -> None:
         """Handle 'READ' events when a client starts consuming a stream fromrtsp-simple-server."""
+        if env_bool("SKIP_RTSP_LOG") and (os.getenv("SNAPSHOT")[:4] == "RTSP"):
+            time.sleep(3)
         self.write_log("📖 New client reading ")
         self.send_mqtt(f"clients/{os.getpid()}", "reading")
+        self.state = 1
         signal.pause()
 
     def mqtt_connect(self) -> None:
@@ -124,7 +128,7 @@ class RtspEvent:
             self.send_mqtt("state", "offline")
             self.send_mqtt("attributes", None)
             self.send_mqtt(f"clients/{os.getpid()}", None)
-        elif self.type == "READ":
+        elif self.type == "READ" and self.state:
             self.write_log("📕 Client stopped reading")
             self.send_mqtt(f"clients/{os.getpid()}", None)
         if self.mqtt_connected:
