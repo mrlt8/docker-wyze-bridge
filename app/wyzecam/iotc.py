@@ -490,7 +490,7 @@ class WyzeIOTCSession:
                 else:
                     iotc_msg = False
             if iotc_msg:
-                warnings.warn("Requesting frame_size=%d and bitrate=%d" % iotc_msg)
+                logger.info("Requesting frame_size=%d and bitrate=%d" % iotc_msg)
                 try:
                     if self.camera.product_model in ("WYZEDB3", "WVOD1"):
                         mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result(False)
@@ -509,7 +509,7 @@ class WyzeIOTCSession:
 
     def change_fps(self, fps: int) -> None:
         """Send a message to the camera to update the FPS."""
-        warnings.warn("Requesting frame_rate=%d" % fps)
+        logger.info("Requesting frame_rate=%d" % fps)
         with self.iotctrl_mux() as mux:
             try:
                 mux.send_ioctl(K10052DBSetResolvingBit(0, 0, fps)).result(block=False)
