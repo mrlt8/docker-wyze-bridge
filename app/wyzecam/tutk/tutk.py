@@ -611,8 +611,7 @@ def av_recv_audio_data(tutk_platform_lib: CDLL, av_chan_id: c_int):
 
     if frame_len < 0:
         return frame_len, None, None
-    actual_audio_data: bytes = audio_data[:frame_len]
-    return 0, actual_audio_data, frame_info
+    return 0, audio_data[:frame_len], frame_info
 
 
 def av_recv_io_ctrl(
