@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.4 DEV 6\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.4\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -397,7 +397,7 @@ class WyzeBridge:
                 ) as sess:
                     connected.set()
                     fps = check_cam_sess(sess, uri)
-                    cmd = get_ffmpeg_cmd(uri, cam.product_model, fps)
+                    cmd = get_ffmpeg_cmd(uri, cam.product_model)
                     with Popen(cmd, stdin=PIPE) as ffmpeg:
                         for frame in sess.recv_bridge_frame(
                             stop_flag, self.keep_bad_frames, self.timeout, fps
@@ -538,10 +538,10 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> int:
     return fps or 20
 
 
-def get_ffmpeg_cmd(uri: str, cam_model: str = None, fps: int = None) -> list:
+def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
     """Return the ffmpeg cmd with options from the env."""
     lib264 = (
-        ["libx264", "-vf", "transpose=1", "-b:v", "3000K"]  # , "-r", f"{fps}"]
+        ["libx264", "-filter:v", "transpose=1", "-b:v", "3000K"]
         + ["-tune", "zerolatency", "-preset", "ultrafast"]
         + ["-force_key_frames", "expr:gte(t,n_forced*2)"]
     )

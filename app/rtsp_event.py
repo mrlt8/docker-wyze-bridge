@@ -78,7 +78,7 @@ class RtspEvent:
 
     def read_start(self) -> None:
         """Handle 'READ' events when a client starts consuming a stream fromrtsp-simple-server."""
-        if env_bool("SKIP_RTSP_LOG") and (os.getenv("SNAPSHOT")[:4] == "RTSP"):
+        if env_bool("SKIP_RTSP_LOG") and (os.getenv("SNAPSHOT", "NONE")[:4] == "RTSP"):
             time.sleep(3)
         self.write_log("📖 New client reading ")
         self.send_mqtt(f"clients/{os.getpid()}", "reading")
