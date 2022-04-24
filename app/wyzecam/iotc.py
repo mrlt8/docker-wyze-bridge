@@ -419,6 +419,7 @@ class WyzeIOTCSession:
         last_keyframe = last_frame = 0, 0
         while not stop_flag.is_set():
             if last_keyframe[1] and (delta := time.time() - last_frame[1]) >= timeout:
+                self.state = WyzeIOTCSessionState.CONNECTING_FAILED
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
             if last_keyframe[1] and (slowdown := (0.75 / fps) - delta) > 0:
                 time.sleep(slowdown)
@@ -518,7 +519,7 @@ class WyzeIOTCSession:
             except tutk_ioctl_mux.Empty:
                 pass  # Ignore queue.Empty
 
-    def recv_audio_frames(self, stop_flag, fps: int = 20) -> Iterator[Optional[bytes]]:
+    def recv_audio_frames(self, fps: int = 20) -> None:
         """Write raw audio frames to a named pipe."""
         FIFO = f"/tmp/{self.camera.mac}.wav"
         try:
@@ -528,7 +529,7 @@ class WyzeIOTCSession:
                 raise e
         try:
             with open(FIFO, "wb") as audio_pipe:
-                while not stop_flag.is_set():
+                while self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
                     errno, frame_data, _ = tutk.av_recv_audio_data(
                         self.tutk_platform_lib, self.av_chan_id
                     )
@@ -540,21 +541,19 @@ class WyzeIOTCSession:
                         ):
                             time.sleep(2 / fps)
                             continue
-                        if errno == -20019:  # AV_ER_NOT_INITIALIZED
-                            raise tutk.TutkError(errno)
                         warnings.warn(f"Error: {errno}")
                         break
                     audio_pipe.write(frame_data)
         except tutk.TutkError as e:
             raise tutk.TutkError(errno)
         except IOError as e:
-            if 32 not in e.args:
+            if e.errno != 32:  # Ignore errno.EPIPE - Broken pipe
                 warnings.warn(str(e))
         finally:
             os.unlink(FIFO)
             warnings.warn("Audio pipe closed")
 
-    def get_audio_codec(self, limit: int = 25):
+    def get_audio_codec(self, limit: int = 25) -> Tuple[str, int]:
         """Identify audio codec."""
         bit = 16000 if self.camera.product_model == "WYZE_CAKP2JFUS" else 8000
         for _ in range(limit):
