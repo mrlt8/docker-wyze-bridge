@@ -398,7 +398,11 @@ class WyzeBridge:
                 a_codec = None if env_bool(f"FFAUDIO_{uri}") else sess.get_audio_codec()
                 fps = check_cam_sess(sess, uri, a_codec)
                 cmd = get_ffmpeg_cmd(uri, cam.mac, cam.product_model, a_codec)
-                audio_thread = Thread(target=sess.recv_audio_frames, args=(stop_audio,))
+                audio_thread = Thread(
+                    target=sess.recv_audio_frames,
+                    args=(stop_audio, fps),
+                    name=uri + "_AUDIO",
+                )
                 with Popen(cmd, stdin=PIPE) as ffmpeg:
                     audio_thread.start()
                     for frame in sess.recv_bridge_frame(

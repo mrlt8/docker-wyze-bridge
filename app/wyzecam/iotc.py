@@ -518,36 +518,41 @@ class WyzeIOTCSession:
             except tutk_ioctl_mux.Empty:
                 pass  # Ignore queue.Empty
 
-    def recv_audio_frames(self, stop_flag) -> Iterator[Optional[bytes]]:
-        """A generator for returning raw audio frames for the bridge."""
+    def recv_audio_frames(self, stop_flag, fps: int = 20) -> Iterator[Optional[bytes]]:
+        """Write raw audio frames to a named pipe."""
         FIFO = f"/tmp/{self.camera.mac}.wav"
         try:
             os.mkfifo(FIFO, os.O_NONBLOCK)
         except OSError as e:
             if e.errno != 17:
                 raise e
-        with open(FIFO, "wb") as audio_pipe:
-            while not stop_flag.is_set():
-                errno, frame_data, _ = tutk.av_recv_audio_data(
-                    self.tutk_platform_lib, self.av_chan_id
-                )
-                if errno < 0:
-                    if errno == tutk.AV_ER_DATA_NOREADY:
-                        time.sleep(1 / 40)
-                        continue
-                    if errno == tutk.AV_ER_INCOMPLETE_FRAME:
-                        warnings.warn("Received incomplete frame")
-                        continue
-                    if errno == tutk.AV_ER_LOSED_THIS_FRAME:
-                        warnings.warn("Lost frame")
-                        continue
-                    warnings.warn(f"Error: {errno}")
-                    break
-                try:
+        try:
+            with open(FIFO, "wb") as audio_pipe:
+                while not stop_flag.is_set():
+                    errno, frame_data, _ = tutk.av_recv_audio_data(
+                        self.tutk_platform_lib, self.av_chan_id
+                    )
+                    if errno < 0:
+                        if errno in (
+                            tutk.AV_ER_DATA_NOREADY,
+                            tutk.AV_ER_INCOMPLETE_FRAME,
+                            tutk.AV_ER_LOSED_THIS_FRAME,
+                        ):
+                            time.sleep(2 / fps)
+                            continue
+                        if errno == -20019:  # AV_ER_NOT_INITIALIZED
+                            raise tutk.TutkError(errno)
+                        warnings.warn(f"Error: {errno}")
+                        break
                     audio_pipe.write(frame_data)
-                except IOError as e:
-                    raise Exception(e)
-        print("exit audio")
+        except tutk.TutkError as e:
+            raise tutk.TutkError(errno)
+        except IOError as e:
+            if 32 not in e.args:
+                warnings.warn(str(e))
+        finally:
+            os.unlink(FIFO)
+            warnings.warn("Audio pipe closed")
 
     def get_audio_codec(self, limit: int = 25):
         """Identify audio codec."""
