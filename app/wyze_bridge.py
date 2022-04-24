@@ -566,7 +566,8 @@ def get_ffmpeg_cmd(
     flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
     fifo = f"/tmp/{mac}.wav"
-    rtsp_ss = f"[select=v,a:f=rtsp:rtsp_transport=tcp]rtsp://0.0.0.0:8554/{uri.lower()}"
+    rtsp_protocol = env_bool("RTSP_PROTOCOLS", "tcp")
+    rtsp_ss = f"[select=v,a:f=rtsp:rtsp_transport={rtsp_protocol}]rtsp://0.0.0.0:8554/{uri.lower()}"
     livestream = get_livestream_cmd(uri)
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD", "")).strip(
         "'\"\n "
