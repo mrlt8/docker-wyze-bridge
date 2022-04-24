@@ -26,21 +26,29 @@ docker run \
 
 You can view your stream by visiting: `http://localhost:8888/cam-nickname` where localhost is the hostname or ip of the machine running the bridge followed by the cam nickname in lowercase with `-` in place of spaces.
 
-## Changes in v1.3.3
+See [basic usage](#basic-usage) for additional information.
+
+## Changes in v1.3.4
+
+There is a known bug/issue with certain doorbells that drift out of sync due to the day/night fps change (#340).
+
+Audio is also coming soon. Please check out the audio branch to report any issues.
 
 ### ✨ NEW
 
-- Livestreaming option now available. [Details](https://github.com/mrlt8/docker-wyze-bridge#livestream)
+- ENV option: `IMG_TYPE` - Specify the snapshot image file type, e.g. `IMG_TYPE=png`
+- ENV option: `SKIP_RTSP_LOG` - Prevent "read" spam in logs when using RTSP based snapshots.
 
 ### 🚧 Changed
 
-- Update FFmpeg to 5.0.
-- Update rtsp-simple-server to v0.18.0.
-- Tweaked doorbell rotation command for performance. #330
-- HA: make `SNAPSHOT` optional and add `RTSP5`. #336
-- Tweaked FFmpeg commands to use [tee muxer](https://ffmpeg.org/ffmpeg-formats.html#tee).
-- API: iOS version bump to 15.4.1.
-- API: Wyze app version number bump to 2.29.2.
+- Fixed bug in `FILTER_MODELS` ENV that wouldn't match certain cameras (#346). Thanks @ragenhe!
+- Fixed bug that could cause the stream to block when changing resolution/bitrate midstream (#340).
+- Update rtsp-simple-server to v0.18.1.
+- Improved speed of RTSP based snapshots!
+- Force keyframes every two seconds on doorbell rotation.
+- Limit doorbell bitrate to 3,000kb/s.
+- MQTT related code refactoring and cleanup of unused topics.
+- API: Wyze app version number bump to 2.30.0.
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -136,7 +144,7 @@ Audio is coming soon.
 
 If your email or password contains a `%` or `$` character, you may need to escape them with an extra character. e.g., `pa$$word` should be entered as `pa$$$$word`
 
-### Camera Stream URIs
+#### Camera Stream URIs
 
 By default, the bridge will create three streams for each of your cameras which can be accessed at the following URIs, where `camera-nickname` is the name of the camera set in the Wyze app and converted to lower case with hyphens in place of spaces. e.g. 'Front Door' would be `/front-door`
 
@@ -166,7 +174,7 @@ Replace localhost with the hostname or ip of the machine running the bridge:
   http://localhost:8888/camera-nickname
   ```
 
-### Multi-Factor Authentication
+#### Multi-Factor Authentication
 
 Two-factor authentication ("Two-Step Verification" in the wyze app) is supported and will automatically be detected, however additional steps are required to enter your verification code.
 
@@ -288,6 +296,8 @@ In the event that you need to allow the bridge to access a select number of came
 - `SNAPSHOT=RTSP` Will run every 180 seconds (configurable) and wll grab a new frame from the RTSP stream every iteration and save it to `/img/cam-name.jpg` on standard docker installs or `/config/www/cam-name.jpg` in Home Assistant mode. Can specify a custom interval with `SNAPSHOT=RTSP(INT)` e.g. `SNAPSHOT=RTSP30` to run every 30 seconds
 
 - `IMG_DIR=/img/` Specify the directory where the snapshots will be saved *within the container*. Use volumes in docker to map to an external directory.
+
+- `IMG_TYPE` Specify the file type of the image, e.g. `IMG_TYPE=png`. Will default to jpg. 
 
 ### Stream Recording
 
@@ -449,6 +459,8 @@ environment options:
 - `RTSP_READTIMEOUT` (str) Adjust the max number of seconds of missing frames allowed before a stream is restarted. Be sure to include the s after the number. Default: `20s`
 
 - `RTSP_LOGLEVEL` (debug|info|warn) Adjust the verbosity of rtsp-simple-server; available values are "warn", "info", "debug".
+
+- `SKIP_RTSP_LOG` (bool) Prevent "read" spam in the logs when using RTSP based snapshots. Works by only logginng clients that stay connected for longer than 3s.
 
 - `DEBUG_FFMPEG` (bool) Enable additional logging from FFmpeg.
 
