@@ -481,7 +481,7 @@ class WyzeIOTCSession:
             if bitrate:
                 param = mux.send_ioctl(K10020CheckCameraParams(3, 5)).result()
                 if fps and int(param.get("5", fps)) != fps:
-                    warnings.warn(f"FPS param mismatch (framerate={param.get('5')})")
+                    warnings.warn(f"FPS param mismatch (avRecv FPS={fps})")
                     if os.getenv("FPS_FIX"):
                         self.change_fps(fps)
                     return
@@ -490,11 +490,16 @@ class WyzeIOTCSession:
                 else:
                     iotc_msg = False
             if iotc_msg:
-                warnings.warn("Requesting frame_size=%d and bitrate=%d" % iotc_msg)
-                if self.camera.product_model in ("WYZEDB3", "WVOD1"):
-                    mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result()
-                else:
-                    mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result()
+                logger.info("Requesting frame_size=%d and bitrate=%d" % iotc_msg)
+                try:
+                    if self.camera.product_model in ("WYZEDB3", "WVOD1"):
+                        mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result(False)
+                    else:
+                        mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result(False)
+                except tutk_ioctl_mux.Empty:
+                    pass  # Ignore queue.Empty
+                time.sleep(0.5)
+
         return
 
     def clear_local_buffer(self) -> None:
@@ -504,12 +509,12 @@ class WyzeIOTCSession:
 
     def change_fps(self, fps: int) -> None:
         """Send a message to the camera to update the FPS."""
+        logger.info("Requesting frame_rate=%d" % fps)
         with self.iotctrl_mux() as mux:
-            mux.send_ioctl(
-                K10052DBSetResolvingBit(
-                    self.preferred_frame_size, self.preferred_bitrate, fps
-                )
-            ).result()
+            try:
+                mux.send_ioctl(K10052DBSetResolvingBit(0, 0, fps)).result(block=False)
+            except tutk_ioctl_mux.Empty:
+                pass  # Ignore queue.Empty
 
     def recv_video_frame(
         self,

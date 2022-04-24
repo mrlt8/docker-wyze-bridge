@@ -263,13 +263,13 @@ class TutkIOCtrlMuxListener(threading.Thread):
 
     def run(self) -> None:
         timeout_ms = 1000
-        logger.info(f"Now listening on channel id {self.av_chan_id}")
+        logger.debug(f"Now listening on channel id {self.av_chan_id}")
 
         while True:
             try:
                 control_channel_command = self.queues[CONTROL_CHANNEL].get_nowait()
                 if control_channel_command == STOP_SENTINEL:
-                    logger.info(f"No longer listening on channel id {self.av_chan_id}")
+                    logger.debug(f"No longer listening on channel id {self.av_chan_id}")
                     return
             except Empty:
                 pass

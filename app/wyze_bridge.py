@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.3\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.4\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -470,7 +470,7 @@ def env_filter(cam) -> bool:
         cam.nickname.upper() in env_list("FILTER_NAMES")
         or cam.mac in env_list("FILTER_MACS")
         or cam.product_model in env_list("FILTER_MODELS")
-        or model_names.get(cam.product_model) in env_list("FILTER_MODELS")
+        or model_names.get(cam.product_model).upper() in env_list("FILTER_MODELS")
     )
 
 
@@ -518,12 +518,13 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> int:
     bit_frame = f"{sess.preferred_bitrate}kb/s {frame_size} stream"
     if video_param := sess.camera.camera_info.get("videoParm", False):
         if fps := int(video_param.get("fps", 0)):
-            bit_frame += f" ({fps}fps)"
             if fps % 5 != 0:
                 log.error(f"⚠️ Unusual FPS detected: {fps}")
         if (force_fps := int(env_bool(f"FORCE_FPS_{uri}", 0))) and force_fps != fps:
             log.info(f"Attempting to change FPS to {force_fps}")
             sess.change_fps(force_fps)
+            fps = force_fps
+        bit_frame += f" ({fps}fps)"
         if env_bool("DEBUG_LEVEL"):
             log.info(f"[videoParm] {video_param}")
     firmware = sess.camera.camera_info["basicInfo"].get("firmware", "NA")
@@ -534,28 +535,28 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> int:
         wifi = sess.camera.camera_info["netInfo"].get("signal", wifi)
     # return mode, firmware, wifi
     log.info(f"📡 Getting {bit_frame} via {mode} (WiFi: {wifi}%) FW: {firmware} (2/3)")
-    return fps or 15
+    return fps or 20
 
 
 def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
     """Return the ffmpeg cmd with options from the env."""
     lib264 = (
-        ["libx264", "-vf", "transpose=1"]
+        ["libx264", "-filter:v", "transpose=1", "-b:v", "3000K"]
         + ["-tune", "zerolatency", "-preset", "ultrafast"]
-        + ["-x264-params", "keyint=20:min-keyint=10:scenecut=-1"]
+        + ["-force_key_frames", "expr:gte(t,n_forced*2)"]
     )
-    flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
+    flags = "-fflags +genpts+flush_packets+nobuffer -flags +low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
-    rtsp_ss = f"[select=v:f=rtsp]rtsp://0.0.0.0:8554/{uri.lower()}"
+    rtsp_ss = f"[select=v:f=rtsp:rtsp_transport=tcp]rtsp://0.0.0.0:8554/{uri.lower()}"
     livestream = get_livestream_cmd(uri)
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD", "")).strip(
         "'\"\n "
     ).format(cam_name=uri.lower(), CAM_NAME=uri).split() or (
-        ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "fatal"]
+        ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "error"]
         + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
         .split()
-        + ["-analyzeduration", "0", "-probesize", "32", "-f", "h264", "-i", "pipe:"]
+        + ["-analyzeduration", "50", "-probesize", "50", "-f", "h264", "-i", "pipe:"]
         + (["-f", "lavfi", "-i", "anullsrc=cl=mono"] if livestream else [])
         + ["-c:v"]
         + (["copy"] if not rotate else lib264)
