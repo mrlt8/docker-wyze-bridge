@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE AUDIO 2\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE AUDIO 3\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -380,38 +380,39 @@ class WyzeBridge:
 
     def start_tutk_stream(self, cam: wyzecam.WyzeCamera, stop_flag, connected) -> None:
         """Connect and communicate with the camera using TUTK."""
-        stop_audio = Event()
         uri = clean_name(cam.nickname, upper=True)
         exit_code = 1
-        frame_size, bitrate = get_env_quality(uri, cam.product_model)
+        audio = env_bool(f"ENABLE_AUDIO_{uri}", env_bool("ENABLE_AUDIO", False))
         try:
             with wyzecam.WyzeIOTC() as wyze_iotc, wyzecam.WyzeIOTCSession(
                 wyze_iotc.tutk_platform_lib,
                 self.user,
                 cam,
-                frame_size,
-                bitrate,
-                enable_audio=True,
+                *(get_env_quality(uri, cam.product_model)),
+                enable_audio=audio,
                 connect_timeout=self.connect_timeout,
             ) as sess:
                 connected.set()
-                a_codec = None if env_bool(f"FFAUDIO_{uri}") else sess.get_audio_codec()
+                if not audio or env_bool(f"FFAUDIO_{uri}"):
+                    a_codec = None
+                else:
+                    a_codec = sess.get_audio_codec()
+
                 fps = check_cam_sess(sess, uri, a_codec)
-                cmd = get_ffmpeg_cmd(uri, cam.mac, cam.product_model, a_codec)
                 audio_thread = Thread(
-                    target=sess.recv_audio_frames,
-                    args=(stop_audio, fps),
-                    name=uri + "_AUDIO",
+                    target=sess.recv_audio_frames, args=(fps,), name=uri + "_AUDIO"
                 )
-                with Popen(cmd, stdin=PIPE) as ffmpeg:
-                    audio_thread.start()
+                with Popen(
+                    get_ffmpeg_cmd(uri, cam, audio, a_codec), stdin=PIPE
+                ) as ffmpeg:
+                    if audio:
+                        audio_thread.start()
                     for frame in sess.recv_bridge_frame(
                         stop_flag, self.keep_bad_frames, self.timeout, fps
                     ):
                         ffmpeg.stdin.write(frame)
         except Exception as ex:
             log.warning(ex)
-            stop_audio.set()
             if ex.args[0] == -13:  # IOTC_ER_TIMEOUT
                 time.sleep(2)
             elif ex.args[0] in (-19, -68, -90):
@@ -549,26 +550,32 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str, audio: tuple = None)
     # return mode, firmware, wifi
     log.info(f"📡 Getting {bit_frame} via {mode} (WiFi: {wifi}%) FW: {firmware} (2/3)")
     if audio:
-        log.info(f"🔊 Audio Enabled - {audio[0]}/{audio[1]}Hz")
+        log.info(f"🔊 Audio Enabled - {audio[0].replace('s16le','pcm')}/{audio[1]:,}Hz")
     return fps or 20
 
 
 def get_ffmpeg_cmd(
-    uri: str, mac: str, cam_model: str = None, audio: tuple = None
+    uri: str, cam: wyzecam.WyzeCamera, audio: bool = False, a_codec: tuple = None
 ) -> list:
     """Return the ffmpeg cmd with options from the env."""
-    audio_f = f"{audio[0]} -ar {audio[1]}" if audio else "s16le -ar 8000"
     lib264 = (
         ["libx264", "-vf", "transpose=1", "-b:v", "3000K"]  # , "-r", f"{fps}"]
         + ["-tune", "zerolatency", "-preset", "ultrafast"]
         + ["-force_key_frames", "expr:gte(t,n_forced*2)"]
     )
     flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
-    rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
-    fifo = f"/tmp/{mac}.wav"
-    rtsp_protocol = env_bool("RTSP_PROTOCOLS", "tcp")
-    rtsp_ss = f"[select=v,a:f=rtsp:rtsp_transport={rtsp_protocol}]rtsp://0.0.0.0:8554/{uri.lower()}"
+    rotate = cam.product_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
+
     livestream = get_livestream_cmd(uri)
+    audio_in = ["-f", "lavfi", "-i", "anullsrc=cl=mono"] if livestream else []
+    if audio:
+        fifo = f"/tmp/{cam.mac}.wav"
+        audio_f = f"-f {a_codec[0]} -ar {a_codec[1]}" if a_codec else "s16le -ar 8000"
+        audio_in = env_bool(f"FFAUDIO_{uri}", audio_f).split() + ["-i", fifo]
+    av_select = "select=" + ("v,a" if audio else "v")
+    rtsp_protocol = "f=rtsp:rtsp_transport=" + env_bool("RTSP_PROTOCOLS", "tcp")
+    rtsp_ss = f"[{av_select}:{rtsp_protocol}]rtsp://0.0.0.0:8554/{uri.lower()}"
+
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD", "")).strip(
         "'\"\n "
     ).format(cam_name=uri.lower(), CAM_NAME=uri).split() or (
@@ -577,16 +584,15 @@ def get_ffmpeg_cmd(
         .strip("'\"\n ")
         .split()
         + ["-analyzeduration", "50", "-probesize", "50", "-f", "h264", "-i", "pipe:"]
-        + ["-f"]
-        + env_bool(f"FFAUDIO_{uri}", audio_f).split()
-        + ["-i", fifo]
+        + audio_in
         + ["-c:v"]
         + (["copy"] if not rotate else lib264)
-        + ["-c:a", "aac"]
+        + (["-c:a", "aac"] if audio_in else [])
         + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
         + ["-f", "tee"]
-        + ["-map", "0:v", "-map", "1:a"]
-        + [rtsp_ss + get_record_cmd(uri) + livestream]
+        + ["-map", "0:v"]
+        + (["-map", "1:a"] if audio_in else [])
+        + [rtsp_ss + get_record_cmd(uri, av_select) + livestream]
     )
     if "ffmpeg" not in cmd[0].lower():
         cmd.insert(0, "ffmpeg")
@@ -595,7 +601,7 @@ def get_ffmpeg_cmd(
     return cmd
 
 
-def get_record_cmd(uri: str) -> str:
+def get_record_cmd(uri: str, av_select: str) -> str:
     """Check if recording is enabled and return ffmpeg tee cmd."""
     if not env_bool(f"RECORD_{uri}", env_bool("RECORD_ALL", False)):
         return ""
@@ -608,7 +614,7 @@ def get_record_cmd(uri: str) -> str:
     os.makedirs(path, exist_ok=True)
     log.info(f"📹 Will record {seg_time}s clips to {path}")
     return (
-        "|[onfail=ignore:select=v,a:f=segment"
+        f"|[onfail=ignore:{av_select}:f=segment"
         f":segment_time={seg_time}"
         ":segment_atclocktime=1"
         ":segment_format=mp4"

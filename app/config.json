@@ -41,14 +41,18 @@
         "WYZE_PASSWORD": null,
         "NET_MODE": "ANY",
         "SNAPSHOT": "API",
-        "MQTT_DTOPIC": "homeassistant"
+        "IMG_TYPE": "jpg",
+        "MQTT_DTOPIC": "homeassistant",
+        "ENABLE_AUDIO": true
     },
     "schema": {
         "WYZE_EMAIL": "email",
         "WYZE_PASSWORD": "password",
         "NET_MODE": "list(LAN|P2P|ANY)",
         "SNAPSHOT": "list(API|RTSP|RTSP5|RTSP15|RTSP30|RTSP60|Disable)?",
+        "IMG_TYPE": "list(jpg|png)",
         "IMG_DIR": "str?",
+        "ENABLE_AUDIO": "bool?",
         "RECORD_ALL": "bool?",
         "RECORD_LENGTH": "int?",
         "RECORD_PATH": "str?",
