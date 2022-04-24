@@ -1,3 +1,25 @@
+## Changes in v1.3.4
+
+There is a known bug/issue with certain doorbells that drift out of sync due to the day/night fps change (#340).
+
+Audio is also coming soon. Please check out the audio branch to report any issues.
+
+### ✨ NEW
+
+- ENV option: `IMG_TYPE` - Specify the snapshot image file type, e.g. `IMG_TYPE=png`
+- ENV option: `SKIP_RTSP_LOG` - Prevent "read" spam in logs when using RTSP based snapshots.
+
+### 🚧 Changed
+
+- Fixed bug in `FILTER_MODELS` ENV that wouldn't match certain cameras (#346). Thanks @ragenhe!
+- Fixed bug that could cause the stream to block when changing resolution/bitrate midstream (#340).
+- Update rtsp-simple-server to v0.18.1.
+- Improved speed of RTSP based snapshots!
+- Force keyframes every two seconds on doorbell rotation.
+- Limit doorbell bitrate to 3,000kb/s.
+- MQTT related code refactoring and cleanup of unused topics.
+- API: Wyze app version number bump to 2.30.0.
+
 ## Changes in v1.3.3
 
 ### ✨ NEW
@@ -50,28 +72,3 @@
 - Add sleep between frames to lower CPU usage.
 - Fixed import error #324.
 - IOS and wyze app version number bump.
-
-## Changes in v1.2.2
-
-- Potential fix for memory leak and connection issues when connecting to a camera #306 #319 #323.
-- 🏠 HA: `RTSP_READTIMEOUT` is now optional and will use the standard default of `20s`.
-
-## Changes in v1.2.1
-
-- 💥 Breaking: `MAX_NOREADY` and `MAX_BADRES` are being replaced with the time-based `RTSP_READTIMEOUT`.
-- ✨ New: ENV option `CONNECT_TIMEOUT` - Force the stream to timeout and close if if can't connect to the cam. Potential fix for #306 and #211 where a stream would get stuck trying to connect until the bridge restarted.
-- ✨ New: ENV option `NET_MODE_NAME` - camera-specific net mode filter #309.
-- ✨ New: ENV option `FORCE_FPS_NAME` - camera-specific option to force the camera to use a different FPS. Can be used to correct slow/fast SD/cloud recordings.
-- 🔨 Fixed: Auth issue when using WEBRTC.
-- 🚧 Changed: Additional tweaks to prevent memory leaks.
-- 🚧 Changed: Default `RTSP_READTIMEOUT` has been reduced to 20s.
-- 🎨 Logging: Stream will now display the fps that the camera is using.
-
-## Changes in v1.2.0
-
-Improved video performance to help with the buffering/frame drops introduced in v.1.0.3. Thanks to @Ceer123 and everyone who helped identify and test the fixes!
-
-Also in this release:
-
-- 🔨 Fixed: logging and other issues related when stream stopped publishing to rtsp-simple-server.
-- 🔨 Fixed: `AV_ER_REMOTE_TIMEOUT_DISCONNECT` error on connection timeout.
