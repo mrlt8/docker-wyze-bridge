@@ -33,20 +33,20 @@ class RtspEvent:
     def pub_start(self) -> None:
         """Handle a 'READY' event when publishing a stream to rtsp-simple-server."""
         self.write_log(f"✅ '/{self.uri}' stream is UP! (3/3)")
+        self.send_mqtt("image", None)
 
+        env_snap = os.getenv("SNAPSHOT", "NA").ljust(5, "0").upper()
         img_file = (
             os.getenv("IMG_PATH", "/img/")
             + self.uri
             + "."
             + env_bool("IMG_TYPE", "jpg")
         )
-
-        env_snap = os.getenv("SNAPSHOT", "NA").ljust(5, "0").upper()
-        self.send_mqtt("image", None)
-
         if rtsp_snap := (env_snap[:4] == "RTSP"):
-            from subprocess import Popen, TimeoutExpired
-
+            try:
+                from subprocess import Popen, TimeoutExpired
+            except ImportError:
+                rtsp_snap = False
             rtsp_addr = "127.0.0.1:8554"
             if env_bool(f"RTSP_PATHS_{self.uri.upper()}_READUSER"):
                 rtsp_addr = (
@@ -66,7 +66,7 @@ class RtspEvent:
             if rtsp_snap:
                 ffmpeg_sub = Popen(ffmpeg_cmd)
                 try:
-                    ffmpeg_sub.wait(25)
+                    ffmpeg_sub.wait(15)
                 except TimeoutExpired:
                     ffmpeg_sub.kill()
                     self.write_log("snapshot timed out")
@@ -74,7 +74,7 @@ class RtspEvent:
             if os.path.exists(img_file) and os.path.getsize(img_file) > 1:
                 with open(img_file, "rb") as img:
                     self.send_mqtt("image", img.read())
-            time.sleep(int(env_snap[4:]) if env_snap[4:].isdigit() else 180)
+            time.sleep(int(env_snap[4:] if env_snap[4:].isdigit() else 0) or 180)
 
     def read_start(self) -> None:
         """Handle 'READ' events when a client starts consuming a stream fromrtsp-simple-server."""
