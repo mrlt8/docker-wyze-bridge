@@ -28,7 +28,14 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
-## Changes in v1.3.4
+## Changes in v1.3.4/v1.3.5
+
+### 🐛 v1.3.4 Bug
+
+There is a bug in v1.3.4 that could cause the CPU to spike.
+Please avoid v1.3.4 and upgrade to v1.3.5.
+
+---
 
 There is a known bug/issue with certain doorbells that drift out of sync due to the day/night fps change (#340).
 
