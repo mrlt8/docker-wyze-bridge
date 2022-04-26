@@ -26,7 +26,7 @@
     "environment": {
         "HASS": "true",
         "IMG_DIR": "config/www",
-        "SKIP_RTSP_LOG": true,
+        "SKIP_RTSP_LOG": "true",
         "RECORD_PATH": "media/wyze/{CAM_NAME}"
     },
     "map": [
