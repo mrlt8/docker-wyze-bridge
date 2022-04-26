@@ -572,8 +572,8 @@ def get_ffmpeg_cmd(
         audio_f = f"-f {a_codec[0]} -ar {a_codec[1]}" if a_codec else "s16le -ar 8000"
         audio_in = env_bool(f"FFAUDIO_{uri}", audio_f).split() + ["-i", fifo]
     av_select = "select=" + ("v,a" if audio else "v")
-    rtsp_protocol = "f=rtsp:rtsp_transport=" + env_bool("RTSP_PROTOCOLS", "tcp")
-    rtsp_ss = f"[{av_select}:{rtsp_protocol}]rtsp://0.0.0.0:8554/{uri.lower()}"
+    rtsp_proto = "udp" if "udp" in env_bool("RTSP_PROTOCOLS").lower() else "tcp"
+    rtsp_ss = f"[{av_select}:f=rtsp:rtsp_transport={rtsp_proto}]rtsp://0.0.0.0:8554/{uri.lower()}"
 
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD", "")).strip(
         "'\"\n "
