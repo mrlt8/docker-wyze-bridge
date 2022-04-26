@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.5\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.6\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -547,7 +547,8 @@ def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
     )
     flags = "-fflags +genpts+flush_packets+nobuffer -flags +low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
-    rtsp_ss = f"[select=v:f=rtsp:rtsp_transport=tcp]rtsp://0.0.0.0:8554/{uri.lower()}"
+    rtsp_proto = "udp" if "udp" in env_bool("RTSP_PROTOCOLS").lower() else "tcp"
+    rtsp_ss = f"[select=v:f=rtsp:rtsp_transport={rtsp_proto}]rtsp://0.0.0.0:8554/{uri.lower()}"
     livestream = get_livestream_cmd(uri)
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD", "")).strip(
         "'\"\n "
