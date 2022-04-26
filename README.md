@@ -28,11 +28,21 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
-## Changes in v1.3.4
+## Changes in v1.3.6
+
+Audio is also coming soon. Please check out the audio branch to report any issues.
+
+### 🚧 Changed
+
+- Fixed bug in Home Assistant config that was causing the add-onn not to load. (#351) Thanks @jdeath, @JochenKlenk!
+- Fixed bug in ffmpeg command to use protocol specified in `RTSP_PROTOCOLS`. (#347) Thanks @AdiAbuAli!
+
+### 🐛 Bugs
 
 There is a known bug/issue with certain doorbells that drift out of sync due to the day/night fps change (#340).
 
-Audio is also coming soon. Please check out the audio branch to report any issues.
+
+## Changes in v1.3.4/v1.3.5
 
 ### ✨ NEW
 
@@ -41,6 +51,7 @@ Audio is also coming soon. Please check out the audio branch to report any issue
 
 ### 🚧 Changed
 
+- Fixed bug in v1.3.4 that could cause the CPU to spike.
 - Fixed bug in `FILTER_MODELS` ENV that wouldn't match certain cameras (#346). Thanks @ragenhe!
 - Fixed bug that could cause the stream to block when changing resolution/bitrate midstream (#340).
 - Update rtsp-simple-server to v0.18.1.
