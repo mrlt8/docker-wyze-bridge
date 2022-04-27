@@ -4,7 +4,7 @@
     "slug": "docker-wyze-bridge",
     "url": "http://github.com/mrlt8/docker-wyze-bridge",
     "image": "mrlt8/wyze-bridge",
-    "version": "1.3.6",
+    "version": "1.3.7",
     "arch": [
         "armv7",
         "aarch64",
@@ -75,7 +75,6 @@
         "RTSP_RTMPDISABLE": "list(yes|no)?",
         "RTSP_HLSDISABLE": "list(yes|no)?",
         "RTSP_READTIMEOUT": "list(5s|10s|15s|20s|25s|30s)?",
-        "DOOR_SIZE": "int?",
         "IGNORE_RES": "int?",
         "KEEP_BAD_FRAMES": "bool?",
         "FPS_FIX": "bool?",
