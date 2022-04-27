@@ -20,7 +20,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.6\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.7\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -381,9 +381,7 @@ class WyzeBridge:
         """Connect and communicate with the camera using TUTK."""
         uri = clean_name(cam.nickname, upper=True)
         exit_code = 1
-        frame_size, bitrate = get_env_quality(uri)
-        if cam.product_model == "WYZEDB3":
-            frame_size = int(env_bool("DOOR_SIZE", frame_size))
+        frame_size, bitrate = get_env_quality(uri, cam.product_model)
         try:
             with wyzecam.WyzeIOTC(sdk_key=os.getenv("SDK_KEY")) as wyze_iotc:
                 with wyzecam.WyzeIOTCSession(
@@ -474,7 +472,7 @@ def env_filter(cam) -> bool:
     )
 
 
-def get_env_quality(uri) -> Tuple[int, int]:
+def get_env_quality(uri: str, cam_model: str) -> Tuple[int, int]:
     """Get preferred resolution and bitrate from env."""
     env_quality = (
         env_bool(f"QUALITY_{uri}", env_bool("QUALITY", "na"))
@@ -482,7 +480,10 @@ def get_env_quality(uri) -> Tuple[int, int]:
         .ljust(3, "0")
     )
     frame_size = 1 if env_quality[:2] == "sd" else 0
-    bitrate = int(env_quality[2:]) if 30 <= int(env_quality[2:]) <= 255 else 120
+
+    bit = 180 if cam_model == "WYZEDB3" else 120
+    bitrate = int(env_quality[2:]) if 30 <= int(env_quality[2:]) <= 255 else bit
+
     return frame_size, bitrate
 
 
@@ -491,7 +492,11 @@ def clean_name(name: str, upper: bool = False) -> str:
     uri_sep = "-"
     if os.getenv("URI_SEPARATOR") in ("-", "_", "#"):
         uri_sep = os.getenv("URI_SEPARATOR")
-    clean = re.sub(r"[^\-\w+]", "", name.strip().replace(" ", uri_sep))
+    clean = (
+        re.sub(r"[^\-\w+]", "", name.strip().replace(" ", uri_sep))
+        .encode("ascii", "ignore")
+        .decode()
+    )
     return clean.upper() if upper else clean.lower()
 
 
@@ -617,12 +622,6 @@ def setup_hass():
     """Home Assistant related config."""
     with open("/data/options.json") as f:
         conf = json.load(f).items()
-    info = requests.get(
-        "http://supervisor/info",
-        headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
-    ).json()
-    if "ok" in info.get("result"):
-        os.environ["HOSTNAME"] = info["data"]["hostname"]
     mqtt_conf = requests.get(
         "http://supervisor/services/mqtt",
         headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},

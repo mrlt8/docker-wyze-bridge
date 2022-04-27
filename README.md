@@ -28,38 +28,23 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
-## Changes in v1.3.6
+## Changes in v1.3.7
 
 Audio is also coming soon. Please check out the audio branch to report any issues.
 
+### ✨ NEW
+
+- Support for Wyze Cam Outdoor v2! (#354) Thanks @urubos!
+
 ### 🚧 Changed
 
-- Fixed bug in Home Assistant config that was causing the add-onn not to load. (#351) Thanks @jdeath, @JochenKlenk!
-- Fixed bug in ffmpeg command to use protocol specified in `RTSP_PROTOCOLS`. (#347) Thanks @AdiAbuAli!
+- Fixed bug where the add-on would not start in Home Assistant if hostname was not set. (#355) Thanks @cbrightly!
+- Fixed bug where rtsp-simple-server would refuse connections if the camera name contained a special character. (#356) Thanks @JochenKlenk!
+- Set defualt doorbell bitrate to 180.
 
 ### 🐛 Bugs
 
 There is a known bug/issue with certain doorbells that drift out of sync due to the day/night fps change (#340).
-
-
-## Changes in v1.3.4/v1.3.5
-
-### ✨ NEW
-
-- ENV option: `IMG_TYPE` - Specify the snapshot image file type, e.g. `IMG_TYPE=png`
-- ENV option: `SKIP_RTSP_LOG` - Prevent "read" spam in logs when using RTSP based snapshots.
-
-### 🚧 Changed
-
-- Fixed bug in v1.3.4 that could cause the CPU to spike.
-- Fixed bug in `FILTER_MODELS` ENV that wouldn't match certain cameras (#346). Thanks @ragenhe!
-- Fixed bug that could cause the stream to block when changing resolution/bitrate midstream (#340).
-- Update rtsp-simple-server to v0.18.1.
-- Improved speed of RTSP based snapshots!
-- Force keyframes every two seconds on doorbell rotation.
-- Limit doorbell bitrate to 3,000kb/s.
-- MQTT related code refactoring and cleanup of unused topics.
-- API: Wyze app version number bump to 2.30.0.
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -71,6 +56,7 @@ There is a known bug/issue with certain doorbells that drift out of sync due to 
 ![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-yes-success.svg)
 ![Wyze Cam Pan V2](https://img.shields.io/badge/wyze_pan_v2-yes-success.svg)
 ![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-yes-success.svg)
+![Wyze Cam Outdoor V2](https://img.shields.io/badge/wyze_outdoor_v2-yes-success.svg)
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
 
 ![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
@@ -85,7 +71,7 @@ There is a known bug/issue with certain doorbells that drift out of sync due to 
 | Wyze Cam Pan          | WYZECP1_JEF    | ✅         |
 | Wyze Cam Pan v2       | HL_PAN2        | ✅         |
 | Wyze Cam Outdoor      | WVOD1          | ✅         |
-| Wyze Cam Outdoor v2   | HL_WCO2        | ❓         |
+| Wyze Cam Outdoor v2   | HL_WCO2        | ✅         |
 | Wyze Cam Doorbell     | WYZEDB3        | ✅         |
 | Wyze Cam Doorbell Pro | GW_BE1         | ❓         |
 
@@ -387,8 +373,8 @@ Additional info:
 - Adjusting the bitrate and resolution in the bridge will also change the stream in the wyze app and vice versa.
 - App equivalents would be:
   - 360p - SD30
-  - SD - HD60
-  - HD - HD120
+  - SD - HD60 (HD120 for doorbell)
+  - HD - HD120 (HD180 for doorbell)
 
 ### Custom FFmpeg Commands
 
