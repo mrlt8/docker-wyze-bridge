@@ -593,7 +593,7 @@ def get_ffmpeg_cmd(
         + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
         + ["-f", "tee"]
         + ["-map", "0:v"]
-        + (["-map", "1:a"] if audio_in else [])
+        + (["-map", "1:a", "-shortest"] if audio_in else [])
         + [rtsp_ss + get_record_cmd(uri, av_select) + livestream]
     )
     if "ffmpeg" not in cmd[0].lower():
