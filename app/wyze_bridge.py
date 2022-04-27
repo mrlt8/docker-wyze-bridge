@@ -617,12 +617,6 @@ def setup_hass():
     """Home Assistant related config."""
     with open("/data/options.json") as f:
         conf = json.load(f).items()
-    info = requests.get(
-        "http://supervisor/info",
-        headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
-    ).json()
-    if "ok" in info.get("result"):
-        os.environ["HOSTNAME"] = info["data"]["hostname"]
     mqtt_conf = requests.get(
         "http://supervisor/services/mqtt",
         headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
