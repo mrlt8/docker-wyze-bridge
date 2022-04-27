@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE AUDIO 4\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE AUDIO 5\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -496,8 +496,7 @@ def get_env_quality(uri: str, cam_model: str) -> Tuple[int, int]:
     frame_size = 1 if env_quality[:2] == "sd" else 0
     if doorbell := (cam_model == "WYZEDB3"):
         frame_size = int(env_bool("DOOR_SIZE", frame_size))
-    bitrate = env_bit if 30 <= env_bit <= 255 else (180 if doorbell else 120)
-    return frame_size, bitrate
+    return frame_size, (env_bit if 30 <= env_bit <= 255 else (180 if doorbell else 120))
 
 
 def clean_name(name: str, upper: bool = False, env_sep: bool = False) -> str:
@@ -505,7 +504,11 @@ def clean_name(name: str, upper: bool = False, env_sep: bool = False) -> str:
     uri_sep = "_" if env_sep else "-"
     if not env_sep and os.getenv("URI_SEPARATOR") in ("-", "_", "#"):
         uri_sep = os.getenv("URI_SEPARATOR")
-    clean = re.sub(r"[^\-\w+]", "", name.strip().replace(" ", uri_sep))
+    clean = (
+        re.sub(r"[^\-\w+]", "", name.strip().replace(" ", uri_sep))
+        .encode("ascii", "ignore")
+        .decode()
+    )
     return clean.upper() if upper else clean.lower()
 
 
@@ -642,12 +645,6 @@ def setup_hass():
     """Home Assistant related config."""
     with open("/data/options.json") as f:
         conf = json.load(f).items()
-    info = requests.get(
-        "http://supervisor/info",
-        headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
-    ).json()
-    if "ok" in info.get("result"):
-        os.environ["HOSTNAME"] = info["data"]["hostname"]
     mqtt_conf = requests.get(
         "http://supervisor/services/mqtt",
         headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},

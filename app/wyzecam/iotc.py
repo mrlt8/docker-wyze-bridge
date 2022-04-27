@@ -495,7 +495,7 @@ class WyzeIOTCSession:
             if iotc_msg:
                 logger.warn("Requesting frame_size=%d and bitrate=%d" % iotc_msg)
                 try:
-                    if self.camera.product_model in ("WYZEDB3", "WVOD1"):
+                    if self.camera.product_model in ("WYZEDB3", "WVOD1", "HL_WCO2"):
                         mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result(False)
                     else:
                         mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result(False)
@@ -841,7 +841,7 @@ class WyzeIOTCSession:
             self.session_check()
 
             resend = 1
-            if self.camera.product_model == "WVOD1":
+            if self.camera.product_model in ("WVOD1", "HL_WCO2"):
                 resend = 0
 
             self.state = WyzeIOTCSessionState.AV_CONNECTING
@@ -902,7 +902,7 @@ class WyzeIOTCSession:
         try:
             with self.iotctrl_mux() as mux:
                 wake_mac = False
-                if self.camera.product_model == "WVOD1":
+                if self.camera.product_model in ("WVOD1", "HL_WCO2"):
                     wake_mac = self.camera.mac
 
                 challenge = mux.send_ioctl(K10000ConnectRequest(wake_mac))
@@ -922,10 +922,7 @@ class WyzeIOTCSession:
                 ), f"Authentication did not succeed! {auth_response}"
                 self.camera.set_camera_info(auth_response["cameraInfo"])
 
-                if (
-                    self.camera.product_model == "WYZEDB3"
-                    or self.camera.product_model == "WVOD1"
-                ):
+                if self.camera.product_model in ("WYZEDB3", "WVOD1", "HL_WCO2"):
                     # doorbell has a different message for setting resolutions
                     resolving = mux.send_ioctl(
                         K10052DBSetResolvingBit(

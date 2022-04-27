@@ -1,16 +1,27 @@
-## Changes in v1.3.6
+## Changes in v1.3.7
 
 Audio is also coming soon. Please check out the audio branch to report any issues.
 
+### ✨ NEW
+
+- Support for Wyze Cam Outdoor v2! (#354) Thanks @urubos!
+
 ### 🚧 Changed
 
-- Fixed bug in Home Assistant config that was causing the add-onn not to load. (#351) Thanks @jdeath, @JochenKlenk!
-- Fixed bug in ffmpeg command to use protocol specified in `RTSP_PROTOCOLS`. (#347) Thanks @AdiAbuAli!
+- Fixed bug where the add-on would not start in Home Assistant if hostname was not set. (#355) Thanks @cbrightly!
+- Fixed bug where rtsp-simple-server would refuse connections if the camera name contained a special character. (#356) Thanks @JochenKlenk!
+- Set default doorbell bitrate to 180.
 
 ### 🐛 Bugs
 
 There is a known bug/issue with certain doorbells that drift out of sync due to the day/night fps change (#340).
 
+## Changes in v1.3.6
+
+### 🚧 Changed
+
+- Fixed bug in Home Assistant config that was causing the add-onn not to load. (#351) Thanks @jdeath, @JochenKlenk!
+- Fixed bug in ffmpeg command to use protocol specified in `RTSP_PROTOCOLS`. (#347) Thanks @AdiAbuAli!
 
 ## Changes in v1.3.4/v1.3.5
 
