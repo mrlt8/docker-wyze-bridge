@@ -63,7 +63,7 @@ class WyzeIOTC:
     def __init__(
         self,
         tutk_platform_lib: Optional[Union[str, CDLL]] = None,
-        udp_port: Optional[int] = 0,
+        udp_port: Optional[int] = None,
         max_num_av_channels: Optional[int] = 1,
         sdk_key: Optional[str] = None,
         debug: bool = False,
@@ -434,11 +434,11 @@ class WyzeIOTCSession:
                         time.sleep(1.0 / fps)
                     time.sleep(1.0 / fps)
                     continue
-                if errno == tutk.AV_ER_INCOMPLETE_FRAME:
-                    warnings.warn("Received incomplete frame")
-                    continue
-                if errno == tutk.AV_ER_LOSED_THIS_FRAME:
-                    warnings.warn("Lost frame")
+                if errno in (
+                    tutk.AV_ER_INCOMPLETE_FRAME,
+                    tutk.AV_ER_LOSED_THIS_FRAME,
+                ):
+                    warnings.warn(tutk.TutkError(errno).name)
                     continue
                 raise tutk.TutkError(errno)
             assert frame_info is not None, "Got no frame info without an error!"
@@ -460,12 +460,12 @@ class WyzeIOTCSession:
                 last_keyframe = frame_info.frame_no, time.time()
             elif (
                 frame_info.frame_no - last_keyframe[0] > frame_info.framerate * 2
-                and frame_info.frame_no - last_frame[0] > 6
+                and frame_info.frame_no - last_frame[0] > 10
                 and not keep_bad_frames
             ):
                 warnings.warn("Waiting for keyframe")
                 if last_keyframe[0]:
-                    self.clear_local_buffer()
+                    # self.clear_local_buffer()
                     last_keyframe = 0, 0
                 time.sleep(0.5 / fps)
                 continue
@@ -527,12 +527,14 @@ class WyzeIOTCSession:
         except OSError as e:
             if e.errno != 17:
                 raise e
+        tutav = self.tutk_platform_lib, self.av_chan_id
         try:
             with open(FIFO, "wb") as audio_pipe:
                 while self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
-                    errno, frame_data, _ = tutk.av_recv_audio_data(
-                        self.tutk_platform_lib, self.av_chan_id
-                    )
+                    if tutk.av_check_audio_buf(*tutav) <= 0:
+                        time.sleep(2 / fps)
+                        continue
+                    errno, frame_data, _ = tutk.av_recv_audio_data(*tutav)
                     if errno < 0:
                         if errno in (
                             tutk.AV_ER_DATA_NOREADY,
