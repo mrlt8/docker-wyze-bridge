@@ -531,7 +531,7 @@ class WyzeIOTCSession:
         try:
             with open(FIFO, "wb") as audio_pipe:
                 while self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
-                    if tutk.av_check_audio_buf(*tutav) <= 0:
+                    if tutk.av_check_audio_buf(*tutav) < 3:
                         time.sleep(2 / fps)
                         continue
                     errno, frame_data, _ = tutk.av_recv_audio_data(*tutav)

@@ -6,7 +6,7 @@ import pickle
 import re
 import signal
 import sys
-from threading import Thread, Event
+import threading
 import time
 import warnings
 from subprocess import PIPE, Popen
@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE AUDIO 5\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE AUDIO 6\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -399,7 +399,7 @@ class WyzeBridge:
                     a_codec = sess.get_audio_codec()
 
                 fps = check_cam_sess(sess, uri, a_codec)
-                audio_thread = Thread(
+                audio_thread = threading.Thread(
                     target=sess.recv_audio_frames, args=(fps,), name=uri + "_AUDIO"
                 )
                 with Popen(
@@ -441,7 +441,7 @@ class WyzeBridge:
                 print(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n\n{creds}\n---")
             except requests.exceptions.HTTPError as ex:
                 if ex.response.status_code == 404:
-                    ex = "UNAVAILABLE"
+                    ex = "Camera does not support WebRTC"
                 log.warning(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n{ex}\n---")
         print("👋 goodbye!")
         signal.pause()
@@ -553,7 +553,8 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str, audio: tuple = None)
     # return mode, firmware, wifi
     log.info(f"📡 Getting {bit_frame} via {mode} (WiFi: {wifi}%) FW: {firmware} (2/3)")
     if audio:
-        log.info(f"🔊 Audio Enabled - {audio[0].replace('s16le','pcm')}/{audio[1]:,}Hz")
+        a_codec = audio[0].replace("s16le", "pcm > aac").upper()
+        log.info(f"🔊 Audio Enabled - {a_codec}/{audio[1]:,}Hz")
     return fps or 20
 
 
@@ -570,10 +571,11 @@ def get_ffmpeg_cmd(
     rotate = cam.product_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
     livestream = get_livestream_cmd(uri)
     audio_in = ["-f", "lavfi", "-i", "anullsrc=cl=mono"] if livestream else []
-    if audio:
-        fifo = f"/tmp/{cam.mac}.wav"
-        audio_f = f"-f {a_codec[0]} -ar {a_codec[1]}" if a_codec else "s16le -ar 8000"
-        audio_in = env_bool(f"FFAUDIO_{uri}", audio_f).split() + ["-i", fifo]
+    out_codec = "aac" if "s16le" in a_codec else env_bool("AUDIO_CODEC", "copy")
+    if audio and a_codec:
+        audio_f = env_bool(f"FFAUDIO_{uri}", f"-f {a_codec[0]} -ar {a_codec[1]}")
+        audio_in = audio_f.split() + ["-i", f"/tmp/{cam.mac}.wav"]
+        a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
     av_select = "select=" + ("v,a" if audio else "v")
     rtsp_proto = "udp" if "udp" in env_bool("RTSP_PROTOCOLS").lower() else "tcp"
     rtsp_ss = f"[{av_select}:f=rtsp:rtsp_transport={rtsp_proto}]rtsp://0.0.0.0:8554/{uri.lower()}"
@@ -589,7 +591,8 @@ def get_ffmpeg_cmd(
         + audio_in
         + ["-c:v"]
         + (["copy"] if not rotate else lib264)
-        + (["-c:a", "aac"] if audio_in else [])
+        + (["-c:a", out_codec] if audio_in else [])
+        + (a_filter if audio and out_codec == "aac" else [])
         + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
         + ["-f", "tee"]
         + ["-map", "0:v"]
