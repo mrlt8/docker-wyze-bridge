@@ -415,6 +415,7 @@ class WyzeIOTCSession:
             int(os.getenv("IGNORE_RES", self.preferred_frame_size + 3)),
         )
         last_keyframe = last_frame = 0, 0
+        fixed_fps = 20 if self.camera.product_model == "WYZEDB3" else 0
         while not stop_flag.is_set():
             if last_keyframe[1] and (delta := time.time() - last_frame[1]) >= timeout:
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
@@ -450,13 +451,15 @@ class WyzeIOTCSession:
                 last_keyframe = 0, 0
                 continue
             if frame_index and frame_index % 1000 == 0:
-                self.update_frame_size_rate(bitrate=True, fps=frame_info.framerate)
+                self.update_frame_size_rate(
+                    True, None if fixed_fps else frame_info.framerate
+                )
 
             if frame_info.is_keyframe:
-                fps = frame_info.framerate or fps
+                fps = fixed_fps or frame_info.framerate or fps
                 last_keyframe = frame_info.frame_no, time.time()
             elif (
-                frame_info.frame_no - last_keyframe[0] > frame_info.framerate * 2
+                frame_info.frame_no - last_keyframe[0] > fps * 2
                 and frame_info.frame_no - last_frame[0] > 6
                 and not keep_bad_frames
             ):
