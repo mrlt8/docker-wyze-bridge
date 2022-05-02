@@ -571,7 +571,9 @@ def get_ffmpeg_cmd(
     rotate = cam.product_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
     livestream = get_livestream_cmd(uri)
     audio_in = ["-f", "lavfi", "-i", "anullsrc=cl=mono"] if livestream else []
-    out_codec = "aac" if "s16le" in a_codec else env_bool("AUDIO_CODEC", "copy")
+    out_codec = (
+        "aac" if a_codec and "s16le" in a_codec else env_bool("AUDIO_CODEC", "copy")
+    )
     if audio and a_codec:
         audio_f = env_bool(f"FFAUDIO_{uri}", f"-f {a_codec[0]} -ar {a_codec[1]}")
         audio_in = audio_f.split() + ["-i", f"/tmp/{cam.mac}.wav"]
@@ -582,7 +584,7 @@ def get_ffmpeg_cmd(
 
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD", "")).strip(
         "'\"\n "
-    ).format(cam_name=uri.lower(), CAM_NAME=uri).split() or (
+    ).format(cam_name=uri.lower(), CAM_NAME=uri, mac=cam.mac).split() or (
         ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "error"]
         + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
