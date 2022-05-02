@@ -389,15 +389,11 @@ class WyzeBridge:
                 self.user,
                 cam,
                 *(get_env_quality(uri, cam.product_model)),
-                enable_audio=audio,
+                enable_audio=bool(audio),
                 connect_timeout=self.connect_timeout,
             ) as sess:
                 connected.set()
-                if not audio or env_bool(f"FFAUDIO_{uri}"):
-                    a_codec = None
-                else:
-                    a_codec = sess.get_audio_codec()
-
+                a_codec = sess.get_audio_codec() if audio else None
                 fps = check_cam_sess(sess, uri, a_codec)
                 audio_thread = threading.Thread(
                     target=sess.recv_audio_frames, args=(fps,), name=uri + "_AUDIO"
@@ -570,13 +566,11 @@ def get_ffmpeg_cmd(
     flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
     rotate = cam.product_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
     livestream = get_livestream_cmd(uri)
-    audio_in = ["-f", "lavfi", "-i", "anullsrc=cl=mono"] if livestream else []
-    out_codec = (
-        "aac" if a_codec and "s16le" in a_codec else env_bool("AUDIO_CODEC", "copy")
-    )
+    audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
+    audio_out = "aac"
     if audio and a_codec:
-        audio_f = env_bool(f"FFAUDIO_{uri}", f"-f {a_codec[0]} -ar {a_codec[1]}")
-        audio_in = audio_f.split() + ["-i", f"/tmp/{cam.mac}.wav"]
+        audio_in = f"-f {a_codec[0]} -ar {a_codec[1]} -i /tmp/{cam.mac}.wav"
+        audio_out = env_bool("AUDIO_CODEC", "aac" if "s16le" in a_codec else "copy")
         a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
     av_select = "select=" + ("v,a" if audio else "v")
     rtsp_proto = "udp" if "udp" in env_bool("RTSP_PROTOCOLS").lower() else "tcp"
@@ -584,17 +578,19 @@ def get_ffmpeg_cmd(
 
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD", "")).strip(
         "'\"\n "
-    ).format(cam_name=uri.lower(), CAM_NAME=uri, mac=cam.mac).split() or (
+    ).format(
+        cam_name=uri.lower(), CAM_NAME=uri, mac=cam.mac, audio_in=audio_in
+    ).split() or (
         ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "error"]
         + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
         .split()
         + ["-analyzeduration", "50", "-probesize", "50", "-f", "h264", "-i", "pipe:"]
-        + audio_in
+        + audio_in.split()
         + ["-c:v"]
         + (["copy"] if not rotate else lib264)
-        + (["-c:a", out_codec] if audio_in else [])
-        + (a_filter if audio and out_codec == "aac" else [])
+        + (["-c:a", audio_out] if audio_in else [])
+        + (a_filter if audio and audio_out != "copy" else [])
         + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
         + ["-f", "tee"]
         + ["-map", "0:v"]
@@ -605,6 +601,8 @@ def get_ffmpeg_cmd(
         cmd.insert(0, "ffmpeg")
     if env_bool("DEBUG_FFMPEG"):
         log.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
+    log.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
+    time.sleep(20)
     return cmd
 
 
