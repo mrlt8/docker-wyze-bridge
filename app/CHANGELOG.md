@@ -1,6 +1,12 @@
-## Changes in v1.3.7
+## Changes in v1.3.8
 
 Audio is also coming soon. Please check out the audio branch to report any issues.
+
+### 🚧 Changed
+
+- Fixed a bug where the doorbell would fall behind and drift out of sync. Thanks @krystiancharubin!
+
+## Changes in v1.3.7
 
 ### ✨ NEW
 

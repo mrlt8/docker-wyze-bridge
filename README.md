@@ -28,23 +28,14 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
-## Changes in v1.3.7
+## Changes in v1.3.8
 
 Audio is also coming soon. Please check out the audio branch to report any issues.
 
-### ✨ NEW
-
-- Support for Wyze Cam Outdoor v2! (#354) Thanks @urubos!
-
 ### 🚧 Changed
 
-- Fixed bug where the add-on would not start in Home Assistant if hostname was not set. (#355) Thanks @cbrightly!
-- Fixed bug where rtsp-simple-server would refuse connections if the camera name contained a special character. (#356) Thanks @JochenKlenk!
-- Set defualt doorbell bitrate to 180.
+- Fixed a bug where the doorbell would fall behind and drift out of sync. Thanks @krystiancharubin!
 
-### 🐛 Bugs
-
-There is a known bug/issue with certain doorbells that drift out of sync due to the day/night fps change (#340).
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 

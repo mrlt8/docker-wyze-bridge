@@ -450,13 +450,12 @@ class WyzeIOTCSession:
                 last_keyframe = 0, 0
                 continue
             if frame_index and frame_index % 1000 == 0:
-                self.update_frame_size_rate(bitrate=True, fps=frame_info.framerate)
+                fps = self.update_frame_size_rate(True, frame_info.framerate) or fps
 
             if frame_info.is_keyframe:
-                fps = frame_info.framerate or fps
                 last_keyframe = frame_info.frame_no, time.time()
             elif (
-                frame_info.frame_no - last_keyframe[0] > frame_info.framerate * 2
+                frame_info.frame_no - last_keyframe[0] > fps * 2
                 and frame_info.frame_no - last_frame[0] > 6
                 and not keep_bad_frames
             ):
@@ -474,17 +473,17 @@ class WyzeIOTCSession:
             yield frame_data
             last_frame = frame_info.frame_no, time.time()
 
-    def update_frame_size_rate(self, bitrate: bool = False, fps: int = None) -> None:
+    def update_frame_size_rate(self, bitrate: bool = False, fps: int = None) -> int:
         """Send a message to the camera to update the frame_size and bitrate."""
         iotc_msg = self.preferred_frame_size, self.preferred_bitrate
         with self.iotctrl_mux() as mux:
             if bitrate:
                 param = mux.send_ioctl(K10020CheckCameraParams(3, 5)).result()
-                if fps and int(param.get("5", fps)) != fps:
+                if fps and (cam_fps := int(param.get("5", fps))) != fps:
                     warnings.warn(f"FPS param mismatch (avRecv FPS={fps})")
                     if os.getenv("FPS_FIX"):
                         self.change_fps(fps)
-                    return
+                    return cam_fps
                 if int(param.get("3")) != self.preferred_bitrate:
                     warnings.warn(f"Wrong bitrate (bitrate={param.get('3')})")
                 else:
@@ -498,9 +497,7 @@ class WyzeIOTCSession:
                         mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result(False)
                 except tutk_ioctl_mux.Empty:
                     pass  # Ignore queue.Empty
-                time.sleep(0.5)
-
-        return
+        return 0
 
     def clear_local_buffer(self) -> None:
         """Clear local buffer."""
