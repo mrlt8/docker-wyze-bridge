@@ -601,8 +601,6 @@ def get_ffmpeg_cmd(
         cmd.insert(0, "ffmpeg")
     if env_bool("DEBUG_FFMPEG"):
         log.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
-    log.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
-    time.sleep(20)
     return cmd
 
 
