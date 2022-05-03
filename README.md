@@ -42,9 +42,9 @@ See [basic usage](#basic-usage) for additional information.
 
 ## Changes in v1.4.0
 
-- 🔊 **NEW**: Audio is now available. See #Audio
+- **NEW**: 🔊 Audio is now available. [Details](#audio)
 
-- **UPDATED**: rtsp-simple-server > [v0.18.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.18.2)
+- **UPDATED**: ⬆️ rtsp-simple-server > [v0.18.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.18.2)
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
