@@ -440,6 +440,7 @@ Additional info:
 
 - The `ffmpeg` command is implied and is optional.
 - The camera name is available as a variable `{cam_name}` for lowercase and `{CAM_NAME}` for uppercase.
+- The audio pipe and format are available as a variable `{audio_in}`.
 
 ### Custom FFmpeg Flags
 
