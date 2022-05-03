@@ -1,8 +1,10 @@
-## Changes in v1.4.0
+## Changes in v1.4.0/1
 
 - **NEW**: 🔊 Audio is now available. [Details](https://github.com/mrlt8/docker-wyze-bridge#audio)
 
 - **UPDATED**: ⬆️ rtsp-simple-server > [v0.18.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.18.2)
+
+- **FIXED**: 🔧 Doorbell rotation. (#362) Thanks @krystiancharubin!
 
 ## Changes in v1.3.8
 

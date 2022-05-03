@@ -28,6 +28,16 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
+## Changes in v1.4.0/1
+
+- **NEW**: 🔊 Audio is now available. [Details](#audio)
+
+- **UPDATED**: ⬆️ rtsp-simple-server > [v0.18.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.18.2)
+
+- **FIXED**: 🔧 Doorbell rotation. (#362) Thanks @krystiancharubin!
+
+[View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
+
 ## Features
 
 - Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS.
@@ -39,14 +49,6 @@ See [basic usage](#basic-usage) for additional information.
 - Ability to record streams locally.
 - Ability to take snapshots on an interval.
 - Ability to livestream directly from the bridge.
-
-## Changes in v1.4.0
-
-- **NEW**: 🔊 Audio is now available. [Details](#audio)
-
-- **UPDATED**: ⬆️ rtsp-simple-server > [v0.18.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.18.2)
-
-[View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
 ## Supported Cameras
 
@@ -202,7 +204,7 @@ Two-factor authentication ("Two-Step Verification" in the wyze app) is supported
 
 ## Advanced Options
 
-**WYZE_EMAIL** and **WYZE_PASSWORD** are the only two required environment variables. 
+**WYZE_EMAIL** and **WYZE_PASSWORD** are the only two required environment variables.
 
 **The following envs are all optional.**
 
@@ -334,7 +336,7 @@ In the event that you need to allow the bridge to access a select number of came
 
 - `IMG_DIR=/img/` Specify the directory where the snapshots will be saved *within the container*. Use volumes in docker to map to an external directory.
 
-- `IMG_TYPE` Specify the file type of the image, e.g. `IMG_TYPE=png`. Will default to jpg. 
+- `IMG_TYPE` Specify the file type of the image, e.g. `IMG_TYPE=png`. Will default to jpg.
 
 ### Stream Recording
 
@@ -440,7 +442,7 @@ Additional info:
 
 - The `ffmpeg` command is implied and is optional.
 - The camera name is available as a variable `{cam_name}` for lowercase and `{CAM_NAME}` for uppercase.
-- The audio pipe and format are available as a variable `{audio_in}`.
+- The audio pipe and format are available as the variable `{audio_in}`.
 
 ### Custom FFmpeg Flags
 
