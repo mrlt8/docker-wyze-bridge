@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE AUDIO 6\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.0 BETA 1\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -42,8 +42,6 @@ class WyzeBridge:
             os.makedirs(self.token_path, exist_ok=True)
             os.makedirs(self.img_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
-        if os.getenv("MAX_NOREADY"):
-            print("\n\n⚠️ 'MAX_NOREADY' DEPRECATED.\nUSE 'TIMEOUT'\n")
 
     def run(self) -> None:
         """Start the bridge."""
@@ -396,7 +394,7 @@ class WyzeBridge:
                 a_codec = sess.get_audio_codec() if audio else None
                 fps = check_cam_sess(sess, uri, a_codec)
                 audio_thread = threading.Thread(
-                    target=sess.recv_audio_frames, args=(fps,), name=uri + "_AUDIO"
+                    target=sess.recv_audio_frames, args=(uri, fps), name=uri + "_AUDIO"
                 )
                 with Popen(
                     get_ffmpeg_cmd(uri, cam, audio, a_codec), stdin=PIPE
@@ -420,7 +418,7 @@ class WyzeBridge:
             log.warning("Stream is down.")
         finally:
             if "audio_thread" in locals() and audio_thread.is_alive():
-                open(f"/tmp/{cam.mac}.wav", "r").close()
+                open(f"/tmp/{uri.lower()}.wav", "r").close()
                 audio_thread.join()
             sys.exit(exit_code)
 
@@ -555,7 +553,7 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str, audio: tuple = None)
 
 
 def get_ffmpeg_cmd(
-    uri: str, cam: wyzecam.WyzeCamera, audio: bool = False, a_codec: tuple = None
+    uri: str, cam_model: str, audio: bool = False, a_codec: tuple = None
 ) -> list:
     """Return the ffmpeg cmd with options from the env."""
     lib264 = (
@@ -564,13 +562,14 @@ def get_ffmpeg_cmd(
         + ["-force_key_frames", "expr:gte(t,n_forced*2)"]
     )
     flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
-    rotate = cam.product_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
+    rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
     if audio and a_codec:
-        audio_in = f"-f {a_codec[0]} -ar {a_codec[1]} -i /tmp/{cam.mac}.wav"
-        audio_out = env_bool("AUDIO_CODEC", "aac" if "s16le" in a_codec else "copy")
+        audio_in = f"-f {a_codec[0]} -ar {a_codec[1]} -i /tmp/{uri.lower()}.wav"
+        audio_out = env_bool("AUDIO_CODEC", "copy")
+        audio_out = "aac" if audio_out == "copy" and "s16le" in a_codec else audio_out
         a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
     av_select = "select=" + ("v,a" if audio else "v")
     rtsp_proto = "udp" if "udp" in env_bool("RTSP_PROTOCOLS").lower() else "tcp"
@@ -578,9 +577,7 @@ def get_ffmpeg_cmd(
 
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD", "")).strip(
         "'\"\n "
-    ).format(
-        cam_name=uri.lower(), CAM_NAME=uri, mac=cam.mac, audio_in=audio_in
-    ).split() or (
+    ).format(cam_name=uri.lower(), CAM_NAME=uri, audio_in=audio_in).split() or (
         ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "error"]
         + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
@@ -601,6 +598,7 @@ def get_ffmpeg_cmd(
         cmd.insert(0, "ffmpeg")
     if env_bool("DEBUG_FFMPEG"):
         log.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
+    log.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
     return cmd
 
 

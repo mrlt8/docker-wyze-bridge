@@ -453,19 +453,17 @@ class WyzeIOTCSession:
                 last_keyframe = 0, 0
                 continue
             if frame_index and frame_index % 1000 == 0:
-                self.update_frame_size_rate(bitrate=True, fps=frame_info.framerate)
+                fps = self.update_frame_size_rate(True, frame_info.framerate) or fps
 
             if frame_info.is_keyframe:
-                fps = frame_info.framerate or fps
                 last_keyframe = frame_info.frame_no, time.time()
             elif (
-                frame_info.frame_no - last_keyframe[0] > frame_info.framerate * 2
-                and frame_info.frame_no - last_frame[0] > 10
+                frame_info.frame_no - last_keyframe[0] > fps * 2
+                and frame_info.frame_no - last_frame[0] > 6
                 and not keep_bad_frames
             ):
                 warnings.warn("Waiting for keyframe")
                 if last_keyframe[0]:
-                    # self.clear_local_buffer()
                     last_keyframe = 0, 0
                 time.sleep(0.5 / fps)
                 continue
@@ -477,17 +475,17 @@ class WyzeIOTCSession:
             yield frame_data
             last_frame = frame_info.frame_no, time.time()
 
-    def update_frame_size_rate(self, bitrate: bool = False, fps: int = None) -> None:
+    def update_frame_size_rate(self, bitrate: bool = False, fps: int = None) -> int:
         """Send a message to the camera to update the frame_size and bitrate."""
         iotc_msg = self.preferred_frame_size, self.preferred_bitrate
         with self.iotctrl_mux() as mux:
             if bitrate:
                 param = mux.send_ioctl(K10020CheckCameraParams(3, 5)).result()
-                if fps and int(param.get("5", fps)) != fps:
+                if fps and (cam_fps := int(param.get("5", fps))) != fps:
                     warnings.warn(f"FPS param mismatch (avRecv FPS={fps})")
                     if os.getenv("FPS_FIX"):
                         self.change_fps(fps)
-                    return
+                    return cam_fps
                 if int(param.get("3")) != self.preferred_bitrate:
                     warnings.warn(f"Wrong bitrate (bitrate={param.get('3')})")
                 else:
@@ -501,9 +499,7 @@ class WyzeIOTCSession:
                         mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result(False)
                 except tutk_ioctl_mux.Empty:
                     pass  # Ignore queue.Empty
-                time.sleep(0.5)
-
-        return
+        return 0
 
     def clear_local_buffer(self) -> None:
         """Clear local buffer."""
@@ -519,9 +515,9 @@ class WyzeIOTCSession:
             except tutk_ioctl_mux.Empty:
                 pass  # Ignore queue.Empty
 
-    def recv_audio_frames(self, fps: int = 20) -> None:
+    def recv_audio_frames(self, uri: str, fps: int = 20) -> None:
         """Write raw audio frames to a named pipe."""
-        FIFO = f"/tmp/{self.camera.mac}.wav"
+        FIFO = f"/tmp/{uri.lower()}.wav"
         try:
             os.mkfifo(FIFO, os.O_NONBLOCK)
         except OSError as e:
@@ -567,11 +563,11 @@ class WyzeIOTCSession:
                 if frame_info.codec_id == 140:  # MEDIA_CODEC_AUDIO_PCM
                     codec = "s16le"
                 elif frame_info.codec_id == 141:  # MEDIA_CODEC_AUDIO_AAC
-                    codec = "copy"
+                    codec = "aac"
                 elif frame_info.codec_id == 143:  # MEDIA_CODEC_AUDIO_G711_ALAW
                     codec = "alaw"
                 else:
-                    raise Exception(f"\nUnknown codec_id={frame_info.codec_id}\n")
+                    raise Exception(f"\nUnknown audio codec_id={frame_info.codec_id}\n")
                 if codec:
                     logger.info(
                         f"codec={codec} bit_rate={bit} codec_id={frame_info.codec_id}"
