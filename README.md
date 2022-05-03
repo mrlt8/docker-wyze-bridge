@@ -11,19 +11,7 @@ It just works!
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
-Please consider starring or [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
-
-## Features
-
-- Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS.
-- Access to HD *or* SD stream with configurable bitrate.
-- Local and remote access to any of the cams on your account.
-- Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker.
-- Support for Wyze 2FA.
-- Ability to rotate video for Wyze Doorbell.
-- Ability to record streams locally.
-- Ability to take snapshots on an interval.
-- Ability to livestream directly from the bridge.
+Please consider starring or [sponsoring](https://ko-fi.com/mrlt8) this project if you found it useful.
 
 ## Quick Start
 
@@ -39,6 +27,18 @@ docker run \
 You can view your stream by visiting: `http://localhost:8888/cam-nickname` where localhost is the hostname or ip of the machine running the bridge followed by the cam nickname in lowercase with `-` in place of spaces.
 
 See [basic usage](#basic-usage) for additional information.
+
+## Features
+
+- Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS.
+- Access to HD *or* SD stream with configurable bitrate.
+- Local and remote access to any of the cams on your account.
+- Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker.
+- Support for Wyze 2FA.
+- Ability to rotate video for Wyze Doorbell.
+- Ability to record streams locally.
+- Ability to take snapshots on an interval.
+- Ability to livestream directly from the bridge.
 
 ## Changes in v1.4.0
 
@@ -92,7 +92,7 @@ The bridge should be compatible with official firmware from wyze.
 
 Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi.
 
-The container can be run on its own, in [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer), [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236), or as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant).
+The container can be run on its own, in [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer), [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236), as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant), locally or remotely in the cloud.
 
 [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmrlt8%2Fdocker-wyze-bridge)
 
@@ -184,7 +184,9 @@ Two-factor authentication ("Two-Step Verification" in the wyze app) is supported
       - ./tokens:/tokens/
   ```
 
-You can also have the bridge auto generate and enter a Time-based One-Time Password (TOTP) by adding the secret key to the file `/tokens/totp` on standard installs or `/config/wyze-bridge/totp` for Home Assistant installs. You will need to create the file if it doesn't exist and mount it if necessary.
+- Generate Time-based One-Time Passwords:
+
+  You can have the bridge auto generate and enter a Time-based One-Time Password (TOTP) by adding the secret key to the file `/tokens/totp` on standard installs or `/config/wyze-bridge/totp` for Home Assistant installs. You will need to create the file if it doesn't exist and mount it if necessary.
 
 - 🏠 Home Assistant:
 
@@ -219,6 +221,7 @@ Audio is disabled by default and must be enabled in the ENV.
   ```
 
 - For a specific camera:
+
   where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
 
   ```yaml
