@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.0 BETA 1\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.0\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -598,7 +598,6 @@ def get_ffmpeg_cmd(
         cmd.insert(0, "ffmpeg")
     if env_bool("DEBUG_FFMPEG"):
         log.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
-    log.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
     return cmd
 
 
