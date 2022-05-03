@@ -11,7 +11,19 @@ It just works!
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
-Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
+Please consider starring or [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
+
+## Features
+
+- Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS.
+- Access to HD *or* SD stream with configurable bitrate.
+- Local and remote access to any of the cams on your account.
+- Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker.
+- Support for Wyze 2FA.
+- Ability to rotate video for Wyze Doorbell.
+- Ability to record streams locally.
+- Ability to take snapshots on an interval.
+- Ability to livestream directly from the bridge.
 
 ## Quick Start
 
@@ -28,23 +40,11 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
-## Changes in v1.3.7
+## Changes in v1.4.0
 
-Audio is also coming soon. Please check out the audio branch to report any issues.
+- 🔊 **NEW**: Audio is now available. See #Audio
 
-### ✨ NEW
-
-- Support for Wyze Cam Outdoor v2! (#354) Thanks @urubos!
-
-### 🚧 Changed
-
-- Fixed bug where the add-on would not start in Home Assistant if hostname was not set. (#355) Thanks @cbrightly!
-- Fixed bug where rtsp-simple-server would refuse connections if the camera name contained a special character. (#356) Thanks @JochenKlenk!
-- Set defualt doorbell bitrate to 180.
-
-### 🐛 Bugs
-
-There is a known bug/issue with certain doorbells that drift out of sync due to the day/night fps change (#340).
+- **UPDATED**: rtsp-simple-server > [v0.18.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.18.2)
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -133,10 +133,6 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 - [Homebridge Camera FFmpeg](https://sunoo.github.io/homebridge-camera-ffmpeg/configs/WyzeCam.html)
 - [HomeKit Secure Video](https://github.com/mrlt8/docker-wyze-bridge/wiki/HomeKit-Secure-Video)
 
-#### Audio Support
-
-Audio is coming soon.
-
 #### Special Characters
 
 If your email or password contains a `%` or `$` character, you may need to escape them with an extra character. e.g., `pa$$word` should be entered as `pa$$$$word`
@@ -204,7 +200,48 @@ You can also have the bridge auto generate and enter a Time-based One-Time Passw
 
 ## Advanced Options
 
-**WYZE_EMAIL** and **WYZE_PASSWORD** are the only two required environment variables. The following envs are all optional.
+**WYZE_EMAIL** and **WYZE_PASSWORD** are the only two required environment variables. 
+
+**The following envs are all optional.**
+
+### Audio
+
+Audio is disabled by default and must be enabled in the ENV.
+
+#### Enable audio
+
+- For all cameras:
+
+  ```YAML
+  environment:
+      ..
+      - ENABLE_AUDIO=True
+  ```
+
+- For a specific camera:
+  where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
+
+  ```yaml
+    - ENABLE_AUDIO_CAM_NAME=True
+  ```
+
+#### Audio output codec
+
+By default, the bridge will attempt to copy the audio from the camera without re-encoding *unless* the camera is using a codec that isn't supported by RTSP, in which case the audio will be converted to AAC.
+
+The `AUDIO_CODEC` ENV can be used should you need to re-encode the audio to another format for compatibility:
+
+```yaml
+  - AUDIO_CODEC=AAC
+```
+
+#### Audio filtering
+
+Custom ffmpeg audio filters can be set with `AUDIO_FILTER`, but please note that audio filters will only be applied if re-encoding to another codec.
+
+```yaml
+  - AUDIO_FILTER=highpass=f=300,lowpass=f=2500,volume=volume=2
+```
 
 ### Filtering
 
