@@ -41,7 +41,6 @@
         "WYZE_PASSWORD": null,
         "NET_MODE": "ANY",
         "SNAPSHOT": "API",
-        "IMG_TYPE": "jpg",
         "MQTT_DTOPIC": "homeassistant",
         "ENABLE_AUDIO": false
     },
@@ -50,7 +49,7 @@
         "WYZE_PASSWORD": "password",
         "NET_MODE": "list(LAN|P2P|ANY)",
         "SNAPSHOT": "list(API|RTSP|RTSP5|RTSP15|RTSP30|RTSP60|Disable)?",
-        "IMG_TYPE": "list(jpg|png)",
+        "IMG_TYPE": "list(jpg|png)?",
         "IMG_DIR": "str?",
         "ENABLE_AUDIO": "bool?",
         "AUDIO_CODEC": "list(COPY|AAC|MP3)?",
