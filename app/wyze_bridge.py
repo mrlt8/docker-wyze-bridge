@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.0\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.1\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -397,7 +397,7 @@ class WyzeBridge:
                     target=sess.recv_audio_frames, args=(uri, fps), name=uri + "_AUDIO"
                 )
                 with Popen(
-                    get_ffmpeg_cmd(uri, cam, audio, a_codec), stdin=PIPE
+                    get_ffmpeg_cmd(uri, cam.product_model, audio, a_codec), stdin=PIPE
                 ) as ffmpeg:
                     if audio:
                         audio_thread.start()
