@@ -6,6 +6,7 @@ import pickle
 import re
 import signal
 import sys
+import threading
 import time
 import warnings
 from subprocess import PIPE, Popen
@@ -20,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.3.8\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.0\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -41,8 +42,6 @@ class WyzeBridge:
             os.makedirs(self.token_path, exist_ok=True)
             os.makedirs(self.img_path, exist_ok=True)
             open(self.token_path + "mfa_token.txt", "w").close()
-        if os.getenv("MAX_NOREADY"):
-            print("\n\n⚠️ 'MAX_NOREADY' DEPRECATED.\nUSE 'TIMEOUT'\n")
 
     def run(self) -> None:
         """Start the bridge."""
@@ -381,26 +380,31 @@ class WyzeBridge:
         """Connect and communicate with the camera using TUTK."""
         uri = clean_name(cam.nickname, upper=True)
         exit_code = 1
-        frame_size, bitrate = get_env_quality(uri, cam.product_model)
+        audio = env_bool(f"ENABLE_AUDIO_{uri}", env_bool("ENABLE_AUDIO", False))
         try:
-            with wyzecam.WyzeIOTC(sdk_key=os.getenv("SDK_KEY")) as wyze_iotc:
-                with wyzecam.WyzeIOTCSession(
-                    wyze_iotc.tutk_platform_lib,
-                    self.user,
-                    cam,
-                    frame_size,
-                    bitrate,
-                    enable_audio=False,
-                    connect_timeout=self.connect_timeout,
-                ) as sess:
-                    connected.set()
-                    fps = check_cam_sess(sess, uri)
-                    cmd = get_ffmpeg_cmd(uri, cam.product_model)
-                    with Popen(cmd, stdin=PIPE) as ffmpeg:
-                        for frame in sess.recv_bridge_frame(
-                            stop_flag, self.keep_bad_frames, self.timeout, fps
-                        ):
-                            ffmpeg.stdin.write(frame)
+            with wyzecam.WyzeIOTC() as wyze_iotc, wyzecam.WyzeIOTCSession(
+                wyze_iotc.tutk_platform_lib,
+                self.user,
+                cam,
+                *(get_env_quality(uri, cam.product_model)),
+                enable_audio=bool(audio),
+                connect_timeout=self.connect_timeout,
+            ) as sess:
+                connected.set()
+                a_codec = sess.get_audio_codec() if audio else None
+                fps = check_cam_sess(sess, uri, a_codec)
+                audio_thread = threading.Thread(
+                    target=sess.recv_audio_frames, args=(uri, fps), name=uri + "_AUDIO"
+                )
+                with Popen(
+                    get_ffmpeg_cmd(uri, cam, audio, a_codec), stdin=PIPE
+                ) as ffmpeg:
+                    if audio:
+                        audio_thread.start()
+                    for frame in sess.recv_bridge_frame(
+                        stop_flag, self.keep_bad_frames, self.timeout, fps
+                    ):
+                        ffmpeg.stdin.write(frame)
         except Exception as ex:
             log.warning(ex)
             if ex.args[0] == -13:  # IOTC_ER_TIMEOUT
@@ -413,6 +417,9 @@ class WyzeBridge:
         else:
             log.warning("Stream is down.")
         finally:
+            if "audio_thread" in locals() and audio_thread.is_alive():
+                open(f"/tmp/{uri.lower()}.wav", "r").close()
+                audio_thread.join()
             sys.exit(exit_code)
 
     def get_webrtc(self):
@@ -428,7 +435,7 @@ class WyzeBridge:
                 print(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n\n{creds}\n---")
             except requests.exceptions.HTTPError as ex:
                 if ex.response.status_code == 404:
-                    ex = "UNAVAILABLE"
+                    ex = "Camera does not support WebRTC"
                 log.warning(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n{ex}\n---")
         print("👋 goodbye!")
         signal.pause()
@@ -479,18 +486,17 @@ def get_env_quality(uri: str, cam_model: str) -> Tuple[int, int]:
         .strip("'\"\n ")
         .ljust(3, "0")
     )
+    env_bit = int(env_quality[2:])
     frame_size = 1 if env_quality[:2] == "sd" else 0
-
-    bit = 180 if cam_model == "WYZEDB3" else 120
-    bitrate = int(env_quality[2:]) if 30 <= int(env_quality[2:]) <= 255 else bit
-
-    return frame_size, bitrate
+    if doorbell := (cam_model == "WYZEDB3"):
+        frame_size = int(env_bool("DOOR_SIZE", frame_size))
+    return frame_size, (env_bit if 30 <= env_bit <= 255 else (180 if doorbell else 120))
 
 
-def clean_name(name: str, upper: bool = False) -> str:
+def clean_name(name: str, upper: bool = False, env_sep: bool = False) -> str:
     """Return a URI friendly name by removing special characters and spaces."""
-    uri_sep = "-"
-    if os.getenv("URI_SEPARATOR") in ("-", "_", "#"):
+    uri_sep = "_" if env_sep else "-"
+    if not env_sep and os.getenv("URI_SEPARATOR") in ("-", "_", "#"):
         uri_sep = os.getenv("URI_SEPARATOR")
     clean = (
         re.sub(r"[^\-\w+]", "", name.strip().replace(" ", uri_sep))
@@ -516,7 +522,7 @@ def check_net_mode(session_mode: int, uri: str) -> str:
     return mode
 
 
-def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> int:
+def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str, audio: tuple = None) -> int:
     """Check cam session and return connection mode, firmware, and wifidb from camera."""
     mode = check_net_mode(sess.session_check().mode, uri)
     frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
@@ -540,38 +546,53 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str) -> int:
         wifi = sess.camera.camera_info["netInfo"].get("signal", wifi)
     # return mode, firmware, wifi
     log.info(f"📡 Getting {bit_frame} via {mode} (WiFi: {wifi}%) FW: {firmware} (2/3)")
+    if audio:
+        a_codec = audio[0].replace("s16le", "pcm > aac").upper()
+        log.info(f"🔊 Audio Enabled - {a_codec}/{audio[1]:,}Hz")
     return fps or 20
 
 
-def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
+def get_ffmpeg_cmd(
+    uri: str, cam_model: str, audio: bool = False, a_codec: tuple = None
+) -> list:
     """Return the ffmpeg cmd with options from the env."""
     lib264 = (
         ["libx264", "-filter:v", "transpose=1", "-b:v", "3000K"]
         + ["-tune", "zerolatency", "-preset", "ultrafast"]
         + ["-force_key_frames", "expr:gte(t,n_forced*2)"]
     )
-    flags = "-fflags +genpts+flush_packets+nobuffer -flags +low_delay"
+    flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
-    rtsp_proto = "udp" if "udp" in env_bool("RTSP_PROTOCOLS").lower() else "tcp"
-    rtsp_ss = f"[select=v:f=rtsp:rtsp_transport={rtsp_proto}]rtsp://0.0.0.0:8554/{uri.lower()}"
     livestream = get_livestream_cmd(uri)
+    audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
+    audio_out = "aac"
+    if audio and a_codec:
+        audio_in = f"-f {a_codec[0]} -ar {a_codec[1]} -i /tmp/{uri.lower()}.wav"
+        audio_out = env_bool("AUDIO_CODEC", "copy")
+        audio_out = "aac" if audio_out == "copy" and "s16le" in a_codec else audio_out
+        a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
+    av_select = "select=" + ("v,a" if audio else "v")
+    rtsp_proto = "udp" if "udp" in env_bool("RTSP_PROTOCOLS").lower() else "tcp"
+    rtsp_ss = f"[{av_select}:f=rtsp:rtsp_transport={rtsp_proto}]rtsp://0.0.0.0:8554/{uri.lower()}"
+
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD", "")).strip(
         "'\"\n "
-    ).format(cam_name=uri.lower(), CAM_NAME=uri).split() or (
+    ).format(cam_name=uri.lower(), CAM_NAME=uri, audio_in=audio_in).split() or (
         ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "error"]
         + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
         .split()
         + ["-analyzeduration", "50", "-probesize", "50", "-f", "h264", "-i", "pipe:"]
-        + (["-f", "lavfi", "-i", "anullsrc=cl=mono"] if livestream else [])
+        + audio_in.split()
         + ["-c:v"]
         + (["copy"] if not rotate else lib264)
-        + (["-c:a", "aac"] if livestream else [])
+        + (["-c:a", audio_out] if audio_in else [])
+        + (a_filter if audio and audio_out != "copy" else [])
         + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
         + ["-f", "tee"]
         + ["-map", "0:v"]
-        + (["-map", "1:a", "-shortest"] if livestream else [])
-        + [rtsp_ss + get_record_cmd(uri) + livestream]
+        + (["-map", "1:a", "-shortest"] if audio_in else [])
+        + [rtsp_ss + get_record_cmd(uri, av_select) + livestream]
     )
     if "ffmpeg" not in cmd[0].lower():
         cmd.insert(0, "ffmpeg")
@@ -580,7 +601,7 @@ def get_ffmpeg_cmd(uri: str, cam_model: str = None) -> list:
     return cmd
 
 
-def get_record_cmd(uri: str) -> str:
+def get_record_cmd(uri: str, av_select: str) -> str:
     """Check if recording is enabled and return ffmpeg tee cmd."""
     if not env_bool(f"RECORD_{uri}", env_bool("RECORD_ALL", False)):
         return ""
@@ -593,7 +614,7 @@ def get_record_cmd(uri: str) -> str:
     os.makedirs(path, exist_ok=True)
     log.info(f"📹 Will record {seg_time}s clips to {path}")
     return (
-        "|[onfail=ignore:select=v:f=segment"
+        f"|[onfail=ignore:{av_select}:f=segment"
         f":segment_time={seg_time}"
         ":segment_atclocktime=1"
         ":segment_format=mp4"

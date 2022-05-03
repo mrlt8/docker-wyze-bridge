@@ -11,7 +11,7 @@ It just works!
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
-Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found it useful.
+Please consider starring or [sponsoring](https://ko-fi.com/mrlt8) this project if you found it useful.
 
 ## Quick Start
 
@@ -28,14 +28,23 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
-## Changes in v1.3.8
+## Features
 
-Audio is also coming soon. Please check out the audio branch to report any issues.
+- Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS.
+- Access to HD *or* SD stream with configurable bitrate.
+- Local and remote access to any of the cams on your account.
+- Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker.
+- Support for Wyze 2FA.
+- Ability to rotate video for Wyze Doorbell.
+- Ability to record streams locally.
+- Ability to take snapshots on an interval.
+- Ability to livestream directly from the bridge.
 
-### 🚧 Changed
+## Changes in v1.4.0
 
-- Fixed a bug where the doorbell would fall behind and drift out of sync. Thanks @krystiancharubin!
+- **NEW**: 🔊 Audio is now available. [Details](#audio)
 
+- **UPDATED**: ⬆️ rtsp-simple-server > [v0.18.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.18.2)
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -83,7 +92,7 @@ The bridge should be compatible with official firmware from wyze.
 
 Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi.
 
-The container can be run on its own, in [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer), [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236), or as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant).
+The container can be run on its own, in [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer), [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236), as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant), locally or remotely in the cloud.
 
 [![Open your Home Assistant instance and show the add add-on repository dialog with a specific repository URL pre-filled.](https://my.home-assistant.io/badges/supervisor_add_addon_repository.svg)](https://my.home-assistant.io/redirect/supervisor_add_addon_repository/?repository_url=https%3A%2F%2Fgithub.com%2Fmrlt8%2Fdocker-wyze-bridge)
 
@@ -123,10 +132,6 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 - [Home Assistant](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
 - [Homebridge Camera FFmpeg](https://sunoo.github.io/homebridge-camera-ffmpeg/configs/WyzeCam.html)
 - [HomeKit Secure Video](https://github.com/mrlt8/docker-wyze-bridge/wiki/HomeKit-Secure-Video)
-
-#### Audio Support
-
-Audio is coming soon.
 
 #### Special Characters
 
@@ -179,7 +184,9 @@ Two-factor authentication ("Two-Step Verification" in the wyze app) is supported
       - ./tokens:/tokens/
   ```
 
-You can also have the bridge auto generate and enter a Time-based One-Time Password (TOTP) by adding the secret key to the file `/tokens/totp` on standard installs or `/config/wyze-bridge/totp` for Home Assistant installs. You will need to create the file if it doesn't exist and mount it if necessary.
+- Generate Time-based One-Time Passwords:
+
+  You can have the bridge auto generate and enter a Time-based One-Time Password (TOTP) by adding the secret key to the file `/tokens/totp` on standard installs or `/config/wyze-bridge/totp` for Home Assistant installs. You will need to create the file if it doesn't exist and mount it if necessary.
 
 - 🏠 Home Assistant:
 
@@ -195,7 +202,49 @@ You can also have the bridge auto generate and enter a Time-based One-Time Passw
 
 ## Advanced Options
 
-**WYZE_EMAIL** and **WYZE_PASSWORD** are the only two required environment variables. The following envs are all optional.
+**WYZE_EMAIL** and **WYZE_PASSWORD** are the only two required environment variables. 
+
+**The following envs are all optional.**
+
+### Audio
+
+Audio is disabled by default and must be enabled in the ENV.
+
+#### Enable audio
+
+- For all cameras:
+
+  ```YAML
+  environment:
+      ..
+      - ENABLE_AUDIO=True
+  ```
+
+- For a specific camera:
+
+  where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
+
+  ```yaml
+    - ENABLE_AUDIO_CAM_NAME=True
+  ```
+
+#### Audio output codec
+
+By default, the bridge will attempt to copy the audio from the camera without re-encoding *unless* the camera is using a codec that isn't supported by RTSP, in which case the audio will be converted to AAC.
+
+The `AUDIO_CODEC` ENV can be used should you need to re-encode the audio to another format for compatibility:
+
+```yaml
+  - AUDIO_CODEC=AAC
+```
+
+#### Audio filtering
+
+Custom ffmpeg audio filters can be set with `AUDIO_FILTER`, but please note that audio filters will only be applied if re-encoding to another codec.
+
+```yaml
+  - AUDIO_FILTER=highpass=f=300,lowpass=f=2500,volume=volume=2
+```
 
 ### Filtering
 
@@ -391,6 +440,7 @@ Additional info:
 
 - The `ffmpeg` command is implied and is optional.
 - The camera name is available as a variable `{cam_name}` for lowercase and `{CAM_NAME}` for uppercase.
+- The audio pipe and format are available as a variable `{audio_in}`.
 
 ### Custom FFmpeg Flags
 

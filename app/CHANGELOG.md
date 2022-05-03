@@ -1,3 +1,9 @@
+## Changes in v1.4.0
+
+- **NEW**: 🔊 Audio is now available. [Details](https://github.com/mrlt8/docker-wyze-bridge#audio)
+
+- **UPDATED**: ⬆️ rtsp-simple-server > [v0.18.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.18.2)
+
 ## Changes in v1.3.8
 
 Audio is also coming soon. Please check out the audio branch to report any issues.

@@ -63,9 +63,9 @@ class WyzeIOTC:
     def __init__(
         self,
         tutk_platform_lib: Optional[Union[str, CDLL]] = None,
-        udp_port: Optional[int] = 0,
+        udp_port: Optional[int] = None,
         max_num_av_channels: Optional[int] = 1,
-        sdk_key: Optional[str] = "",
+        sdk_key: Optional[str] = None,
         debug: bool = False,
     ) -> None:
         """Construct a WyzeIOTC session object.
@@ -84,6 +84,8 @@ class WyzeIOTC:
         if isinstance(tutk_platform_lib, str):
             path = pathlib.Path(tutk_platform_lib)
             tutk_platform_lib = tutk.load_library(str(path.absolute()))
+        if not sdk_key:
+            sdk_key = os.getenv("SDK_KEY")
         license_status = tutk.TUTK_SDK_Set_License_Key(tutk_platform_lib, sdk_key)
         if license_status < 0:
             raise tutk.TutkError(license_status)
@@ -417,6 +419,7 @@ class WyzeIOTCSession:
         last_keyframe = last_frame = 0, 0
         while not stop_flag.is_set():
             if last_keyframe[1] and (delta := time.time() - last_frame[1]) >= timeout:
+                self.state = WyzeIOTCSessionState.CONNECTING_FAILED
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
             if last_keyframe[1] and (slowdown := (0.75 / fps) - delta) > 0:
                 time.sleep(slowdown)
@@ -431,11 +434,11 @@ class WyzeIOTCSession:
                         time.sleep(1.0 / fps)
                     time.sleep(1.0 / fps)
                     continue
-                if errno == tutk.AV_ER_INCOMPLETE_FRAME:
-                    warnings.warn("Received incomplete frame")
-                    continue
-                if errno == tutk.AV_ER_LOSED_THIS_FRAME:
-                    warnings.warn("Lost frame")
+                if errno in (
+                    tutk.AV_ER_INCOMPLETE_FRAME,
+                    tutk.AV_ER_LOSED_THIS_FRAME,
+                ):
+                    warnings.warn(tutk.TutkError(errno).name)
                     continue
                 raise tutk.TutkError(errno)
             assert frame_info is not None, "Got no frame info without an error!"
@@ -461,7 +464,6 @@ class WyzeIOTCSession:
             ):
                 warnings.warn("Waiting for keyframe")
                 if last_keyframe[0]:
-                    self.clear_local_buffer()
                     last_keyframe = 0, 0
                 time.sleep(0.5 / fps)
                 continue
@@ -489,7 +491,7 @@ class WyzeIOTCSession:
                 else:
                     iotc_msg = False
             if iotc_msg:
-                logger.info("Requesting frame_size=%d and bitrate=%d" % iotc_msg)
+                logger.warn("Requesting frame_size=%d and bitrate=%d" % iotc_msg)
                 try:
                     if self.camera.product_model in ("WYZEDB3", "WVOD1", "HL_WCO2"):
                         mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result(False)
@@ -506,12 +508,73 @@ class WyzeIOTCSession:
 
     def change_fps(self, fps: int) -> None:
         """Send a message to the camera to update the FPS."""
-        logger.info("Requesting frame_rate=%d" % fps)
+        logger.warn("Requesting frame_rate=%d" % fps)
         with self.iotctrl_mux() as mux:
             try:
                 mux.send_ioctl(K10052DBSetResolvingBit(0, 0, fps)).result(block=False)
             except tutk_ioctl_mux.Empty:
                 pass  # Ignore queue.Empty
+
+    def recv_audio_frames(self, uri: str, fps: int = 20) -> None:
+        """Write raw audio frames to a named pipe."""
+        FIFO = f"/tmp/{uri.lower()}.wav"
+        try:
+            os.mkfifo(FIFO, os.O_NONBLOCK)
+        except OSError as e:
+            if e.errno != 17:
+                raise e
+        tutav = self.tutk_platform_lib, self.av_chan_id
+        try:
+            with open(FIFO, "wb") as audio_pipe:
+                while self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
+                    if tutk.av_check_audio_buf(*tutav) < 3:
+                        time.sleep(2 / fps)
+                        continue
+                    errno, frame_data, _ = tutk.av_recv_audio_data(*tutav)
+                    if errno < 0:
+                        if errno in (
+                            tutk.AV_ER_DATA_NOREADY,
+                            tutk.AV_ER_INCOMPLETE_FRAME,
+                            tutk.AV_ER_LOSED_THIS_FRAME,
+                        ):
+                            time.sleep(2 / fps)
+                            continue
+                        warnings.warn(f"Error: {errno}")
+                        break
+                    audio_pipe.write(frame_data)
+        except tutk.TutkError as e:
+            raise tutk.TutkError(errno)
+        except IOError as e:
+            if e.errno != 32:  # Ignore errno.EPIPE - Broken pipe
+                warnings.warn(str(e))
+        finally:
+            os.unlink(FIFO)
+            warnings.warn("Audio pipe closed")
+
+    def get_audio_codec(self, limit: int = 25) -> Tuple[str, int]:
+        """Identify audio codec."""
+        bit = 16000 if self.camera.product_model == "WYZE_CAKP2JFUS" else 8000
+        for _ in range(limit):
+            errno, _, frame_info = tutk.av_recv_audio_data(
+                self.tutk_platform_lib, self.av_chan_id
+            )
+            if errno == 0 and frame_info.codec_id:
+                codec = False
+                if frame_info.codec_id == 140:  # MEDIA_CODEC_AUDIO_PCM
+                    codec = "s16le"
+                elif frame_info.codec_id == 141:  # MEDIA_CODEC_AUDIO_AAC
+                    codec = "aac"
+                elif frame_info.codec_id == 143:  # MEDIA_CODEC_AUDIO_G711_ALAW
+                    codec = "alaw"
+                else:
+                    raise Exception(f"\nUnknown audio codec_id={frame_info.codec_id}\n")
+                if codec:
+                    logger.info(
+                        f"codec={codec} bit_rate={bit} codec_id={frame_info.codec_id}"
+                    )
+                    return codec, bit
+            time.sleep(0.5)
+        raise Exception("Unable to identify audio.")
 
     def recv_video_frame(
         self,
