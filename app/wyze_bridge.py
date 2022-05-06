@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.1\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.2 DEV 1\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -627,13 +627,13 @@ def get_record_cmd(uri: str, av_select: str) -> str:
 def get_livestream_cmd(uri: str) -> str:
     """Check if livestream is enabled and return ffmpeg tee cmd."""
     cmd = ""
-    if len(yt_key := env_bool(f"YOUTUBE_{uri}")) > 5:
+    if len(yt_key := os.getenv(f"YOUTUBE_{uri}", "")) > 5:
         log.info("📺 YouTube livestream enabled")
         cmd += f"|[f=flv:select=v,a]rtmp://a.rtmp.youtube.com/live2/{yt_key}"
-    if len(fb_key := env_bool(f"FACEBOOK_{uri}")) > 5:
+    if len(fb_key := os.getenv(f"FACEBOOK_{uri}", "")) > 5:
         log.info("📺 Facebook livestream enabled")
         cmd += f"|[f=flv:select=v,a]rtmps://live-api-s.facebook.com:443/rtmp/{fb_key}"
-    if len(tee_cmd := env_bool(f"LIVESTREAM_{uri}")) > 5:
+    if len(tee_cmd := os.getenv(f"LIVESTREAM_{uri}", "")) > 5:
         log.info(f"📺 Custom ({tee_cmd}) livestream enabled")
         cmd += f"|[f=flv:select=v,a]{tee_cmd}"
     return cmd
