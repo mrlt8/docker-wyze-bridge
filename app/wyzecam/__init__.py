@@ -42,3 +42,4 @@ from wyzecam.api import (
 )
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 from wyzecam.iotc import WyzeIOTC, WyzeIOTCSession, WyzeIOTCSessionState
+from wyzecam.tutk.tutk import TutkError

@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.2 DEV 4\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.2 DEV 5\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -292,47 +292,6 @@ class WyzeBridge:
         if pas := env_bool(path + "READPASS", os.getenv("RTSP_PATHS_ALL_READPASS")):
             os.environ[path + "READPASS"] = pas
 
-    def mqtt_discovery(self, cam) -> None:
-        """Add cameras to MQTT if enabled."""
-        if not env_bool("MQTT_HOST"):
-            return
-        uri = f"{clean_name(cam.nickname)}"
-        msgs = [(f"wyzebridge/{uri}/state", "offline")]
-        if env_bool("MQTT_DTOPIC"):
-            topic = f"{os.getenv('MQTT_DTOPIC')}/camera/{cam.mac}/config"
-            payload = {
-                "uniq_id": "WYZE" + cam.mac,
-                "name": "Wyze Cam " + cam.nickname,
-                "topic": f"wyzebridge/{uri}/image",
-                "json_attributes_topic": f"wyzebridge/{uri}/attributes",
-                "availability_topic": f"wyzebridge/{uri}/state",
-                "icon": "mdi:image",
-                "device": {
-                    "connections": [["mac", cam.mac]],
-                    "identifiers": cam.mac,
-                    "manufacturer": "Wyze",
-                    "model": cam.product_model,
-                    "sw_version": cam.firmware_ver,
-                    "via_device": "docker-wyze-bridge",
-                },
-            }
-            msgs.append((topic, json.dumps(payload)))
-        mqauth = os.getenv("MQTT_AUTH", ":").split(":")
-        mqhost = os.getenv("MQTT_HOST", "localhost").split(":")
-        try:
-            paho.mqtt.publish.multiple(
-                msgs,
-                hostname=mqhost[0],
-                port=int(mqhost[1]) if len(mqhost) > 1 else 1883,
-                auth=(
-                    {"username": mqauth[0], "password": mqauth[1]}
-                    if env_bool("MQTT_AUTH")
-                    else None
-                ),
-            )
-        except Exception as ex:
-            log.warning(f"[MQTT] {ex}")
-
     def get_filtered_cams(self) -> None:
         """Get all cameras that are enabled."""
         cams = self.get_wyze_data("cameras")
@@ -361,7 +320,7 @@ class WyzeBridge:
         print(f"\n🎬 STARTING {msg} {total} CAMERAS")
         for cam in cams:
             self.add_rtsp_path(cam)
-            self.mqtt_discovery(cam)
+            mqtt_discovery(cam)
             self.save_api_thumb(cam)
             self.streams[cam.nickname] = {}
 
@@ -404,15 +363,24 @@ class WyzeBridge:
                         stop_flag, self.keep_bad_frames, self.timeout, fps
                     ):
                         ffmpeg.stdin.write(frame)
-        except Exception as ex:
+        except wyzecam.TutkError as ex:
             log.warning(ex)
-            if ex.args[0] == -13:  # IOTC_ER_TIMEOUT
+            # set_cam_offline(uri, ex)
+            mqtt_status = [(f"wyzebridge/{uri.lower()}/state", ex.name)]
+            if ex.code == -90:
+                mqtt_status.append((f"wyzebridge/{uri.lower()}/offline", True))
+            send_mqtt(mqtt_status)
+            if ex.code == -13:  # IOTC_ER_TIMEOUT
                 time.sleep(2)
-            elif ex.args[0] in (-19, -68, -90):
-                exit_code = abs(ex.args[0])
-            elif ex.args[0] == "Authentication did not succeed! {'connectionRes': '2'}":
+            elif ex.code in (-19, -68, -90):
+                exit_code = abs(ex.code)
+        except ValueError as ex:
+            log.warning(ex)
+            if ex.args[0] == "ENR_AUTH_FAILED":
                 log.warning("⏰ Expired ENR?")
                 exit_code = 19
+        except Exception as ex:
+            log.warning(ex)
         else:
             log.warning("Stream is down.")
         finally:
@@ -647,6 +615,78 @@ def get_livestream_cmd(uri: str) -> str:
         log.info(f"📺 Custom ({key}) livestream enabled")
         cmd += f"|[f=flv:select=v,a]{key}"
     return cmd
+
+
+def set_cam_offline(uri: str, status: wyzecam.TutkError) -> None:
+    """Do something when camera goes offline."""
+
+    name = "offline" if status.code == -90 else status.name
+
+    send_mqtt([(f"wyzebridge/{uri.lower()}/state", name)])
+
+    if str(status.code) not in env_bool("OFFLINE_ERRNO", "-90"):
+        return
+    if ":" in (webhook := env_bool("OFFLINE_IFTTT")):
+        event, key = webhook.split(":")
+        requests.post(
+            f"https://maker.ifttt.com/trigger/{event}/with/key/{key}",
+            data={
+                "value1": uri,
+                "value2": status.code,
+                "value2": status.name,
+            },
+        )
+
+
+def mqtt_discovery(cam) -> None:
+    """Add cameras to MQTT if enabled."""
+    if not env_bool("MQTT_HOST"):
+        return
+    msgs = [
+        (f"wyzebridge/{clean_name(cam.nickname)}/state", "disconnected"),
+        (f"wyzebridge/{clean_name(cam.nickname)}/offline", None, 0, True),
+    ]
+    if env_bool("MQTT_DTOPIC"):
+        topic = f"{os.getenv('MQTT_DTOPIC')}/camera/{cam.mac}/config"
+        payload = {
+            "uniq_id": "WYZE" + cam.mac,
+            "name": "Wyze Cam " + cam.nickname,
+            "topic": f"wyzebridge/{uri}/image",
+            "json_attributes_topic": f"wyzebridge/{uri}/attributes",
+            "availability_topic": f"wyzebridge/{uri}/state",
+            "icon": "mdi:image",
+            "device": {
+                "connections": [["mac", cam.mac]],
+                "identifiers": cam.mac,
+                "manufacturer": "Wyze",
+                "model": cam.product_model,
+                "sw_version": cam.firmware_ver,
+                "via_device": "docker-wyze-bridge",
+            },
+        }
+        msgs.append((topic, json.dumps(payload)))
+    send_mqtt(msgs)
+
+
+def send_mqtt(messages: list) -> None:
+    """Publish a message to the MQTT server."""
+    if not env_bool("MQTT_HOST"):
+        return
+    m_auth = os.getenv("MQTT_AUTH", ":").split(":")
+    m_host = os.getenv("MQTT_HOST", "localhost").split(":")
+    try:
+        paho.mqtt.publish.multiple(
+            messages,
+            hostname=m_host[0],
+            port=int(m_host[1]) if len(m_host) > 1 else 1883,
+            auth=(
+                {"username": m_auth[0], "password": m_auth[1]}
+                if env_bool("MQTT_AUTH")
+                else None
+            ),
+        )
+    except Exception as ex:
+        log.warning(f"[MQTT] {ex}")
 
 
 def setup_hass():

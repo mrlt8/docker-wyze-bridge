@@ -288,9 +288,10 @@ class TutkError(RuntimeError):
         -31000: "TUNNEL_ER_UNDEFINED",
     }
 
-    def __init__(self, code):
+    def __init__(self, code, data=None):
         super().__init__(code)
         self.code = code
+        self.data = data
 
     @property
     def name(self):
@@ -905,8 +906,7 @@ def iotc_check_device_online(
         c_uint(timeout_ms),
         c_int32(),
     )
-    # return status, device_out
-    return status
+    return status, device_out
 
 
 def iotc_connect_by_uid_parallel(

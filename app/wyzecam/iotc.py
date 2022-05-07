@@ -841,6 +841,13 @@ class WyzeIOTCSession:
                 )
 
             if session_id < 0:  # type: ignore
+                # _, stats = tutk.iotc_check_device_online(
+                #     self.tutk_platform_lib,
+                #     self.camera.p2p_id,
+                #     self.get_auth_key(),
+                #     3000,
+                # )
+                # raise tutk.TutkError(session_id, stats.last_login)
                 raise tutk.TutkError(session_id)
             self.session_id = session_id
 
@@ -923,9 +930,11 @@ class WyzeIOTCSession:
                     self.enable_audio,
                 )
                 auth_response = mux.send_ioctl(challenge_response).result()
-                assert (
-                    auth_response["connectionRes"] == "1"
-                ), f"Authentication did not succeed! {auth_response}"
+                if auth_response["connectionRes"] == "2":
+                    raise ValueError("ENR_AUTH_FAILED")
+                if auth_response["connectionRes"] != "1":
+                    warnings.warn(f"AUTH FAILED: {auth_response}")
+                    raise ValueError("AUTH_FAILED")
                 self.camera.set_camera_info(auth_response["cameraInfo"])
 
                 if self.camera.product_model in ("WYZEDB3", "WVOD1", "HL_WCO2"):
