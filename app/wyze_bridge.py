@@ -10,7 +10,7 @@ import threading
 import time
 import warnings
 from subprocess import PIPE, Popen
-from typing import List, NoReturn, Tuple, Union
+from typing import List, NoReturn, Optional, Tuple, Union
 
 import mintotp
 import paho.mqtt.publish
@@ -21,13 +21,13 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.2 DEV 1\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.2 DEV 3\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
-        self.timeout: int = int(env_bool("RTSP_READTIMEOUT", 15).replace("s", ""))
-        self.connect_timeout: int = int(env_bool("CONNECT_TIMEOUT", 20))
-        self.keep_bad_frames: bool = env_bool("KEEP_BAD_FRAMES", False)
+        self.timeout: int = env_bool("RTSP_READTIMEOUT", 15, style="int")
+        self.connect_timeout: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
+        self.keep_bad_frames: bool = env_bool("KEEP_BAD_FRAMES", style="bool")
         self.healthcheck: bool = bool(os.getenv("HEALTHCHECK"))
         self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
         self.img_path: str = "/%s/" % env_bool("IMG_DIR", "img").strip("/")
@@ -66,7 +66,7 @@ class WyzeBridge:
         """Start all streams and keep them alive."""
         for cam_name in self.streams:
             self.start_stream(cam_name)
-        cooldown = int(env_bool("OFFLINE_TIME", 10))
+        cooldown = env_bool("OFFLINE_TIME", 10, style="int")
         while self.streams and not self.stop_flag.is_set():
             refresh_cams = True
             for name, stream in list(self.streams.items()):
@@ -380,24 +380,23 @@ class WyzeBridge:
         """Connect and communicate with the camera using TUTK."""
         uri = clean_name(cam.nickname, upper=True)
         exit_code = 1
-        audio = env_bool(f"ENABLE_AUDIO_{uri}", env_bool("ENABLE_AUDIO", False))
+        audio = env_bool(f"ENABLE_AUDIO_{uri}", env_bool("ENABLE_AUDIO"), style="bool")
         try:
             with wyzecam.WyzeIOTC() as wyze_iotc, wyzecam.WyzeIOTCSession(
                 wyze_iotc.tutk_platform_lib,
                 self.user,
                 cam,
                 *(get_env_quality(uri, cam.product_model)),
-                enable_audio=bool(audio),
+                enable_audio=audio,
                 connect_timeout=self.connect_timeout,
             ) as sess:
                 connected.set()
-                a_codec = sess.get_audio_codec() if audio else None
-                fps = check_cam_sess(sess, uri, a_codec)
+                fps, audio = get_cam_params(sess, uri, audio)
                 audio_thread = threading.Thread(
                     target=sess.recv_audio_frames, args=(uri, fps), name=uri + "_AUDIO"
                 )
                 with Popen(
-                    get_ffmpeg_cmd(uri, cam.product_model, audio, a_codec), stdin=PIPE
+                    get_ffmpeg_cmd(uri, cam.product_model, audio), stdin=PIPE
                 ) as ffmpeg:
                     if audio:
                         audio_thread.start()
@@ -455,10 +454,21 @@ model_names = {
 }
 
 
-def env_bool(env: str, false: str = "") -> str:
+def env_bool(env: str, false="", true="", style="") -> str:
     """Return env variable or empty string if the variable contains 'false' or is empty."""
-    env = os.getenv(env.upper().replace("-", "_"), "").lower().replace("false", "")
-    return env or false
+    env_value = os.getenv(env.upper().replace("-", "_"), "")
+    value = env_value.lower().replace("false", "").strip("'\" \n\t\r")
+    if style.lower() == "bool":
+        return bool(value or false)
+    if style.lower() == "int":
+        return int("".join(filter(str.isdigit, value or str(false))) or 0)
+    if style.lower() == "upper" and value:
+        return value.upper()
+    if style.lower() == "original" and value:
+        return os.getenv(env.upper().replace("-", "_"))
+    if true and value:
+        return true
+    return value or false
 
 
 def env_list(env: str) -> list:
@@ -481,11 +491,7 @@ def env_filter(cam) -> bool:
 
 def get_env_quality(uri: str, cam_model: str) -> Tuple[int, int]:
     """Get preferred resolution and bitrate from env."""
-    env_quality = (
-        env_bool(f"QUALITY_{uri}", env_bool("QUALITY", "na"))
-        .strip("'\"\n ")
-        .ljust(3, "0")
-    )
+    env_quality = env_bool(f"QUALITY_{uri}", env_bool("QUALITY", "na")).ljust(3, "0")
     env_bit = int(env_quality[2:])
     frame_size = 1 if env_quality[:2] == "sd" else 0
     if doorbell := (cam_model == "WYZEDB3"):
@@ -522,11 +528,14 @@ def check_net_mode(session_mode: int, uri: str) -> str:
     return mode
 
 
-def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str, audio: tuple = None) -> int:
-    """Check cam session and return connection mode, firmware, and wifidb from camera."""
+def get_cam_params(
+    sess: wyzecam.WyzeIOTCSession, uri: str, audio: bool
+) -> Tuple[int, Optional[dict]]:
+    """Check session and return fps and audio codec from camera."""
     mode = check_net_mode(sess.session_check().mode, uri)
     frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
     bit_frame = f"{sess.preferred_bitrate}kb/s {frame_size} stream"
+    fps = 20
     if video_param := sess.camera.camera_info.get("videoParm", False):
         if fps := int(video_param.get("fps", 0)):
             if fps % 5 != 0:
@@ -544,17 +553,19 @@ def check_cam_sess(sess: wyzecam.WyzeIOTCSession, uri: str, audio: tuple = None)
     wifi = sess.camera.camera_info["basicInfo"].get("wifidb", "NA")
     if "netInfo" in sess.camera.camera_info:
         wifi = sess.camera.camera_info["netInfo"].get("signal", wifi)
-    # return mode, firmware, wifi
+    if audio:
+        codec, rate = sess.get_audio_codec()
+        codec_str = codec.replace("s16le", "PCM")
+        if codec_out := env_bool("AUDIO_CODEC", "AAC" if "s16le" in codec else ""):
+            codec_str += " > " + codec_out
+        audio: dict = {"codec": codec, "rate": rate, "codec_out": codec_out.lower()}
     log.info(f"📡 Getting {bit_frame} via {mode} (WiFi: {wifi}%) FW: {firmware} (2/3)")
     if audio:
-        a_codec = audio[0].replace("s16le", "pcm > aac").upper()
-        log.info(f"🔊 Audio Enabled - {a_codec}/{audio[1]:,}Hz")
-    return fps or 20
+        log.info(f"🔊 Audio Enabled - {codec_str.upper()}/{rate:,}Hz")
+    return fps, audio
 
 
-def get_ffmpeg_cmd(
-    uri: str, cam_model: str, audio: bool = False, a_codec: tuple = None
-) -> list:
+def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list:
     """Return the ffmpeg cmd with options from the env."""
     lib264 = (
         ["libx264", "-filter:v", "transpose=1", "-b:v", "3000K"]
@@ -562,22 +573,21 @@ def get_ffmpeg_cmd(
         + ["-force_key_frames", "expr:gte(t,n_forced*2)"]
     )
     flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
-    rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR", False)
+    rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR")
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
-    if audio and a_codec:
-        audio_in = f"-f {a_codec[0]} -ar {a_codec[1]} -i /tmp/{uri.lower()}.wav"
-        audio_out = env_bool("AUDIO_CODEC", "copy")
-        audio_out = "aac" if audio_out == "copy" and "s16le" in a_codec else audio_out
+    if audio and "codec" in audio:
+        audio_in = f"-f {audio['codec']} -ar {audio['rate']} -i /tmp/{uri.lower()}.wav"
+        audio_out = audio["codec_out"] or "copy"
         a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
     av_select = "select=" + ("v,a" if audio else "v")
-    rtsp_proto = "udp" if "udp" in env_bool("RTSP_PROTOCOLS").lower() else "tcp"
+    rtsp_proto = "udp" if "udp" in env_bool("RTSP_PROTOCOLS") else "tcp"
     rtsp_ss = f"[{av_select}:f=rtsp:rtsp_transport={rtsp_proto}]rtsp://0.0.0.0:8554/{uri.lower()}"
 
-    cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD", "")).strip(
-        "'\"\n "
-    ).format(cam_name=uri.lower(), CAM_NAME=uri, audio_in=audio_in).split() or (
+    cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD")).format(
+        cam_name=uri.lower(), CAM_NAME=uri, audio_in=audio_in
+    ).split() or (
         ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "error"]
         + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
@@ -603,7 +613,7 @@ def get_ffmpeg_cmd(
 
 def get_record_cmd(uri: str, av_select: str) -> str:
     """Check if recording is enabled and return ffmpeg tee cmd."""
-    if not env_bool(f"RECORD_{uri}", env_bool("RECORD_ALL", False)):
+    if not env_bool(f"RECORD_{uri}", env_bool("RECORD_ALL")):
         return ""
     seg_time = env_bool("RECORD_LENGTH", "60")
     file_name = "{CAM_NAME}_%Y-%m-%d_%H-%M-%S_%Z"
@@ -627,15 +637,15 @@ def get_record_cmd(uri: str, av_select: str) -> str:
 def get_livestream_cmd(uri: str) -> str:
     """Check if livestream is enabled and return ffmpeg tee cmd."""
     cmd = ""
-    if len(yt_key := os.getenv(f"YOUTUBE_{uri}", "")) > 5:
+    if len(key := env_bool(f"YOUTUBE_{uri}", style="original")) > 5:
         log.info("📺 YouTube livestream enabled")
-        cmd += f"|[f=flv:select=v,a]rtmp://a.rtmp.youtube.com/live2/{yt_key}"
-    if len(fb_key := os.getenv(f"FACEBOOK_{uri}", "")) > 5:
+        cmd += f"|[f=flv:select=v,a]rtmp://a.rtmp.youtube.com/live2/{key}"
+    if len(key := env_bool(f"FACEBOOK_{uri}", style="original")) > 5:
         log.info("📺 Facebook livestream enabled")
-        cmd += f"|[f=flv:select=v,a]rtmps://live-api-s.facebook.com:443/rtmp/{fb_key}"
-    if len(tee_cmd := os.getenv(f"LIVESTREAM_{uri}", "")) > 5:
-        log.info(f"📺 Custom ({tee_cmd}) livestream enabled")
-        cmd += f"|[f=flv:select=v,a]{tee_cmd}"
+        cmd += f"|[f=flv:select=v,a]rtmps://live-api-s.facebook.com:443/rtmp/{key}"
+    if len(key := env_bool(f"LIVESTREAM_{uri}", style="original")) > 5:
+        log.info(f"📺 Custom ({key}) livestream enabled")
+        cmd += f"|[f=flv:select=v,a]{key}"
     return cmd
 
 
@@ -681,7 +691,7 @@ if __name__ == "__main__":
         logging.getLogger().setLevel(debug_level)
     log = logging.getLogger("WyzeBridge")
     log.setLevel(debug_level if "DEBUG_LEVEL" in os.environ else logging.INFO)
-    if env_bool("DEBUG_FRAMES"):
+    if env_bool("DEBUG_FRAMES") or env_bool("DEBUG_LEVEL"):
         warnings.simplefilter("always")
     warnings.formatwarning = lambda msg, *args, **kwargs: f"WARNING: {msg}"
     logging.captureWarnings(True)
