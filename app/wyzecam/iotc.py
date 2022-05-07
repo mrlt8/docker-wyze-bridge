@@ -531,7 +531,9 @@ class WyzeIOTCSession:
         try:
             with open(FIFO, "wb") as audio_pipe:
                 while self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
-                    if tutk.av_check_audio_buf(*tutav) < 3:
+                    if (buf := tutk.av_check_audio_buf(*tutav)) < 3:
+                        if buf < 0:
+                            raise tutk.TutkError(buf)
                         time.sleep(2 / fps)
                         continue
                     errno, frame_data, _ = tutk.av_recv_audio_data(*tutav)
@@ -546,11 +548,11 @@ class WyzeIOTCSession:
                         warnings.warn(f"Error: {errno}")
                         break
                     audio_pipe.write(frame_data)
-        except tutk.TutkError as e:
-            raise tutk.TutkError(errno)
-        except IOError as e:
-            if e.errno != 32:  # Ignore errno.EPIPE - Broken pipe
-                warnings.warn(str(e))
+        except tutk.TutkError as ex:
+            warnings.warn(str(ex))
+        except IOError as ex:
+            if ex.errno != 32:  # Ignore errno.EPIPE - Broken pipe
+                warnings.warn(str(ex))
         finally:
             os.unlink(FIFO)
             warnings.warn("Audio pipe closed")
