@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.2 DEV 5\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.2 DEV 6\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -108,6 +108,7 @@ class WyzeBridge:
             if hasattr(proc, "alive") and proc.alive():
                 proc.terminate()
                 proc.join()
+        offline = bool(self.streams[name].get("sleep"))
         cam = next(c for c in self.cameras if c.nickname == name)
         model = model_names.get(cam.product_model, cam.product_model)
         log.info(f"🎉 Connecting to WyzeCam {model} - {name} on {cam.ip} (1/3)")
@@ -115,7 +116,7 @@ class WyzeBridge:
 
         stream = multiprocessing.Process(
             target=self.start_tutk_stream,
-            args=(cam, self.stop_flag, connected),
+            args=(cam, self.stop_flag, connected, offline),
             name=name,
         )
         self.streams[name] = {
@@ -335,7 +336,9 @@ class WyzeBridge:
             log.info("starting rtsp-simple-server")
         self.rtsp = Popen(["/app/rtsp-simple-server", "/app/rtsp-simple-server.yml"])
 
-    def start_tutk_stream(self, cam: wyzecam.WyzeCamera, stop_flag, connected) -> None:
+    def start_tutk_stream(
+        self, cam: wyzecam.WyzeCamera, stop_flag, connected, offline
+    ) -> None:
         """Connect and communicate with the camera using TUTK."""
         uri = clean_name(cam.nickname, upper=True)
         exit_code = 1
@@ -365,11 +368,7 @@ class WyzeBridge:
                         ffmpeg.stdin.write(frame)
         except wyzecam.TutkError as ex:
             log.warning(ex)
-            # set_cam_offline(uri, ex)
-            mqtt_status = [(f"wyzebridge/{uri.lower()}/state", ex.name)]
-            if ex.code == -90:
-                mqtt_status.append((f"wyzebridge/{uri.lower()}/offline", True))
-            send_mqtt(mqtt_status)
+            set_cam_offline(uri, ex, offline)
             if ex.code == -13:  # IOTC_ER_TIMEOUT
                 time.sleep(2)
             elif ex.code in (-19, -68, -90):
@@ -620,23 +619,30 @@ def get_livestream_cmd(uri: str) -> str:
     return cmd
 
 
-def set_cam_offline(uri: str, status: wyzecam.TutkError) -> None:
+def set_cam_offline(uri: str, error: wyzecam.TutkError, offline: bool) -> None:
     """Do something when camera goes offline."""
 
-    name = "offline" if status.code == -90 else status.name
+    state = "offline" if error.code == -90 else error.name
 
-    send_mqtt([(f"wyzebridge/{uri.lower()}/state", name)])
+    mqtt_status = [(f"wyzebridge/{uri.lower()}/state", state)]
+    if error.code == -90:
+        mqtt_status.append((f"wyzebridge/{uri.lower()}/offline", True))
 
-    if str(status.code) not in env_bool("OFFLINE_ERRNO", "-90"):
+    send_mqtt(mqtt_status)
+
+    if str(error.code) not in env_bool("OFFLINE_ERRNO", "-90"):
         return
-    if ":" in (webhook := env_bool("OFFLINE_IFTTT")):
-        event, key = webhook.split(":")
-        requests.post(
+    if offline:  # Don't resend if previous state was offline.
+        return
+
+    if ":" in (ifttt := env_bool("OFFLINE_IFTTT", style="original")):
+        event, key = ifttt.split(":")
+        resp = requests.post(
             f"https://maker.ifttt.com/trigger/{event}/with/key/{key}",
-            data={
+            {
                 "value1": uri,
-                "value2": status.code,
-                "value2": status.name,
+                "value2": error.code,
+                "value3": error.name,
             },
         )
 
