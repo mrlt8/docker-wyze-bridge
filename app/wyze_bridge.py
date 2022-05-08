@@ -501,6 +501,9 @@ def get_cam_params(
 ) -> Tuple[int, Optional[dict]]:
     """Check session and return fps and audio codec from camera."""
     mode = check_net_mode(sess.session_check().mode, uri)
+    if env_bool("IOTC_TCP"):
+        sess.tutk_platform_lib.IOTC_TCPRelayOnly_TurnOn()
+        print(sess.session_check())
     frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
     bit_frame = f"{sess.preferred_bitrate}kb/s {frame_size} stream"
     fps = 20

@@ -376,8 +376,14 @@ class SInfoStructEx(FormattedStructure):
             "is_secure",
             c_uint8,
         ),  # 0: The IOTC session is in non-secure mode, 1: The IOTC session is in secure mode
-        ("local_nat_type", c_uint8),  # The local NAT type.
-        ("remote_nat_type", c_uint8),  # The remote NAT type.
+        (
+            "local_nat_type",
+            c_uint8,
+        ),  # The local NAT type, 0: Unknown type, 1: Type 1, 2: Type 2, 3: Type 3, 10: TCP only
+        (
+            "remote_nat_type",
+            c_uint8,
+        ),  # The remote NAT type, 0: Unknown type, 1: Type 1, 2: Type 2, 3: Type 3, 10: TCP only
         ("relay_type", c_uint8),  # 0: Not Relay, 1: UDP Relay, 2: TCP Relay
         (
             "net_state",
