@@ -841,19 +841,12 @@ class WyzeIOTCSession:
                 )
 
             if session_id < 0:  # type: ignore
-                # _, stats = tutk.iotc_check_device_online(
-                #     self.tutk_platform_lib,
-                #     self.camera.p2p_id,
-                #     self.get_auth_key(),
-                #     3000,
-                # )
-                # raise tutk.TutkError(session_id, stats.last_login)
                 raise tutk.TutkError(session_id)
             self.session_id = session_id
 
             self.session_check()
 
-            resend = 1
+            resend = int(os.getenv("RESEND", 1))
             if self.camera.product_model in ("WVOD1", "HL_WCO2"):
                 resend = 0
 
