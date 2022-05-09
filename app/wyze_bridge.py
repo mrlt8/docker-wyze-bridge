@@ -637,14 +637,18 @@ def set_cam_offline(uri: str, error: wyzecam.TutkError, offline: bool) -> None:
 
     if ":" in (ifttt := env_bool("OFFLINE_IFTTT", style="original")):
         event, key = ifttt.split(":")
-        resp = requests.post(
-            f"https://maker.ifttt.com/trigger/{event}/with/key/{key}",
-            {
-                "value1": uri,
-                "value2": error.code,
-                "value3": error.name,
-            },
-        )
+        url = f"https://maker.ifttt.com/trigger/{event}/with/key/{key}"
+        data = {"value1": uri, "value2": error.code, "value3": error.name}
+        try:
+            resp = requests.post(url, data)
+            resp.raise_for_status()
+        except requests.exceptions.HTTPError as ex:
+            log.warning(f"[IFTTT] {ex}")
+        else:
+            log.info(f"[IFTTT] Sent webhook trigger to {event}")
+
+
+        
 
 
 def mqtt_discovery(cam) -> None:
