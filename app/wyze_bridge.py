@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.2\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.3\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -652,18 +652,16 @@ def mqtt_discovery(cam) -> None:
     """Add cameras to MQTT if enabled."""
     if not env_bool("MQTT_HOST"):
         return
-    msgs = [
-        (f"wyzebridge/{clean_name(cam.nickname)}/state", "disconnected"),
-        (f"wyzebridge/{clean_name(cam.nickname)}/offline", None, 0, True),
-    ]
+    base = f"wyzebridge/{clean_name(cam.nickname)}/"
+    msgs = [(f"{base}state", "disconnected"), (f"{base}offline", None, 0, True)]
     if env_bool("MQTT_DTOPIC"):
         topic = f"{os.getenv('MQTT_DTOPIC')}/camera/{cam.mac}/config"
         payload = {
             "uniq_id": "WYZE" + cam.mac,
             "name": "Wyze Cam " + cam.nickname,
-            "topic": f"wyzebridge/{uri}/image",
-            "json_attributes_topic": f"wyzebridge/{uri}/attributes",
-            "availability_topic": f"wyzebridge/{uri}/state",
+            "topic": f"{base}image",
+            "json_attributes_topic": f"{base}attributes",
+            "availability_topic": f"{base}state",
             "icon": "mdi:image",
             "device": {
                 "connections": [["mac", cam.mac]],

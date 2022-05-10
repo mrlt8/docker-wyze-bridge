@@ -1,4 +1,6 @@
-## Changes in v1.4.2
+## Changes in v1.4.2/3
+
+- **FIXED**: 🔧 Bug in v1.4.2 if MQTT was enabled in home assistant. (#375) Thanks @JochenKlenk!
 
 - **NEW**: ✨ ENV: `OFFLINE_IFTTT={event}:{key}` - Send a webhook trigger to IFTTT when the camera goes offline (-90).
 
