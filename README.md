@@ -31,7 +31,6 @@ See [basic usage](#basic-usage) for additional information.
 ## Changes in v1.4.2
 
 - **NEW**: ✨ ENV: `OFFLINE_IFTTT={event}:{key}` - Send a webhook trigger to IFTTT when the camera goes offline (-90).
-  This will pass the camera name as value1, the error code as value2 and the error name as value3.
 
 - **CHANGED**: 🚧 MQTT now reports camera `state` as "connected", "disconnected", "offline", or the connection error. (#359)
 
@@ -385,8 +384,6 @@ The bridge should then trigger your event with the following values:
 }
 ```
 
-- **NEW**: ✨ ENV: `OFFLINE_IFTTT={event}:{key}` - Send a webhook trigger to IFTTT when the camera goes offline (-90).
-  This will pass the camera name as value1, the error code as value2 and the error name as value3.
 ### Livestream
 
 Basic livestream support is available for YouTube and Facebook, but you can also specify any custom rtmp server for other services like Twitch.
