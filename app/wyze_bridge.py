@@ -625,8 +625,6 @@ def set_cam_offline(uri: str, error: wyzecam.TutkError, offline: bool) -> None:
     state = "offline" if error.code == -90 else error.name
 
     mqtt_status = [(f"wyzebridge/{uri.lower()}/state", state)]
-    if error.code == -90:
-        mqtt_status.append((f"wyzebridge/{uri.lower()}/offline", True))
 
     send_mqtt(mqtt_status)
 
@@ -653,7 +651,7 @@ def mqtt_discovery(cam) -> None:
     if not env_bool("MQTT_HOST"):
         return
     base = f"wyzebridge/{clean_name(cam.nickname)}/"
-    msgs = [(f"{base}state", "disconnected"), (f"{base}offline", None, 0, True)]
+    msgs = [(f"{base}state", "disconnected")]
     if env_bool("MQTT_DTOPIC"):
         topic = f"{os.getenv('MQTT_DTOPIC')}/camera/{cam.mac}/config"
         payload = {

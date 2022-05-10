@@ -62,8 +62,7 @@ class RtspEvent:
                 + ["-f", "image2", "-frames:v", "1", "-y", img_file]
             )
         while True:
-            self.send_mqtt("state", "connected")
-            self.send_mqtt("offline", "false")
+            self.send_mqtt("state", "online")
             if rtsp_snap:
                 ffmpeg_sub = Popen(ffmpeg_cmd)
                 try:
@@ -128,7 +127,6 @@ class RtspEvent:
             self.write_log(f"❌ '/{self.uri}' stream is down")
             self.send_mqtt("state", "disconnected")
             self.send_mqtt("attributes", None)
-            self.send_mqtt(f"clients/{os.getpid()}", None)
         elif self.type == "READ" and self.state:
             self.write_log("📕 Client stopped reading")
             self.send_mqtt(f"clients/{os.getpid()}", None)
