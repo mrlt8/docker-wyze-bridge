@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.2 DEV 6\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.2\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -645,10 +645,7 @@ def set_cam_offline(uri: str, error: wyzecam.TutkError, offline: bool) -> None:
         except requests.exceptions.HTTPError as ex:
             log.warning(f"[IFTTT] {ex}")
         else:
-            log.info(f"[IFTTT] Sent webhook trigger to {event}")
-
-
-        
+            log.info(f"[IFTTT] 📲 Sent webhook trigger to {event}")
 
 
 def mqtt_discovery(cam) -> None:

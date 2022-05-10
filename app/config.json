@@ -4,7 +4,7 @@
     "slug": "docker-wyze-bridge",
     "url": "http://github.com/mrlt8/docker-wyze-bridge",
     "image": "mrlt8/wyze-bridge",
-    "version": "1.4.1",
+    "version": "1.4.2",
     "arch": [
         "armv7",
         "aarch64",
@@ -67,6 +67,7 @@
         "FILTER_BLOCK": "bool?",
         "ROTATE_DOOR": "bool?",
         "IGNORE_OFFLINE": "bool?",
+        "OFFLINE_IFTTT": "str?",
         "FRESH_DATA": "bool?",
         "URI_SEPARATOR": "list(-|_|#)?",
         "QUALITY": "str?",
