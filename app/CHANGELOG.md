@@ -1,3 +1,12 @@
+## Changes in v1.4.2
+
+- **NEW**: ✨ ENV: `OFFLINE_IFTTT={event}:{key}` - Send a webhook trigger to IFTTT when the camera goes offline (-90).
+
+- **CHANGED**: 🚧 MQTT now reports camera `state` as "connected", "disconnected", "offline", or the connection error. (#359)
+
+- **FIXED**: 🔧 Use case-sensitive keys for livestream. (#371) Thanks @radnor!
+- **FIXED**: 🔧 Stream would not come back when audio was enabled. (#347) Thanks @compeek!
+
 ## Changes in v1.4.0/1
 
 - **NEW**: 🔊 Audio is now available. [Details](https://github.com/mrlt8/docker-wyze-bridge#audio)

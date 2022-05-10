@@ -28,13 +28,14 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
-## Changes in v1.4.0/1
+## Changes in v1.4.2
 
-- **NEW**: 🔊 Audio is now available. [Details](#audio)
+- **NEW**: ✨ ENV: `OFFLINE_IFTTT={event}:{key}` - Send a webhook trigger to IFTTT when the camera goes offline (-90).
 
-- **UPDATED**: ⬆️ rtsp-simple-server > [v0.18.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.18.2)
+- **CHANGED**: 🚧 MQTT now reports camera `state` as "connected", "disconnected", "offline", or the connection error. (#359)
 
-- **FIXED**: 🔧 Doorbell rotation. (#362) Thanks @krystiancharubin!
+- **FIXED**: 🔧 Use case-sensitive keys for livestream. (#371) Thanks @radnor!
+- **FIXED**: 🔧 Stream would not come back when audio was enabled. (#347) Thanks @compeek!
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -49,6 +50,7 @@ See [basic usage](#basic-usage) for additional information.
 - Ability to record streams locally.
 - Ability to take snapshots on an interval.
 - Ability to livestream directly from the bridge.
+- Ability to send a IFTTT webhook when a camera is offline (-90).
 
 ## Supported Cameras
 
@@ -361,6 +363,26 @@ Or to specify select cameras, where `CAM_NAME` is the camera name in UPPERCASE a
 ```
 
 See the [Stream Recording wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Stream-Recording#recording-configuration) page for additional options.
+
+### Offline camera IFTTT webhook (BETA)
+
+This option can send a trigger to [IFTTT's webhooks integration](https://ifttt.com/maker_webhooks) when the camera is detected as being offline (-90).
+
+Note:This is still experimental as the connection will sometimes just timeout a number of times before going "offline".
+
+```yaml
+  - OFFLINE_IFTTT=MyEventName:my_IFTTT_Webhooks_Key
+```
+
+The bridge should then trigger your event with the following values:
+
+```json
+{
+  "value1" : "cam-name", // camera name
+  "value2" : -90, // error no
+  "value3" : "IOTC_ER_DEVICE_OFFLINE" // error name
+}
+```
 
 ### Livestream
 

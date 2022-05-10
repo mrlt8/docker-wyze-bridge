@@ -416,9 +416,15 @@ class WyzeIOTCSession:
             self.preferred_frame_size,
             int(os.getenv("IGNORE_RES", self.preferred_frame_size + 3)),
         )
-        last_keyframe = last_frame = 0, 0
+        last_keyframe = 0, 0
+        last_frame = 0, time.time()
         while not stop_flag.is_set():
-            if last_keyframe[1] and (delta := time.time() - last_frame[1]) >= timeout:
+            if (delta := time.time() - last_frame[1]) >= timeout:
+                if last_keyframe[1] == 0:
+                    warnings.warn("Still waiting for first frame. Updating frame size.")
+                    last_keyframe = last_frame = 0, time.time()
+                    self.update_frame_size_rate()
+                    continue
                 self.state = WyzeIOTCSessionState.CONNECTING_FAILED
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
             if last_keyframe[1] and (slowdown := (0.75 / fps) - delta) > 0:
@@ -451,6 +457,7 @@ class WyzeIOTCSession:
                 warnings.warn(f"Wrong resolution (frame_size={frame_info.frame_size})")
                 self.update_frame_size_rate()
                 last_keyframe = 0, 0
+                last_frame = last_frame[0], time.time()
                 continue
             if frame_index and frame_index % 1000 == 0:
                 fps = self.update_frame_size_rate(True, frame_info.framerate) or fps
@@ -463,14 +470,11 @@ class WyzeIOTCSession:
                 and not keep_bad_frames
             ):
                 warnings.warn("Waiting for keyframe")
-                if last_keyframe[0]:
-                    last_keyframe = 0, 0
                 time.sleep(0.5 / fps)
                 continue
-            elif time.time() - last_keyframe[1] > 5 and not keep_bad_frames:
-                warnings.warn("Keyframe too old")
-                last_keyframe = 0, 0
-                continue
+            # elif time.time() - last_keyframe[1] > 5 and not keep_bad_frames:
+            #     warnings.warn("Keyframe too old")
+            #     continue
 
             yield frame_data
             last_frame = frame_info.frame_no, time.time()
@@ -491,7 +495,7 @@ class WyzeIOTCSession:
                 else:
                     iotc_msg = False
             if iotc_msg:
-                logger.warn("Requesting frame_size=%d and bitrate=%d" % iotc_msg)
+                logger.warning("Requesting frame_size=%d and bitrate=%d" % iotc_msg)
                 try:
                     if self.camera.product_model in ("WYZEDB3", "WVOD1", "HL_WCO2"):
                         mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result(False)
@@ -508,7 +512,7 @@ class WyzeIOTCSession:
 
     def change_fps(self, fps: int) -> None:
         """Send a message to the camera to update the FPS."""
-        logger.warn("Requesting frame_rate=%d" % fps)
+        logger.warning("Requesting frame_rate=%d" % fps)
         with self.iotctrl_mux() as mux:
             try:
                 mux.send_ioctl(K10052DBSetResolvingBit(0, 0, fps)).result(block=False)
@@ -527,7 +531,9 @@ class WyzeIOTCSession:
         try:
             with open(FIFO, "wb") as audio_pipe:
                 while self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
-                    if tutk.av_check_audio_buf(*tutav) < 3:
+                    if (buf := tutk.av_check_audio_buf(*tutav)) < 3:
+                        if buf < 0:
+                            raise tutk.TutkError(buf)
                         time.sleep(2 / fps)
                         continue
                     errno, frame_data, _ = tutk.av_recv_audio_data(*tutav)
@@ -542,18 +548,20 @@ class WyzeIOTCSession:
                         warnings.warn(f"Error: {errno}")
                         break
                     audio_pipe.write(frame_data)
-        except tutk.TutkError as e:
-            raise tutk.TutkError(errno)
-        except IOError as e:
-            if e.errno != 32:  # Ignore errno.EPIPE - Broken pipe
-                warnings.warn(str(e))
+        except tutk.TutkError as ex:
+            warnings.warn(str(ex))
+        except IOError as ex:
+            if ex.errno != 32:  # Ignore errno.EPIPE - Broken pipe
+                warnings.warn(str(ex))
         finally:
             os.unlink(FIFO)
             warnings.warn("Audio pipe closed")
 
     def get_audio_codec(self, limit: int = 25) -> Tuple[str, int]:
         """Identify audio codec."""
-        bit = 16000 if self.camera.product_model == "WYZE_CAKP2JFUS" else 8000
+        bitrate = 16000 if self.camera.product_model == "WYZE_CAKP2JFUS" else 8000
+        if audio_param := self.camera.camera_info.get("audioParm", False):
+            bitrate = int(audio_param.get("sampleRate", bitrate))
         for _ in range(limit):
             errno, _, frame_info = tutk.av_recv_audio_data(
                 self.tutk_platform_lib, self.av_chan_id
@@ -570,9 +578,9 @@ class WyzeIOTCSession:
                     raise Exception(f"\nUnknown audio codec_id={frame_info.codec_id}\n")
                 if codec:
                     logger.info(
-                        f"codec={codec} bit_rate={bit} codec_id={frame_info.codec_id}"
+                        f"[AUDIO] codec={codec} bit_rate={bitrate} codec_id={frame_info.codec_id}"
                     )
-                    return codec, bit
+                    return codec, bitrate
             time.sleep(0.5)
         raise Exception("Unable to identify audio.")
 
@@ -838,7 +846,7 @@ class WyzeIOTCSession:
 
             self.session_check()
 
-            resend = 1
+            resend = int(os.getenv("RESEND", 1))
             if self.camera.product_model in ("WVOD1", "HL_WCO2"):
                 resend = 0
 
@@ -915,9 +923,11 @@ class WyzeIOTCSession:
                     self.enable_audio,
                 )
                 auth_response = mux.send_ioctl(challenge_response).result()
-                assert (
-                    auth_response["connectionRes"] == "1"
-                ), f"Authentication did not succeed! {auth_response}"
+                if auth_response["connectionRes"] == "2":
+                    raise ValueError("ENR_AUTH_FAILED")
+                if auth_response["connectionRes"] != "1":
+                    warnings.warn(f"AUTH FAILED: {auth_response}")
+                    raise ValueError("AUTH_FAILED")
                 self.camera.set_camera_info(auth_response["cameraInfo"])
 
                 if self.camera.product_model in ("WYZEDB3", "WVOD1", "HL_WCO2"):
