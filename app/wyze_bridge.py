@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.3\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.4 DEV 1\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -532,6 +532,14 @@ def get_cam_params(
     log.info(f"📡 Getting {bit_frame} via {mode} (WiFi: {wifi}%) FW: {firmware} (2/3)")
     if audio:
         log.info(f"🔊 Audio Enabled - {codec_str.upper()}/{rate:,}Hz")
+
+    mqtt = [
+        (f"wyzebridge/{uri.lower()}/net_mode", mode),
+        (f"wyzebridge/{uri.lower()}/wifi", wifi),
+        # (f"wyzebridge/{uri.lower()}/audio", f"{codec_str}/{rate}" if audio else None),
+        (f"wyzebridge/{uri.lower()}/audio", json.dumps(audio) if audio else None),
+    ]
+    send_mqtt(mqtt)
     return fps, audio
 
 
@@ -621,11 +629,8 @@ def get_livestream_cmd(uri: str) -> str:
 
 def set_cam_offline(uri: str, error: wyzecam.TutkError, offline: bool) -> None:
     """Do something when camera goes offline."""
-
     state = "offline" if error.code == -90 else error.name
-
     mqtt_status = [(f"wyzebridge/{uri.lower()}/state", state)]
-
     send_mqtt(mqtt_status)
 
     if str(error.code) not in env_bool("OFFLINE_ERRNO", "-90"):
