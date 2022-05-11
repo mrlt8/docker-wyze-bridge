@@ -1,3 +1,8 @@
+## Changes in v1.4.4
+
+- **CHANGED**: 🚧 MQTT now reports camera `state` as "online", "offline", "disconnected", or the connection error.
+- **CHANGED**: 🚧 MQTT now displays camera `net_mode`, `wifi`, and `audio`.
+
 ## Changes in v1.4.2/3
 
 - **FIXED**: 🔧 Bug in v1.4.2 if MQTT was enabled in home assistant. (#375) Thanks @JochenKlenk!
