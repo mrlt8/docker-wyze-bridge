@@ -566,21 +566,20 @@ class WyzeIOTCSession:
             errno, _, frame_info = tutk.av_recv_audio_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
-            if errno == 0 and frame_info.codec_id:
+            if errno == 0 and (codec_id := frame_info.codec_id):
                 codec = False
-                if frame_info.codec_id == 140:  # MEDIA_CODEC_AUDIO_PCM
+                if codec_id == 137:  # MEDIA_CODEC_AUDIO_G711_ULAW
+                    codec = "mulaw"
+                elif codec_id == 140:  # MEDIA_CODEC_AUDIO_PCM
                     codec = "s16le"
-                elif frame_info.codec_id == 141:  # MEDIA_CODEC_AUDIO_AAC
+                elif codec_id == 141:  # MEDIA_CODEC_AUDIO_AAC
                     codec = "aac"
-                elif frame_info.codec_id == 143:  # MEDIA_CODEC_AUDIO_G711_ALAW
+                elif codec_id == 143:  # MEDIA_CODEC_AUDIO_G711_ALAW
                     codec = "alaw"
                 else:
-                    raise Exception(f"\nUnknown audio codec_id={frame_info.codec_id}\n")
-                if codec:
-                    logger.info(
-                        f"[AUDIO] codec={codec} bit_rate={bitrate} codec_id={frame_info.codec_id}"
-                    )
-                    return codec, bitrate
+                    raise Exception(f"\nUnknown audio codec {codec_id=}\n")
+                logger.info(f"[AUDIO] {codec=} {bitrate=} {codec_id=}")
+                return codec, bitrate
             time.sleep(0.5)
         raise Exception("Unable to identify audio.")
 
