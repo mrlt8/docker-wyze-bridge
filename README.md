@@ -28,23 +28,13 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
-## Changes in v1.4.4
+## Changes in v1.4.5
 
-- **CHANGED**: 🚧 MQTT now reports camera `state` as "online", "offline", "disconnected", or the connection error.
-- **CHANGED**: 🚧 MQTT now displays camera `net_mode`, `wifi`, and `audio`.
+- **FIXED**: 🔧 Unknown audio codec (codec_id=137) on Wyze Pan set to mulaw. (#385) Thanks @mjb83!
 
-- **UPDATED**: ⬆️ rtsp-simple-server > [v0.18.3](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.18.3)
+- **UPDATED**: ⬆️ API: Wyze app version number bump to 2.31.0.7.
+- **UPDATED**: ⬆️ rtsp-simple-server > [v0.18.4](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.18.4)
 
-## Changes in v1.4.2/3
-
-- **FIXED**: 🔧 Bug in v1.4.2 if MQTT was enabled in home assistant. (#375) Thanks @JochenKlenk!
-
-- **NEW**: ✨ ENV: `OFFLINE_IFTTT={event}:{key}` - Send a webhook trigger to IFTTT when the camera goes offline (-90).
-
-- **CHANGED**: 🚧 MQTT now reports camera `state` as "connected", "disconnected", "offline", or the connection error. (#359)
-
-- **FIXED**: 🔧 Use case-sensitive keys for livestream. (#371) Thanks @radnor!
-- **FIXED**: 🔧 Stream would not come back when audio was enabled. (#347) Thanks @compeek!
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
