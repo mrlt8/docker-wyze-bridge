@@ -54,6 +54,16 @@ def login(
         json=payload,
         headers=get_headers(phone_id),
     )
+    if (limit := resp.headers.get("X-RateLimit-Remaining")) and int(limit) < 25:
+        print(f"\n\nWYZE API: X-RateLimit-Remaining={limit}\n\n")
+        if int(limit) < 5 and (reset := resp.headers.get("X-RateLimit-Reset-By")):
+            print(f"WYZE API: X-RateLimit-Reset-By={reset}\n\n")
+        if resp.status_code != 200:
+            cooldown = 60 * 10 if int(limit) > 5 else 60 * 60
+            print(
+                f"WYZE API: status_code={resp.status_code}\nSleeping for {cooldown} seconds..."
+            )
+            time.sleep(cooldown)
     resp.raise_for_status()
     return WyzeCredential.parse_obj(dict(resp.json(), phone_id=phone_id))
 
