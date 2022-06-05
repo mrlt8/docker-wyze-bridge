@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.5\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.6\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -425,6 +425,8 @@ def env_bool(env: str, false="", true="", style="") -> str:
     """Return env variable or empty string if the variable contains 'false' or is empty."""
     env_value = os.getenv(env.upper().replace("-", "_"), "")
     value = env_value.lower().replace("false", "").strip("'\" \n\t\r")
+    if value == "no" or value == "none":
+        value = ""
     if style.lower() == "bool":
         return bool(value or false)
     if style.lower() == "int":
@@ -551,6 +553,8 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list:
     )
     flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR")
+    if env_bool(f"ROTATE_CAM_{uri}"):
+        rotate = True
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
@@ -711,7 +715,21 @@ def setup_hass():
         data = mqtt_conf["data"]
         os.environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
         os.environ["MQTT_AUTH"] = f'{data["username"]}:{data["password"]}'
-    [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf if v]
+
+    if cam_options := conf.pop("CAM_OPTIONS", None):
+        for cam in cam_options:
+            if not (cam_name := clean_name(cam.get("CAM_NAME", ""), True, True)):
+                continue
+            if cam["AUDIO"]:
+                os.environ.update({f"ENABLE_AUDIO_{cam_name}": str(cam["AUDIO"])})
+            if cam["FFMPEG"]:
+                os.environ.update({f"FFMPEG_CMD_{cam_name}": str(cam["FFMPEG"])})
+            if cam["ROTATE"]:
+                os.environ.update({f"ROTATE_CAM_{cam_name}": str(cam["ROTATE"])})
+            if cam["QUALITY"]:
+                os.environ.update({f"QUALITY_{cam_name}": str(cam["QUALITY"])})
+
+    [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf]
 
 
 if __name__ == "__main__":
