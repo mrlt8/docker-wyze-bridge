@@ -1,7 +1,20 @@
+
+## Changes in v1.4.6
+
+- **NEW**: ✨ LL-HLS
+- **NEW**: ✨ Display a message if API rate limit has under 25 attempts left.
+- **NEW**: ✨ Home Assistant: `CAM_OPTIONS` to allow for camera specific configs (AUDIO,FFMPEG,ROTATE,QUALITY). #404
+- **NEW**: ✨ ENV: `ROTATE_CAM_{CAM_NAME}=True` Rotation option for any cam. #408
+
+- **UPDATED**: ⬆️ API: iOS version bump to 15.5.
+- **UPDATED**: ⬆️ API: Wyze app version number bump to 2.31.1.0.
+- **UPDATED**: ⬆️ rtsp-simple-server > [v0.19.0](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.19.0)
+
 ## Changes in v1.4.5
 
 - **FIXED**: 🔧 Unknown audio codec (codec_id=137) on Wyze Pan set to mulaw. (#385) Thanks @mjb83!
 
+- **UPDATED**: ⬆️ API: Wyze app version number bump to 2.31.0.7.
 - **UPDATED**: ⬆️ rtsp-simple-server > [v0.18.4](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.18.4)
 
 ## Changes in v1.4.4
