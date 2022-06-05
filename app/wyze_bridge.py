@@ -706,7 +706,7 @@ def send_mqtt(messages: list) -> None:
 def setup_hass():
     """Home Assistant related config."""
     with open("/data/options.json") as f:
-        conf = json.load(f).items()
+        conf = json.load(f)
     mqtt_conf = requests.get(
         "http://supervisor/services/mqtt",
         headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
@@ -720,16 +720,16 @@ def setup_hass():
         for cam in cam_options:
             if not (cam_name := clean_name(cam.get("CAM_NAME", ""), True, True)):
                 continue
-            if cam["AUDIO"]:
+            if "AUDIO" in cam:
                 os.environ.update({f"ENABLE_AUDIO_{cam_name}": str(cam["AUDIO"])})
-            if cam["FFMPEG"]:
+            if "FFMPEG" in cam:
                 os.environ.update({f"FFMPEG_CMD_{cam_name}": str(cam["FFMPEG"])})
-            if cam["ROTATE"]:
+            if "ROTATE" in cam:
                 os.environ.update({f"ROTATE_CAM_{cam_name}": str(cam["ROTATE"])})
-            if cam["QUALITY"]:
+            if "QUALITY" in cam:
                 os.environ.update({f"QUALITY_{cam_name}": str(cam["QUALITY"])})
 
-    [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf]
+    [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf.items()]
 
 
 if __name__ == "__main__":
