@@ -84,12 +84,14 @@
         "KEEP_BAD_FRAMES": "bool?",
         "FPS_FIX": "bool?",
         "WEBRTC": "bool?",
-        "CAM_OPTIONS": {
-            "CAM_NAME": "str?",
-            "AUDIO": "bool?",
-            "FFMPEG": "str?",
-            "ROTATE": "bool?",
-            "QUALITY": "str?"
-        }
+        "CAM_OPTIONS": [
+            {
+                "CAM_NAME": "str?",
+                "AUDIO": "bool?",
+                "FFMPEG": "str?",
+                "ROTATE": "bool?",
+                "QUALITY": "str?"
+            }
+        ]
     }
 }
