@@ -28,12 +28,12 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
-## Changes in v1.4.6
+## Changes in v1.5.0
 
 - **NEW**: ✨ ENV: `LLHLS=true` - Enable Low-Latency HLS and generate the certificates required.
-- **NEW**: ✨ Display a message if API rate limit has under 25 attempts left.
-- **NEW**: ✨ Home Assistant: `CAM_OPTIONS` to allow for camera specific configs (AUDIO,FFMPEG,ROTATE,QUALITY). #404
 - **NEW**: ✨ ENV: `ROTATE_CAM_{CAM_NAME}=True` or `ROTATE_CAM_{CAM_NAME}=(int)` to rotate any cam in any direction. #408
+- **NEW**: ✨ Home Assistant: `CAM_OPTIONS` to allow for camera specific configs (AUDIO, FFMPEG, LIVESTREAM, NET_MODE, QUALITY, RECORD, ROTATE). #404
+- **NEW**: ✨ Display a message if API rate limit has under 25 attempts left.
 
 - **UPDATED**: ⬆️ API: iOS version bump to 15.5.
 - **UPDATED**: ⬆️ API: Wyze app version number bump to 2.31.1.0.
