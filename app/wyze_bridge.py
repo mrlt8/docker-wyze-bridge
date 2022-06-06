@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 import warnings
-from subprocess import PIPE, Popen
+from subprocess import PIPE, Popen, DEVNULL
 from typing import List, NoReturn, Optional, Tuple, Union
 
 import mintotp
@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.4.5\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.5.0\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -44,6 +44,7 @@ class WyzeBridge:
             open(self.token_path + "mfa_token.txt", "w").close()
 
     def run(self) -> None:
+        setup_llhls(self.token_path)
         """Start the bridge."""
         self.get_wyze_data("user")
         self.get_filtered_cams()
@@ -425,6 +426,8 @@ def env_bool(env: str, false="", true="", style="") -> str:
     """Return env variable or empty string if the variable contains 'false' or is empty."""
     env_value = os.getenv(env.upper().replace("-", "_"), "")
     value = env_value.lower().replace("false", "").strip("'\" \n\t\r")
+    if value == "no" or value == "none":
+        value = ""
     if style.lower() == "bool":
         return bool(value or false)
     if style.lower() == "int":
@@ -544,13 +547,18 @@ def get_cam_params(
 
 def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list:
     """Return the ffmpeg cmd with options from the env."""
+    flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
+    rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR")
+    transpose = "1"
+    if env_bool(f"ROTATE_CAM_{uri}"):
+        rotate = True
+        if os.getenv(f"ROTATE_CAM_{uri}") in ("0", "1", "2", "3"):
+            transpose = os.environ[f"ROTATE_CAM_{uri}"]
     lib264 = (
-        ["libx264", "-filter:v", "transpose=1", "-b:v", "3000K"]
+        ["libx264", "-filter:v", f"transpose={transpose}", "-b:v", "3000K"]
         + ["-tune", "zerolatency", "-preset", "ultrafast"]
         + ["-force_key_frames", "expr:gte(t,n_forced*2)"]
     )
-    flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
-    rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR")
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
@@ -702,7 +710,7 @@ def send_mqtt(messages: list) -> None:
 def setup_hass():
     """Home Assistant related config."""
     with open("/data/options.json") as f:
-        conf = json.load(f).items()
+        conf = json.load(f)
     mqtt_conf = requests.get(
         "http://supervisor/services/mqtt",
         headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
@@ -711,7 +719,57 @@ def setup_hass():
         data = mqtt_conf["data"]
         os.environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
         os.environ["MQTT_AUTH"] = f'{data["username"]}:{data["password"]}'
-    [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf if v]
+
+    if cam_options := conf.pop("CAM_OPTIONS", None):
+        for cam in cam_options:
+            if not (cam_name := clean_name(cam.get("CAM_NAME", ""), True, True)):
+                continue
+            if "AUDIO" in cam:
+                os.environ.update({f"ENABLE_AUDIO_{cam_name}": str(cam["AUDIO"])})
+            if "FFMPEG" in cam:
+                os.environ.update({f"FFMPEG_CMD_{cam_name}": str(cam["FFMPEG"])})
+            if "NET_MODE" in cam:
+                os.environ.update({f"NET_MODE_{cam_name}": str(cam["NET_MODE"])})
+            if "ROTATE" in cam:
+                os.environ.update({f"ROTATE_CAM_{cam_name}": str(cam["ROTATE"])})
+            if "QUALITY" in cam:
+                os.environ.update({f"QUALITY_{cam_name}": str(cam["QUALITY"])})
+            if "LIVESTREAM" in cam:
+                os.environ.update({f"LIVESTREAM_{cam_name}": str(cam["LIVESTREAM"])})
+            if "RECORD" in cam:
+                os.environ.update({f"RECORD_{cam_name}": str(cam["RECORD"])})
+
+    [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf.items()]
+
+
+def setup_llhls(token_path: str = "/tokens/"):
+    """Generate necessary certificates for LL-HLS if needed."""
+    if not env_bool("LLHLS"):
+        return
+    log.info("LL-HLS Enabled")
+    os.environ["RTSP_HLSENCRYPTION"] = "yes"
+    if not env_bool("rtsp_hlsServerKey"):
+        cert_path = f"{token_path}hls_server"
+        if not os.path.isfile(f"{cert_path}.key"):
+            log.info("🔐 Generating key for LL-HLS")
+            Popen(
+                ["openssl", "genrsa", "-out", f"{cert_path}.key", "2048"],
+                stdout=DEVNULL,
+                stderr=DEVNULL,
+            ).wait()
+        if not os.path.isfile(f"{cert_path}.crt"):
+            log.info("🔏 Generating certificate for LL-HLS")
+            Popen(
+                ["openssl", "req", "-new", "-x509", "-sha256"]
+                + ["-key", f"{cert_path}.key"]
+                + ["-subj", "/C=US/ST=WA/L=Kirkland/O=WYZE BRIDGE/CN=wyze-bridge"]
+                + ["-out", f"{cert_path}.crt"]
+                + ["-days", "3650"],
+                stdout=DEVNULL,
+                stderr=DEVNULL,
+            ).wait()
+        os.environ["RTSP_HLSSERVERKEY"] = f"{cert_path}.key"
+        os.environ["RTSP_HLSSERVERCERT"] = f"{cert_path}.crt"
 
 
 if __name__ == "__main__":

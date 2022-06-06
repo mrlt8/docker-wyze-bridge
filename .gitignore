@@ -6,3 +6,4 @@ mfa_token
 totp
 .vscode
 tokens/
+*.pyc

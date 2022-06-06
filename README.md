@@ -5,7 +5,7 @@
 [![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/mrlt8/wyze-bridge?sort=semver&logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 [![Docker Pulls](https://img.shields.io/docker/pulls/mrlt8/wyze-bridge?logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 
-Docker container to expose a local RTMP, RTSP, and HLS stream for ALL your Wyze cameras including the outdoor and doorbell cams. No third-party or special firmware required.
+Docker container to expose a local RTMP, RTSP, and HLS or Low-Latency HLS stream for ALL your Wyze cameras including the outdoor and doorbell cams. No third-party or special firmware required.
 
 It just works!
 
@@ -28,19 +28,22 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
-## Changes in v1.4.5
+## Changes in v1.5.0
 
-- **FIXED**: 🔧 Unknown audio codec (codec_id=137) on Wyze Pan set to mulaw. (#385) Thanks @mjb83!
+- **NEW**: ✨ ENV: `LLHLS=true` - Enable Low-Latency HLS and generate the certificates required.
+- **NEW**: ✨ ENV: `ROTATE_CAM_{CAM_NAME}=True` or `ROTATE_CAM_{CAM_NAME}=(int)` to rotate any cam in any direction. #408
+- **NEW**: ✨ Home Assistant: `CAM_OPTIONS` to allow for camera specific configs (AUDIO, FFMPEG, LIVESTREAM, NET_MODE, QUALITY, RECORD, ROTATE). #404
+- **NEW**: ✨ Display a message if API rate limit has under 25 attempts left.
 
-- **UPDATED**: ⬆️ API: Wyze app version number bump to 2.31.0.7.
-- **UPDATED**: ⬆️ rtsp-simple-server > [v0.18.4](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.18.4)
-
+- **UPDATED**: ⬆️ API: iOS version bump to 15.5.
+- **UPDATED**: ⬆️ API: Wyze app version number bump to 2.31.1.0.
+- **UPDATED**: ⬆️ rtsp-simple-server > [v0.19.0](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.19.0)
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
 ## Features
 
-- Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS.
+- Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS/Low-Latency HLS.
 - Access to HD *or* SD stream with configurable bitrate.
 - Local and remote access to any of the cams on your account.
 - Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker.
@@ -48,7 +51,7 @@ See [basic usage](#basic-usage) for additional information.
 - Ability to rotate video for Wyze Doorbell.
 - Ability to record streams locally.
 - Ability to take snapshots on an interval.
-- Ability to livestream directly from the bridge.
+- Ability to live stream directly from the bridge.
 - Ability to send a IFTTT webhook when a camera is offline (-90).
 
 ## Supported Cameras
@@ -170,6 +173,14 @@ Replace localhost with the hostname or ip of the machine running the bridge:
   http://localhost:8888/camera-nickname
   ```
 
+- Low-Latency HLS (enable with `LLHLS=true`):
+
+  ```text
+  http://localhost:8888/camera-nickname
+  or
+  http://localhost:8888/camera-nickname/stream.m3u8
+  ```
+
 #### Multi-Factor Authentication
 
 Two-factor authentication ("Two-Step Verification" in the wyze app) is supported and will automatically be detected, however additional steps are required to enter your verification code.
@@ -229,6 +240,16 @@ Audio is disabled by default and must be enabled in the ENV.
 
   ```yaml
     - ENABLE_AUDIO_CAM_NAME=True
+    - ENABLE_AUDIO_OTHER_CAM=True
+  ```
+
+  🏠 Home Assistant - Use `CAM_OPTIONS` and add a new entry for each camera:
+  
+  ```yaml
+  - CAM_NAME: Cam Name
+    AUDIO: true
+  - CAM_NAME: other cam
+    AUDIO: true
   ```
 
 #### Audio output codec
@@ -329,6 +350,13 @@ In the event that you need to allow the bridge to access a select number of came
     - NET_MODE_CAM_NAME=P2P
 ```
 
+  🏠 Home Assistant - Use `CAM_OPTIONS` and add a new entry for each camera:
+  
+  ```yaml
+  - CAM_NAME: Cam Name
+    NET_MODE: P2P
+  ```
+
 ### Snapshot/Still Images
 
 - `SNAPSHOT=API` Will run ONCE at startup and will grab a *high-quality* thumbnail from the wyze api and save it to `/img/cam-name.jpg` on docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
@@ -359,6 +387,15 @@ Or to specify select cameras, where `CAM_NAME` is the camera name in UPPERCASE a
 ```yaml
   - RECORD_CAM_NAME=True
   - RECORD_OTHER_CAM=True
+```
+
+🏠 Home Assistant - Use `CAM_OPTIONS` and add a new entry for each camera:
+
+```yaml
+- CAM_NAME: Cam Name
+  RECORD: true
+- CAM_NAME: Other cam
+  RECORD: true
 ```
 
 See the [Stream Recording wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Stream-Recording#recording-configuration) page for additional options.
@@ -394,6 +431,15 @@ To use this feature, set a new env in your docker-compose.yml with the service (
   - FACEBOOK_OTHER_CAM=MY-STREAM-KEY
   # twitch example:
   - LIVESTREAM_CAM_NAME=rtmp://jfk.contribute.live-video.net/app/MY-STREAM-KEY
+```
+
+🏠 Home Assistant - Use `CAM_OPTIONS` and add a new entry for each camera:
+
+```yaml
+- CAM_NAME: Cam Name
+  LIVESTREAM: rtmp://jfk.contribute.live-video.net/app/MY-STREAM-KEY
+- CAM_NAME: other cam
+  LIVESTREAM: rtmp://a.rtmp.youtube.com/live2/my-youtube-key
 ```
 
 ### MQTT (beta)
@@ -459,6 +505,13 @@ where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and 
 - FFMPEG_CMD_CAM_NAME=ffmpeg -f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/{cam_name}
 ```
 
+🏠 Home Assistant - Use `CAM_OPTIONS` and add a new entry for each camera:
+
+```yaml
+- CAM_NAME: Cam Name
+  FFMPEG: ffmpeg -f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/{cam_name}
+```
+
 Additional info:
 
 - The `ffmpeg` command is implied and is optional.
@@ -480,6 +533,40 @@ or where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces a
 ```yaml
 - FFMPEG_FLAGS_CAM_NAME=-flags low_delay
 ```
+
+### Rotate Video
+
+- Rotate all doorbells:
+
+  ```YAML
+  environment:
+      ..
+      - ROTATE_DOOR=True
+  ```
+
+- Rotate other cameras 
+  where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
+
+  Rotate by 90 degrees clockwise:
+
+  ```YAML
+  environment:
+      ..
+      - ROTATE_CAM_CAM_NAME=True
+  ```
+
+  Rotate video in other directions:
+
+  ```YAML
+      - ROTATE_CAM_OTHER_CAM=1 # 90 degrees clockwise.
+      - ROTATE_CAM_THIRD_CAM=2 # 90 degrees counter-clockwise.
+  ```
+
+ Available options:
+  `0` - Rotate by 90 degrees counter-clockwise and flip vertically. This is the default.
+  `1` - Rotate by 90 degrees clockwise.
+  `2` - Rotate by 90 degrees counter-clockwise.
+  `3` - Rotate by 90 degrees clockwise and flip vertically.
 
 ### rtsp-simple-server
 

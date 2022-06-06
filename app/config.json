@@ -4,7 +4,7 @@
     "slug": "docker-wyze-bridge",
     "url": "http://github.com/mrlt8/docker-wyze-bridge",
     "image": "mrlt8/wyze-bridge",
-    "version": "1.4.5",
+    "version": "1.4.6",
     "arch": [
         "armv7",
         "aarch64",
@@ -42,7 +42,8 @@
         "NET_MODE": "ANY",
         "SNAPSHOT": "API",
         "MQTT_DTOPIC": "homeassistant",
-        "ENABLE_AUDIO": false
+        "ENABLE_AUDIO": false,
+        "CAM_OPTIONS": []
     },
     "schema": {
         "WYZE_EMAIL": "email",
@@ -54,6 +55,7 @@
         "ENABLE_AUDIO": "bool?",
         "AUDIO_CODEC": "list(COPY|AAC|MP3)?",
         "AUDIO_FILTER": "str?",
+        "LLHLS": "bool?",
         "RECORD_ALL": "bool?",
         "RECORD_LENGTH": "int?",
         "RECORD_PATH": "str?",
@@ -82,6 +84,18 @@
         "IGNORE_RES": "int?",
         "KEEP_BAD_FRAMES": "bool?",
         "FPS_FIX": "bool?",
-        "WEBRTC": "bool?"
+        "WEBRTC": "bool?",
+        "CAM_OPTIONS": [
+            {
+                "CAM_NAME": "str?",
+                "AUDIO": "bool?",
+                "FFMPEG": "str?",
+                "LIVESTREAM": "str?",
+                "NET_MODE": "str?",
+                "ROTATE": "bool?",
+                "QUALITY": "str?",
+                "RECORD": "bool?"
+            }
+        ]
     }
 }

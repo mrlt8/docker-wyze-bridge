@@ -7,8 +7,8 @@ from hashlib import md5
 import requests
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
-IOS_VERSION = "15.4.1"
-APP_VERSION = "2.31.0.7"
+IOS_VERSION = "15.5"
+APP_VERSION = "2.31.1.0"
 
 SV_VALUE = "e1fe392906d54888a9b99b88de4162d7"
 SC_VALUE = "9f275790cab94a72bd206c8876429f3c"
@@ -54,6 +54,16 @@ def login(
         json=payload,
         headers=get_headers(phone_id),
     )
+    if (limit := resp.headers.get("X-RateLimit-Remaining")) and int(limit) < 25:
+        print(f"\n\nWYZE API: X-RateLimit-Remaining={limit}\n\n")
+        if int(limit) < 5 and (reset := resp.headers.get("X-RateLimit-Reset-By")):
+            print(f"WYZE API: X-RateLimit-Reset-By={reset}\n\n")
+        if resp.status_code != 200:
+            cooldown = 60 * 10 if int(limit) > 5 else 60 * 60
+            print(
+                f"WYZE API: status_code={resp.status_code}\nSleeping for {cooldown} seconds..."
+            )
+            time.sleep(cooldown)
     resp.raise_for_status()
     return WyzeCredential.parse_obj(dict(resp.json(), phone_id=phone_id))
 
