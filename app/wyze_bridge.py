@@ -547,15 +547,18 @@ def get_cam_params(
 
 def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list:
     """Return the ffmpeg cmd with options from the env."""
+    flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
+    rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR")
+    transpose = "1"
+    if env_bool(f"ROTATE_CAM_{uri}"):
+        rotate = True
+        if os.getenv(f"ROTATE_CAM_{uri}") in ("0", "1", "2", "3"):
+            transpose = os.environ[f"ROTATE_CAM_{uri}"]
     lib264 = (
-        ["libx264", "-filter:v", "transpose=1", "-b:v", "3000K"]
+        ["libx264", "-filter:v", f"transpose={transpose}", "-b:v", "3000K"]
         + ["-tune", "zerolatency", "-preset", "ultrafast"]
         + ["-force_key_frames", "expr:gte(t,n_forced*2)"]
     )
-    flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
-    rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR")
-    if env_bool(f"ROTATE_CAM_{uri}"):
-        rotate = True
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
