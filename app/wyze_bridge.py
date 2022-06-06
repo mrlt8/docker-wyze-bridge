@@ -728,6 +728,8 @@ def setup_hass():
                 os.environ.update({f"ENABLE_AUDIO_{cam_name}": str(cam["AUDIO"])})
             if "FFMPEG" in cam:
                 os.environ.update({f"FFMPEG_CMD_{cam_name}": str(cam["FFMPEG"])})
+            if "NET_MODE" in cam:
+                os.environ.update({f"NET_MODE_{cam_name}": str(cam["NET_MODE"])})
             if "ROTATE" in cam:
                 os.environ.update({f"ROTATE_CAM_{cam_name}": str(cam["ROTATE"])})
             if "QUALITY" in cam:

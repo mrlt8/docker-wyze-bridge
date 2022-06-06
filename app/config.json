@@ -55,6 +55,7 @@
         "ENABLE_AUDIO": "bool?",
         "AUDIO_CODEC": "list(COPY|AAC|MP3)?",
         "AUDIO_FILTER": "str?",
+        "LLHLS": "bool?",
         "RECORD_ALL": "bool?",
         "RECORD_LENGTH": "int?",
         "RECORD_PATH": "str?",
@@ -89,6 +90,7 @@
                 "CAM_NAME": "str?",
                 "AUDIO": "bool?",
                 "FFMPEG": "str?",
+                "NET_MODE": "str?",
                 "ROTATE": "bool?",
                 "QUALITY": "str?"
             }
