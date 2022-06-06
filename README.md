@@ -240,12 +240,15 @@ Audio is disabled by default and must be enabled in the ENV.
 
   ```yaml
     - ENABLE_AUDIO_CAM_NAME=True
+    - ENABLE_AUDIO_OTHER_CAM=True
   ```
 
-  🏠 Home Assistant - Use the `CAM_OPTIONS`:
+  🏠 Home Assistant - Use `CAM_OPTIONS` and add a new entry for each camera:
   
   ```yaml
   - CAM_NAME: Cam Name
+    AUDIO: true
+  - CAM_NAME: other cam
     AUDIO: true
   ```
 
@@ -347,7 +350,7 @@ In the event that you need to allow the bridge to access a select number of came
     - NET_MODE_CAM_NAME=P2P
 ```
 
-  🏠 Home Assistant - Use the `CAM_OPTIONS`:
+  🏠 Home Assistant - Use `CAM_OPTIONS` and add a new entry for each camera:
   
   ```yaml
   - CAM_NAME: Cam Name
@@ -386,10 +389,12 @@ Or to specify select cameras, where `CAM_NAME` is the camera name in UPPERCASE a
   - RECORD_OTHER_CAM=True
 ```
 
-🏠 Home Assistant - Use the `CAM_OPTIONS`:
+🏠 Home Assistant - Use `CAM_OPTIONS` and add a new entry for each camera:
 
 ```yaml
 - CAM_NAME: Cam Name
+  RECORD: true
+- CAM_NAME: Other cam
   RECORD: true
 ```
 
@@ -428,11 +433,13 @@ To use this feature, set a new env in your docker-compose.yml with the service (
   - LIVESTREAM_CAM_NAME=rtmp://jfk.contribute.live-video.net/app/MY-STREAM-KEY
 ```
 
-🏠 Home Assistant - Use the `CAM_OPTIONS`:
+🏠 Home Assistant - Use `CAM_OPTIONS` and add a new entry for each camera:
 
 ```yaml
 - CAM_NAME: Cam Name
   LIVESTREAM: rtmp://jfk.contribute.live-video.net/app/MY-STREAM-KEY
+- CAM_NAME: other cam
+  LIVESTREAM: rtmp://a.rtmp.youtube.com/live2/my-youtube-key
 ```
 
 ### MQTT (beta)
@@ -498,7 +505,7 @@ where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and 
 - FFMPEG_CMD_CAM_NAME=ffmpeg -f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/{cam_name}
 ```
 
-🏠 Home Assistant - Use the `CAM_OPTIONS`:
+🏠 Home Assistant - Use `CAM_OPTIONS` and add a new entry for each camera:
 
 ```yaml
 - CAM_NAME: Cam Name
