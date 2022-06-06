@@ -242,6 +242,13 @@ Audio is disabled by default and must be enabled in the ENV.
     - ENABLE_AUDIO_CAM_NAME=True
   ```
 
+  🏠 Home Assistant - Use the `CAM_OPTIONS`:
+  
+  ```yaml
+  - CAM_NAME: Cam Name
+    AUDIO: true
+  ```
+
 #### Audio output codec
 
 By default, the bridge will attempt to copy the audio from the camera without re-encoding *unless* the camera is using a codec that isn't supported by RTSP, in which case the audio will be converted to AAC.
@@ -340,6 +347,13 @@ In the event that you need to allow the bridge to access a select number of came
     - NET_MODE_CAM_NAME=P2P
 ```
 
+  🏠 Home Assistant - Use the `CAM_OPTIONS`:
+  
+  ```yaml
+  - CAM_NAME: Cam Name
+    NET_MODE: P2P
+  ```
+
 ### Snapshot/Still Images
 
 - `SNAPSHOT=API` Will run ONCE at startup and will grab a *high-quality* thumbnail from the wyze api and save it to `/img/cam-name.jpg` on docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
@@ -370,6 +384,13 @@ Or to specify select cameras, where `CAM_NAME` is the camera name in UPPERCASE a
 ```yaml
   - RECORD_CAM_NAME=True
   - RECORD_OTHER_CAM=True
+```
+
+🏠 Home Assistant - Use the `CAM_OPTIONS`:
+
+```yaml
+- CAM_NAME: Cam Name
+  RECORD: true
 ```
 
 See the [Stream Recording wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Stream-Recording#recording-configuration) page for additional options.
@@ -405,6 +426,13 @@ To use this feature, set a new env in your docker-compose.yml with the service (
   - FACEBOOK_OTHER_CAM=MY-STREAM-KEY
   # twitch example:
   - LIVESTREAM_CAM_NAME=rtmp://jfk.contribute.live-video.net/app/MY-STREAM-KEY
+```
+
+🏠 Home Assistant - Use the `CAM_OPTIONS`:
+
+```yaml
+- CAM_NAME: Cam Name
+  LIVESTREAM: rtmp://jfk.contribute.live-video.net/app/MY-STREAM-KEY
 ```
 
 ### MQTT (beta)
@@ -468,6 +496,13 @@ where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and 
 
 ```yaml
 - FFMPEG_CMD_CAM_NAME=ffmpeg -f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/{cam_name}
+```
+
+🏠 Home Assistant - Use the `CAM_OPTIONS`:
+
+```yaml
+- CAM_NAME: Cam Name
+  FFMPEG: ffmpeg -f h264 -i - -vcodec copy -f flv rtmp://rtsp-server:1935/{cam_name}
 ```
 
 Additional info:
