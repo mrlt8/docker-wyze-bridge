@@ -9,7 +9,7 @@ import sys
 import threading
 import time
 import warnings
-from subprocess import PIPE, Popen
+from subprocess import PIPE, Popen, DEVNULL
 from typing import List, NoReturn, Optional, Tuple, Union
 
 import mintotp
@@ -44,6 +44,7 @@ class WyzeBridge:
             open(self.token_path + "mfa_token.txt", "w").close()
 
     def run(self) -> None:
+        setup_llhls(self.token_path)
         """Start the bridge."""
         self.get_wyze_data("user")
         self.get_filtered_cams()
@@ -730,6 +731,36 @@ def setup_hass():
                 os.environ.update({f"QUALITY_{cam_name}": str(cam["QUALITY"])})
 
     [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf.items()]
+
+
+def setup_llhls(token_path: str = "/tokens/"):
+    """Generate necessary certificates for LL-HLS if needed."""
+    if not env_bool("LLHLS"):
+        return
+    log.info("LL-HLS Enabled")
+    os.environ["RTSP_HLSENCRYPTION"] = "yes"
+    if not env_bool("rtsp_hlsServerKey"):
+        cert_path = f"{token_path}hls_server"
+        if not os.path.isfile(f"{cert_path}.key"):
+            log.info("🔐 Generating key for LL-HLS")
+            Popen(
+                ["openssl", "genrsa", "-out", f"{cert_path}.key", "2048"],
+                stdout=DEVNULL,
+                stderr=DEVNULL,
+            ).wait()
+        if not os.path.isfile(f"{cert_path}.crt"):
+            log.info("🔏 Generating certificate for LL-HLS")
+            Popen(
+                ["openssl", "req", "-new", "-x509", "-sha256"]
+                + ["-key", f"{cert_path}.key"]
+                + ["-subj", "/C=US/ST=WA/L=Kirkland/O=WYZE BRIDGE/CN=wyze-bridge"]
+                + ["-out", f"{cert_path}.crt"]
+                + ["-days", "3650"],
+                stdout=DEVNULL,
+                stderr=DEVNULL,
+            ).wait()
+        os.environ["RTSP_HLSSERVERKEY"] = f"{cert_path}.key"
+        os.environ["RTSP_HLSSERVERCERT"] = f"{cert_path}.crt"
 
 
 if __name__ == "__main__":
