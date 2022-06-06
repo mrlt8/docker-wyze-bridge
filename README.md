@@ -176,9 +176,9 @@ Replace localhost with the hostname or ip of the machine running the bridge:
 - Low-Latency HLS (enable with `LLHLS=true`):
 
   ```text
-  http://localhost:8888/camera-nickname
+  https://localhost:8888/camera-nickname
   or
-  http://localhost:8888/camera-nickname/stream.m3u8
+  https://localhost:8888/camera-nickname/stream.m3u8
   ```
 
 #### Multi-Factor Authentication
