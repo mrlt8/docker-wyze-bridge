@@ -5,7 +5,7 @@
 [![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/mrlt8/wyze-bridge?sort=semver&logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 [![Docker Pulls](https://img.shields.io/docker/pulls/mrlt8/wyze-bridge?logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 
-Docker container to expose a local RTMP, RTSP, and HLS stream for ALL your Wyze cameras including the outdoor and doorbell cams. No third-party or special firmware required.
+Docker container to expose a local RTMP, RTSP, and HLS or Low-Latency HLS stream for ALL your Wyze cameras including the outdoor and doorbell cams. No third-party or special firmware required.
 
 It just works!
 
@@ -30,10 +30,10 @@ See [basic usage](#basic-usage) for additional information.
 
 ## Changes in v1.4.6
 
-- **NEW**: ✨ LL-HLS
+- **NEW**: ✨ ENV: `LLHLS=true` - Enable Low-Latency HLS and generate the certificates required.
 - **NEW**: ✨ Display a message if API rate limit has under 25 attempts left.
 - **NEW**: ✨ Home Assistant: `CAM_OPTIONS` to allow for camera specific configs (AUDIO,FFMPEG,ROTATE,QUALITY). #404
-- **NEW**: ✨ ENV: `ROTATE_CAM_{CAM_NAME}=True` Rotation option for any cam. #408
+- **NEW**: ✨ ENV: `ROTATE_CAM_{CAM_NAME}=True` or `ROTATE_CAM_{CAM_NAME}=(int)` to rotate any cam in any direction. #408
 
 - **UPDATED**: ⬆️ API: iOS version bump to 15.5.
 - **UPDATED**: ⬆️ API: Wyze app version number bump to 2.31.1.0.
@@ -43,7 +43,7 @@ See [basic usage](#basic-usage) for additional information.
 
 ## Features
 
-- Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS.
+- Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS/Low-Latency HLS.
 - Access to HD *or* SD stream with configurable bitrate.
 - Local and remote access to any of the cams on your account.
 - Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker.
@@ -51,7 +51,7 @@ See [basic usage](#basic-usage) for additional information.
 - Ability to rotate video for Wyze Doorbell.
 - Ability to record streams locally.
 - Ability to take snapshots on an interval.
-- Ability to livestream directly from the bridge.
+- Ability to live stream directly from the bridge.
 - Ability to send a IFTTT webhook when a camera is offline (-90).
 
 ## Supported Cameras
@@ -171,6 +171,14 @@ Replace localhost with the hostname or ip of the machine running the bridge:
 
   ```text
   http://localhost:8888/camera-nickname
+  ```
+
+- Low-Latency HLS (enable with `LLHLS=true`):
+
+  ```text
+  http://localhost:8888/camera-nickname
+  or
+  http://localhost:8888/camera-nickname/stream.m3u8
   ```
 
 #### Multi-Factor Authentication
@@ -483,6 +491,40 @@ or where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces a
 ```yaml
 - FFMPEG_FLAGS_CAM_NAME=-flags low_delay
 ```
+
+### Rotate Video
+
+- Rotate all doorbells:
+
+  ```YAML
+  environment:
+      ..
+      - ROTATE_DOOR=True
+  ```
+
+- Rotate other cameras 
+  where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces and hyphens:
+
+  Rotate by 90 degrees clockwise:
+
+  ```YAML
+  environment:
+      ..
+      - ROTATE_CAM_CAM_NAME=True
+  ```
+
+  Rotate video in other directions:
+
+  ```YAML
+      - ROTATE_CAM_OTHER_CAM=1 # 90 degrees clockwise.
+      - ROTATE_CAM_THIRD_CAM=2 # 90 degrees counter-clockwise.
+  ```
+
+ Available options:
+  `0` - Rotate by 90 degrees counter-clockwise and flip vertically. This is the default.
+  `1` - Rotate by 90 degrees clockwise.
+  `2` - Rotate by 90 degrees counter-clockwise.
+  `3` - Rotate by 90 degrees clockwise and flip vertically.
 
 ### rtsp-simple-server
 

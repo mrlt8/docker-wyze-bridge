@@ -1,10 +1,9 @@
-
 ## Changes in v1.4.6
 
-- **NEW**: ✨ LL-HLS
+- **NEW**: ✨ ENV: `LLHLS=true` - Enable Low-Latency HLS and generate the certificates required.
 - **NEW**: ✨ Display a message if API rate limit has under 25 attempts left.
 - **NEW**: ✨ Home Assistant: `CAM_OPTIONS` to allow for camera specific configs (AUDIO,FFMPEG,ROTATE,QUALITY). #404
-- **NEW**: ✨ ENV: `ROTATE_CAM_{CAM_NAME}=True` Rotation option for any cam. #408
+- **NEW**: ✨ ENV: `ROTATE_CAM_{CAM_NAME}=True` or `ROTATE_CAM_{CAM_NAME}=(int)` to rotate any cam in any direction. #408
 
 - **UPDATED**: ⬆️ API: iOS version bump to 15.5.
 - **UPDATED**: ⬆️ API: Wyze app version number bump to 2.31.1.0.
