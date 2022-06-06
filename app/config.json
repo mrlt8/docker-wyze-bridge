@@ -90,9 +90,11 @@
                 "CAM_NAME": "str?",
                 "AUDIO": "bool?",
                 "FFMPEG": "str?",
+                "LIVESTREAM": "str?",
                 "NET_MODE": "str?",
                 "ROTATE": "bool?",
-                "QUALITY": "str?"
+                "QUALITY": "str?",
+                "RECORD": "bool?"
             }
         ]
     }

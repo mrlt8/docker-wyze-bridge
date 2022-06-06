@@ -734,6 +734,10 @@ def setup_hass():
                 os.environ.update({f"ROTATE_CAM_{cam_name}": str(cam["ROTATE"])})
             if "QUALITY" in cam:
                 os.environ.update({f"QUALITY_{cam_name}": str(cam["QUALITY"])})
+            if "LIVESTREAM" in cam:
+                os.environ.update({f"LIVESTREAM_{cam_name}": str(cam["LIVESTREAM"])})
+            if "RECORD" in cam:
+                os.environ.update({f"RECORD_{cam_name}": str(cam["RECORD"])})
 
     [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf.items()]
 
