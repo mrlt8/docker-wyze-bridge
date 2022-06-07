@@ -18,6 +18,7 @@ import requests
 import wyzecam
 from wyzecam import WyzeCamera
 from wyzecam.api_models import clean_name
+from wyzecam import WyzeIOTCSessionState as SessionState
 
 log = logging.getLogger("WyzeBridge")
 
@@ -384,6 +385,8 @@ class WyzeBridge:
                 audio_thread = threading.Thread(
                     target=sess.recv_audio_frames, args=(uri, fps), name=uri + "_AUDIO"
                 )
+                stats_thread = threading.Thread(target=camera_stats, args=(sess, uri))
+                stats_thread.start()
                 with Popen(
                     get_ffmpeg_cmd(uri, cam.product_model, audio), stdin=PIPE
                 ) as ffmpeg:
@@ -413,6 +416,8 @@ class WyzeBridge:
             if "audio_thread" in locals() and audio_thread.is_alive():
                 open(f"/tmp/{uri.lower()}.wav", "r").close()
                 audio_thread.join()
+            if "stats_thread" in locals() and stats_thread.is_alive():
+                stats_thread.join()
             sys.exit(exit_code)
 
     def get_webrtc(self):
@@ -791,6 +796,98 @@ def setup_hass(hass: bool):
                 key = key if key.startswith("RTSP_") else "RTSP_" + key
                 os.environ[key] = split_opt[1].strip()
     [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf.items()]
+
+
+def cam_http_alive(ip: str) -> bool:
+    """Test if camera http server is up."""
+    try:
+        resp = requests.get(f"http://{ip}")
+        resp.raise_for_status()
+        return True
+    except requests.exceptions.ConnectionError:
+        return False
+
+
+def pull_last_image(ip: str, path: str, last: Optional[str] = None) -> Optional[str]:
+    """Pull last image from camera SD card."""
+    base = f"http://{ip}/cgi-bin/hello.cgi?name=/{path}/"
+    try:
+        with requests.Session() as req:
+            # Get Last Date
+            resp = req.get(base)
+            date = sorted(re.findall("<h2>(\d+)<\/h2>", resp.text))[-1]
+
+            # Get Last File
+            resp = req.get(base + date)
+            file_name = sorted(re.findall("<h1>(\w+\.jpg)<\/h1>", resp.text))[-1]
+            if file_name != last:
+                log.info(f"Pulling new {path} file {file_name=}")
+
+                # Get image
+                resp = req.get(f"http://{ip}/SDPath/{path}/{date}/{file_name}")
+
+                # Save image
+                save_name = file_name
+                with open(f"/img/{path}_{save_name}", "wb") as img:
+                    img.write(resp.content)
+    except requests.exceptions.ConnectionError as ex:
+        print(ex)
+        pass
+    finally:
+        return file_name
+
+
+def camera_stats(sess: wyzecam.WyzeIOTCSession, uri: str):
+    """
+    Start the boa server on the camera and pull photos.
+
+    env options:
+        - enable_boa: Requires LAN connection and SD card. required to pull any images.
+        - boa_interval: the number of seconds between photos/keep alive.
+        - take_photo: Take a high res photo directly on the camera SD card.
+        - pull_photo: Pull the HQ photo from the SD card.
+        - pull_alarm: Pull alarm/motion image from the SD card.
+
+    """
+    last_alarm = last_photo = None
+    interval = env_bool("boa_interval", 10)
+
+    while sess.state == SessionState.AUTHENTICATION_SUCCEEDED:
+        session = sess.session_check()
+
+        if (
+            session.mode == 2  # Connected in LAN mode
+            and session.remote_ip  # IP of camera
+            and (sd_parm := sess.camera.camera_info.get("sdParm"))
+            and sd_parm.get("status") == "1"  # SD card is available
+            and "detail" not in sd_parm  # Avoid weird SD card issue?
+            and env_bool("enable_boa")
+        ):
+            ip = session.remote_ip.decode("utf-8")
+            log.debug(sess.camera.camera_info.get("sdParm"))
+            iotctrl_msg = []
+            if env_bool("take_photo"):
+                iotctrl_msg.append(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
+            if not cam_http_alive(ip):
+                log.info("starting boa server")
+                iotctrl_msg.append(wyzecam.tutk.tutk_protocol.K10148StartBoa())
+            if iotctrl_msg:
+                with sess.iotctrl_mux() as mux:
+                    for msg in iotctrl_msg:
+                        mux.send_ioctl(msg)
+            if env_bool("pull_alarm"):
+                last_alarm = pull_last_image(ip, "alarm", last_alarm)
+            if env_bool("pull_photo"):
+                last_photo = pull_last_image(ip, "photo", last_photo)
+        wifi = sess.camera.camera_info["basicInfo"].get("wifidb", "NA")
+        if "netInfo" in sess.camera.camera_info:
+            wifi = sess.camera.camera_info["netInfo"].get("signal", wifi)
+        mqtt = [
+            # (f"wyzebridge/{uri.lower()}/net_mode", session.mode),
+            (f"wyzebridge/{uri.lower()}/wifi", wifi),
+        ]
+        send_mqtt(mqtt)
+        time.sleep(interval)
 
 
 def setup_llhls(token_path: str = "/tokens/"):
