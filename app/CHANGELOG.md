@@ -1,3 +1,8 @@
+## Changes in v1.5.1
+
+- **NEW**: ✨ Home Assistant: `RTSP_SIMPLE_SERVER` option to configure rtsp-simple-server, e.g. use `paths_all_readusers=123` for `paths: all: readuser:123`.
+- **UPDATED**: ⬆️ rtsp-simple-server > [v0.19.1](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.19.1)
+
 ## Changes in v1.5.0
 
 - **NEW**: ✨ ENV: `LLHLS=true` - Enable Low-Latency HLS and generate the certificates required.

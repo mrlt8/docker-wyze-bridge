@@ -28,6 +28,11 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
+## Changes in v1.5.1
+
+- **NEW**: ✨ Home Assistant: `RTSP_SIMPLE_SERVER` option to configure rtsp-simple-server, e.g. use `paths_all_readusers=123` for `paths: all: readuser:123`.
+- **UPDATED**: ⬆️ rtsp-simple-server > [v0.19.1](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.19.1)
+
 ## Changes in v1.5.0
 
 - **NEW**: ✨ ENV: `LLHLS=true` - Enable Low-Latency HLS and generate the certificates required.
@@ -583,6 +588,9 @@ environment:
   ...
   - RTSP_PATHS_FRONT-DOOR_RUNONREADY=ffmpeg...
 ```
+
+- 🏠 For Home Assistant:
+  Enter each customization into `RTSP_SIMPLE_SERVER`, e.g. use `paths_all_readusers=123` for `paths: all: readuser:123`.
 
 ### Debugging options
 

@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.5.0\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.5.1\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -725,20 +725,26 @@ def setup_hass():
             if not (cam_name := clean_name(cam.get("CAM_NAME", ""), True, True)):
                 continue
             if "AUDIO" in cam:
-                os.environ.update({f"ENABLE_AUDIO_{cam_name}": str(cam["AUDIO"])})
+                os.environ[f"ENABLE_AUDIO_{cam_name}"] = str(cam["AUDIO"])
             if "FFMPEG" in cam:
-                os.environ.update({f"FFMPEG_CMD_{cam_name}": str(cam["FFMPEG"])})
+                os.environ[f"FFMPEG_CMD_{cam_name}"] = str(cam["FFMPEG"])
             if "NET_MODE" in cam:
-                os.environ.update({f"NET_MODE_{cam_name}": str(cam["NET_MODE"])})
+                os.environ[f"NET_MODE_{cam_name}"] = str(cam["NET_MODE"])
             if "ROTATE" in cam:
-                os.environ.update({f"ROTATE_CAM_{cam_name}": str(cam["ROTATE"])})
+                os.environ[f"ROTATE_CAM_{cam_name}"] = str(cam["ROTATE"])
             if "QUALITY" in cam:
-                os.environ.update({f"QUALITY_{cam_name}": str(cam["QUALITY"])})
+                os.environ[f"QUALITY_{cam_name}"] = str(cam["QUALITY"])
             if "LIVESTREAM" in cam:
-                os.environ.update({f"LIVESTREAM_{cam_name}": str(cam["LIVESTREAM"])})
+                os.environ[f"LIVESTREAM_{cam_name}"] = str(cam["LIVESTREAM"])
             if "RECORD" in cam:
-                os.environ.update({f"RECORD_{cam_name}": str(cam["RECORD"])})
+                os.environ[f"RECORD_{cam_name}"] = str(cam["RECORD"])
 
+    if rtsp_options := conf.pop("RTSP_SIMPLE_SERVER", None):
+        for opt in rtsp_options:
+            if (split_opt := opt.split("=", 1)) and len(split_opt) == 2:
+                key = split_opt[0].strip().upper()
+                key = key if key.startswith("RTSP_") else "RTSP_" + key
+                os.environ[key] = split_opt[1].strip()
     [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf.items()]
 
 
