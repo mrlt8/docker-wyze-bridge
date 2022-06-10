@@ -28,6 +28,10 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
+## Changes in v1.5.2
+
+- **FIXED**: Setting the `WEBRTC` env to false would still pull the WebRTC credentials. #410
+
 ## Changes in v1.5.1
 
 - **NEW**: ✨ Home Assistant: `RTSP_SIMPLE_SERVER` option to configure rtsp-simple-server, e.g. use `paths_all_readusers=123` for `paths: all: readuser:123`.

@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.5.1\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.5.2\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -48,7 +48,7 @@ class WyzeBridge:
         """Start the bridge."""
         self.get_wyze_data("user")
         self.get_filtered_cams()
-        if os.getenv("WEBRTC"):
+        if env_bool("WEBRTC"):
             self.get_webrtc()
         self.start_rtsp_server()
         self.start_all_streams()
