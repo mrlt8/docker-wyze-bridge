@@ -896,12 +896,12 @@ def camera_boa(sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str):
             if alarm != last_alarm:
                 log.info(f"[MOTION] Alarm file detected at {alarm[1]}")
                 mqtt = [
-                    (f"wyzebridge/{uri.lower()}/motion", "true"),
+                    (f"wyzebridge/{uri.lower()}/motion", True),
                 ]
                 cooldown += timedelta(0, int(env_bool("motion_cooldown", 10)))
             else:
                 mqtt = [
-                    (f"wyzebridge/{uri.lower()}/motion", "false"),
+                    (f"wyzebridge/{uri.lower()}/motion", False),
                 ]
             send_mqtt(mqtt)
 
