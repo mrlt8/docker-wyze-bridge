@@ -8,6 +8,7 @@ import sys
 import threading
 import time
 import warnings
+from datetime import datetime, timedelta
 from subprocess import PIPE, Popen, DEVNULL
 from typing import List, NoReturn, Optional, Tuple, Union, Dict
 
@@ -385,8 +386,13 @@ class WyzeBridge:
                 audio_thread = threading.Thread(
                     target=sess.recv_audio_frames, args=(uri, fps), name=uri + "_AUDIO"
                 )
-                stats_thread = threading.Thread(target=camera_stats, args=(sess, uri))
-                stats_thread.start()
+                boa_thread = threading.Thread(
+                    target=camera_boa,
+                    args=(sess, uri, self.img_path),
+                    name=uri + "_BOA",
+                )
+                if env_bool("enable_boa"):
+                    boa_thread.start()
                 with Popen(
                     get_ffmpeg_cmd(uri, cam.product_model, audio), stdin=PIPE
                 ) as ffmpeg:
@@ -416,8 +422,8 @@ class WyzeBridge:
             if "audio_thread" in locals() and audio_thread.is_alive():
                 open(f"/tmp/{uri.lower()}.wav", "r").close()
                 audio_thread.join()
-            if "stats_thread" in locals() and stats_thread.is_alive():
-                stats_thread.join()
+            if "boa_thread" in locals() and boa_thread.is_alive():
+                boa_thread.join()
             sys.exit(exit_code)
 
     def get_webrtc(self):
@@ -808,9 +814,10 @@ def cam_http_alive(ip: str) -> bool:
         return False
 
 
-def pull_last_image(ip: str, path: str, last: Optional[str] = None) -> Optional[str]:
+def pull_last_image(ip: str, path: str, last: tuple, img_dir: str) -> tuple:
     """Pull last image from camera SD card."""
     base = f"http://{ip}/cgi-bin/hello.cgi?name=/{path}/"
+    file_name, modded = last
     try:
         with requests.Session() as req:
             # Get Last Date
@@ -820,24 +827,32 @@ def pull_last_image(ip: str, path: str, last: Optional[str] = None) -> Optional[
             # Get Last File
             resp = req.get(base + date)
             file_name = sorted(re.findall("<h1>(\w+\.jpg)<\/h1>", resp.text))[-1]
-            if file_name != last:
-                log.info(f"Pulling new {path} file {file_name=}")
-
-                # Get image
+            if file_name != last[0]:
+                log.info(f"Pulling {path} file from camera ({file_name=})")
                 resp = req.get(f"http://{ip}/SDPath/{path}/{date}/{file_name}")
-
-                # Save image
-                save_name = file_name
-                with open(f"/img/{path}_{save_name}", "wb") as img:
+                _, modded = get_header_dates(resp.headers)
+                with open(f"{img_dir}{path}_{file_name}", "wb") as img:
                     img.write(resp.content)
     except requests.exceptions.ConnectionError as ex:
         print(ex)
         pass
     finally:
-        return file_name
+        return file_name, modded
 
 
-def camera_stats(sess: wyzecam.WyzeIOTCSession, uri: str):
+def get_header_dates(resp_header: dict) -> datetime:
+    """Get dates from boa header."""
+    try:
+        date = datetime.strptime(resp_header.get("Date"), "%a, %d %b %Y %X %Z")
+        last = datetime.strptime(resp_header.get("Last-Modified"), "%a, %d %b %Y %X %Z")
+        return date, last
+    except ValueError:
+        return None, None
+    except Exception as ex:
+        print(ex)
+
+
+def camera_boa(sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str):
     """
     Start the boa server on the camera and pull photos.
 
@@ -847,46 +862,52 @@ def camera_stats(sess: wyzecam.WyzeIOTCSession, uri: str):
         - take_photo: Take a high res photo directly on the camera SD card.
         - pull_photo: Pull the HQ photo from the SD card.
         - pull_alarm: Pull alarm/motion image from the SD card.
+        - motion_cooldown: Cooldown between motion alerts.
 
     """
-    last_alarm = last_photo = None
-    interval = env_bool("boa_interval", 10)
+    log.debug(sess.camera.camera_info.get("sdParm"))
+    session = sess.session_check()
+    if (
+        session.mode != 2  # NOT connected in LAN mode
+        or not (ip := session.remote_ip.decode("utf-8"))
+        or not (sd_parm := sess.camera.camera_info.get("sdParm"))
+        or sd_parm.get("status") != "1"  # SD card is NOT available
+        or "detail" in sd_parm  # Avoid weird SD card issue?
+    ):
+        return  # Stop thread if SD card isn't available
+    log.info(f"Local boa HTTP server enabled on http://{ip}")
+    interval = env_bool("boa_interval", 5)
+    last_alarm = last_photo = (None, None)
+    cooldown = datetime.now()
 
     while sess.state == SessionState.AUTHENTICATION_SUCCEEDED:
-        session = sess.session_check()
+        iotctrl_msg = []
+        if env_bool("take_photo"):
+            iotctrl_msg.append(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
+        if not cam_http_alive(ip):
+            log.info("starting boa server")
+            iotctrl_msg.append(wyzecam.tutk.tutk_protocol.K10148StartBoa())
+        if iotctrl_msg:
+            with sess.iotctrl_mux() as mux:
+                for msg in iotctrl_msg:
+                    mux.send_ioctl(msg)
+        if env_bool("pull_alarm") and datetime.now() > cooldown:
+            alarm = pull_last_image(ip, "alarm", last_alarm, img_dir)
+            if alarm != last_alarm:
+                log.info(f"[MOTION] Alarm file detected at {alarm[1]}")
+                mqtt = [
+                    (f"wyzebridge/{uri.lower()}/motion", "true"),
+                ]
+                cooldown += timedelta(0, int(env_bool("motion_cooldown", 10)))
+            else:
+                mqtt = [
+                    (f"wyzebridge/{uri.lower()}/motion", "false"),
+                ]
+            send_mqtt(mqtt)
 
-        if (
-            session.mode == 2  # Connected in LAN mode
-            and session.remote_ip  # IP of camera
-            and (sd_parm := sess.camera.camera_info.get("sdParm"))
-            and sd_parm.get("status") == "1"  # SD card is available
-            and "detail" not in sd_parm  # Avoid weird SD card issue?
-            and env_bool("enable_boa")
-        ):
-            ip = session.remote_ip.decode("utf-8")
-            log.debug(sess.camera.camera_info.get("sdParm"))
-            iotctrl_msg = []
-            if env_bool("take_photo"):
-                iotctrl_msg.append(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
-            if not cam_http_alive(ip):
-                log.info("starting boa server")
-                iotctrl_msg.append(wyzecam.tutk.tutk_protocol.K10148StartBoa())
-            if iotctrl_msg:
-                with sess.iotctrl_mux() as mux:
-                    for msg in iotctrl_msg:
-                        mux.send_ioctl(msg)
-            if env_bool("pull_alarm"):
-                last_alarm = pull_last_image(ip, "alarm", last_alarm)
-            if env_bool("pull_photo"):
-                last_photo = pull_last_image(ip, "photo", last_photo)
-        wifi = sess.camera.camera_info["basicInfo"].get("wifidb", "NA")
-        if "netInfo" in sess.camera.camera_info:
-            wifi = sess.camera.camera_info["netInfo"].get("signal", wifi)
-        mqtt = [
-            # (f"wyzebridge/{uri.lower()}/net_mode", session.mode),
-            (f"wyzebridge/{uri.lower()}/wifi", wifi),
-        ]
-        send_mqtt(mqtt)
+            last_alarm = alarm
+        if env_bool("pull_photo"):
+            last_photo = pull_last_image(ip, "photo", last_photo, img_dir)
         time.sleep(interval)
 
 
