@@ -14,6 +14,7 @@ from typing import List, NoReturn, Optional, Tuple, Union, Dict
 
 import mintotp
 import paho.mqtt.publish
+import paho.mqtt.client
 import requests
 
 import wyzecam
@@ -814,16 +815,16 @@ def cam_http_alive(ip: str) -> bool:
         return False
 
 
-def pull_last_image(ip: str, path: str, last: tuple, img_dir: str) -> tuple:
+def pull_last_image(cam: tuple, path: str, last: tuple) -> tuple:
     """Pull last image from camera SD card."""
-    base = f"http://{ip}/cgi-bin/hello.cgi?name=/{path}/"
+    cam_name, ip, img_dir = cam
     file_name, modded = last
+    base = f"http://{ip}/cgi-bin/hello.cgi?name=/{path}/"
     try:
         with requests.Session() as req:
             # Get Last Date
             resp = req.get(base)
             date = sorted(re.findall("<h2>(\d+)<\/h2>", resp.text))[-1]
-
             # Get Last File
             resp = req.get(base + date)
             file_name = sorted(re.findall("<h1>(\w+\.jpg)<\/h1>", resp.text))[-1]
@@ -831,7 +832,8 @@ def pull_last_image(ip: str, path: str, last: tuple, img_dir: str) -> tuple:
                 log.info(f"Pulling {path} file from camera ({file_name=})")
                 resp = req.get(f"http://{ip}/SDPath/{path}/{date}/{file_name}")
                 _, modded = get_header_dates(resp.headers)
-                with open(f"{img_dir}{path}_{file_name}", "wb") as img:
+                # with open(f"{img_dir}{path}_{file_name}", "wb") as img:
+                with open(f"{img_dir}{cam_name}_{path}.jpg", "wb") as img:
                     img.write(resp.content)
     except requests.exceptions.ConnectionError as ex:
         print(ex)
@@ -850,6 +852,32 @@ def get_header_dates(resp_header: dict) -> datetime:
         return None, None
     except Exception as ex:
         print(ex)
+
+
+def mqtt_sub_topic(
+    m_topic: str, sess: wyzecam.WyzeIOTCSession
+) -> paho.mqtt.client.Client:
+    """Connect to mqtt and return the client."""
+    if not env_bool("MQTT_HOST"):
+        return None, None
+
+    client = paho.mqtt.client.Client()
+    m_auth = os.getenv("MQTT_AUTH", ":").split(":")
+    m_host = os.getenv("MQTT_HOST", "localhost").split(":")
+    topic = f"wyzebridge/{m_topic}"
+    client.username_pw_set(m_auth[0], m_auth[1] if len(m_auth) > 1 else None)
+    client.user_data_set(sess)
+    client.on_connect = lambda mq_client, obj, flags, rc: mq_client.subscribe(topic)
+    client.on_message = _take_photo
+    client.connect(m_host[0], int(m_host[1] if len(m_host) > 1 else 1883), 60)
+    client.loop_start()
+    return client
+
+
+def _take_photo(client, sess, msg):
+    log.info("📸 Take Photo via MQTT!")
+    with sess.iotctrl_mux() as mux:
+        mux.send_ioctl(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
 
 
 def camera_boa(sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str):
@@ -876,9 +904,11 @@ def camera_boa(sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str):
     ):
         return  # Stop thread if SD card isn't available
     log.info(f"Local boa HTTP server enabled on http://{ip}")
+    cam = (uri.lower(), ip, img_dir)
     interval = env_bool("boa_interval", 5)
     last_alarm = last_photo = (None, None)
     cooldown = datetime.now()
+    mqtt = mqtt_sub_topic(f"{uri.lower()}/takePhoto", sess)
 
     while sess.state == SessionState.AUTHENTICATION_SUCCEEDED:
         iotctrl_msg = []
@@ -892,7 +922,7 @@ def camera_boa(sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str):
                 for msg in iotctrl_msg:
                     mux.send_ioctl(msg)
         if env_bool("pull_alarm") and datetime.now() > cooldown:
-            alarm = pull_last_image(ip, "alarm", last_alarm, img_dir)
+            alarm = pull_last_image(cam, "alarm", last_alarm)
             if alarm != last_alarm:
                 log.info(f"[MOTION] Alarm file detected at {alarm[1]}")
                 mqtt = [
@@ -907,8 +937,10 @@ def camera_boa(sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str):
 
             last_alarm = alarm
         if env_bool("pull_photo"):
-            last_photo = pull_last_image(ip, "photo", last_photo, img_dir)
+            last_photo = pull_last_image(cam, "photo", last_photo)
         time.sleep(interval)
+    if mqtt:
+        mqtt.loop_stop()
 
 
 def setup_llhls(token_path: str = "/tokens/"):
