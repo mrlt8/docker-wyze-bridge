@@ -815,29 +815,28 @@ def cam_http_alive(ip: str) -> bool:
         return False
 
 
-def pull_last_image(cam: tuple, path: str, last: tuple) -> tuple:
+def pull_last_image(cam: tuple, path: str, last: tuple, as_snap: bool = False) -> tuple:
     """Pull last image from camera SD card."""
-    cam_name, ip, img_dir = cam
     file_name, modded = last
-    base = f"http://{ip}/cgi-bin/hello.cgi?name=/{path}/"
+    base = f"http://{cam[1]}/cgi-bin/hello.cgi?name=/{path}/"
     try:
         with requests.Session() as req:
-            # Get Last Date
-            resp = req.get(base)
+            resp = req.get(base)  # Get Last Date
             date = sorted(re.findall("<h2>(\d+)<\/h2>", resp.text))[-1]
-            # Get Last File
-            resp = req.get(base + date)
+            resp = req.get(base + date)  # Get Last File
             file_name = sorted(re.findall("<h1>(\w+\.jpg)<\/h1>", resp.text))[-1]
             if file_name != last[0]:
                 log.info(f"Pulling {path} file from camera ({file_name=})")
-                resp = req.get(f"http://{ip}/SDPath/{path}/{date}/{file_name}")
+                resp = req.get(f"http://{cam[1]}/SDPath/{path}/{date}/{file_name}")
                 _, modded = get_header_dates(resp.headers)
                 # with open(f"{img_dir}{path}_{file_name}", "wb") as img:
-                with open(f"{img_dir}{cam_name}_{path}.jpg", "wb") as img:
+                save_name = "_" + "alarm.jpg" if path == "alarm" else file_name
+                if as_snap:
+                    save_name = ".jpg"
+                with open(f"{cam[2]}{cam[0]}{save_name}", "wb") as img:
                     img.write(resp.content)
     except requests.exceptions.ConnectionError as ex:
-        print(ex)
-        pass
+        log.error(ex)
     finally:
         return file_name, modded
 
@@ -850,8 +849,6 @@ def get_header_dates(resp_header: dict) -> datetime:
         return date, last
     except ValueError:
         return None, None
-    except Exception as ex:
-        print(ex)
 
 
 def mqtt_sub_topic(
@@ -875,7 +872,7 @@ def mqtt_sub_topic(
 
 
 def _take_photo(client, sess, msg):
-    log.info("📸 Take Photo via MQTT!")
+    log.info("[MQTT] 📸 Take Photo via MQTT!")
     with sess.iotctrl_mux() as mux:
         mux.send_ioctl(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
 
@@ -922,25 +919,33 @@ def camera_boa(sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str):
                 for msg in iotctrl_msg:
                     mux.send_ioctl(msg)
         if env_bool("pull_alarm") and datetime.now() > cooldown:
-            alarm = pull_last_image(cam, "alarm", last_alarm)
-            if alarm != last_alarm:
-                log.info(f"[MOTION] Alarm file detected at {alarm[1]}")
-                mqtt = [
-                    (f"wyzebridge/{uri.lower()}/motion", True),
-                ]
-                cooldown += timedelta(0, int(env_bool("motion_cooldown", 10)))
-            else:
-                mqtt = [
-                    (f"wyzebridge/{uri.lower()}/motion", False),
-                ]
-            send_mqtt(mqtt)
-
-            last_alarm = alarm
+            last_alarm, cooldown = motion_alarm(cam, last_alarm, cooldown)
         if env_bool("pull_photo"):
-            last_photo = pull_last_image(cam, "photo", last_photo)
+            as_snap = env_bool("pull_photo") and env_bool("take_photo")
+            last_photo = pull_last_image(cam, "photo", last_photo, as_snap)
         time.sleep(interval)
     if mqtt:
         mqtt.loop_stop()
+
+
+def motion_alarm(
+    cam: tuple, last_alarm: tuple, cooldown: datetime
+) -> Tuple[tuple, datetime]:
+    """Check alam and trigger MQTT/http motion and return cooldown."""
+
+    motion = False
+    if (alarm := pull_last_image(cam, "alarm", last_alarm)) != last_alarm:
+        log.info(f"[MOTION] Alarm file detected at {alarm[1]}")
+        cooldown += timedelta(0, int(env_bool("motion_cooldown", 10)))
+        motion = True
+    send_mqtt([(f"wyzebridge/{[cam[0]]}/motion", motion)])
+    if motion and (http := env_bool("motion_http")):
+        try:
+            resp = requests.get(http.format(cam_name=cam[0]))
+            resp.raise_for_status()
+        except requests.exceptions.HTTPError as ex:
+            log.error(ex)
+    return alarm, cooldown
 
 
 def setup_llhls(token_path: str = "/tokens/"):
