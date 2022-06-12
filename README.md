@@ -28,6 +28,21 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
+## Changes in v1.7.0
+
+Some wyze cams have have a built-in http server "boa" that is enabled when downloading a time lapse from the camera. By enabling this http server, we can have full access to the SD card on the camera, so you can download whatever you need off the SD card without having to take each camera down.
+
+PLEASE NOTE: If enabled, anyone on your local network will be able to access/download stuff from the SD Card on the camera.
+
+- **NEW**: ✨ ENV: `ENABLE_BOA` - Enable the HTTP server on select cameras with an SD card.
+- **NEW**: ✨ ENV: `BOA_INTERVAL` - The number of seconds between image pulls/keep alives.
+- **NEW**: ✨ ENV: `TAKE_PHOTO` - Take a high quality photo on the camera SD Card on `BOA_INTERVAL`.
+- **NEW**: ✨ ENV: `PULL_PHOTO` - Download latest high-quality photo from camera.
+- **NEW**: ✨ ENV: `PULL_ALARM` - Download latest alarm file from camera and notify via MQTT if available.
+- **NEW**: ✨ ENV: `MOTION_HTTP` - Make a Webhook/HTTP request to any url on motion, e.g., `http://localhost/triggerMotion?cam={cam_name}`.
+- **NEW**: ✨ ENV: `MOTION_COOLDOWN` - Number of seconds to keep the motion flag set to true before resetting it.
+
+
 ## Changes in v1.6.4
 
 - **IMPROVED**: Reliability of dragging/sorting cameras in Web-UI. Thanks @dsheehan!
@@ -58,11 +73,14 @@ Huge thanks goes to @dsheehan for building and adding a web-ui for the bridge!
 - Local and remote access to any of the cams on your account.
 - Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker.
 - Support for Wyze 2FA.
-- Ability to rotate video for Wyze Doorbell.
-- Ability to record streams locally.
-- Ability to take snapshots on an interval.
-- Ability to live stream directly from the bridge.
-- Ability to send a IFTTT webhook when a camera is offline (-90).
+- Rotate video for Wyze Doorbell.
+- Record streams locally.
+- Take snapshots on an interval.
+- Live stream directly from the bridge.
+- Send a IFTTT webhook when a camera is offline (-90).
+- Start an HTTP server on the camera for local SD card access. ✨ NEW
+- On-demand high quality photos on the camera. ✨ NEW
+- Trigger MQTT/Webhook/HTTP on a motion event. ✨ NEW
 
 ## Supported Cameras
 
@@ -376,6 +394,95 @@ In the event that you need to allow the bridge to access a select number of came
 - `IMG_DIR=/img/` Specify the directory where the snapshots will be saved *within the container*. Use volumes in docker to map to an external directory.
 
 - `IMG_TYPE` Specify the file type of the image, e.g. `IMG_TYPE=png`. Will default to jpg.
+
+### Boa HTTP Server
+
+Some wyze cams have have a built-in http server "boa" that is enabled when downloading a time lapse from the camera. By enabling this http server, we can have full local access to the SD card on the camera, so you can download whatever you need off the SD card without having to take each camera down.
+
+#### Enable Boa
+
+This will enable the boa server on each camera `http://<cam-ip>:80/` that has the boa server and has an SD card in the camera.
+PLEASE NOTE: If enabled, anyone on your local network will be able to access/download stuff from the SD Card on the camera.
+  
+```yaml
+environment:
+    ..
+    - ENABLE_BOA=true
+```
+
+#### Boa Interval
+
+The boa server will go down after some time and needs to be restarted from time to time. This interval will keep the server up and pull any new images at the same time.
+
+This will default to 5 if not set.
+
+```yaml
+    - ENABLE_BOA=true
+    - BOA_INTERVAL=30
+```
+
+#### Take Photo
+
+This will take a high quality photo on the camera on each `BOA_INTERVAL`.
+
+PLEASE NOTE: Because the photos are stored on the SD card, `ENABLE_BOA` is required for this to work.
+
+```yaml
+    - ENABLE_BOA=true
+    - TAKE_PHOTO=true
+```
+
+Photos can also be taken on-demand by publishing to the MQTT topic `wyzebridge/<camera-name>/takePhoto`.
+
+#### Pull Photo
+
+This will pull the latest photo from the camera on each `BOA_INTERVAL`.
+
+Files will be saved to your local img_dir as `cam-name_YYYMMDD_HH_MM_SS.jpg` or `cam-name.jpg` if `TAKE_PHOTO` is enabled.
+
+PLEASE NOTE: Because the photos are stored on the SD card, `ENABLE_BOA` is required for this to work.
+
+```yaml
+    - ENABLE_BOA=true
+    - PULL_PHOTO=true
+```
+
+#### Pull Alarm
+
+In addition to pulling the latest alarm image from the camera on each `BOA_INTERVAL`, this will also trigger a motion event to the MQTT topic `wyzebridge/<camera-name>/motion` if available.
+
+Files will be saved to your local img_dir as `cam-name_alarm.jpg`.
+
+PLEASE NOTE: Because the images are stored on the SD card, `ENABLE_BOA` is required for this to work.
+
+```yaml
+    - ENABLE_BOA=true
+    - PULL_PHOTO=true
+```
+
+#### Motion Alerts
+
+If the MQTT options are configured and enabled, motion events will be sent to the MQTT topic `wyzebridge/<camera-name>/motion`.
+
+Motion alerts can also be sent via Webhook/HTTP to any url by specifying the url and using the variable `{cam_name}`:
+
+```yaml
+    - ENABLE_BOA=true
+    - MOTION_HTTP=http://localhost/triggerMotion?cam={cam_name}
+```
+
+PLEASE NOTE: Because the images are stored on the SD card, `ENABLE_BOA` is required for this to work.
+
+#### Motion Cooldown
+
+The number of seconds to keep the motion flag set to true in MQTT before it gets cleared or resending another HTTP/webhook event.
+
+This will default to 10 if not set.
+
+```yaml
+    - ENABLE_BOA=true
+    - MOTION_COOLDOWN=30
+```
 
 ### Stream Recording
 
