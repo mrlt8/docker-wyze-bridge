@@ -938,7 +938,7 @@ def motion_alarm(
         log.info(f"[MOTION] Alarm file detected at {alarm[1]}")
         cooldown += timedelta(0, int(env_bool("motion_cooldown", 10)))
         motion = True
-    send_mqtt([(f"wyzebridge/{[cam[0]]}/motion", motion)])
+    send_mqtt([(f"wyzebridge/{cam[0]}/motion", motion)])
     if motion and (http := env_bool("motion_http")):
         try:
             resp = requests.get(http.format(cam_name=cam[0]))
