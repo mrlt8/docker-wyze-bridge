@@ -823,7 +823,7 @@ class WyzeIOTCSession:
                 raise tutk.TutkError(session_id)
             self.session_id = session_id
 
-            if not hasattr(self.camera, "dtls") or self.camera.dtls == 0:
+            if not self.camera.dtls and not self.camera.parent_dtls:
                 logger.debug("Connect via IOTC_Connect_ByUID_Parallel")
                 session_id = tutk.iotc_connect_by_uid_parallel(
                     self.tutk_platform_lib, self.camera.p2p_id, self.session_id
@@ -831,6 +831,8 @@ class WyzeIOTCSession:
             else:
                 logger.debug("Connect via IOTC_Connect_ByUIDEx")
                 password = self.camera.enr
+                if self.camera.parent_dtls:
+                    password = self.camera.parent_enr
                 session_id = tutk.iotc_connect_by_uid_ex(
                     self.tutk_platform_lib,
                     self.camera.p2p_id,
@@ -884,6 +886,8 @@ class WyzeIOTCSession:
     def get_auth_key(self) -> bytes:
         """Generate authkey using enr and mac address."""
         auth = self.camera.enr + self.camera.mac.upper()
+        if self.camera.parent_dtls:
+            auth = self.camera.parent_enr + self.camera.parent_mac.upper()
         hash = hashlib.sha256(auth.encode("utf-8"))
         bArr = bytearray(hash.digest())[0:6]
         return (

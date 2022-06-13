@@ -1,3 +1,9 @@
+## Changes in v1.5.3
+
+⚠️ This version may require a one-time `FRESH_DATA` to generate the new authkey for compatibility with the WCO.
+
+- **FIXED**: Authkey/DTLS - Wyze Cam Outdoor would timeout when connecting. #384
+
 ## Changes in v1.5.2
 
 - **FIXED**: Setting the `WEBRTC` env to false would still pull the WebRTC credentials. #410

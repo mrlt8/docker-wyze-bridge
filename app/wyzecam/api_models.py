@@ -70,7 +70,9 @@ class WyzeCamera(BaseModel):
     timezone_name: Optional[str]
     firmware_ver: Optional[str]
     dtls: Optional[int]
+    parent_dtls: Optional[int]
     parent_enr: Optional[str]
+    parent_mac: Optional[str]
     thumbnail: Optional[str]
 
     def set_camera_info(self, info: Dict[str, Any]) -> None:

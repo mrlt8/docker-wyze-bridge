@@ -191,7 +191,9 @@ def get_camera_list(auth_info: WyzeCredential) -> List[WyzeCamera]:
         timezone_name: Optional[str] = device.get("timezone_name")
         firmware_ver: Optional[str] = device.get("firmware_ver")
         dtls: Optional[int] = device_params.get("dtls")
+        parent_dtls: Optional[int] = device_params.get("main_device_dtls")
         parent_enr: Optional[str] = device.get("parent_device_enr")
+        parent_mac: Optional[str] = device.get("parent_device_mac")
         thumbnail: Optional[str] = device_params.get("camera_thumbnails").get(
             "thumbnails_url"
         )
@@ -221,7 +223,9 @@ def get_camera_list(auth_info: WyzeCredential) -> List[WyzeCamera]:
                 timezone_name=timezone_name,
                 firmware_ver=firmware_ver,
                 dtls=dtls,
+                parent_dtls=parent_dtls,
                 parent_enr=parent_enr,
+                parent_mac=parent_mac,
                 thumbnail=thumbnail,
             )
         )
