@@ -28,9 +28,14 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
+## Changes in v1.5.4
+
+- Auto fetch camera data if upgrading from older version without having to use `FRESH_DATA`. #418
+- Display DTLS on Wyze Cam Outdoors if base station has DTLS enabled.
+
 ## Changes in v1.5.3
 
-⚠️ This version may require a one-time `FRESH_DATA` to generate the new authkey for compatibility with the WCO.
+~~⚠️ This version may require a one-time `FRESH_DATA` to generate the new authkey for compatibility with the WCO.~~
 
 - **FIXED**: Authkey/DTLS - Wyze Cam Outdoor would timeout when connecting. #384
 

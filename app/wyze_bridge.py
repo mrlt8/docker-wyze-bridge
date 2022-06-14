@@ -21,7 +21,7 @@ import wyzecam
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.5.3\n")
+        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.5.4\n")
         signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -48,10 +48,6 @@ class WyzeBridge:
         """Start the bridge."""
         self.get_wyze_data("user")
         self.get_filtered_cams()
-        if not hasattr(self.cameras[0], "parent_dtls"):
-            print("\n\n========\nPlease use:\nFRESH_DATA=true\n")
-            print("or remove:\ncameras.pickle\n=======\n\n")
-            signal.pause()
         if env_bool("WEBRTC"):
             self.get_webrtc()
         self.start_rtsp_server()
@@ -301,11 +297,18 @@ class WyzeBridge:
     def get_filtered_cams(self) -> None:
         """Get all cameras that are enabled."""
         cams = self.get_wyze_data("cameras")
+
+        # Update cameras
+        if not hasattr(cams[0], "parent_dtls"):
+            print("\n\n========\nAdditional data from Wyze API required.\n")
+            print("\nRemoving old camera data..\n=======\n\n")
+            os.remove(self.token_path + "cameras.pickle")
+            cams = self.get_wyze_data("cameras")
+
         for cam in cams:
             if cam.product_model == "WYZEC1":
                 log.warning(f"💔 {cam.product_model} not supported")
-                if env_bool("IGNORE_OFFLINE"):
-                    cams.os.remove(cam)
+                cams.os.remove(cam)
         total = len(cams)
         if env_bool("FILTER_BLOCK"):
             filtered = list(filter(lambda cam: not env_filter(cam), cams))
@@ -525,7 +528,7 @@ def get_cam_params(
         if env_bool("DEBUG_LEVEL"):
             log.info(f"[videoParm] {video_param}")
     firmware = sess.camera.camera_info["basicInfo"].get("firmware", "NA")
-    if sess.camera.dtls and sess.camera.dtls == 1:
+    if sess.camera.dtls or sess.camera.parent_dtls:
         firmware += " 🔒 (DTLS)"
     wifi = sess.camera.camera_info["basicInfo"].get("wifidb", "NA")
     if "netInfo" in sess.camera.camera_info:

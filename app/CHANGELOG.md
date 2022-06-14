@@ -1,3 +1,8 @@
+## Changes in v1.5.4
+
+- Auto fetch camera data if upgrading from older version without having to use `FRESH_DATA`. #418
+- Display DTLS on Wyze Cam Outdoors if base station has DTLS enabled.
+
 ## Changes in v1.5.3
 
 ⚠️ This version may require a one-time `FRESH_DATA` to generate the new authkey for compatibility with the WCO.
