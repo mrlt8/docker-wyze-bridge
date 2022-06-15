@@ -24,7 +24,7 @@ log = logging.getLogger("WyzeBridge")
 
 class WyzeBridge:
     def __init__(self) -> None:
-        config = json.load(open('config.json'))
+        config = json.load(open("config.json"))
         log.info(f"🚀 STARTING DOCKER-WYZE-BRIDGE v{config['version']}\n")
         self.hass: bool = bool(os.getenv("HASS"))
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -41,16 +41,17 @@ class WyzeBridge:
         self.user: wyzecam.WyzeAccount = None
         self.stop_flag = multiprocessing.Event()
         self.thread: threading.Thread = None
-        self.wb_hls_url = os.getenv("WB_HLS_URL", "http://localhost:8888/")
-        self.wb_rtmp_url = os.getenv("WB_RTMP_URL", "rtmp://localhost:1935/")
-        self.wb_rtsp_url = os.getenv("WB_RTSP_URL", "rtsp://localhost:8554/")
+        localhost = "homeassistant.local" if self.hass else "localhost"
+        self.wb_hls_url = os.getenv("WB_HLS_URL", f"http://{localhost}:8888/")
+        self.wb_rtmp_url = os.getenv("WB_RTMP_URL", f"rtmp://{localhost}:1935/")
+        self.wb_rtsp_url = os.getenv("WB_RTSP_URL", f"rtsp://{localhost}:8554/")
 
         os.makedirs(self.token_path, exist_ok=True)
         os.makedirs(self.img_path, exist_ok=True)
         open(self.token_path + "mfa_token.txt", "w").close()
 
     def run(self) -> None:
-        """ Start synchronously """
+        """Start synchronously"""
         if self.hass:
             setup_hass()
         setup_llhls(self.token_path)
@@ -63,7 +64,7 @@ class WyzeBridge:
         self.start_all_streams()
 
     def start(self):
-        """ Start asynchronously """
+        """Start asynchronously"""
         if not self.thread:
             self.thread = threading.Thread(target=self.run)
             self.thread.start()
@@ -315,7 +316,7 @@ class WyzeBridge:
 
     def get_filtered_cams(self) -> None:
         """Get all cameras that are enabled."""
-        cams:[WyzeCamera] = self.get_wyze_data("cameras")
+        cams: [WyzeCamera] = self.get_wyze_data("cameras")
 
         # Update cameras
         if not hasattr(cams[0], "parent_dtls"):
@@ -434,25 +435,29 @@ class WyzeBridge:
         signal.pause()
 
     def get_cameras(self) -> dict[str, dict]:
-        r: dict[str,dict] = {}
+        r: dict[str, dict] = {}
         for cam in self.cameras:
-            img = f"{self.img_path}{cam.name_uri}.jpg"
-            d:dict = {}
-            d['nickname'] = cam.nickname
-            d['ip'] = cam.ip
-            d['mac'] = cam.mac
-            d['product_model'] = cam.product_model
-            d['model_name'] = cam.model_name
-            d['firmware_ver'] = cam.firmware_ver
-            d['thumbnail'] = cam.thumbnail
-            d['hls_url'] = self.wb_hls_url + cam.name_uri + "/"
+            d: dict = {}
+            d["nickname"] = cam.nickname
+            d["ip"] = cam.ip
+            d["mac"] = cam.mac
+            d["product_model"] = cam.product_model
+            d["model_name"] = cam.model_name
+            d["firmware_ver"] = cam.firmware_ver
+            d["thumbnail"] = cam.thumbnail
+            d["hls_url"] = self.wb_hls_url + cam.name_uri + "/"
             if env_bool("LLHLS"):
-                d['hls_url'] = d['hls_url'].replace("http:", "https:")
-            d['rtmp_url'] = self.wb_rtmp_url + cam.name_uri
-            d['rtsp_url'] = self.wb_rtsp_url + cam.name_uri
-            d['name_uri'] = cam.name_uri
-            d['connected'] = self.streams[cam.nickname]["connected"].is_set() if "connected" in self.streams[cam.nickname] else False
-            d['img'] = img if os.path.exists(img) else None
+                d["hls_url"] = d["hls_url"].replace("http:", "https:")
+            d["rtmp_url"] = self.wb_rtmp_url + cam.name_uri
+            d["rtsp_url"] = self.wb_rtsp_url + cam.name_uri
+            d["name_uri"] = cam.name_uri
+            d["connected"] = (
+                self.streams[cam.nickname]["connected"].is_set()
+                if "connected" in self.streams[cam.nickname]
+                else False
+            )
+            if img := os.path.exists(f"{self.img_path}{cam.name_uri}.jpg"):
+                d["img"] = f"/local/{cam.name_uri}.jpg" if self.hass else img
             r[cam.name_uri] = d
         return r
 

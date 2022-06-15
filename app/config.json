@@ -36,6 +36,8 @@
     "services": [
         "mqtt:want"
     ],
+    "ingress": true,
+    "ingress_port": 5000,
     "options": {
         "WYZE_EMAIL": null,
         "WYZE_PASSWORD": null,

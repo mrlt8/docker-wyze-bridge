@@ -1,33 +1,36 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <title>Wyze-Bridge</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='site.css') }}"/>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='site.css') }}" />
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
     <script src="{{ url_for('static', filename='site.js') }}"></script>
 </head>
+
 <body>
     <h1>Wyze-Bridge</h1>
     <h2>Detected {{cameras|length}} cameras:</h2>
     <label for="select_number_of_columns">Number of columns: </label>
-    <input id="select_number_of_columns" type="number" min="1" max="10" value="{{ number_of_columns }}"/>
+    <input id="select_number_of_columns" type="number" min="1" max="10" value="{{ number_of_columns }}" />
 
     <section class="cameras">
-    {% for camera in cameras.values() %}
+        {% for camera in cameras.values() %}
         <div draggable="true" class="camera">
             <details open>
                 <summary>
                     <div>{{camera.nickname}} -
                         <a href="{{camera.hls_url}}">HLS</a>
-                        <a href="{{camera.rtmp_url}}}">RTMP</a>
-                        <a href="{{camera.rtsp_url}}}">RTSP</a>
+                        <a href="{{camera.rtmp_url}}">RTMP</a>
+                        <a href="{{camera.rtsp_url}}">RTSP</a>
                         <span style="cursor: move; flex-grow: 2"></span>
                         <details class="info">
                             <summary>(info)</summary>
                             <p>{{camera.__repr__()}}</p>
                         </details>
-                        <span class="status {{'ONLINE' if camera.connected else 'OFFLINE'}}">{{'ONLINE' if camera.connected else 'OFFLINE'}}</span>
+                        <span class="status {{'ONLINE' if camera.connected else 'OFFLINE'}}">{{'ONLINE' if
+                            camera.connected else 'OFFLINE'}}</span>
                     </div>
                 </summary>
                 {% if show_video %}
@@ -35,11 +38,12 @@
                     <img src="{{camera.img}}" width="100%" />
                 </video>
                 {% elif camera.img %}
-                <img src="{{camera.img}}" width="100%"/>
+                <img src="{{camera.img}}" width="100%" />
                 {% endif %}
             </details>
         </div>
-    {% endfor %}
+        {% endfor %}
     </section>
 </body>
+
 </html>
