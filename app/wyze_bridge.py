@@ -27,6 +27,7 @@ class WyzeBridge:
         config = json.load(open("config.json"))
         log.info(f"🚀 STARTING DOCKER-WYZE-BRIDGE v{config['version']}\n")
         self.hass: bool = bool(os.getenv("HASS"))
+        setup_hass(self.hass)
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
         self.timeout: int = env_bool("RTSP_READTIMEOUT", 15, style="int")
         self.connect_timeout: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
@@ -41,10 +42,10 @@ class WyzeBridge:
         self.user: wyzecam.WyzeAccount = None
         self.stop_flag = multiprocessing.Event()
         self.thread: threading.Thread = None
-        localhost = "homeassistant.local" if self.hass else "localhost"
-        self.wb_hls_url = os.getenv("WB_HLS_URL", f"http://{localhost}:8888/")
-        self.wb_rtmp_url = os.getenv("WB_RTMP_URL", f"rtmp://{localhost}:1935/")
-        self.wb_rtsp_url = os.getenv("WB_RTSP_URL", f"rtsp://{localhost}:8554/")
+        self.hostname = os.getenv("DOMAIN", "localhost")
+        self.wb_hls_url = os.getenv("WB_HLS_URL", f"http://{self.hostname}:8888/")
+        self.wb_rtmp_url = os.getenv("WB_RTMP_URL", f"rtmp://{self.hostname}:1935/")
+        self.wb_rtsp_url = os.getenv("WB_RTSP_URL", f"rtsp://{self.hostname}:8554/")
 
         os.makedirs(self.token_path, exist_ok=True)
         os.makedirs(self.img_path, exist_ok=True)
@@ -52,10 +53,7 @@ class WyzeBridge:
 
     def run(self) -> None:
         """Start synchronously"""
-        if self.hass:
-            setup_hass()
         setup_llhls(self.token_path)
-        """Start the bridge."""
         self.get_wyze_data("user")
         self.get_filtered_cams()
         if env_bool("WEBRTC"):
@@ -165,7 +163,7 @@ class WyzeBridge:
         auth = wyzecam.login(os.getenv("WYZE_EMAIL"), os.getenv("WYZE_PASSWORD"))
         if not auth.mfa_options:
             return auth
-        mfa_token = self.token_path + "mfa_token" + (".txt" if self.hass else "")
+        mfa_token = self.token_path + "mfa_token.txt"
         totp_key = self.token_path + "totp"
         log.warning("🔐 MFA Token Required")
         while True:
@@ -737,17 +735,25 @@ def send_mqtt(messages: list) -> None:
         log.warning(f"[MQTT] {ex}")
 
 
-def setup_hass():
+def setup_hass(hass: bool):
     """Home Assistant related config."""
+    if not hass:
+        return
     log.info("\n🏠 Home Assistant Mode")
     with open("/data/options.json") as f:
         conf = json.load(f)
+    host_info = requests.get(
+        "http://supervisor/info",
+        headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
+    ).json()
+    if "ok" in host_info.get("result") and (data := host_info.get("data")):
+        os.environ["DOMAIN"] = data.get("hostname")
+
     mqtt_conf = requests.get(
         "http://supervisor/services/mqtt",
         headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
     ).json()
-    if "ok" in mqtt_conf.get("result"):
-        data = mqtt_conf["data"]
+    if "ok" in mqtt_conf.get("result") and (data := mqtt_conf.get("data")):
         os.environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
         os.environ["MQTT_AUTH"] = f'{data["username"]}:{data["password"]}'
 
