@@ -1,7 +1,20 @@
+import os
+import re
 from typing import Any, Dict, Optional
 
 from pydantic import BaseModel
 
+model_names = {
+    "WYZEC1": "V1",
+    "WYZEC1-JZ": "V2",
+    "WYZE_CAKP2JFUS": "V3",
+    "WYZECP1_JEF": "Pan",
+    "HL_PAN2": "Pan V2",
+    "WYZEDB3": "Doorbell",
+    "GW_BE1": "Doorbell Pro",
+    "WVOD1": "Outdoor",
+    "HL_WCO2": "Outdoor V2",
+}
 
 class WyzeCredential(BaseModel):
     """Authenticated credentials; see [wyzecam.api.login][].
@@ -78,3 +91,31 @@ class WyzeCamera(BaseModel):
     def set_camera_info(self, info: Dict[str, Any]) -> None:
         # Called internally as part of WyzeIOTC.connect_and_auth()
         self.camera_info = info
+
+    @property
+    def name_uri(self) -> str:
+        """Return a URI friendly name by removing special characters and spaces."""
+        uri_sep = "-"
+        if os.getenv("URI_SEPARATOR") in ("-", "_", "#"):
+            uri_sep = os.getenv("URI_SEPARATOR")
+        clean = (
+            re.sub(r"[^\-\w+]", "", self.nickname.strip().replace(" ", uri_sep))
+            .encode("ascii", "ignore")
+            .decode()
+        )
+        return clean.lower()
+
+    @property
+    def model_name(self) -> str:
+        return model_names.get(self.product_model, self.product_model)
+
+
+def clean_name(name: str) -> str:
+    """Return a URI friendly name by removing special characters and spaces."""
+    uri_sep = "_"
+    clean = (
+        re.sub(r"[^\-\w+]", "", name.strip().replace(" ", uri_sep))
+        .encode("ascii", "ignore")
+        .decode()
+    )
+    return clean.upper()

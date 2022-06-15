@@ -14,7 +14,8 @@ RUN apt-get update \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
-RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local mintotp paho-mqtt requests pydantic xxtea
+COPY requirements.txt /tmp/requirements.txt
+RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local -r /tmp/requirements.txt
 COPY *.lib /tmp/lib/
 RUN mkdir -p /build/app /build/tokens /build/img \
     && curl -L https://github.com/homebridge/ffmpeg-for-homebridge/releases/latest/download/ffmpeg-debian-${FFMPEG_ARCH:-x86_64}.tar.gz \
@@ -25,10 +26,10 @@ RUN mkdir -p /build/app /build/tokens /build/img \
     | tar xzf - -C /build/app \
     && cp /tmp/lib/${LIB_ARCH:-amd}.lib /build/usr/local/lib/libIOTCAPIs_ALL.so\
     && rm -rf /tmp/*
-COPY *.py /build/app/
-COPY wyzecam/ /build/app/wyzecam
+COPY . /build/app/
 
 FROM base_$TARGETARCH
 ENV PYTHONUNBUFFERED=1 RTSP_PROTOCOLS=tcp RTSP_READTIMEOUT=20s RTSP_LOGLEVEL=warn SDK_KEY=AQAAADQA6XDOFkuqH88f65by3FGpOiz2Dm6VtmRcohNFh/rK6OII97hoGzIJJv/qRjS3EDx17r7hKtmDA/a6oBLGOTC5Gml7PgFGe26VYBaZqQF34BwIwAMQX7BGsONLW8cqQbdI5Nm560hm50N6cYfT2YpE9ctsv5vP5S49Q5gg864IauaY3NuO1e9ZVOvJyLcIJqJRy95r4fMkTAwXZiQuFDAb
 COPY --from=builder /build /
-CMD [ "python3", "/app/wyze_bridge.py" ]
+WORKDIR /app
+CMD [ "flask", "run", "--host=0.0.0.0"]

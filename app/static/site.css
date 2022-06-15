@@ -1,0 +1,110 @@
+.cameras {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    grid-auto-flow: row;
+}
+.camera {
+    position: relative;
+    border: 1px solid #aaa;
+    border-radius: 4px;
+    padding: .5em .5em 0;
+}
+
+.camera summary {
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.camera summary a {
+    padding: 0px 5px 0px 5px;
+}
+
+.camera summary > div {
+    display: inline-flex;
+    width: calc(100% - 20px);
+    vertical-align: middle;
+}
+
+.camera details[open] {
+    /*padding: .5em;*/
+}
+
+.camera > details[open] > summary {
+    border-bottom: 1px solid #aaa;
+    margin-bottom: .5em;
+}
+
+.info {
+    display: inline-block;
+}
+.info summary {
+    /*padding: 10px;*/
+    list-style: none;
+}
+.info p {
+    cursor: auto;
+    background: #eee;
+    padding: 15px;
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 35px;
+    border-radius: 4px;
+    z-index: 10;
+}
+.info p::before {
+    content: "";
+    width: 0;
+    height: 0;
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 12px solid #eee;
+    top: -10px;
+    position: absolute;
+    left: 10px;
+}
+
+.status {
+    text-align: right;
+    flex: 1;
+}
+.ONLINE {
+    color:green;
+}
+.OFFLINE {
+    color:red;
+}
+
+video {
+    position: relative;
+    width: 100%;
+    overflow: hidden;
+}
+
+.ghost {
+  border: 1px dashed #000;
+  background-color: #fff;
+}
+
+.ghost * {
+  display: none;
+}
+
+.custom-drag-ghost {
+  /* The original cloned element must not take place up in the page and must not be visible */
+  position: absolute;
+  top: -99999px;
+  left: -99999px;
+  /* Just for appearance */
+  background-color: #edb458;
+  border: 1px solid #e8871e;
+}
+
+.hidden-drag-ghost {
+  opacity: 0;
+}
+
+.transition {
+  transition: all 2s ease-out .5s;
+  top: 0;
+}

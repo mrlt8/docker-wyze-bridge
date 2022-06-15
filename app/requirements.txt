@@ -1,0 +1,7 @@
+mintotp
+paho-mqtt
+requests
+pydantic
+xxtea
+flask
+pydevd-pycharm==221.5787.24
