@@ -1,4 +1,4 @@
-## Changes in v1.6.0/v1.6.1
+## Changes in v1.6.0/v1.6.1/v1.6.2
 
 Huge thanks goes to @dsheehan for building and adding a web-ui for the bridge!
 
@@ -7,6 +7,7 @@ Huge thanks goes to @dsheehan for building and adding a web-ui for the bridge!
 - **CHANGED**: `mfa_token` is now `mfa_token.txt` on the docker version to match Home Assistant mode.
 - **FIXED**: AttributeError with an unsupported WYZEC1. #422
 - **FIXED**: FLASK_APP env error. #424 Thanks @dsheehan
+- **FIXED**: clean_name. #424 Thanks @dsheehan
 
 ## Changes in v1.5.4
 
