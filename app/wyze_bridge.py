@@ -326,7 +326,7 @@ class WyzeBridge:
         for cam in cams:
             if cam.product_model == "WYZEC1":
                 log.warning(f"💔 {cam.product_model} not supported")
-                cams.os.remove(cam)
+                cams.remove(cam)
         total = len(cams)
         if env_bool("FILTER_BLOCK"):
             filtered = list(filter(lambda cam: not env_filter(cam), cams))
