@@ -435,6 +435,7 @@ class WyzeBridge:
     def get_cameras(self) -> dict[str, dict]:
         r: dict[str, dict] = {}
         for cam in self.cameras:
+            img = f"{cam.name_uri}.{env_bool('IMG_TYPE','jpg')}"
             d: dict = {}
             d["nickname"] = cam.nickname
             d["ip"] = cam.ip
@@ -449,13 +450,10 @@ class WyzeBridge:
             d["rtmp_url"] = self.wb_rtmp_url + cam.name_uri
             d["rtsp_url"] = self.wb_rtsp_url + cam.name_uri
             d["name_uri"] = cam.name_uri
-            d["connected"] = (
-                self.streams[cam.nickname]["connected"].is_set()
-                if "connected" in self.streams[cam.nickname]
-                else False
-            )
-            if img := os.path.exists(f"{self.img_path}{cam.name_uri}.jpg"):
-                d["img"] = f"/local/{cam.name_uri}.jpg" if self.hass else img
+            if (stream := self.streams.get(cam.nickname)) and "connected" in stream:
+                stream = self.streams[cam.nickname]["connected"].is_set()
+            d["connected"] = stream
+            d["img"] = f"img/{img}" if os.path.exists(self.img_path + img) else None
             r[cam.name_uri] = d
         return r
 
