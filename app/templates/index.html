@@ -5,7 +5,9 @@
     <meta charset="UTF-8">
     <title>Wyze-Bridge</title>
     <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='site.css') }}" />
+    {% if show_video %}
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+    {% endif %}
     <script src="{{ url_for('static', filename='site.js') }}"></script>
 </head>
 
