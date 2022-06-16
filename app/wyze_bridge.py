@@ -3,7 +3,6 @@ import logging
 import multiprocessing
 import os
 import pickle
-import re
 import signal
 import sys
 import threading
@@ -17,13 +16,18 @@ import paho.mqtt.publish
 import requests
 
 import wyzecam
+from wyzecam import WyzeCamera
+from wyzecam.api_models import clean_name
+
+log = logging.getLogger("WyzeBridge")
 
 
 class WyzeBridge:
     def __init__(self) -> None:
-        print("🚀 STARTING DOCKER-WYZE-BRIDGE v1.5.4\n")
-        signal.signal(signal.SIGTERM, lambda n, f: self.clean_up())
+        config = json.load(open("config.json"))
+        log.info(f"🚀 STARTING DOCKER-WYZE-BRIDGE v{config['version']}\n")
         self.hass: bool = bool(os.getenv("HASS"))
+        setup_hass(self.hass)
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
         self.timeout: int = env_bool("RTSP_READTIMEOUT", 15, style="int")
         self.connect_timeout: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
@@ -31,27 +35,37 @@ class WyzeBridge:
         self.healthcheck: bool = bool(os.getenv("HEALTHCHECK"))
         self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
         self.img_path: str = "/%s/" % env_bool("IMG_DIR", "img").strip("/")
-        self.cameras: list = []
+        self.cameras: list[WyzeCamera] = []
         self.streams: dict = {}
         self.rtsp = None
         self.auth: wyzecam.WyzeCredential = None
         self.user: wyzecam.WyzeAccount = None
         self.stop_flag = multiprocessing.Event()
-        if self.hass:
-            print("\n🏠 Home Assistant Mode")
-            os.makedirs(self.token_path, exist_ok=True)
-            os.makedirs(self.img_path, exist_ok=True)
-            open(self.token_path + "mfa_token.txt", "w").close()
+        self.thread: threading.Thread = None
+        self.hostname = os.getenv("DOMAIN", "localhost")
+        self.wb_hls_url = os.getenv("WB_HLS_URL", f"http://{self.hostname}:8888/")
+        self.wb_rtmp_url = os.getenv("WB_RTMP_URL", f"rtmp://{self.hostname}:1935/")
+        self.wb_rtsp_url = os.getenv("WB_RTSP_URL", f"rtsp://{self.hostname}:8554/")
+
+        os.makedirs(self.token_path, exist_ok=True)
+        os.makedirs(self.img_path, exist_ok=True)
+        open(self.token_path + "mfa_token.txt", "w").close()
 
     def run(self) -> None:
+        """Start synchronously"""
         setup_llhls(self.token_path)
-        """Start the bridge."""
         self.get_wyze_data("user")
         self.get_filtered_cams()
         if env_bool("WEBRTC"):
             self.get_webrtc()
         self.start_rtsp_server()
         self.start_all_streams()
+
+    def start(self):
+        """Start asynchronously"""
+        if not self.thread:
+            self.thread = threading.Thread(target=self.run)
+            self.thread.start()
 
     def update_health(self):
         """Update healthcheck with number of cams down if enabled."""
@@ -111,7 +125,7 @@ class WyzeBridge:
                 proc.join()
         offline = bool(self.streams[name].get("sleep"))
         cam = next(c for c in self.cameras if c.nickname == name)
-        model = model_names.get(cam.product_model, cam.product_model)
+        model = cam.model_name
         log.info(f"🎉 Connecting to WyzeCam {model} - {name} on {cam.ip} (1/3)")
         connected = multiprocessing.Event()
 
@@ -137,15 +151,19 @@ class WyzeBridge:
             for stream in self.streams.values():
                 if (process := stream["process"]) and process.is_alive():
                     process.join()
-        print("👋 goodbye!")
-        sys.exit(0)
+        if self.thread:
+            self.thread.join()
+            self.thread = None
+        self.cameras = []
+        self.streams = {}
+        log.info("👋 goodbye!")
 
     def auth_wyze(self) -> wyzecam.WyzeCredential:
         """Authenticate and complete MFA if required."""
         auth = wyzecam.login(os.getenv("WYZE_EMAIL"), os.getenv("WYZE_PASSWORD"))
         if not auth.mfa_options:
             return auth
-        mfa_token = self.token_path + "mfa_token" + (".txt" if self.hass else "")
+        mfa_token = self.token_path + "mfa_token.txt"
         totp_key = self.token_path + "totp"
         log.warning("🔐 MFA Token Required")
         while True:
@@ -263,7 +281,7 @@ class WyzeBridge:
         self.set_wyze_data(name, wyze_data)
         return wyze_data
 
-    def save_api_thumb(self, camera) -> None:
+    def save_api_thumb(self, camera: WyzeCamera) -> None:
         """Grab a thumbnail for the camera from the wyze api."""
         if env_bool("SNAPSHOT") != "api" or not getattr(camera, "thumbnail", False):
             return
@@ -271,15 +289,15 @@ class WyzeBridge:
             with requests.get(camera.thumbnail) as thumb:
                 thumb.raise_for_status()
                 log.info(f'☁️ Pulling "{camera.nickname}" thumbnail')
-            img = self.img_path + clean_name(camera.nickname) + ".jpg"
+            img = self.img_path + camera.name_uri + ".jpg"
             with open(img, "wb") as img_f:
                 img_f.write(thumb.content)
         except Exception as ex:
             log.warning(ex)
 
-    def add_rtsp_path(self, cam: str) -> None:
+    def add_rtsp_path(self, cam: WyzeCamera) -> None:
         """Configure and add env options for the camera that will be used by rtsp-simple-server."""
-        path = f"RTSP_PATHS_{clean_name(cam.nickname, upper=True)}_"
+        path = f"RTSP_PATHS_{cam.name_uri.upper()}_"
         py_event = "python3 /app/rtsp_event.py $RTSP_PATH "
         if self.on_demand:
             os.environ[path + "RUNONDEMAND"] = py_event + cam.mac
@@ -296,7 +314,7 @@ class WyzeBridge:
 
     def get_filtered_cams(self) -> None:
         """Get all cameras that are enabled."""
-        cams = self.get_wyze_data("cameras")
+        cams: [WyzeCamera] = self.get_wyze_data("cameras")
 
         # Update cameras
         if not hasattr(cams[0], "parent_dtls"):
@@ -313,20 +331,20 @@ class WyzeBridge:
         if env_bool("FILTER_BLOCK"):
             filtered = list(filter(lambda cam: not env_filter(cam), cams))
             if len(filtered) > 0:
-                print("\n🪄 BLACKLIST MODE ON")
+                log.info("\n🪄 BLACKLIST MODE ON")
                 cams = filtered
         elif any(key.startswith("FILTER_") for key in os.environ):
             filtered = list(filter(env_filter, cams))
             if len(filtered) > 0:
-                print("🪄 WHITELIST MODE ON")
+                log.info("🪄 WHITELIST MODE ON")
                 cams = filtered
         if total == 0:
-            print("\n\n ❌ COULD NOT FIND ANY CAMERAS!")
+            log.info("\n\n ❌ COULD NOT FIND ANY CAMERAS!")
             os.remove(self.token_path + "cameras.pickle")
             time.sleep(30)
             sys.exit(2)
         msg = f"{len(cams)} OF" if len(cams) < total else "ALL"
-        print(f"\n🎬 STARTING {msg} {total} CAMERAS")
+        log.info(f"\n🎬 STARTING {msg} {total} CAMERAS")
         for cam in cams:
             self.add_rtsp_path(cam)
             mqtt_discovery(cam)
@@ -348,7 +366,7 @@ class WyzeBridge:
         self, cam: wyzecam.WyzeCamera, stop_flag, connected, offline
     ) -> None:
         """Connect and communicate with the camera using TUTK."""
-        uri = clean_name(cam.nickname, upper=True)
+        uri = cam.name_uri.upper()
         exit_code = 1
         audio = env_bool(f"ENABLE_AUDIO_{uri}", env_bool("ENABLE_AUDIO"), style="bool")
         try:
@@ -406,27 +424,41 @@ class WyzeBridge:
                 creds = json.dumps(wss, separators=("\n\n", ":\n"))[1:-1].replace(
                     '"', ""
                 )
-                print(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n\n{creds}\n---")
+                log.info(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n\n{creds}\n---")
             except requests.exceptions.HTTPError as ex:
                 if ex.response.status_code == 404:
                     ex = "Camera does not support WebRTC"
                 log.warning(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n{ex}\n---")
-        print("👋 goodbye!")
+        log.info("👋 goodbye!")
         signal.pause()
+
+    def get_cameras(self) -> dict[str, dict]:
+        r: dict[str, dict] = {}
+        for cam in self.cameras:
+            img = f"{cam.name_uri}.{env_bool('IMG_TYPE','jpg')}"
+            d: dict = {}
+            d["nickname"] = cam.nickname
+            d["ip"] = cam.ip
+            d["mac"] = cam.mac
+            d["product_model"] = cam.product_model
+            d["model_name"] = cam.model_name
+            d["firmware_ver"] = cam.firmware_ver
+            d["thumbnail"] = cam.thumbnail
+            d["hls_url"] = self.wb_hls_url + cam.name_uri + "/"
+            if env_bool("LLHLS"):
+                d["hls_url"] = d["hls_url"].replace("http:", "https:")
+            d["rtmp_url"] = self.wb_rtmp_url + cam.name_uri
+            d["rtsp_url"] = self.wb_rtsp_url + cam.name_uri
+            d["name_uri"] = cam.name_uri
+            if (stream := self.streams.get(cam.nickname)) and "connected" in stream:
+                stream = self.streams[cam.nickname]["connected"].is_set()
+            d["connected"] = stream
+            d["img"] = f"img/{img}" if os.path.exists(self.img_path + img) else None
+            r[cam.name_uri] = d
+        return r
 
 
 mode_type = {0: "P2P", 1: "RELAY", 2: "LAN"}
-model_names = {
-    "WYZEC1": "V1",
-    "WYZEC1-JZ": "V2",
-    "WYZE_CAKP2JFUS": "V3",
-    "WYZECP1_JEF": "Pan",
-    "HL_PAN2": "Pan V2",
-    "WYZEDB3": "Doorbell",
-    "GW_BE1": "Doorbell Pro",
-    "WVOD1": "Outdoor",
-    "HL_WCO2": "Outdoor V2",
-}
 
 
 def env_bool(env: str, false="", true="", style="") -> str:
@@ -456,13 +488,13 @@ def env_list(env: str) -> list:
     ]
 
 
-def env_filter(cam) -> bool:
+def env_filter(cam: WyzeCamera) -> bool:
     """Check if cam is being filtered in any env."""
     return bool(
         cam.nickname.upper() in env_list("FILTER_NAMES")
         or cam.mac in env_list("FILTER_MACS")
         or cam.product_model in env_list("FILTER_MODELS")
-        or model_names.get(cam.product_model).upper() in env_list("FILTER_MODELS")
+        or cam.model_name.upper() in env_list("FILTER_MODELS")
     )
 
 
@@ -474,19 +506,6 @@ def get_env_quality(uri: str, cam_model: str) -> Tuple[int, int]:
     if doorbell := (cam_model == "WYZEDB3"):
         frame_size = int(env_bool("DOOR_SIZE", frame_size))
     return frame_size, (env_bit if 30 <= env_bit <= 255 else (180 if doorbell else 120))
-
-
-def clean_name(name: str, upper: bool = False, env_sep: bool = False) -> str:
-    """Return a URI friendly name by removing special characters and spaces."""
-    uri_sep = "_" if env_sep else "-"
-    if not env_sep and os.getenv("URI_SEPARATOR") in ("-", "_", "#"):
-        uri_sep = os.getenv("URI_SEPARATOR")
-    clean = (
-        re.sub(r"[^\-\w+]", "", name.strip().replace(" ", uri_sep))
-        .encode("ascii", "ignore")
-        .decode()
-    )
-    return clean.upper() if upper else clean.lower()
 
 
 def check_net_mode(session_mode: int, uri: str) -> str:
@@ -512,7 +531,7 @@ def get_cam_params(
     mode = check_net_mode(sess.session_check().mode, uri)
     if env_bool("IOTC_TCP"):
         sess.tutk_platform_lib.IOTC_TCPRelayOnly_TurnOn()
-        print(sess.session_check())
+        log.info(sess.session_check())
     frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
     bit_frame = f"{sess.preferred_bitrate}kb/s {frame_size} stream"
     fps = 20
@@ -665,11 +684,11 @@ def set_cam_offline(uri: str, error: wyzecam.TutkError, offline: bool) -> None:
             log.info(f"[IFTTT] 📲 Sent webhook trigger to {event}")
 
 
-def mqtt_discovery(cam) -> None:
+def mqtt_discovery(cam: WyzeCamera) -> None:
     """Add cameras to MQTT if enabled."""
     if not env_bool("MQTT_HOST"):
         return
-    base = f"wyzebridge/{clean_name(cam.nickname)}/"
+    base = f"wyzebridge/{cam.name_uri}/"
     msgs = [(f"{base}state", "disconnected")]
     if env_bool("MQTT_DTOPIC"):
         topic = f"{os.getenv('MQTT_DTOPIC')}/camera/{cam.mac}/config"
@@ -714,16 +733,25 @@ def send_mqtt(messages: list) -> None:
         log.warning(f"[MQTT] {ex}")
 
 
-def setup_hass():
+def setup_hass(hass: bool):
     """Home Assistant related config."""
+    if not hass:
+        return
+    log.info("🏠 Home Assistant Mode")
     with open("/data/options.json") as f:
         conf = json.load(f)
+    host_info = requests.get(
+        "http://supervisor/info",
+        headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
+    ).json()
+    if "ok" in host_info.get("result") and (data := host_info.get("data")):
+        os.environ["DOMAIN"] = data.get("hostname")
+
     mqtt_conf = requests.get(
         "http://supervisor/services/mqtt",
         headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
     ).json()
-    if "ok" in mqtt_conf.get("result"):
-        data = mqtt_conf["data"]
+    if "ok" in mqtt_conf.get("result") and (data := mqtt_conf.get("data")):
         os.environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
         os.environ["MQTT_AUTH"] = f'{data["username"]}:{data["password"]}'
 
@@ -785,20 +813,7 @@ def setup_llhls(token_path: str = "/tokens/"):
         os.environ["RTSP_HLSSERVERCERT"] = f"{cert_path}.crt"
 
 
-if __name__ == "__main__":
-    if os.getenv("HASS"):
-        setup_hass()
-    if not os.getenv("SDK_KEY"):
-        print("Missing SDK_KEY")
-        sys.exit(1)
-    if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
-        print(
-            "Missing credentials:",
-            ("WYZE_EMAIL " if not os.getenv("WYZE_EMAIL") else "")
-            + ("WYZE_PASSWORD" if not os.getenv("WYZE_PASSWORD") else ""),
-        )
-        sys.exit(1)
-    multiprocessing.current_process().name = "WyzeBridge"
+def setup_logging():
     logging.basicConfig(
         format="%(asctime)s [%(name)s][%(levelname)s][%(processName)s] %(message)s"
         if env_bool("DEBUG_LEVEL")
@@ -810,11 +825,27 @@ if __name__ == "__main__":
     if env_bool("DEBUG_LEVEL"):
         debug_level = getattr(logging, os.getenv("DEBUG_LEVEL").upper(), 10)
         logging.getLogger().setLevel(debug_level)
-    log = logging.getLogger("WyzeBridge")
     log.setLevel(debug_level if "DEBUG_LEVEL" in os.environ else logging.INFO)
     if env_bool("DEBUG_FRAMES") or env_bool("DEBUG_LEVEL"):
         warnings.simplefilter("always")
     warnings.formatwarning = lambda msg, *args, **kwargs: f"WARNING: {msg}"
     logging.captureWarnings(True)
+
+
+if __name__ == "__main__":
+    if not os.getenv("SDK_KEY"):
+        print("Missing SDK_KEY")
+        sys.exit(1)
+    if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
+        print(
+            "Missing credentials:",
+            ("WYZE_EMAIL " if not os.getenv("WYZE_EMAIL") else "")
+            + ("WYZE_PASSWORD" if not os.getenv("WYZE_PASSWORD") else ""),
+        )
+        sys.exit(1)
+    multiprocessing.current_process().name = "WyzeBridge"
+    setup_logging()
     wb = WyzeBridge()
+    signal.signal(signal.SIGTERM, lambda n, f: wb.clean_up())
     wb.run()
+    sys.exit(0)

@@ -1,0 +1,6 @@
+mintotp
+paho-mqtt
+requests
+pydantic
+xxtea
+flask
