@@ -737,7 +737,7 @@ def setup_hass(hass: bool):
     """Home Assistant related config."""
     if not hass:
         return
-    log.info("\n🏠 Home Assistant Mode")
+    log.info("🏠 Home Assistant Mode")
     with open("/data/options.json") as f:
         conf = json.load(f)
     host_info = requests.get(
