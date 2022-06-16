@@ -17,7 +17,7 @@
 
     <section class="cameras">
         {% for camera in cameras.values() %}
-        <div draggable="true" class="camera">
+        <div id="{{ camera.name_uri }}" draggable="true" class="camera">
             <details open>
                 <summary>
                     <div>{{camera.nickname}} -
@@ -35,10 +35,10 @@
                 </summary>
                 {% if show_video %}
                 <video controls autoplay poster="{{camera.img}}" data-src="{{camera.hls_url}}/stream.m3u8">
-                    <img src="{{camera.img}}" width="100%" />
+                    <img class="refresh_img" src="{{camera.img}}" width="100%" />
                 </video>
                 {% elif camera.img %}
-                <img src="{{camera.img}}" width="100%" />
+                <img class="refresh_img" src="{{camera.img}}" width="100%" />
                 {% endif %}
             </details>
         </div>

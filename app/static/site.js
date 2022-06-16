@@ -1,22 +1,22 @@
 function setCookie(name, value, days) {
-  var expires = "";
-  if (days) {
-    var date = new Date();
-    date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
-    expires = "; expires=" + date.toUTCString();
-  }
-  document.cookie = name + "=" + (value || "") + expires + "; path=/";
+    var expires = "";
+    if (days) {
+        var date = new Date();
+        date.setTime(date.getTime() + (days * 24 * 60 * 60 * 1000));
+        expires = "; expires=" + date.toUTCString();
+    }
+    document.cookie = name + "=" + (value || "") + expires + "; path=/";
 }
 
-function getCookie(name) {
-  var nameEQ = name + "=";
-  var ca = document.cookie.split(';');
-  for (var i = 0; i < ca.length; i++) {
-    var c = ca[i];
-    while (c.charAt(0) == ' ') c = c.substring(1, c.length);
-    if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
-  }
-  return null;
+function getCookie(name, def = null) {
+    var nameEQ = name + "=";
+    var ca = document.cookie.split(';');
+    for (var i = 0; i < ca.length; i++) {
+        var c = ca[i];
+        while (c.charAt(0) == ' ') c = c.substring(1, c.length);
+        if (c.indexOf(nameEQ) == 0) return c.substring(nameEQ.length, c.length);
+    }
+    return def;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', () => {
             var hls = new Hls(config);
             hls.loadSource(videoSrc);
             hls.attachMedia(video);
-          }
+        }
         else if (video.canPlayType('application/vnd.apple.mpegurl')) {
             video.src = videoSrc;
         }
@@ -51,9 +51,9 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 function applyPreferences() {
-    const repeatNumber = getCookie('number_of_columns')
+    const repeatNumber = getCookie('number_of_columns', 2)
     const grid = document.querySelector('.cameras')
-    grid.style.setProperty('grid-template-columns',`repeat(${repeatNumber}, 1fr)`);
+    grid.style.setProperty('grid-template-columns', `repeat(${repeatNumber}, 1fr)`);
 }
 
 function sortable(section, onUpdate) {
@@ -113,10 +113,25 @@ function sortable(section, onUpdate) {
     section.addEventListener('dragstart', _onDragStart);
 }
 
+function refresh_img(imgElement) {
+    const url = imgElement.src;
+    (u => fetch(u).then(response => imgElement.src = u))(url)
+}
+
+function refresh_imgs() {
+    // console.log("refresh_imgs " + Date.now());
+    var images = document.querySelectorAll('.refresh_img');
+    for (var i = 0; i < images.length; i++) {
+        var image = images[i];
+        refresh_img(image);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     const grid = document.querySelector('.cameras');
-    sortable( grid, function (item){
-    /* console.log(item); */
+    sortable(grid, function (item) {
+        /* console.log(item); */
     });
 });
 
+setInterval(refresh_imgs, 30000)
