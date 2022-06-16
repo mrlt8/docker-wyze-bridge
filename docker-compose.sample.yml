@@ -8,6 +8,7 @@ services:
             - 1935:1935 # RTMP
             - 8554:8554 # RTSP
             - 8888:8888 # HLS
+            - 5000:5000 # WEB-UI
         environment:
             - WYZE_EMAIL=${WYZE_EMAIL} # Replace with wyze email 
             - WYZE_PASSWORD=${WYZE_PASSWORD} # Replace with wyze password
