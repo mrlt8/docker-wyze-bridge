@@ -25,7 +25,8 @@ log = logging.getLogger("WyzeBridge")
 class WyzeBridge:
     def __init__(self) -> None:
         config = json.load(open("config.json"))
-        log.info(f"🚀 STARTING DOCKER-WYZE-BRIDGE v{config['version']}\n")
+        self.version = config.get("version", "DEV")
+        log.info(f"🚀 STARTING DOCKER-WYZE-BRIDGE v{self.version}\n")
         self.hass: bool = bool(os.getenv("HASS"))
         setup_hass(self.hass)
         self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
@@ -814,6 +815,7 @@ def setup_llhls(token_path: str = "/tokens/"):
 
 
 def setup_logging():
+    multiprocessing.current_process().name = "WyzeBridge"
     logging.basicConfig(
         format="%(asctime)s [%(name)s][%(levelname)s][%(processName)s] %(message)s"
         if env_bool("DEBUG_LEVEL")
@@ -843,7 +845,7 @@ if __name__ == "__main__":
             + ("WYZE_PASSWORD" if not os.getenv("WYZE_PASSWORD") else ""),
         )
         sys.exit(1)
-    multiprocessing.current_process().name = "WyzeBridge"
+
     setup_logging()
     wb = WyzeBridge()
     signal.signal(signal.SIGTERM, lambda n, f: wb.clean_up())
