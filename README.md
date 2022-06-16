@@ -28,36 +28,14 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
-## Changes in v1.5.4
+## Changes in v1.6.0
 
-- Auto fetch camera data if upgrading from older version without having to use `FRESH_DATA`. #418
-- Display DTLS on Wyze Cam Outdoors if base station has DTLS enabled.
+Huge thanks goes to @dsheehan for building and adding a web-ui for the bridge!
 
-## Changes in v1.5.3
-
-~~⚠️ This version may require a one-time `FRESH_DATA` to generate the new authkey for compatibility with the WCO.~~
-
-- **FIXED**: Authkey/DTLS - Wyze Cam Outdoor would timeout when connecting. #384
-
-## Changes in v1.5.2
-
-- **FIXED**: Setting the `WEBRTC` env to false would still pull the WebRTC credentials. #410
-
-## Changes in v1.5.1
-
-- **NEW**: ✨ Home Assistant: `RTSP_SIMPLE_SERVER` option to configure rtsp-simple-server, e.g. use `paths_all_readusers=123` for `paths: all: readuser:123`.
-- **UPDATED**: ⬆️ rtsp-simple-server > [v0.19.1](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.19.1)
-
-## Changes in v1.5.0
-
-- **NEW**: ✨ ENV: `LLHLS=true` - Enable Low-Latency HLS and generate the certificates required.
-- **NEW**: ✨ ENV: `ROTATE_CAM_{CAM_NAME}=True` or `ROTATE_CAM_{CAM_NAME}=(int)` to rotate any cam in any direction. #408
-- **NEW**: ✨ Home Assistant: `CAM_OPTIONS` to allow for camera specific configs (AUDIO, FFMPEG, LIVESTREAM, NET_MODE, QUALITY, RECORD, ROTATE). #404
-- **NEW**: ✨ Display a message if API rate limit has under 25 attempts left.
-
-- **UPDATED**: ⬆️ API: iOS version bump to 15.5.
-- **UPDATED**: ⬆️ API: Wyze app version number bump to 2.31.1.0.
-- **UPDATED**: ⬆️ rtsp-simple-server > [v0.19.0](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.19.0)
+- **NEW**: Web-UI on port `5000` (must add `- 5000:5000` to the ports section of your docker-compose.yml)
+  - 🏠 Home Assistant: Web-ui will be automatically configured and you can add it to your sidebar by enabling it on the info page for the add-on.
+- **CHANGED**: `mfa_token` is now `mfa_token.txt` on the docker version to match Home Assistant mode.
+- **FIXED**: AttributeError with an unsupported WYZEC1. #422
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -205,13 +183,13 @@ Replace localhost with the hostname or ip of the machine running the bridge:
 
 Two-factor authentication ("Two-Step Verification" in the wyze app) is supported and will automatically be detected, however additional steps are required to enter your verification code.
 
-- Echo the verification code directly to `/tokens/mfa_token` by opening a second terminal window and using:
+- Echo the verification code directly to `/tokens/mfa_token.txt` by opening a second terminal window and using:
 
   ```bash
-  docker exec -it wyze-bridge sh -c 'echo "123456" > /tokens/mfa_token'
+  docker exec -it wyze-bridge sh -c 'echo "123456" > /tokens/mfa_token.txt'
   ```
 
-- Mount `/tokens/` locally and add your verification code to a file named `mfa_token`:
+- Mount `/tokens/` locally and add your verification code to a file named `mfa_token.txt`:
 
   ```YAML
   volumes:
@@ -231,7 +209,7 @@ Two-factor authentication ("Two-Step Verification" in the wyze app) is supported
   Use the console to echo your code to the container:
 
   ```bash
-  echo "123456" > /tokens/mfa_token
+  echo "123456" > /tokens/mfa_token.txt
   ```
 
 ## Advanced Options
