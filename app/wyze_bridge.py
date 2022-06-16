@@ -757,7 +757,7 @@ def setup_hass(hass: bool):
 
     if cam_options := conf.pop("CAM_OPTIONS", None):
         for cam in cam_options:
-            if not (cam_name := clean_name(cam.get("CAM_NAME", ""), True, True)):
+            if not (cam_name := clean_name(cam.get("CAM_NAME", ""))):
                 continue
             if "AUDIO" in cam:
                 os.environ[f"ENABLE_AUDIO_{cam_name}"] = str(cam["AUDIO"])
