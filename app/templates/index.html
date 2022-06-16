@@ -4,15 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <title>Wyze-Bridge</title>
-    <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='site.css') }}" />
-    {% if show_video %}
+    <link rel="stylesheet" type="text/css"
+        href="{{ 'static/site.css' if hass else url_for('static',filename='site.css') }}" />
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
-    {% endif %}
-    <script src="{{ url_for('static', filename='site.js') }}"></script>
+    <script src="{{ 'static/site.js' if hass else url_for('static', filename='site.js') }}"></script>
 </head>
 
 <body>
-    <h1>Wyze-Bridge</h1>
+    <h1>Wyze-Bridge v{{ version }}</h1>
     <h2>Detected {{cameras|length}} cameras:</h2>
     <label for="select_number_of_columns">Number of columns: </label>
     <input id="select_number_of_columns" type="number" min="1" max="10" value="{{ number_of_columns }}" />
@@ -20,29 +19,29 @@
     <section class="cameras">
         {% for camera in cameras.values() %}
         <div id="{{ camera.name_uri }}" draggable="true" class="camera">
-            <details open>
-                <summary>
-                    <div>{{camera.nickname}} -
-                        <a href="{{camera.hls_url}}">HLS</a>
-                        <a href="{{camera.rtmp_url}}">RTMP</a>
-                        <a href="{{camera.rtsp_url}}">RTSP</a>
-                        <span style="cursor: move; flex-grow: 2"></span>
-                        <details class="info">
-                            <summary>(info)</summary>
-                            <p>{{camera.__repr__()}}</p>
-                        </details>
-                        <span class="status {{'ONLINE' if camera.connected else 'OFFLINE'}}">{{'ONLINE' if
-                            camera.connected else 'OFFLINE'}}</span>
-                    </div>
-                </summary>
+            <div class="title">
+                <details class="info">
+                    <summary>{{camera.nickname}}</summary>
+                    <p>{{camera.__repr__()}}</p>
+                </details>
+                <a href="{{camera.hls_url}}">HLS</a>
+                <a href="{{camera.rtmp_url}}">RTMP</a>
+                <a href="{{camera.rtsp_url}}">RTSP</a>
+                <span style="cursor: move; flex-grow: 2"></span>
+                <span class="status {{'ONLINE' if camera.connected else 'OFFLINE'}}">{{'ONLINE' if
+                    camera.connected else 'OFFLINE'}}</span>
+            </div>
+            <div class="preview">
                 {% if show_video %}
                 <video controls autoplay poster="{{camera.img}}" data-src="{{camera.hls_url}}/stream.m3u8">
-                    <img class="refresh_img" src="{{camera.img}}" width="100%" />
+                    <img src="{{camera.img}}" width="100%" />
                 </video>
                 {% elif camera.img %}
-                <img class="refresh_img" src="{{camera.img}}" width="100%" />
+                <img src="{{camera.img}}" width="100%" />
+                {% else %}
+                <span class="not-available">Preview not available.</span>
                 {% endif %}
-            </details>
+            </div>
         </div>
         {% endfor %}
     </section>

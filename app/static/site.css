@@ -1,13 +1,57 @@
+body {
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    background-color: #F0F4F7;
+}
+
 .cameras {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     grid-auto-flow: row;
 }
+
 .camera {
+    background-color: #000;
+    box-shadow: rgba(0, 0, 0, 0.3) 2px 2px 5px;
+    margin: .5em;
     position: relative;
-    border: 1px solid #aaa;
-    border-radius: 4px;
-    padding: .5em .5em 0;
+    border-radius: 10px;
+}
+
+.preview {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+}
+
+.preview img {
+    border-bottom-left-radius: 10px;
+    border-bottom-right-radius: 10px;
+    vertical-align: bottom;
+}
+
+
+.not-available {
+    margin-top: 25%;
+    color: #fff;
+}
+
+.title {
+    border-top-left-radius: 10px;
+    border-top-right-radius: 10px;
+    background-color: #fff;
+    padding: .5em;
+    text-align: right;
+}
+
+a,
+a:visited {
+    color: #06c;
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
 }
 
 .camera summary {
@@ -19,7 +63,7 @@
     padding: 0px 5px 0px 5px;
 }
 
-.camera summary > div {
+.camera summary>div {
     display: inline-flex;
     width: calc(100% - 20px);
     vertical-align: middle;
@@ -29,18 +73,21 @@
     /*padding: .5em;*/
 }
 
-.camera > details[open] > summary {
+.camera>details[open]>summary {
     border-bottom: 1px solid #aaa;
     margin-bottom: .5em;
 }
 
 .info {
     display: inline-block;
+    float: left;
 }
+
 .info summary {
     /*padding: 10px;*/
     list-style: none;
 }
+
 .info p {
     cursor: auto;
     background: #eee;
@@ -52,6 +99,7 @@
     border-radius: 4px;
     z-index: 10;
 }
+
 .info p::before {
     content: "";
     width: 0;
@@ -68,11 +116,13 @@
     text-align: right;
     flex: 1;
 }
+
 .ONLINE {
-    color:green;
+    color: green;
 }
+
 .OFFLINE {
-    color:red;
+    color: red;
 }
 
 video {
@@ -82,29 +132,29 @@ video {
 }
 
 .ghost {
-  border: 1px dashed #000;
-  background-color: #fff;
+    border: 1px dashed #000;
+    background-color: #fff;
 }
 
 .ghost * {
-  display: none;
+    display: none;
 }
 
 .custom-drag-ghost {
-  /* The original cloned element must not take place up in the page and must not be visible */
-  position: absolute;
-  top: -99999px;
-  left: -99999px;
-  /* Just for appearance */
-  background-color: #edb458;
-  border: 1px solid #e8871e;
+    /* The original cloned element must not take place up in the page and must not be visible */
+    position: absolute;
+    top: -99999px;
+    left: -99999px;
+    /* Just for appearance */
+    background-color: #edb458;
+    border: 1px solid #e8871e;
 }
 
 .hidden-drag-ghost {
-  opacity: 0;
+    opacity: 0;
 }
 
 .transition {
-  transition: all 2s ease-out .5s;
-  top: 0;
+    transition: all 2s ease-out .5s;
+    top: 0;
 }
