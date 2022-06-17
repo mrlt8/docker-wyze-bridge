@@ -6,7 +6,9 @@
     <title>Wyze-Bridge</title>
     <link rel="stylesheet" type="text/css"
         href="{{ 'static/site.css' if hass else url_for('static',filename='site.css') }}" />
+    {% if show_video %}
     <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+    {% endif %}
     <script src="{{ 'static/site.js' if hass else url_for('static', filename='site.js') }}"></script>
 </head>
 
@@ -34,10 +36,10 @@
             <div class="preview">
                 {% if show_video %}
                 <video controls autoplay poster="{{camera.img}}" data-src="{{camera.hls_url}}/stream.m3u8">
-                    <img src="{{camera.img}}" width="100%" />
+                    <img class="refresh_img" src="{{camera.img}}" width="100%" />
                 </video>
                 {% elif camera.img %}
-                <img src="{{camera.img}}" width="100%" />
+                <img class="refresh_img" src="{{camera.img}}" width="100%" />
                 {% else %}
                 <span class="not-available">Preview not available.</span>
                 {% endif %}
