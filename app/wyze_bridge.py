@@ -573,7 +573,7 @@ def get_cam_params(
 
 def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list:
     """Return the ffmpeg cmd with options from the env."""
-    flags = "-fflags +genpts+flush_packets+nobuffer -flags low_delay"
+    flags = "-fflags +genpts+flush_packets+nobuffer+bitexact -flags +low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR")
     transpose = "1"
     if env_bool(f"ROTATE_CAM_{uri}"):
@@ -582,8 +582,8 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list:
             transpose = os.environ[f"ROTATE_CAM_{uri}"]
     lib264 = (
         ["libx264", "-filter:v", f"transpose={transpose}", "-b:v", "3000K"]
-        + ["-tune", "zerolatency", "-preset", "ultrafast"]
-        + ["-force_key_frames", "expr:gte(t,n_forced*2)"]
+        + ["-coder", "1", "-profile:v", "main", "-bufsize", "1000k"]
+        + ["-preset", "ultrafast", "-force_key_frames", "expr:gte(t,n_forced*2)"]
     )
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
@@ -603,16 +603,17 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list:
         + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
         .split()
+        + ["-thread_queue_size", "64", "-threads", "1"]
         + ["-analyzeduration", "50", "-probesize", "50", "-f", "h264", "-i", "pipe:"]
         + audio_in.split()
-        + ["-c:v"]
+        + ["-flags", "+global_header", "-c:v"]
         + (["copy"] if not rotate else lib264)
         + (["-c:a", audio_out] if audio_in else [])
         + (a_filter if audio and audio_out != "copy" else [])
         + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
-        + ["-f", "tee"]
         + ["-map", "0:v"]
         + (["-map", "1:a", "-shortest"] if audio_in else [])
+        + ["-f", "tee"]
         + [rtsp_ss + get_record_cmd(uri, av_select) + livestream]
     )
     if "ffmpeg" not in cmd[0].lower():
@@ -640,7 +641,8 @@ def get_record_cmd(uri: str, av_select: str) -> str:
         ":segment_atclocktime=1"
         ":segment_format=mp4"
         ":reset_timestamps=1"
-        ":strftime=1]"
+        ":strftime=1"
+        ":use_fifo=1]"
         f"{path}{file_name.format(cam_name=uri.lower(),CAM_NAME=uri)}.mp4"
     )
 
@@ -648,15 +650,16 @@ def get_record_cmd(uri: str, av_select: str) -> str:
 def get_livestream_cmd(uri: str) -> str:
     """Check if livestream is enabled and return ffmpeg tee cmd."""
     cmd = ""
+    flv = "|[select=v,a:f=flv:flvflags=no_duration_filesize:use_fifo=1]"
     if len(key := env_bool(f"YOUTUBE_{uri}", style="original")) > 5:
         log.info("📺 YouTube livestream enabled")
-        cmd += f"|[f=flv:select=v,a]rtmp://a.rtmp.youtube.com/live2/{key}"
+        cmd += f"{flv}rtmp://a.rtmp.youtube.com/live2/{key}"
     if len(key := env_bool(f"FACEBOOK_{uri}", style="original")) > 5:
         log.info("📺 Facebook livestream enabled")
-        cmd += f"|[f=flv:select=v,a]rtmps://live-api-s.facebook.com:443/rtmp/{key}"
+        cmd += f"{flv}rtmps://live-api-s.facebook.com:443/rtmp/{key}"
     if len(key := env_bool(f"LIVESTREAM_{uri}", style="original")) > 5:
         log.info(f"📺 Custom ({key}) livestream enabled")
-        cmd += f"|[f=flv:select=v,a]{key}"
+        cmd += f"{flv}{key}"
     return cmd
 
 
