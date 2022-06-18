@@ -28,6 +28,12 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
+## Changes in v1.6.4
+
+- **IMPROVED**: Reliability of dragging/sorting cameras in Web-UI. Thanks @dsheehan!
+- **NEW**: Version check on footer of Web-UI.
+- **FIXED**: Static files for Web-UI in Home Assistant.
+
 ## Changes in v1.6.3
 
 - **Fixed**: x264 rotation could cause issues with HLS and RTMP. #428 #431 Thanks @jamescochran!
