@@ -1,59 +1,3 @@
-body {
-    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
-    background-color: #F0F4F7;
-}
-
-.cameras {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-flow: row;
-}
-
-.camera {
-    background-color: #000;
-    box-shadow: rgba(0, 0, 0, 0.3) 2px 2px 5px;
-    margin: .5em;
-    position: relative;
-    border-radius: 10px;
-}
-
-.preview {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    flex-direction: column;
-}
-
-.preview img {
-    border-bottom-left-radius: 10px;
-    border-bottom-right-radius: 10px;
-    vertical-align: bottom;
-}
-
-
-.not-available {
-    margin-top: 25%;
-    color: #fff;
-}
-
-.title {
-    border-top-left-radius: 10px;
-    border-top-right-radius: 10px;
-    background-color: #fff;
-    padding: .5em;
-    text-align: right;
-}
-
-a,
-a:visited {
-    color: #06c;
-    text-decoration: none;
-}
-
-a:hover {
-    text-decoration: underline;
-}
-
 .camera summary {
     font-weight: bold;
     cursor: pointer;
@@ -114,16 +58,9 @@ a:hover {
 
 .status {
     text-align: right;
-    flex: 1;
+    padding: .75rem 1rem;
 }
 
-.ONLINE {
-    color: green;
-}
-
-.OFFLINE {
-    color: red;
-}
 
 video {
     position: relative;

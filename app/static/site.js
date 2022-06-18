@@ -53,15 +53,21 @@ document.addEventListener('DOMContentLoaded', () => {
 function applyPreferences() {
     const repeatNumber = getCookie('number_of_columns', 2)
     console.debug("applyPreferences number_of_columns", repeatNumber)
-    const grid = document.querySelector('.cameras')
-    grid.style.setProperty('grid-template-columns', `repeat(${repeatNumber}, 1fr)`);
+    const grid = document.querySelectorAll('.camera')
+    for (var i = 0, len = grid.length; i < len; i++) {
+        grid[i].classList.forEach(item => {
+            if (item.startsWith('is-')) {
+                grid[i].classList.remove(item);
+            }
+        })
+        grid[i].classList.add(`is-${12 / repeatNumber}`);
+    }
 
     const sortOrder = getCookie("camera_order", "");
     console.debug("applyPreferences camera_order", sortOrder)
     const ids = sortOrder.split(",")
     var cameras = [...document.querySelectorAll(".camera")];
-    for (var i = 0; i < Math.min(ids.length, cameras.length); i++)
-    {
+    for (var i = 0; i < Math.min(ids.length, cameras.length); i++) {
         var a = document.getElementById(ids[i]);
         var b = cameras[i];
         if (a && b) // only swap if they both exist
@@ -88,7 +94,7 @@ function swap(a, b) {
  * @param selector {string} selector string, to select the elements allowed to be sorted/swapped
  * @param onUpdate {Function} fired when an element is updated
  */
-function sortable(parent, selector, onUpdate=null) {
+function sortable(parent, selector, onUpdate = null) {
     /** The element currently being dragged */
     var dragEl;
 
@@ -163,7 +169,10 @@ function refresh_imgs() {
         refresh_img(image);
     }
 }
-
+function hide_image(uri) {
+    var card = document.getElementById(uri).getElementsByClassName("card-image")[0];
+    card.classList.toggle("is-hidden");
+}
 document.addEventListener('DOMContentLoaded', () => {
     const grid = document.querySelector('.cameras');
     const selector = ".camera";

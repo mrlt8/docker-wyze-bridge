@@ -1,9 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="has-background-light">
 
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Wyze-Bridge</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
     <link rel="stylesheet" type="text/css"
         href="{{ 'static/site.css' if hass else url_for('static',filename='site.css') }}" />
     {% if show_video %}
@@ -13,39 +16,82 @@
 </head>
 
 <body>
-    <h1>Wyze-Bridge v{{ version }}</h1>
-    <h2>Detected {{cameras|length}} cameras:</h2>
-    <label for="select_number_of_columns">Number of columns: </label>
-    <input id="select_number_of_columns" type="number" min="1" max="10" value="{{ number_of_columns }}" />
+    <section class="section">
+        <h1 class="title">Wyze-Bridge v{{ version }}</h1>
+        <nav class="level">
+            <div class="level-left">
+                <div class="level-item">
+                    <p class="subtitle is-5">
+                    <p class="subtitle">Detected <strong>{{cameras|length}}</strong> cameras</p>
+                    </p>
+                </div>
+            </div>
+            <div class="level-right field is-horizontal is-hidden-mobile">
+                <label for="select_number_of_columns label">Columns: </label>
+                <input class="input" id="select_number_of_columns" type="number" min="1" max="10"
+                    value="{{ number_of_columns }}" />
+            </div>
+        </nav>
+        <div class="cameras columns is-multiline">
+            {% for camera in cameras.values() %}
+            <div id="{{ camera.name_uri }}" draggable="true" class="camera column">
+                <div class="card">
+                    <header class="card-header">
+                        <div class="card-header-title">
+                            <div class="dropdown is-hoverable">
+                                <div class="dropdown-trigger">
+                                    <span class="icon">
+                                        <i class="fas fa-circle-info" aria-hidden="true"></i>
+                                    </span>
+                                </div>
+                                <div class="dropdown-menu" id="dropdown-menu4" role="menu">
+                                    <div class="dropdown-content">
+                                        <div class="dropdown-item">
+                                            <p>{{camera.__repr__()}}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>{{camera.nickname}}
+                        </div>
 
-    <section class="cameras">
-        {% for camera in cameras.values() %}
-        <div id="{{ camera.name_uri }}" draggable="true" class="camera">
-            <div class="title">
-                <details class="info">
-                    <summary>{{camera.nickname}}</summary>
-                    <p>{{camera.__repr__()}}</p>
-                </details>
-                <a href="{{camera.hls_url}}">HLS</a>
-                <a href="{{camera.rtmp_url}}">RTMP</a>
-                <a href="{{camera.rtsp_url}}">RTSP</a>
-                <span style="cursor: move; flex-grow: 2"></span>
-                <span class="status {{'ONLINE' if camera.connected else 'OFFLINE'}}">{{'ONLINE' if
-                    camera.connected else 'OFFLINE'}}</span>
+                        <span style="cursor: move; flex-grow: 2"></span>
+                        <span class="status has-text-{{'success' if camera.connected else 'danger'}}">{{'ONLINE'
+                            if
+                            camera.connected else 'OFFLINE'}}</span>
+                        <button class="card-header-icon" onclick="hide_image('{{ camera.name_uri }}');">
+                            <span class="icon">
+                                <i class="fas fa-image" aria-hidden="true"></i>
+                            </span>
+                        </button>
+                    </header>
+                    <div class="card-image">
+                        {% if show_video %}
+                        <video controls autoplay poster="{{camera.img}}" data-src="{{camera.hls_url}}/stream.m3u8">
+                            <img class="refresh_img" src="{{camera.img}}" width="100%" />
+                        </video>
+                        {% elif camera.img %}
+                        <img class="refresh_img" src="{{camera.img}}" width="100%" />
+                        {% else %}
+                        <section class="section is-medium has-text-centered has-background-black has-text-white">
+                            <span class="icon-text">
+                                <span class="icon">
+                                    <i class="fas fa-link-slash"></i>
+                                </span>
+                                <span>Preview not available</span>
+                            </span>
+                        </section>
+
+                        {% endif %}
+                    </div>
+                    <footer class="card-footer">
+                        <a href="{{camera.hls_url}}" class="card-footer-item">HLS</a>
+                        <a href="{{camera.rtmp_url}}" class="card-footer-item">RTMP</a>
+                        <a href="{{camera.rtsp_url}}" class="card-footer-item">RTSP</a>
+                    </footer>
+                </div>
             </div>
-            <div class="preview">
-                {% if show_video %}
-                <video controls autoplay poster="{{camera.img}}" data-src="{{camera.hls_url}}/stream.m3u8">
-                    <img class="refresh_img" src="{{camera.img}}" width="100%" />
-                </video>
-                {% elif camera.img %}
-                <img class="refresh_img" src="{{camera.img}}" width="100%" />
-                {% else %}
-                <span class="not-available">Preview not available.</span>
-                {% endif %}
-            </div>
+            {% endfor %}
         </div>
-        {% endfor %}
     </section>
 </body>
 
