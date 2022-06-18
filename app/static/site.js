@@ -52,65 +52,102 @@ document.addEventListener('DOMContentLoaded', () => {
 
 function applyPreferences() {
     const repeatNumber = getCookie('number_of_columns', 2)
+    console.debug("applyPreferences number_of_columns", repeatNumber)
     const grid = document.querySelector('.cameras')
     grid.style.setProperty('grid-template-columns', `repeat(${repeatNumber}, 1fr)`);
+
+    const sortOrder = getCookie("camera_order", "");
+    console.debug("applyPreferences camera_order", sortOrder)
+    const ids = sortOrder.split(",")
+    var cameras = [...document.querySelectorAll(".camera")];
+    for (var i = 0; i < Math.min(ids.length, cameras.length); i++)
+    {
+        var a = document.getElementById(ids[i]);
+        var b = cameras[i];
+        if (a && b) // only swap if they both exist
+            swap(a, b)
+        cameras = [...document.querySelectorAll(".camera")];
+    }
 }
 
-function sortable(section, onUpdate) {
-    var dragEl, nextEl, newPos, dragGhost;
+/**
+ * Swap two Element
+ * @param a {Element} the first element
+ * @param b {Element} the second element
+ */
+function swap(a, b) {
+    let dummy = document.createElement("span")
+    a.before(dummy)
+    b.before(a)
+    dummy.replaceWith(b)
+}
 
-    // let oldPos = [...section.children].map(item => {
-    //     item.draggable = true
-    //     let pos = item.getBoundingClientRect();
-    //     return pos;
-    // });
+/**
+ * Enable dragging/sorting under the given parent.
+ * @param parent {Element} parent to sort under
+ * @param selector {string} selector string, to select the elements allowed to be sorted/swapped
+ * @param onUpdate {Function} fired when an element is updated
+ */
+function sortable(parent, selector, onUpdate=null) {
+    /** The element currently being dragged */
+    var dragEl;
 
+    /**
+     * Fired when dragging over another element.
+     * Swap the two elements, based on their parent selector.
+     * @param e {DragEvent}
+     * @private
+     */
     function _onDragOver(e) {
         e.preventDefault();
         e.dataTransfer.dropEffect = 'move';
 
-        var target = e.target;
-        if (target && target !== dragEl && target.nodeName === 'DIV') {
-            if (target.classList.contains('inside')) {
-                e.stopPropagation();
-            } else {
-                var targetPos = target.getBoundingClientRect();
-                //checking that mouse is within the bounds of target
-                var next = (e.clientY > targetPos.top) && (e.clientY < targetPos.bottom) && (e.clientX > targetPos.left) && (e.clientX < targetPos.right);
-                section.insertBefore(dragEl, next && target.nextSibling || target);
-            }
+        const target = e.target.closest(selector)
+        if (target && target !== dragEl) {
+            console.debug("_onDragOver()", target)
+            swap(dragEl, target)
         }
     }
 
-    function _onDragEnd(evt) {
-        evt.preventDefault();
-        newPos = [...section.children].map(child => {
-            let pos = child.getBoundingClientRect();
-            return pos;
-        });
+    /**
+     * Fired when drag ends (release mouse).
+     * Turn off the ghost css.
+     * @param e {DragEvent}
+     * @private
+     */
+    function _onDragEnd(e) {
+        console.debug("_onDragEnd()", e.target)
+        e.preventDefault();
         dragEl.classList.remove('ghost');
-        section.removeEventListener('dragover', _onDragOver, false);
-        section.removeEventListener('dragend', _onDragEnd, false);
-
-        nextEl !== dragEl.nextSibling ? onUpdate(dragEl) : false;
+        parent.removeEventListener('dragover', _onDragOver, false);
+        parent.removeEventListener('dragend', _onDragEnd, false);
+        onUpdate(dragEl);
     }
 
+    /**
+     * Fired when starting a drag.
+     * Only allow dragging of elements that match our selector
+     * @param e {DragEvent}
+     * @private
+     */
     function _onDragStart(e) {
+        if (!e.target.matches(selector)) {
+            return
+        }
         dragEl = e.target;
-        nextEl = dragEl.nextSibling;
-
+        console.debug("_onDragStart()", e.target)
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('Text', dragEl.textContent);
 
-        section.addEventListener('dragover', _onDragOver, false);
-        section.addEventListener('dragend', _onDragEnd, false);
+        parent.addEventListener('dragover', _onDragOver, false);
+        parent.addEventListener('dragend', _onDragEnd, false);
 
         setTimeout(function () {
             dragEl.classList.add('ghost');
         }, 0)
     }
 
-    section.addEventListener('dragstart', _onDragStart);
+    parent.addEventListener('dragstart', _onDragStart);
 }
 
 function refresh_img(imgElement) {
@@ -119,7 +156,7 @@ function refresh_img(imgElement) {
 }
 
 function refresh_imgs() {
-    // console.log("refresh_imgs " + Date.now());
+    console.debug("refresh_imgs " + Date.now());
     var images = document.querySelectorAll('.refresh_img');
     for (var i = 0; i < images.length; i++) {
         var image = images[i];
@@ -129,9 +166,15 @@ function refresh_imgs() {
 
 document.addEventListener('DOMContentLoaded', () => {
     const grid = document.querySelector('.cameras');
-    sortable(grid, function (item) {
-        /* console.log(item); */
+    const selector = ".camera";
+    sortable(grid, selector, function (item) {
+        console.log(item);
+        const cameras = document.querySelectorAll(selector);
+        const ids = [...cameras].map(camera => camera.id).filter(x => x);
+        const newOrdering = ids.join(",");
+        console.debug("New camera_order", newOrdering)
+        setCookie("camera_order", newOrdering)
     });
 });
 
-setInterval(refresh_imgs, 30000)
+setInterval(refresh_imgs, 30000)  // refresh images every 30 seconds

@@ -2,5 +2,5 @@ mintotp
 paho-mqtt
 requests
 pydantic
-xxtea
+xxtea # windows .whl currently only exist for Python 3.8.x
 flask

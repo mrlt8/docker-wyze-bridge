@@ -1,3 +1,7 @@
+## Changes in v1.6.3
+
+- **Fixed**: x264 rotation could cause issues with HLS and RTMP. #428 #431 Thanks @jamescochran!
+
 ## Changes in v1.6.0/v1.6.1/v1.6.2
 
 Huge thanks goes to @dsheehan for building and adding a web-ui for the bridge!
