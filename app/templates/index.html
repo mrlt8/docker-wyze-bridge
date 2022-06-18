@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="has-background-light">
+<html lang="en" class="has-background-white-bis">
 
 <head>
     <meta charset="UTF-8">
@@ -15,21 +15,21 @@
     <script src="{{ 'static/site.js' if hass else url_for('static', filename='site.js') }}"></script>
 </head>
 
-<body>
+<body class="has-background-light">
     <section class="section">
-        <h1 class="title">Wyze-Bridge v{{ version }}</h1>
         <nav class="level">
             <div class="level-left">
                 <div class="level-item">
-                    <p class="subtitle is-5">
                     <p class="subtitle">Detected <strong>{{cameras|length}}</strong> cameras</p>
                     </p>
                 </div>
             </div>
-            <div class="level-right field is-horizontal is-hidden-mobile">
-                <label for="select_number_of_columns label">Columns: </label>
-                <input class="input" id="select_number_of_columns" type="number" min="1" max="10"
+            <div class="control has-icons-left level-right is-hidden-mobile">
+                <input class="input" id="select_number_of_columns" type="number" min="1" max="6"
                     value="{{ number_of_columns }}" />
+                <div class="icon is-small is-left">
+                    <i class="fas fa-table-columns"></i>
+                </div>
             </div>
         </nav>
         <div class="cameras columns is-multiline">
@@ -44,22 +44,36 @@
                                         <i class="fas fa-circle-info" aria-hidden="true"></i>
                                     </span>
                                 </div>
-                                <div class="dropdown-menu" id="dropdown-menu4" role="menu">
-                                    <div class="dropdown-content">
-                                        <div class="dropdown-item">
-                                            <p>{{camera.__repr__()}}</p>
-                                        </div>
+                                <div class="dropdown-menu" role="menu">
+                                    <div class="dropdown-content table-container">
+                                        <table class="table dropdown-item is-hoverable is-narrow">
+                                            <thead>
+                                                <tr>
+                                                    <th>Key</th>
+                                                    <th>Value</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for key, value in camera.items() %}
+                                                <tr>
+                                                    <td>{{ key }}</td>
+                                                    <td><code>{{ value }}</code>
+                                                    </td>
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>{{camera.nickname}}
                         </div>
 
                         <span style="cursor: move; flex-grow: 2"></span>
-                        <span class="status has-text-{{'success' if camera.connected else 'danger'}}">{{'ONLINE'
+                        <!-- <span class="status has-text-{{'success' if camera.connected else 'danger'}}">{{'ONLINE'
                             if
-                            camera.connected else 'OFFLINE'}}</span>
-                        <button class="card-header-icon" onclick="hide_image('{{ camera.name_uri }}');">
-                            <span class="icon">
+                            camera.connected else 'OFFLINE'}}</span> -->
+                        <button class="card-header-icon hide-image" uri={{camera.name_uri}}>
+                            <span class="status has-text-{{'success' if camera.connected else 'danger'}} icon">
                                 <i class="fas fa-image" aria-hidden="true"></i>
                             </span>
                         </button>
@@ -72,7 +86,7 @@
                         {% elif camera.img %}
                         <img class="refresh_img" src="{{camera.img}}" width="100%" />
                         {% else %}
-                        <section class="section is-medium has-text-centered has-background-black has-text-white">
+                        <section class="section is-small has-text-centered has-background-black has-text-white">
                             <span class="icon-text">
                                 <span class="icon">
                                     <i class="fas fa-link-slash"></i>
@@ -93,6 +107,16 @@
             {% endfor %}
         </div>
     </section>
+    <footer class="footer">
+        <div class="content has-text-centered">
+            <p>
+                Powered by <a href="https://github.com/mrlt8/docker-wyze-bridge"><i class="fa-brands fa-github"></i>
+                    <strong>docker-wyze-bridge</strong></a> v{{ version }} <span id="checkUpdate" class="icon-text"
+                    version="{{version}}"><span class="icon"><i class="fas fa-arrows-rotate"></i></span>
+                </span>
+            </p>
+        </div>
+    </footer>
 </body>
 
 </html>

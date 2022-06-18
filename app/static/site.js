@@ -169,10 +169,7 @@ function refresh_imgs() {
         refresh_img(image);
     }
 }
-function hide_image(uri) {
-    var card = document.getElementById(uri).getElementsByClassName("card-image")[0];
-    card.classList.toggle("is-hidden");
-}
+
 document.addEventListener('DOMContentLoaded', () => {
     const grid = document.querySelector('.cameras');
     const selector = ".camera";
@@ -187,3 +184,47 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 setInterval(refresh_imgs, 30000)  // refresh images every 30 seconds
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    let clickHide = document.getElementsByClassName("hide-image");
+    function hide_img() {
+        let uri = this.getAttribute("uri");
+        var card = document.getElementById(uri).getElementsByClassName("card-image")[0];
+        card.classList.toggle("is-hidden");
+    }
+    for (var i = 0; i < clickHide.length; i++) {
+        clickHide[i].addEventListener('click', hide_img);
+    }
+});
+document.addEventListener('DOMContentLoaded', () => {
+    let checkAPI = document.getElementById("checkUpdate");
+    function checkVersion(api) {
+        let isNewer = (a, b) => {
+            return a.localeCompare(b, undefined, { numeric: true }) === 1;
+        };
+        let apiVersion = api.tag_name.replace(/[^0-9\.]/g, '');
+        let runVersion = checkAPI.getAttribute("version")
+        let icon = checkAPI.getElementsByClassName("fa-arrows-rotate")[0];
+        let newSpan = document.createElement("span");
+        icon.classList.remove('fa-arrows-rotate');
+        if (isNewer(apiVersion, runVersion)) {
+            newSpan.textContent = "Update available: v" + apiVersion
+            checkAPI.classList.add("has-text-danger");
+            icon.classList.add("fa-triangle-exclamation");
+        } else {
+            newSpan.textContent = "Latest version"
+            checkAPI.classList.add("has-text-success");
+            icon.classList.add("fa-square-check");
+        }
+        checkAPI.appendChild(newSpan);
+        console.log(api.tag_name)
+        checkAPI.removeEventListener("click", getGithub)
+    }
+    function getGithub() {
+        fetch('https://api.github.com/repos/mrlt8/docker-wyze-bridge/releases/latest')
+            .then(response => response.json())
+            .then(data => checkVersion(data));
+    }
+    checkAPI.addEventListener("click", getGithub)
+});
