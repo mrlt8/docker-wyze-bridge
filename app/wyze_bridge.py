@@ -9,7 +9,7 @@ import threading
 import time
 import warnings
 from subprocess import PIPE, Popen, DEVNULL
-from typing import List, NoReturn, Optional, Tuple, Union
+from typing import List, NoReturn, Optional, Tuple, Union, Dict
 
 import mintotp
 import paho.mqtt.publish
@@ -432,8 +432,8 @@ class WyzeBridge:
         log.info("👋 goodbye!")
         signal.pause()
 
-    def get_cameras(self) -> dict[str, dict]:
-        r: dict[str, dict] = {}
+    def get_cameras(self) -> Dict[str, dict]:
+        r: Dict[str, dict] = {}
         for cam in self.cameras:
             img = f"{cam.name_uri}.{env_bool('IMG_TYPE','jpg')}"
             d: dict = {}
