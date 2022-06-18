@@ -53,15 +53,21 @@ document.addEventListener('DOMContentLoaded', () => {
 function applyPreferences() {
     const repeatNumber = getCookie('number_of_columns', 2)
     console.debug("applyPreferences number_of_columns", repeatNumber)
-    const grid = document.querySelector('.cameras')
-    grid.style.setProperty('grid-template-columns', `repeat(${repeatNumber}, 1fr)`);
+    const grid = document.querySelectorAll('.camera')
+    for (var i = 0, len = grid.length; i < len; i++) {
+        grid[i].classList.forEach(item => {
+            if (item.startsWith('is-')) {
+                grid[i].classList.remove(item);
+            }
+        })
+        grid[i].classList.add(`is-${12 / repeatNumber}`);
+    }
 
     const sortOrder = getCookie("camera_order", "");
     console.debug("applyPreferences camera_order", sortOrder)
     const ids = sortOrder.split(",")
     var cameras = [...document.querySelectorAll(".camera")];
-    for (var i = 0; i < Math.min(ids.length, cameras.length); i++)
-    {
+    for (var i = 0; i < Math.min(ids.length, cameras.length); i++) {
         var a = document.getElementById(ids[i]);
         var b = cameras[i];
         if (a && b) // only swap if they both exist
@@ -88,7 +94,7 @@ function swap(a, b) {
  * @param selector {string} selector string, to select the elements allowed to be sorted/swapped
  * @param onUpdate {Function} fired when an element is updated
  */
-function sortable(parent, selector, onUpdate=null) {
+function sortable(parent, selector, onUpdate = null) {
     /** The element currently being dragged */
     var dragEl;
 
@@ -178,3 +184,47 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 setInterval(refresh_imgs, 30000)  // refresh images every 30 seconds
+
+
+document.addEventListener('DOMContentLoaded', () => {
+    let clickHide = document.getElementsByClassName("hide-image");
+    function hide_img() {
+        let uri = this.getAttribute("uri");
+        var card = document.getElementById(uri).getElementsByClassName("card-image")[0];
+        card.classList.toggle("is-hidden");
+    }
+    for (var i = 0; i < clickHide.length; i++) {
+        clickHide[i].addEventListener('click', hide_img);
+    }
+});
+document.addEventListener('DOMContentLoaded', () => {
+    let checkAPI = document.getElementById("checkUpdate");
+    function checkVersion(api) {
+        let isNewer = (a, b) => {
+            return a.localeCompare(b, undefined, { numeric: true }) === 1;
+        };
+        let apiVersion = api.tag_name.replace(/[^0-9\.]/g, '');
+        let runVersion = checkAPI.getAttribute("version")
+        let icon = checkAPI.getElementsByClassName("fa-arrows-rotate")[0];
+        let newSpan = document.createElement("span");
+        icon.classList.remove('fa-arrows-rotate');
+        if (isNewer(apiVersion, runVersion)) {
+            newSpan.textContent = "Update available: v" + apiVersion
+            checkAPI.classList.add("has-text-danger");
+            icon.classList.add("fa-triangle-exclamation");
+        } else {
+            newSpan.textContent = "Latest version"
+            checkAPI.classList.add("has-text-success");
+            icon.classList.add("fa-square-check");
+        }
+        checkAPI.appendChild(newSpan);
+        console.log(api.tag_name)
+        checkAPI.removeEventListener("click", getGithub)
+    }
+    function getGithub() {
+        fetch('https://api.github.com/repos/mrlt8/docker-wyze-bridge/releases/latest')
+            .then(response => response.json())
+            .then(data => checkVersion(data));
+    }
+    checkAPI.addEventListener("click", getGithub)
+});

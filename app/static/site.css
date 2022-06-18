@@ -1,15 +1,3 @@
-.cameras {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    grid-auto-flow: row;
-}
-.camera {
-    position: relative;
-    border: 1px solid #aaa;
-    border-radius: 4px;
-    padding: .5em .5em 0;
-}
-
 .camera summary {
     font-weight: bold;
     cursor: pointer;
@@ -19,7 +7,7 @@
     padding: 0px 5px 0px 5px;
 }
 
-.camera summary > div {
+.camera summary>div {
     display: inline-flex;
     width: calc(100% - 20px);
     vertical-align: middle;
@@ -29,18 +17,21 @@
     /*padding: .5em;*/
 }
 
-.camera > details[open] > summary {
+.camera>details[open]>summary {
     border-bottom: 1px solid #aaa;
     margin-bottom: .5em;
 }
 
 .info {
     display: inline-block;
+    float: left;
 }
+
 .info summary {
     /*padding: 10px;*/
     list-style: none;
 }
+
 .info p {
     cursor: auto;
     background: #eee;
@@ -52,6 +43,7 @@
     border-radius: 4px;
     z-index: 10;
 }
+
 .info p::before {
     content: "";
     width: 0;
@@ -66,14 +58,9 @@
 
 .status {
     text-align: right;
-    flex: 1;
+    padding: .75rem 1rem;
 }
-.ONLINE {
-    color:green;
-}
-.OFFLINE {
-    color:red;
-}
+
 
 video {
     position: relative;
@@ -82,29 +69,38 @@ video {
 }
 
 .ghost {
-  border: 1px dashed #000;
-  background-color: #fff;
+    border: 1px dashed #000;
+    background-color: #fff;
 }
 
 .ghost * {
-  display: none;
+    display: none;
 }
 
 .custom-drag-ghost {
-  /* The original cloned element must not take place up in the page and must not be visible */
-  position: absolute;
-  top: -99999px;
-  left: -99999px;
-  /* Just for appearance */
-  background-color: #edb458;
-  border: 1px solid #e8871e;
+    /* The original cloned element must not take place up in the page and must not be visible */
+    position: absolute;
+    top: -99999px;
+    left: -99999px;
+    /* Just for appearance */
+    background-color: #edb458;
+    border: 1px solid #e8871e;
 }
 
 .hidden-drag-ghost {
-  opacity: 0;
+    opacity: 0;
 }
 
 .transition {
-  transition: all 2s ease-out .5s;
-  top: 0;
+    transition: all 2s ease-out .5s;
+    top: 0;
+}
+
+table.dropdown-item td {
+    max-width: 250px;
+    word-wrap: break-word;
+}
+
+span .fa-arrows-rotate {
+    cursor: pointer;
 }
