@@ -323,11 +323,6 @@ class WyzeBridge:
             print("\nRemoving old camera data..\n=======\n\n")
             os.remove(self.token_path + "cameras.pickle")
             cams = self.get_wyze_data("cameras")
-
-        for cam in cams:
-            if cam.product_model == "WYZEC1":
-                log.warning(f"💔 {cam.product_model} not supported")
-                cams.remove(cam)
         total = len(cams)
         if env_bool("FILTER_BLOCK"):
             filtered = list(filter(lambda cam: not env_filter(cam), cams))
@@ -506,6 +501,9 @@ def get_env_quality(uri: str, cam_model: str) -> Tuple[int, int]:
     frame_size = 1 if env_quality[:2] == "sd" else 0
     if doorbell := (cam_model == "WYZEDB3"):
         frame_size = int(env_bool("DOOR_SIZE", frame_size))
+    elif cam_model == "WYZEC1" and frame_size > 0:
+        log.warning("v1 (WYZEC1) only supports HD")
+        frame_size = 0
     return frame_size, (env_bit if 30 <= env_bit <= 255 else (180 if doorbell else 120))
 
 
@@ -533,6 +531,23 @@ def get_cam_params(
     if env_bool("IOTC_TCP"):
         sess.tutk_platform_lib.IOTC_TCPRelayOnly_TurnOn()
         log.info(sess.session_check())
+
+    # WYZEC1 DEBUGGING
+    if sess.camera.product_model == "WYZEC1":
+        print("\n\n=====\nWYZEC1\n")
+        if hasattr(sess.camera, "camera_info"):
+            for key, value in sess.camera.camera_info.items():
+                if isinstance(value, dict):
+                    print(f"\n{key}:")
+                    for k, v in value.items():
+                        print(f"{k:>15}: {'*******'if k =='mac' else v}")
+                else:
+                    print(f"{key}: {value}")
+        else:
+            print("no camera_info")
+        print("\n\n")
+    # WYZEC1 DEBUGGING
+
     frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
     bit_frame = f"{sess.preferred_bitrate}kb/s {frame_size} stream"
     fps = 20
