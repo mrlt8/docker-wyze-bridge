@@ -32,9 +32,16 @@
                 </div>
             </div>
         </nav>
+        <div id="filter" class="tabs">
+            <ul>
+              <li filter="all" class="is-active"><a>All</a></li>
+              <li filter="enabled"><a>Enabled</a></li>
+              <li filter="connected"><a>Connected</a></li>
+            </ul>
+          </div>
         <div class="cameras columns is-multiline">
             {% for camera in cameras.values() %}
-            <div id="{{ camera.name_uri }}" draggable="true" class="camera column">
+            <div id="{{ camera.name_uri }}" draggable="true" class="camera column" enabled="{{camera.enabled}}" connected="{{camera.connected}}">
                 <div class="card">
                     <header class="card-header">
                         <div class="card-header-title">
@@ -67,13 +74,9 @@
                                 </div>
                             </div>{{camera.nickname}}
                         </div>
-
                         <span style="cursor: move; flex-grow: 2"></span>
-                        <!-- <span class="status has-text-{{'success' if camera.connected else 'danger'}}">{{'ONLINE'
-                            if
-                            camera.connected else 'OFFLINE'}}</span> -->
                         <button class="card-header-icon hide-image" uri={{camera.name_uri}}>
-                            <span class="status has-text-{{'success' if camera.connected else 'danger'}} icon">
+                            <span class="status has-text-{{'dark' if not camera.enabled else 'success' if camera.connected else 'danger'}} icon">
                                 <i class="fas fa-image" aria-hidden="true"></i>
                             </span>
                         </button>

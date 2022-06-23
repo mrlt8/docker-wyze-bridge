@@ -451,6 +451,7 @@ class WyzeBridge:
             d["rtmp_url"] = self.wb_rtmp_url + cam.name_uri
             d["rtsp_url"] = self.wb_rtsp_url + cam.name_uri
             d["name_uri"] = cam.name_uri
+            d["enabled"] = cam.nickname in self.streams
             if (stream := self.streams.get(cam.nickname)) and "connected" in stream:
                 stream = self.streams[cam.nickname]["connected"].is_set()
             d["connected"] = stream
