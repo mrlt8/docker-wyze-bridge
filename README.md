@@ -28,6 +28,12 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
+## Changes in v1.6.5
+
+- **NEW**: WEB-UI - filter out disabled/offline cameras. #439
+- **FIXED**: WEB-UI - Use hostname from request for hls/rtsp/rtmp. #429
+- **UPDATED**: ⬆️ API: Wyze app version number bump to 2.32.0.20.
+
 ## Changes in v1.6.4
 
 - **IMPROVED**: Reliability of dragging/sorting cameras in Web-UI. Thanks @dsheehan!
