@@ -42,28 +42,6 @@ PLEASE NOTE: If enabled, anyone on your local network will be able to access/dow
 - **NEW**: ✨ ENV: `MOTION_HTTP` - Make a Webhook/HTTP request to any url on motion, e.g., `http://localhost/triggerMotion?cam={cam_name}`.
 - **NEW**: ✨ ENV: `MOTION_COOLDOWN` - Number of seconds to keep the motion flag set to true before resetting it.
 
-
-## Changes in v1.6.4
-
-- **IMPROVED**: Reliability of dragging/sorting cameras in Web-UI. Thanks @dsheehan!
-- **NEW**: Version check on footer of Web-UI.
-- **FIXED**: Static files for Web-UI in Home Assistant.
-
-## Changes in v1.6.3
-
-- **Fixed**: x264 rotation could cause issues with HLS and RTMP. #428 #431 Thanks @jamescochran!
-
-## Changes in v1.6.0/v1.6.1/v1.6.2
-
-Huge thanks goes to @dsheehan for building and adding a web-ui for the bridge!
-
-- **NEW**: Web-UI on port `5000` (must add `- 5000:5000` to the ports section of your docker-compose.yml)
-  - 🏠 Home Assistant: Web-ui will be automatically configured and you can add it to your sidebar by enabling it on the info page for the add-on.
-- **CHANGED**: `mfa_token` is now `mfa_token.txt` on the docker version to match Home Assistant mode.
-- **FIXED**: AttributeError with an unsupported WYZEC1. #422
-- **FIXED**: FLASK_APP env error. #424 Thanks @dsheehan
-- **FIXED**: clean_name. #424 Thanks @dsheehan
-
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
 ## Features
