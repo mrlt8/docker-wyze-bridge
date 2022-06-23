@@ -1,4 +1,5 @@
 import logging
+from urllib.parse import urlparse
 
 from flask import Flask, make_response, render_template, request, send_from_directory
 
@@ -26,7 +27,7 @@ def create_app():
         resp = make_response(
             render_template(
                 "index.html",
-                cameras=wb.get_cameras(),
+                cameras=wb.get_cameras(urlparse(request.root_url).hostname),
                 number_of_columns=number_of_columns,
                 hass=wb.hass,
                 version=wb.version,

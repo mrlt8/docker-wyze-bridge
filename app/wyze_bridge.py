@@ -43,10 +43,10 @@ class WyzeBridge:
         self.user: wyzecam.WyzeAccount = None
         self.stop_flag = multiprocessing.Event()
         self.thread: threading.Thread = None
-        self.hostname = os.getenv("DOMAIN", "localhost")
-        self.wb_hls_url = os.getenv("WB_HLS_URL", f"http://{self.hostname}:8888/")
-        self.wb_rtmp_url = os.getenv("WB_RTMP_URL", f"rtmp://{self.hostname}:1935/")
-        self.wb_rtsp_url = os.getenv("WB_RTSP_URL", f"rtsp://{self.hostname}:8554/")
+        self.hostname = env_bool("DOMAIN")
+        self.hls_url = env_bool("WB_HLS_URL")
+        self.rtmp_url = env_bool("WB_RTMP_URL")
+        self.rtsp_url = env_bool("WB_RTSP_URL")
 
         os.makedirs(self.token_path, exist_ok=True)
         os.makedirs(self.img_path, exist_ok=True)
@@ -315,7 +315,7 @@ class WyzeBridge:
 
     def get_filtered_cams(self) -> None:
         """Get all cameras that are enabled."""
-        cams: [WyzeCamera] = self.get_wyze_data("cameras")
+        cams: Dict[WyzeCamera] = self.get_wyze_data("cameras")
 
         # Update cameras
         if not hasattr(cams[0], "parent_dtls"):
@@ -433,9 +433,14 @@ class WyzeBridge:
         log.info("👋 goodbye!")
         signal.pause()
 
-    def get_cameras(self) -> Dict[str, dict]:
+    def get_cameras(self, hostname: str) -> Dict[str, dict]:
         r: Dict[str, dict] = {}
+        if self.hostname:
+            hostname = self.hostname
         for cam in self.cameras:
+            base_hls = self.hls_url if self.hls_url else f"http://{hostname}:8888/"
+            base_rtmp = self.rtmp_url if self.rtmp_url else f"rtmp://{hostname}:1935/"
+            base_rtsp = self.rtsp_url if self.rtsp_url else f"rtsp://{hostname}:8554/"
             img = f"{cam.name_uri}.{env_bool('IMG_TYPE','jpg')}"
             d: dict = {}
             d["nickname"] = cam.nickname
@@ -445,11 +450,11 @@ class WyzeBridge:
             d["model_name"] = cam.model_name
             d["firmware_ver"] = cam.firmware_ver
             d["thumbnail"] = cam.thumbnail
-            d["hls_url"] = self.wb_hls_url + cam.name_uri + "/"
+            d["hls_url"] = base_hls + cam.name_uri + "/"
             if env_bool("LLHLS"):
                 d["hls_url"] = d["hls_url"].replace("http:", "https:")
-            d["rtmp_url"] = self.wb_rtmp_url + cam.name_uri
-            d["rtsp_url"] = self.wb_rtsp_url + cam.name_uri
+            d["rtmp_url"] = base_rtmp + cam.name_uri
+            d["rtsp_url"] = base_rtsp + cam.name_uri
             d["name_uri"] = cam.name_uri
             d["enabled"] = cam.nickname in self.streams
             if (stream := self.streams.get(cam.nickname)) and "connected" in stream:
