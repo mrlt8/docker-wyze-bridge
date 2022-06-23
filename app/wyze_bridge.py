@@ -3,24 +3,25 @@ import logging
 import multiprocessing
 import os
 import pickle
+import re
 import signal
 import sys
 import threading
 import time
 import warnings
 from datetime import datetime, timedelta
-from subprocess import PIPE, Popen, DEVNULL
-from typing import List, NoReturn, Optional, Tuple, Union, Dict
+from subprocess import DEVNULL, PIPE, Popen
+from typing import Dict, List, NoReturn, Optional, Tuple, Union
 
 import mintotp
-import paho.mqtt.publish
 import paho.mqtt.client
+import paho.mqtt.publish
 import requests
 
 import wyzecam
 from wyzecam import WyzeCamera
-from wyzecam.api_models import clean_name
 from wyzecam import WyzeIOTCSessionState as SessionState
+from wyzecam.api_models import clean_name
 
 log = logging.getLogger("WyzeBridge")
 
@@ -119,6 +120,9 @@ class WyzeBridge:
                         del self.streams[name]
                 elif (sleep := stream["sleep"]) and sleep <= time.time():
                     self.start_stream(name)
+                if stream.get("queue") and not stream["queue"].empty():
+                    stream["camera_info"] = stream["queue"].get()
+
             time.sleep(1)
 
     def start_stream(self, name: str) -> None:
@@ -132,16 +136,19 @@ class WyzeBridge:
         model = cam.model_name
         log.info(f"🎉 Connecting to WyzeCam {model} - {name} on {cam.ip} (1/3)")
         connected = multiprocessing.Event()
+        camera_info = multiprocessing.Queue()
 
         stream = multiprocessing.Process(
             target=self.start_tutk_stream,
-            args=(cam, self.stop_flag, connected, offline),
+            args=(cam, connected, camera_info, offline),
             name=name,
         )
         self.streams[name] = {
             "process": stream,
             "sleep": False,
             "connected": connected,
+            "camera_info": None,
+            "queue": camera_info,
             "started": time.time(),
         }
         stream.start()
@@ -367,7 +374,11 @@ class WyzeBridge:
         self.rtsp = Popen(["/app/rtsp-simple-server", "/app/rtsp-simple-server.yml"])
 
     def start_tutk_stream(
-        self, cam: wyzecam.WyzeCamera, stop_flag, connected, offline
+        self,
+        cam: wyzecam.WyzeCamera,
+        connected: multiprocessing.Event,
+        camera_info: multiprocessing.Queue,
+        offline: bool,
     ) -> None:
         """Connect and communicate with the camera using TUTK."""
         uri = cam.name_uri.upper()
@@ -383,13 +394,14 @@ class WyzeBridge:
                 connect_timeout=self.connect_timeout,
             ) as sess:
                 connected.set()
+                camera_info.put(sess.camera.camera_info)
                 fps, audio = get_cam_params(sess, uri, audio)
                 audio_thread = threading.Thread(
                     target=sess.recv_audio_frames, args=(uri, fps), name=uri + "_AUDIO"
                 )
                 boa_thread = threading.Thread(
                     target=camera_boa,
-                    args=(sess, uri, self.img_path),
+                    args=(sess, uri, self.img_path, camera_info),
                     name=uri + "_BOA",
                 )
                 if env_bool("enable_boa"):
@@ -400,7 +412,7 @@ class WyzeBridge:
                     if audio:
                         audio_thread.start()
                     for frame in sess.recv_bridge_frame(
-                        stop_flag, self.keep_bad_frames, self.timeout, fps
+                        self.stop_flag, self.keep_bad_frames, self.timeout, fps
                     ):
                         ffmpeg.stdin.write(frame)
         except wyzecam.TutkError as ex:
@@ -469,9 +481,11 @@ class WyzeBridge:
             d["rtsp_url"] = base_rtsp + cam.name_uri
             d["name_uri"] = cam.name_uri
             d["enabled"] = cam.nickname in self.streams
+            d["connected"] = None
+            d["camera_info"] = None
             if (stream := self.streams.get(cam.nickname)) and "connected" in stream:
-                stream = self.streams[cam.nickname]["connected"].is_set()
-            d["connected"] = stream
+                d["connected"] = stream["connected"].is_set()
+                d["camera_info"] = stream["camera_info"]
             d["img"] = f"img/{img}" if os.path.exists(self.img_path + img) else None
             r[cam.name_uri] = d
         return r
@@ -877,7 +891,7 @@ def _take_photo(client, sess, msg):
         mux.send_ioctl(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
 
 
-def camera_boa(sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str):
+def camera_boa(sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str, camera_info):
     """
     Start the boa server on the camera and pull photos.
 
@@ -909,6 +923,7 @@ def camera_boa(sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str):
 
     while sess.state == SessionState.AUTHENTICATION_SUCCEEDED:
         iotctrl_msg = []
+        boa_info = {}
         if env_bool("take_photo"):
             iotctrl_msg.append(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
         if not cam_http_alive(ip):
@@ -919,10 +934,20 @@ def camera_boa(sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str):
                 for msg in iotctrl_msg:
                     mux.send_ioctl(msg)
         if env_bool("pull_alarm") and datetime.now() > cooldown:
+            old = last_alarm
             last_alarm, cooldown = motion_alarm(cam, last_alarm, cooldown)
+            if old != last_photo:
+                boa_info["last_alarm"] = last_photo
         if env_bool("pull_photo"):
             as_snap = env_bool("pull_photo") and env_bool("take_photo")
+            old = last_photo
             last_photo = pull_last_image(cam, "photo", last_photo, as_snap)
+            if old != last_photo:
+                boa_info["last_photo"] = last_photo
+        if boa_info:
+            cam_info = sess.camera.camera_info
+            cam_info["boa_info"] = boa_info
+            camera_info.put(cam_info)
         time.sleep(interval)
     if mqtt:
         mqtt.loop_stop()
