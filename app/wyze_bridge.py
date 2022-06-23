@@ -315,7 +315,7 @@ class WyzeBridge:
 
     def get_filtered_cams(self) -> None:
         """Get all cameras that are enabled."""
-        cams: Dict[WyzeCamera] = self.get_wyze_data("cameras")
+        cams: List[WyzeCamera] = self.get_wyze_data("cameras")
 
         # Update cameras
         if not hasattr(cams[0], "parent_dtls"):
@@ -433,7 +433,7 @@ class WyzeBridge:
         log.info("👋 goodbye!")
         signal.pause()
 
-    def get_cameras(self, hostname: str) -> Dict[str, dict]:
+    def get_cameras(self, hostname: str = "localhost") -> Dict[str, dict]:
         r: Dict[str, dict] = {}
         if self.hostname:
             hostname = self.hostname

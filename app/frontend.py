@@ -38,7 +38,9 @@ def create_app():
 
     @app.route("/cameras")
     def cameras():
-        return wb.get_cameras()  # return json, for introspection or for future ajax UI
+        return wb.get_cameras(
+            urlparse(request.root_url).hostname
+        )  # return json, for introspection or for future ajax UI
 
     @app.route("/img/<path:path>")
     def img(path: str):
