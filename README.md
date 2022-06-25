@@ -28,6 +28,15 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
+## Changes in v1.6.6
+
+- **NEW**: Initial ssupport for the original WyzeCam v1 (WYZEC1). #57 Thanks @jamescochran @Webtron18!
+- **NEW**: WEB-UI - Automated RTSP snapshots while page is open. #437
+- **FIXED**: `panic: assignment to entry in nil map` in rtsp-simple-server. #419
+- **UPDATED**: rtsp-simple-server > [v0.19.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.19.2)
+
+**Full Changelog**: https://github.com/mrlt8/docker-wyze-bridge/compare/v1.6.5...v1.6.6
+
 ## Changes in v1.6.5
 
 - **NEW**: WEB-UI - filter out disabled/offline cameras. #439
@@ -72,6 +81,7 @@ Huge thanks goes to @dsheehan for building and adding a web-ui for the bridge!
 
 ## Supported Cameras
 
+![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-yes-success.svg)
 ![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
 ![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
 ![Wyze Cam Floodlight](https://img.shields.io/badge/wyze_floodlight-yes-success.svg)
@@ -81,12 +91,11 @@ Huge thanks goes to @dsheehan for building and adding a web-ui for the bridge!
 ![Wyze Cam Outdoor V2](https://img.shields.io/badge/wyze_outdoor_v2-yes-success.svg)
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
 
-![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
 ![Wyze Cam Doorbell Pro](https://img.shields.io/badge/wyze_doorbell_pro-no-inactive.svg)
 
 | Camera                | Model          | Supported |
 | --------------------- | -------------- | --------- |
-| Wyze Cam v1           | WYZEC1         | ⚠️         |
+| Wyze Cam v1           | WYZEC1         | ✅         |
 | Wyze Cam V2           | WYZEC1-JZ      | ✅         |
 | Wyze Cam V3           | WYZE_CAKP2JFUS | ✅         |
 | Wyze Cam Floodlight   | WYZE_CAKP2JFUS | ✅         |
