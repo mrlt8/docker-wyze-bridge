@@ -627,9 +627,12 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list:
         audio_in = f"-f {audio['codec']} -ar {audio['rate']} -i /tmp/{uri.lower()}.wav"
         audio_out = audio["codec_out"] or "copy"
         a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
-    av_select = "select=" + ("v,a" if audio else "v")
+    av_select = "v,a" if audio else "v"
     rtsp_proto = "udp" if "udp" in env_bool("RTSP_PROTOCOLS") else "tcp"
-    rtsp_ss = f"[{av_select}:f=rtsp:rtsp_transport={rtsp_proto}]rtsp://0.0.0.0:8554/{uri.lower()}"
+    rss_cmd = f"[select={{}}:f=rtsp:rtsp_transport={rtsp_proto}]rtsp://0.0.0.0:8554/{uri.lower()}"
+    rtsp_ss = rss_cmd.format(av_select)
+    if env_bool(f"AUDIO_STREAM_{uri}", env_bool("AUDIO_STREAM")) and audio:
+        rtsp_ss += "|" + rss_cmd.format("a") + "_audio"
 
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD")).format(
         cam_name=uri.lower(), CAM_NAME=uri, audio_in=audio_in
