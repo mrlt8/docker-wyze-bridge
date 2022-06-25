@@ -533,19 +533,19 @@ def get_cam_params(
         log.info(sess.session_check())
 
     # WYZEC1 DEBUGGING
-    if sess.camera.product_model == "WYZEC1":
-        print("\n\n=====\nWYZEC1\n")
+    if env_bool("DEBUG_LEVEL"):
+        cam_info = f"\n\n=====\n{sess.camera.nickname}\n"
         if hasattr(sess.camera, "camera_info"):
             for key, value in sess.camera.camera_info.items():
                 if isinstance(value, dict):
-                    print(f"\n{key}:")
+                    cam_info += f"\n\n{key}:"
                     for k, v in value.items():
-                        print(f"{k:>15}: {'*******'if k =='mac' else v}")
+                        cam_info += f"\n{k:>15}: {'*******'if k =='mac' else v}"
                 else:
-                    print(f"{key}: {value}")
+                    cam_info += f"\n{key}: {value}"
         else:
-            print("no camera_info")
-        print("\n\n")
+            cam_info += "no camera_info"
+        print(cam_info, "\n\n")
     # WYZEC1 DEBUGGING
 
     frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
