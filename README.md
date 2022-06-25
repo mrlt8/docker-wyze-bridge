@@ -62,6 +62,7 @@ PLEASE NOTE: If enabled, anyone on your local network will be able to access/dow
 
 ## Supported Cameras
 
+![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-yes-success.svg)
 ![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
 ![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
 ![Wyze Cam Floodlight](https://img.shields.io/badge/wyze_floodlight-yes-success.svg)
@@ -71,12 +72,11 @@ PLEASE NOTE: If enabled, anyone on your local network will be able to access/dow
 ![Wyze Cam Outdoor V2](https://img.shields.io/badge/wyze_outdoor_v2-yes-success.svg)
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
 
-![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
 ![Wyze Cam Doorbell Pro](https://img.shields.io/badge/wyze_doorbell_pro-no-inactive.svg)
 
 | Camera                | Model          | Supported |
 | --------------------- | -------------- | --------- |
-| Wyze Cam v1           | WYZEC1         | ⚠️         |
+| Wyze Cam v1           | WYZEC1         | ✅         |
 | Wyze Cam V2           | WYZEC1-JZ      | ✅         |
 | Wyze Cam V3           | WYZE_CAKP2JFUS | ✅         |
 | Wyze Cam Floodlight   | WYZE_CAKP2JFUS | ✅         |

@@ -1,106 +1,109 @@
 .camera summary {
-    font-weight: bold;
-    cursor: pointer;
+  font-weight: bold;
+  cursor: pointer;
 }
 
 .camera summary a {
-    padding: 0px 5px 0px 5px;
+  padding: 0px 5px 0px 5px;
 }
 
-.camera summary>div {
-    display: inline-flex;
-    width: calc(100% - 20px);
-    vertical-align: middle;
+.camera summary > div {
+  display: inline-flex;
+  width: calc(100% - 20px);
+  vertical-align: middle;
 }
 
 .camera details[open] {
-    /*padding: .5em;*/
+  /*padding: .5em;*/
 }
 
-.camera>details[open]>summary {
-    border-bottom: 1px solid #aaa;
-    margin-bottom: .5em;
+.camera > details[open] > summary {
+  border-bottom: 1px solid #aaa;
+  margin-bottom: 0.5em;
 }
 
 .info {
-    display: inline-block;
-    float: left;
+  display: inline-block;
+  float: left;
 }
 
 .info summary {
-    /*padding: 10px;*/
-    list-style: none;
+  /*padding: 10px;*/
+  list-style: none;
 }
 
 .info p {
-    cursor: auto;
-    background: #eee;
-    padding: 15px;
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 35px;
-    border-radius: 4px;
-    z-index: 10;
+  cursor: auto;
+  background: #eee;
+  padding: 15px;
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 35px;
+  border-radius: 4px;
+  z-index: 10;
 }
 
 .info p::before {
-    content: "";
-    width: 0;
-    height: 0;
-    border-left: 8px solid transparent;
-    border-right: 8px solid transparent;
-    border-bottom: 12px solid #eee;
-    top: -10px;
-    position: absolute;
-    left: 10px;
+  content: "";
+  width: 0;
+  height: 0;
+  border-left: 8px solid transparent;
+  border-right: 8px solid transparent;
+  border-bottom: 12px solid #eee;
+  top: -10px;
+  position: absolute;
+  left: 10px;
 }
 
 .status {
-    text-align: right;
-    padding: .75rem 1rem;
+  text-align: right;
+  padding: 0.75rem 1rem;
 }
 
-
 video {
-    position: relative;
-    width: 100%;
-    overflow: hidden;
+  position: relative;
+  width: 100%;
+  overflow: hidden;
 }
 
 .ghost {
-    border: 1px dashed #000;
-    background-color: #fff;
+  border: 1px dashed #000;
+  background-color: #fff;
 }
 
 .ghost * {
-    display: none;
+  display: none;
 }
 
 .custom-drag-ghost {
-    /* The original cloned element must not take place up in the page and must not be visible */
-    position: absolute;
-    top: -99999px;
-    left: -99999px;
-    /* Just for appearance */
-    background-color: #edb458;
-    border: 1px solid #e8871e;
+  /* The original cloned element must not take place up in the page and must not be visible */
+  position: absolute;
+  top: -99999px;
+  left: -99999px;
+  /* Just for appearance */
+  background-color: #edb458;
+  border: 1px solid #e8871e;
 }
 
 .hidden-drag-ghost {
-    opacity: 0;
+  opacity: 0;
 }
 
 .transition {
-    transition: all 2s ease-out .5s;
-    top: 0;
+  transition: all 2s ease-out 0.5s;
+  top: 0;
 }
 
 table.dropdown-item td {
-    max-width: 250px;
-    word-wrap: break-word;
+  max-width: 250px;
+  word-wrap: break-word;
 }
 
 span .fa-arrows-rotate {
-    cursor: pointer;
+  cursor: pointer;
+}
+
+div.card-image:has(.loading-preview) {
+  background-color: #f1f2f3;
 }
