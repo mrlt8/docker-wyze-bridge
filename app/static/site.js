@@ -20,25 +20,6 @@ function getCookie(name, def = null) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-  const videos = document.querySelectorAll("video");
-
-  for (var i = 0; i < videos.length; i++) {
-    var video = videos[i];
-    var videoSrc = video.getAttribute("data-src");
-    if (Hls.isSupported()) {
-      var config = {
-        liveDurationInfinity: true,
-      };
-      var hls = new Hls(config);
-      hls.loadSource(videoSrc);
-      hls.attachMedia(video);
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = videoSrc;
-    }
-  }
-});
-
-document.addEventListener("DOMContentLoaded", () => {
   const select = document.querySelector("#select_number_of_columns");
   applyPreferences();
 
@@ -156,18 +137,32 @@ function sortable(parent, selector, onUpdate = null) {
   parent.addEventListener("dragstart", _onDragStart);
 }
 
-function refresh_img(imgElement) {
-  const url = imgElement.src;
-  ((u) => fetch(u).then((response) => (imgElement.src = u)))(url);
+function refresh_img(imgUrl) {
+  console.debug('refresh_img', imgUrl);
+
+  // update img.src
+  document.querySelectorAll(`[src="${imgUrl}"]`).forEach(function(e){
+    e.src = imgUrl;
+  });
+
+  // update video.poster
+  document.querySelectorAll(`[poster="${imgUrl}"]`).forEach(function(e){
+    e.poster = imgUrl;
+  });
+
+  // update video js div for poster
+  const styleString = `background-image: url("${imgUrl}");`
+  document.querySelectorAll(`[style='${styleString}']`).forEach(function(e){
+    e.style = styleString;
+  });
 }
 
 function refresh_imgs() {
   console.debug("refresh_imgs " + Date.now());
-  var images = document.querySelectorAll(".refresh_img");
-  for (var i = 0; i < images.length; i++) {
-    var image = images[i];
-    refresh_img(image);
-  }
+  document.querySelectorAll(".refresh_img").forEach(function (image){
+    let url = image.getAttribute("src");
+    (u => fetch(u).then(r => (refresh_img(u))))(url);
+  });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
