@@ -42,6 +42,15 @@ def create_app():
             urlparse(request.root_url).hostname
         )  # return json, for introspection or for future ajax UI
 
+    @app.route("/rtsp_snap")
+    def rtsp_snapshot():
+        """Use ffmpeg to take a snapshot from the rtsp stream."""
+        resp = {}
+        for cam, stream in wb.streams.items():
+            if "connected" in stream and stream["connected"].is_set():
+                resp[cam] = wb.rtsp_snap(cam)
+        return resp
+
     @app.route("/img/<path:path>")
     def img(path: str):
         return send_from_directory(wb.img_path, path)

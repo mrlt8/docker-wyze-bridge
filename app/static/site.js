@@ -256,3 +256,46 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   checkAPI.addEventListener("click", getGithub);
 });
+
+function rtsp_image() {
+  console.debug("rtsp_image " + Date.now());
+  fetch("rtsp_snap")
+    .then((resp) => resp.json())
+    .then((json_data) => {
+      let cameras = Object.keys(json_data);
+      if (cameras.length === 0) {
+        console.log("try again");
+        setTimeout(() => {
+          rtsp_image();
+        }, 5000);
+      }
+      cameras.forEach((camera) => {
+        let image = json_data[camera];
+        load_image(camera, image);
+      });
+    });
+}
+function load_image(camera, image) {
+  let img = document.querySelector(".loading-preview[cam=" + camera + "]");
+  if (!img) {
+    return;
+  }
+  fetch(image).then((resp) => {
+    if (resp.status == 404) {
+      setTimeout(() => {
+        load_image(camera, image);
+      }, 1000);
+    } else {
+      img.classList.remove("loading-preview");
+      img.classList.add("refresh_img");
+      img.src = image;
+    }
+  });
+}
+document.addEventListener("DOMContentLoaded", () => {
+  let preview = document.querySelector(".loading-preview");
+  if (preview !== null) {
+    rtsp_image();
+  }
+  setInterval(rtsp_image, 30000);
+});

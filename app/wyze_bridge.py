@@ -8,8 +8,8 @@ import sys
 import threading
 import time
 import warnings
-from subprocess import PIPE, Popen, DEVNULL
-from typing import List, NoReturn, Optional, Tuple, Union, Dict
+from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
+from typing import Dict, List, NoReturn, Optional, Tuple, Union
 
 import mintotp
 import paho.mqtt.publish
@@ -437,10 +437,10 @@ class WyzeBridge:
         r: Dict[str, dict] = {}
         if self.hostname:
             hostname = self.hostname
+        base_hls = self.hls_url if self.hls_url else f"http://{hostname}:8888/"
+        base_rtmp = self.rtmp_url if self.rtmp_url else f"rtmp://{hostname}:1935/"
+        base_rtsp = self.rtsp_url if self.rtsp_url else f"rtsp://{hostname}:8554/"
         for cam in self.cameras:
-            base_hls = self.hls_url if self.hls_url else f"http://{hostname}:8888/"
-            base_rtmp = self.rtmp_url if self.rtmp_url else f"rtmp://{hostname}:1935/"
-            base_rtsp = self.rtsp_url if self.rtsp_url else f"rtsp://{hostname}:8554/"
             img = f"{cam.name_uri}.{env_bool('IMG_TYPE','jpg')}"
             d: dict = {}
             d["nickname"] = cam.nickname
@@ -463,6 +463,19 @@ class WyzeBridge:
             d["img"] = f"img/{img}" if os.path.exists(self.img_path + img) else None
             r[cam.name_uri] = d
         return r
+
+    def rtsp_snap(self, cam_name: str) -> str:
+        """Take an rtsp snapshot with ffmpeg."""
+        cam_name = clean_name(cam_name).lower()
+        img = f"{self.img_path}{cam_name}.jpg"
+        ffmpeg_cmd = (
+            ["ffmpeg", "-loglevel", "fatal", "-threads", "1"]
+            + ["-analyzeduration", "50", "-probesize", "50"]
+            + ["-rtsp_transport", "tcp", "-i", f"rtsp://0.0.0.0:8554/{cam_name}"]
+            + ["-f", "image2", "-frames:v", "1", "-y", img]
+        )
+        Popen(ffmpeg_cmd)
+        return img
 
 
 mode_type = {0: "P2P", 1: "RELAY", 2: "LAN"}
