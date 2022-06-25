@@ -932,21 +932,17 @@ class WyzeIOTCSession:
                     warnings.warn(f"AUTH FAILED: {auth_response}")
                     raise ValueError("AUTH_FAILED")
                 self.camera.set_camera_info(auth_response["cameraInfo"])
-
-                if self.camera.product_model in ("WYZEDB3", "WVOD1", "HL_WCO2"):
-                    # doorbell has a different message for setting resolutions
-                    resolving = mux.send_ioctl(
-                        K10052DBSetResolvingBit(
-                            self.preferred_frame_size, self.preferred_bitrate
-                        )
-                    )
+                frame_bit = self.preferred_frame_size, self.preferred_bitrate
+                if self.camera.product_model in (
+                    "WYZEDB3",
+                    "WVOD1",
+                    "HL_WCO2",
+                    "WYZEC1",
+                ):
+                    ioctl_msg = K10052DBSetResolvingBit(*frame_bit)
                 else:
-                    resolving = mux.send_ioctl(
-                        K10056SetResolvingBit(
-                            self.preferred_frame_size, self.preferred_bitrate
-                        )
-                    )
-                mux.waitfor(resolving)
+                    ioctl_msg = K10056SetResolvingBit(*frame_bit)
+                mux.waitfor(mux.send_ioctl(ioctl_msg))
                 self.state = WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
         except tutk.TutkError:
             self._disconnect()

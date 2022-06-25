@@ -1,3 +1,10 @@
+## Changes in v1.6.6
+
+- **NEW**: Initial ssupport for the original WyzeCam v1 (WYZEC1). #57 Thanks @jamescochran @Webtron18!
+- **NEW**: WEB-UI - Automated RTSP snapshots while page is open. #437
+- **FIXED**: `panic: assignment to entry in nil map` in rtsp-simple-server. #419
+- **UPDATED**: rtsp-simple-server > [v0.19.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.19.2)
+
 ## Changes in v1.6.5
 
 - **NEW**: WEB-UI - filter out disabled/offline cameras. #439

@@ -8,8 +8,8 @@ import sys
 import threading
 import time
 import warnings
-from subprocess import PIPE, Popen, DEVNULL
-from typing import List, NoReturn, Optional, Tuple, Union, Dict
+from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
+from typing import Dict, List, NoReturn, Optional, Tuple, Union
 
 import mintotp
 import paho.mqtt.publish
@@ -324,11 +324,6 @@ class WyzeBridge:
             print("\nRemoving old camera data..\n=======\n\n")
             os.remove(self.token_path + "cameras.pickle")
             cams = self.get_wyze_data("cameras")
-
-        for cam in cams:
-            if cam.product_model == "WYZEC1":
-                log.warning(f"💔 {cam.product_model} not supported")
-                cams.remove(cam)
         total = len(cams)
         if env_bool("FILTER_BLOCK"):
             filtered = list(filter(lambda cam: not env_filter(cam), cams))
@@ -438,10 +433,10 @@ class WyzeBridge:
         r: Dict[str, dict] = {}
         if self.hostname:
             hostname = self.hostname
+        base_hls = self.hls_url if self.hls_url else f"http://{hostname}:8888/"
+        base_rtmp = self.rtmp_url if self.rtmp_url else f"rtmp://{hostname}:1935/"
+        base_rtsp = self.rtsp_url if self.rtsp_url else f"rtsp://{hostname}:8554/"
         for cam in self.cameras:
-            base_hls = self.hls_url if self.hls_url else f"http://{hostname}:8888/"
-            base_rtmp = self.rtmp_url if self.rtmp_url else f"rtmp://{hostname}:1935/"
-            base_rtsp = self.rtsp_url if self.rtsp_url else f"rtsp://{hostname}:8554/"
             img = f"{cam.name_uri}.{env_bool('IMG_TYPE','jpg')}"
             d: dict = {}
             d["nickname"] = cam.nickname
@@ -464,6 +459,19 @@ class WyzeBridge:
             d["img"] = f"img/{img}" if os.path.exists(self.img_path + img) else None
             r[cam.name_uri] = d
         return r
+
+    def rtsp_snap(self, cam_name: str) -> str:
+        """Take an rtsp snapshot with ffmpeg."""
+        cam_name = clean_name(cam_name).lower()
+        img = f"{self.img_path}{cam_name}.jpg"
+        ffmpeg_cmd = (
+            ["ffmpeg", "-loglevel", "fatal", "-threads", "1"]
+            + ["-analyzeduration", "50", "-probesize", "50"]
+            + ["-rtsp_transport", "tcp", "-i", f"rtsp://0.0.0.0:8554/{cam_name}"]
+            + ["-f", "image2", "-frames:v", "1", "-y", img]
+        )
+        Popen(ffmpeg_cmd)
+        return img
 
 
 mode_type = {0: "P2P", 1: "RELAY", 2: "LAN"}
@@ -513,6 +521,9 @@ def get_env_quality(uri: str, cam_model: str) -> Tuple[int, int]:
     frame_size = 1 if env_quality[:2] == "sd" else 0
     if doorbell := (cam_model == "WYZEDB3"):
         frame_size = int(env_bool("DOOR_SIZE", frame_size))
+    elif cam_model == "WYZEC1" and frame_size > 0:
+        log.warning("v1 (WYZEC1) only supports HD")
+        frame_size = 0
     return frame_size, (env_bit if 30 <= env_bit <= 255 else (180 if doorbell else 120))
 
 
@@ -540,6 +551,23 @@ def get_cam_params(
     if env_bool("IOTC_TCP"):
         sess.tutk_platform_lib.IOTC_TCPRelayOnly_TurnOn()
         log.info(sess.session_check())
+
+    # WYZEC1 DEBUGGING
+    if env_bool("DEBUG_LEVEL"):
+        cam_info = f"\n\n=====\n{sess.camera.nickname}\n"
+        if hasattr(sess.camera, "camera_info"):
+            for key, value in sess.camera.camera_info.items():
+                if isinstance(value, dict):
+                    cam_info += f"\n\n{key}:"
+                    for k, v in value.items():
+                        cam_info += f"\n{k:>15}: {'*******'if k =='mac' else v}"
+                else:
+                    cam_info += f"\n{key}: {value}"
+        else:
+            cam_info += "no camera_info"
+        print(cam_info, "\n\n")
+    # WYZEC1 DEBUGGING
+
     frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
     bit_frame = f"{sess.preferred_bitrate}kb/s {frame_size} stream"
     fps = 20
