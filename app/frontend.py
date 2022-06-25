@@ -46,9 +46,9 @@ def create_app():
     def rtsp_snapshot():
         """Use ffmpeg to take a snapshot from the rtsp stream."""
         resp = {}
-        for cam, stream in wb.streams.items():
-            if "connected" in stream and stream["connected"].is_set():
-                resp[cam] = wb.rtsp_snap(cam)
+        for name, cam in wb.get_cameras().items():
+            if cam["connected"]:
+                resp[name] = wb.rtsp_snap(name)
         return resp
 
     @app.route("/img/<path:path>")

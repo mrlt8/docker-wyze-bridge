@@ -461,7 +461,6 @@ class WyzeBridge:
 
     def rtsp_snap(self, cam_name: str) -> str:
         """Take an rtsp snapshot with ffmpeg."""
-        cam_name = clean_name(cam_name).lower()
         img = f"{self.img_path}{cam_name}.jpg"
         ffmpeg_cmd = (
             ["ffmpeg", "-loglevel", "fatal", "-threads", "1"]

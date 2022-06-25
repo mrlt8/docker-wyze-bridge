@@ -89,7 +89,7 @@
                         {% elif camera.img %}
                         <img class="refresh_img" src="{{camera.img}}" width="100%" />
                         {% elif camera.enabled and not camera.img %}
-                        <img class="loading-preview" src="{{url_for('static',filename='loading.svg')}}" cam="{{camera.nickname}}">
+                        <img class="loading-preview" src="{{url_for('static',filename='loading.svg')}}" cam="{{camera.name_uri}}">
                         {% else %}
                         <section class="section is-small has-background-black has-text-white no-preview">
                             <span class="icon-text">
