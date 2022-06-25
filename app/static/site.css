@@ -22,40 +22,6 @@
   margin-bottom: 0.5em;
 }
 
-.info {
-  display: inline-block;
-  float: left;
-}
-
-.info summary {
-  /*padding: 10px;*/
-  list-style: none;
-}
-
-.info p {
-  cursor: auto;
-  background: #eee;
-  padding: 15px;
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 35px;
-  border-radius: 4px;
-  z-index: 10;
-}
-
-.info p::before {
-  content: "";
-  width: 0;
-  height: 0;
-  border-left: 8px solid transparent;
-  border-right: 8px solid transparent;
-  border-bottom: 12px solid #eee;
-  top: -10px;
-  position: absolute;
-  left: 10px;
-}
-
 .status {
   text-align: right;
   padding: 0.75rem 1rem;

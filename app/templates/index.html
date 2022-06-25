@@ -10,7 +10,7 @@
     <link rel="stylesheet" type="text/css"
         href="{{ 'static/site.css' if hass else url_for('static',filename='site.css') }}" />
     {% if show_video %}
-    <script src="https://cdn.jsdelivr.net/npm/hls.js@1"></script>
+    <link href="https://vjs.zencdn.net/7.19.2/video-js.css" rel="stylesheet" />
     {% endif %}
     <script src="{{ 'static/site.js' if hass else url_for('static', filename='site.js') }}"></script>
 </head>
@@ -82,10 +82,11 @@
                         </button>
                     </header>
                     <div class="card-image has-text-centered">
-                        {% if show_video %}
-                        <video controls autoplay poster="{{camera.img}}" data-src="{{camera.hls_url}}/stream.m3u8">
+                        {% if show_video and camera.enabled %}
+                        <video-js id="video-{{camera.name_uri}}" class="video-js vjs-live refresh_poster" controls preload="none" poster="{{camera.img}}" data-setup='{"liveui": true, "fluid": true}' data-src="{{camera.hls_url}}stream.m3u8" width="100%">
+                            <source src="{{camera.hls_url}}stream.m3u8" type="application/x-mpegURL">
                             <img class="refresh_img" src="{{camera.img}}" width="100%" />
-                        </video>
+                        </video-js>
                         {% elif camera.img %}
                         <img class="refresh_img" src="{{camera.img}}" width="100%" />
                         {% elif camera.enabled and not camera.img %}
@@ -122,6 +123,7 @@
             </p>
         </div>
     </footer>
+    <script src="https://vjs.zencdn.net/7.19.2/video.min.js"></script>
 </body>
 
 </html>
