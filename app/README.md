@@ -25,7 +25,7 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 
 ## Supported Cameras
 
-![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-no-inactive.svg)
+![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-yes-success.svg)
 ![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
 ![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
 ![Wyze Cam Floodlight](https://img.shields.io/badge/wyze_floodlight-yes-success.svg)

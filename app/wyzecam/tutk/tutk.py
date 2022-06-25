@@ -799,22 +799,20 @@ def av_client_start(
              - pn_serv_type: The user-defined service type set when an AV server starts. Can be NULL.
     """
 
-    AVC_in = AVClientStartInConfig()
-    AVC_in.cb = sizeof(AVC_in)
-    AVC_in.iotc_session_id = session_id
-    AVC_in.iotc_channel_id = channel_id
-    AVC_in.timeout_sec = timeout_secs
-    AVC_in.account_or_identity = username
-    AVC_in.password_or_token = password
-    AVC_in.resend = resend
-    AVC_in.security_mode = 2
-    AVC_in.auth_type = 0
-    AVC_in.sync_recv_data = 0
+    avc_in = AVClientStartInConfig()
+    avc_in.cb = sizeof(avc_in)
+    avc_in.iotc_session_id = session_id
+    avc_in.iotc_channel_id = channel_id
+    avc_in.timeout_sec = timeout_secs
+    avc_in.account_or_identity = username
+    avc_in.password_or_token = password
+    avc_in.resend = resend
+    avc_in.security_mode = 2
 
-    AVC_out = AVClientStartOutConfig()
-    AVC_out.cb = sizeof(AVC_out)
+    avc_out = AVClientStartOutConfig()
+    avc_out.cb = sizeof(avc_out)
 
-    av_chan_id = tutk_platform_lib.avClientStartEx(byref(AVC_in), byref(AVC_out))
+    av_chan_id = tutk_platform_lib.avClientStartEx(byref(avc_in), byref(avc_out))
     return av_chan_id
 
 
