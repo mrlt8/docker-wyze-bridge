@@ -34,21 +34,20 @@
         </nav>
         <div id="filter" class="tabs">
             <ul>
-              <li filter="all" class="is-active"><a>All</a></li>
-              <li filter="enabled"><a>Enabled</a></li>
-              <li filter="connected"><a>Connected</a></li>
+                <li filter="enabled" class="is-active"><a><span class="icon is-small"><i class="fas fa-plug-circle-check"></i></span><span>Enabled</span></a></li>
+                <li filter="all"><a><span class="icon is-small"><i class="fas fa-users-viewfinder"></i></span><span>All</span></a></li>
             </ul>
           </div>
         <div class="cameras columns is-multiline">
             {% for camera in cameras.values() %}
-            <div id="{{ camera.name_uri }}" draggable="true" class="camera column" enabled="{{camera.enabled}}" connected="{{camera.connected}}">
+            <div id="{{ camera.name_uri }}" draggable="true" class="camera column {{'is-hidden' if not camera.enabled}}" enabled="{{camera.enabled}}" connected="{{camera.connected}}">
                 <div class="card">
                     <header class="card-header">
                         <div class="card-header-title">
                             <div class="dropdown is-hoverable">
                                 <div class="dropdown-trigger">
                                     <span class="icon">
-                                        <i class="fas fa-circle-info" aria-hidden="true"></i>
+                                        <i class="fas fa-circle-info has-text-{{'grey-lighter' if not camera.enabled else 'success' if camera.connected else 'danger'}}" aria-hidden="true"></i>
                                     </span>
                                 </div>
                                 <div class="dropdown-menu" role="menu">
@@ -76,8 +75,8 @@
                         </div>
                         <span style="cursor: move; flex-grow: 2"></span>
                         <button class="card-header-icon hide-image" uri={{camera.name_uri}}>
-                            <span class="status has-text-{{'dark' if not camera.enabled else 'success' if camera.connected else 'danger'}} icon">
-                                <i class="fas fa-image" aria-hidden="true"></i>
+                            <span class="icon">
+                                <i class="fas fa-angle-down" aria-hidden="true"></i>
                             </span>
                         </button>
                     </header>
@@ -95,12 +94,11 @@
                         <section class="section is-small has-background-black has-text-white no-preview">
                             <span class="icon-text">
                                 <span class="icon">
-                                    <i class="fas fa-link-slash"></i>
+                                    <i class="fas fa-video-slash"></i>
                                 </span>
                                 <span>Preview not available</span>
                             </span>
                         </section>
-
                         {% endif %}
                     </div>
                     <footer class="card-footer">

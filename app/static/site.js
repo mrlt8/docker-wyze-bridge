@@ -36,7 +36,7 @@ function applyPreferences() {
   const grid = document.querySelectorAll(".camera");
   for (var i = 0, len = grid.length; i < len; i++) {
     grid[i].classList.forEach((item) => {
-      if (item.startsWith("is-")) {
+      if (item.match(/^is\-\d/)) {
         grid[i].classList.remove(item);
       }
     });
@@ -182,15 +182,23 @@ setInterval(refresh_imgs, 30000); // refresh images every 30 seconds
 
 document.addEventListener("DOMContentLoaded", () => {
   let clickHide = document.getElementsByClassName("hide-image");
-  function hide_img() {
+  function hideImg() {
     let uri = this.getAttribute("uri");
+    let icon = this.getElementsByClassName("fas")[0];
+    if (icon.classList.contains("fa-angle-down")) {
+      icon.classList.remove("fa-angle-down");
+      icon.classList.add("fa-angle-up");
+    } else {
+      icon.classList.remove("fa-angle-up");
+      icon.classList.add("fa-angle-down");
+    }
     var card = document
       .getElementById(uri)
       .getElementsByClassName("card-image")[0];
     card.classList.toggle("is-hidden");
   }
   for (var i = 0; i < clickHide.length; i++) {
-    clickHide[i].addEventListener("click", hide_img);
+    clickHide[i].addEventListener("click", hideImg);
   }
 });
 
