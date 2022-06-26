@@ -469,9 +469,13 @@ class WyzeBridge:
             + ["-rtsp_transport", "tcp", "-i", f"rtsp://0.0.0.0:8554/{cam_name}"]
             + ["-f", "image2", "-frames:v", "1", "-y", img]
         )
-        p = Popen(ffmpeg_cmd)
+        ffmpeg = Popen(ffmpeg_cmd)
         if wait:
-            p.wait()
+            try:
+                ffmpeg.wait(30)
+            except TimeoutExpired:
+                ffmpeg.kill()
+                return
         return img
 
 
