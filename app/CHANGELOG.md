@@ -1,3 +1,10 @@
+## Changes in v1.6.7
+
+- **NEW** Web UI: Embed HLS video using videojs. Thanks @dsheehan!
+  - Can be enabled with `WB_SHOW_VIDEO=True`
+- **FIXED** Web UI: RTSP snapshots for cameras with spaces in their name.
+- **CHANGED** Web UI: Defaults to show enabled cameras on load.
+
 ## Changes in v1.6.6
 
 - **NEW**: Initial ssupport for the original WyzeCam v1 (WYZEC1). #57 Thanks @jamescochran @Webtron18!
