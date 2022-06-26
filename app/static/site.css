@@ -61,7 +61,7 @@ video {
   top: 0;
 }
 
-table.dropdown-item td {
+.dropdown-item td {
   max-width: 250px;
   word-wrap: break-word;
 }
@@ -70,6 +70,6 @@ span .fa-arrows-rotate {
   cursor: pointer;
 }
 
-div.card-image:has(.loading-preview) {
-  background-color: #f1f2f3;
+.card-image:has(.loading-preview) {
+  background-color: #000;
 }

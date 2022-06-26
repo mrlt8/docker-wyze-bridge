@@ -31,7 +31,7 @@ def create_app():
                 number_of_columns=number_of_columns,
                 hass=wb.hass,
                 version=wb.version,
-                show_video=wb.show_video
+                show_video=wb.show_video,
             )
         )
         resp.set_cookie("number_of_columns", str(number_of_columns))

@@ -470,7 +470,7 @@ class WyzeBridge:
             + ["-f", "image2", "-frames:v", "1", "-y", img]
         )
         Popen(ffmpeg_cmd)
-        return img
+        return f"img/{cam_name}.jpg"
 
 
 mode_type = {0: "P2P", 1: "RELAY", 2: "LAN"}

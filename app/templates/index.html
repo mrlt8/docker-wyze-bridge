@@ -83,7 +83,7 @@
                     </header>
                     <div class="card-image has-text-centered">
                         {% if show_video and camera.enabled %}
-                        <video-js id="video-{{camera.name_uri}}" class="video-js vjs-live refresh_poster" controls preload="none" poster="{{camera.img}}" data-setup='{"liveui": true, "fluid": true}' data-src="{{camera.hls_url}}stream.m3u8" width="100%">
+                        <video-js id="video-{{camera.name_uri}}" class="video-js vjs-live vjs-big-play-centered {{'loading-preview' if not camera.img else 'refresh_poster'}}" controls preload="none" poster="{{camera.img if camera.img else url_for('static',filename='loading.svg')}}" data-setup='{"liveui": true, "fluid": true}' data-src="{{camera.hls_url}}stream.m3u8" width="100%">
                             <source src="{{camera.hls_url}}stream.m3u8" type="application/x-mpegURL">
                             <img class="refresh_img" src="{{camera.img}}" width="100%" />
                         </video-js>
