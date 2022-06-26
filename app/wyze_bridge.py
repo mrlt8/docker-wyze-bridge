@@ -460,16 +460,18 @@ class WyzeBridge:
             r[cam.name_uri] = d
         return r
 
-    def rtsp_snap(self, cam_name: str) -> str:
+    def rtsp_snap(self, cam_name: str, wait: bool = True) -> str:
         """Take an rtsp snapshot with ffmpeg."""
-        img = f"{self.img_path}{cam_name}.jpg"
+        img = f"{self.img_path}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
         ffmpeg_cmd = (
             ["ffmpeg", "-loglevel", "fatal", "-threads", "1"]
             + ["-analyzeduration", "50", "-probesize", "50"]
             + ["-rtsp_transport", "tcp", "-i", f"rtsp://0.0.0.0:8554/{cam_name}"]
             + ["-f", "image2", "-frames:v", "1", "-y", img]
         )
-        Popen(ffmpeg_cmd)
+        p = Popen(ffmpeg_cmd)
+        if wait:
+            p.wait()
         return img
 
 

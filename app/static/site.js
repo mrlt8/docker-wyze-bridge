@@ -19,13 +19,27 @@ function getCookie(name, def = null) {
   return def;
 }
 
+let refresh_interval = null; // refresh images interval
+let refresh_period = -1; // refresh images time period in seconds
+
+document.addEventListener("DOMContentLoaded", applyPreferences);
+
 document.addEventListener("DOMContentLoaded", () => {
   const select = document.querySelector("#select_number_of_columns");
-  applyPreferences();
 
   select.addEventListener("change", (e) => {
     const repeatNumber = select.value;
     setCookie("number_of_columns", repeatNumber);
+    applyPreferences();
+  });
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const select = document.querySelector("#select_refresh_period");
+
+  select.addEventListener("change", (e) => {
+    const refresh_period = select.value;
+    setCookie("refresh_period", refresh_period);
     applyPreferences();
   });
 });
@@ -54,6 +68,18 @@ function applyPreferences() {
       // only swap if they both exist
       swap(a, b);
     cameras = [...document.querySelectorAll(".camera")];
+  }
+
+  const new_period = getCookie("refresh_period", 30);
+  if(refresh_period != new_period)
+  {
+    refresh_period = new_period
+    console.debug("applyPreferences refresh_period", refresh_period);
+    clearInterval(refresh_interval);
+    if (refresh_period > 0)
+    {
+      refresh_interval = setInterval(refresh_imgs, refresh_period * 1000);
+    }
   }
 }
 
@@ -159,9 +185,14 @@ function refresh_img(imgUrl) {
 
 function refresh_imgs() {
   console.debug("refresh_imgs " + Date.now());
-  document.querySelectorAll(".refresh_img").forEach(function (image){
+  document.querySelectorAll(".refresh_img").forEach(function (image) {
     let url = image.getAttribute("src");
-    (u => fetch(u).then(r => (refresh_img(u))))(url);
+    fetch(url).then(_ => {
+      // reduce img flicker by pre-decode, before swapping it
+      const tmp = new Image();
+      tmp.src = url;
+      return tmp.decode();
+    }).then(() => refresh_img(url))
   });
 }
 
@@ -177,8 +208,6 @@ document.addEventListener("DOMContentLoaded", () => {
     setCookie("camera_order", newOrdering);
   });
 });
-
-setInterval(refresh_imgs, 30000); // refresh images every 30 seconds
 
 document.addEventListener("DOMContentLoaded", () => {
   let clickHide = document.getElementsByClassName("hide-image");

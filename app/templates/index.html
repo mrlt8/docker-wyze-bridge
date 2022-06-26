@@ -20,15 +20,24 @@
         <nav class="level">
             <div class="level-left">
                 <div class="level-item">
-                    <p class="subtitle">Detected <strong>{{cameras|length}}</strong> cameras</p>
+                    <p class="subtitle">Detected <strong>{{ cameras|length }}</strong> cameras</p>
                     </p>
                 </div>
             </div>
-            <div class="control has-icons-left level-right is-hidden-mobile">
-                <input class="input" id="select_number_of_columns" type="number" min="1" max="6"
-                    value="{{ number_of_columns }}" />
-                <div class="icon is-small is-left">
-                    <i class="fas fa-table-columns"></i>
+            <div class="level-right">
+                <div class="control has-icons-left level-item is-hidden-mobile">
+                    <input class="input" id="select_number_of_columns" type="number" min="1" max="6"
+                           value="{{ number_of_columns }}" title="Number of columns"/>
+                    <div class="icon is-small is-left">
+                        <i class="fas fa-table-columns"></i>
+                    </div>
+                </div>
+                <div class="control has-icons-left level-item">
+                    <input class="input" id="select_refresh_period" type="number" min="0" max="600"
+                           value="{{ refresh_period }}" title="Refresh (seconds)"/>
+                    <div class="icon is-small is-left">
+                        <i class="fa-solid fa-rotate"></i>
+                    </div>
                 </div>
             </div>
         </nav>

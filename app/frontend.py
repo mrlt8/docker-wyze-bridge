@@ -1,7 +1,8 @@
 import logging
+from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import Flask, make_response, render_template, request, send_from_directory
+from flask import Flask, make_response, render_template, request, send_from_directory, abort
 
 import wyze_bridge
 from wyze_bridge import WyzeBridge
@@ -23,6 +24,7 @@ def create_app():
     @app.route("/")
     def index():
         number_of_columns = int(request.cookies.get("number_of_columns", default="2"))
+        refresh_period = int(request.cookies.get("refresh_period", default="30"))
         log.info(f"number_of_columns={number_of_columns}")
         resp = make_response(
             render_template(
@@ -31,7 +33,8 @@ def create_app():
                 number_of_columns=number_of_columns,
                 hass=wb.hass,
                 version=wb.version,
-                show_video=wb.show_video
+                show_video=wb.show_video,
+                refresh_period=refresh_period
             )
         )
         resp.set_cookie("number_of_columns", str(number_of_columns))
@@ -49,11 +52,17 @@ def create_app():
         resp = {}
         for name, cam in wb.get_cameras().items():
             if cam["connected"]:
-                resp[name] = wb.rtsp_snap(name)
+                resp[name] = wb.rtsp_snap(name, wait=False)
         return resp
 
     @app.route("/img/<path:path>")
     def img(path: str):
+        """Use ffmpeg to take a snapshot from the rtsp stream."""
+        wait: bool = request.args.get('wait', default=True, type=bool)
+        uri = Path(path).stem
+        if not uri in wb.get_cameras():
+            abort(404)
+        wb.rtsp_snap(uri, wait)
         return send_from_directory(wb.img_path, path)
 
     return app
