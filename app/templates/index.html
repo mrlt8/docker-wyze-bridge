@@ -109,8 +109,16 @@
                                 <span>Preview not available</span>
                             </span>
                         </section>
-
                         {% endif %}
+                        {% if camera.img %}
+                        <div class="card-content is-overlay has-text-right cam-overlay" >
+                            <button class="button is-primary refresh-preview" img="{{camera.img}}" title="Refresh image preview">
+                                <span class="icon is-small">
+                                  <i class="fas fa-arrows-rotate"></i>
+                                </span>
+                              </button>
+                         </div>
+                         {% endif %}
                     </div>
                     <footer class="card-footer">
                         <a href="{{camera.hls_url}}" class="card-footer-item">HLS</a>

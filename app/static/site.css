@@ -73,3 +73,10 @@ span .fa-arrows-rotate {
 .card-image:has(.loading-preview) {
   background-color: #000;
 }
+.cam-overlay {
+  display: none;
+  transition: 0.3s;
+}
+.card:hover .cam-overlay {
+  display: block;
+}
