@@ -171,7 +171,7 @@ function refresh_img(imgUrl) {
 
   // update video.poster
   document.querySelectorAll(`[poster="${imgUrl}"]`).forEach(function (e) {
-    e.poster = imgUrl.replace("img/", "snapshot/");
+    e.setAttribute("poster", imgUrl.replace("img/", "snapshot/"));
   });
 
   // update video js div for poster
@@ -189,7 +189,7 @@ function refresh_imgs() {
       .then((_) => {
         // reduce img flicker by pre-decode, before swapping it
         const tmp = new Image();
-        tmp.src = url;
+        tmp.src = url.replace("img/", "snapshot/");
         return tmp.decode();
       })
       .then(() => refresh_img(url));
@@ -282,27 +282,59 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-  [...document.getElementsByClassName("loading-preview")].forEach(
-    (placeholder) => {
-      let cam_name = placeholder.getAttribute("cam");
-      if (cam_name === null) {
-        cam_name = placeholder.getAttribute("id").replace("video-", "");
-      }
-      let cam_img = "snapshot/" + cam_name + ".jpg";
-      let snapshot = new Image();
-      snapshot.src = cam_img;
-      snapshot.decode().then(function () {
+  function loadPreview(placeholder) {
+    let cam_name = placeholder.getAttribute("cam");
+    let poster = placeholder.getElementsByClassName("vjs-poster");
+    if (cam_name === null) {
+      cam_name = placeholder.getAttribute("id").replace("video-", "");
+    }
+    let cam_img = "snapshot/" + cam_name + ".jpg";
+    let snapshot = new Image();
+    snapshot.src = cam_img;
+    snapshot
+      .decode()
+      .then(() => {
         placeholder.classList.remove("loading-preview");
-        if (placeholder.getAttribute("id") == "video-" + cam_name) {
-          let poster = placeholder.querySelectorAll(".vjs-poster")[0];
+        if (poster.length) {
           placeholder.setAttribute("poster", cam_img);
-          poster.style.backgroundImage = `url("${cam_img}")`;
+          poster[0].style.backgroundImage = `url("${cam_img}")`;
           placeholder.classList.add("refresh_poster");
         } else {
           placeholder.classList.add("refresh_img");
           placeholder.src = cam_img;
         }
+      })
+      .catch(() => {
+        setTimeout(() => {
+          loadPreview(placeholder);
+        }, 30000);
       });
-    }
+  }
+  function updateSnapshot(e) {
+    console.log("click");
+    let button = e.target.closest("button");
+    button.disabled = true;
+    button.getElementsByClassName("fas")[0].classList.add("fa-pulse");
+    button.parentElement.style.display = "block";
+    let img = document.querySelector(
+      "#" + button.getAttribute("cam") + " div div img.refresh_img"
+    );
+    let img_src = img.src.replace("img/", "snapshot/");
+    fetch(img_src).then((_) => {
+      let snapshot = new Image();
+      snapshot.src = img_src;
+      snapshot.decode().then(() => {
+        img.src = snapshot.src;
+        button.disabled = false;
+        button.getElementsByClassName("fas")[0].classList.remove("fa-pulse");
+        button.parentElement.style.display = null;
+      });
+    });
+  }
+  [...document.getElementsByClassName("loading-preview")].forEach(
+    (placeholder) => loadPreview(placeholder)
   );
+  [...document.getElementsByClassName("update-preview")].forEach((up) => {
+    up.addEventListener("click", updateSnapshot);
+  });
 });
