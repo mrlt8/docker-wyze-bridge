@@ -1,7 +1,7 @@
 import logging
 from pathlib import Path
 from urllib.parse import urlparse
-
+from werkzeug.exceptions import NotFound
 from flask import (
     Flask,
     abort,
@@ -65,9 +65,10 @@ def create_app():
     @app.route("/img/<path:img_file>")
     def img(img_file: str):
         """Serve static image if image exists else take a new snapshot from the rtsp stream."""
-        if Path(wb.img_path + img_file).exists():
+        try:
             return send_from_directory(wb.img_path, img_file)
-        return rtsp_snapshot(img_file)
+        except NotFound:
+            return rtsp_snapshot(img_file)
 
     return app
 
