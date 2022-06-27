@@ -53,29 +53,21 @@ def create_app():
             urlparse(request.root_url).hostname
         )  # return json, for introspection or for future ajax UI
 
-    @app.route("/rtsp_snap")
-    def rtsp_snapshot():
+    @app.route("/snapshot/<path:img_file>")
+    def rtsp_snapshot(img_file: str):
         """Use ffmpeg to take a snapshot from the rtsp stream."""
-        resp = {}
-        for name, cam in wb.get_cameras().items():
-            if cam["connected"]:
-                resp[name] = wb.rtsp_snap(name, wait=False)
-        return resp
-
-    @app.route("/img/<path:img_file>")
-    def img(img_file: str):
-        """
-        Serve static image if image exists or take a new snapshot from the rtsp stream.
-
-        rtsp arg to wait for new image from rtsp stream.
-        """
-        if request.args.get("rtsp") is None and Path(wb.img_path + img_file).exists():
-            return send_from_directory(wb.img_path, img_file)
         uri = Path(img_file).stem
         if not uri in wb.get_cameras():
             abort(404)
         wb.rtsp_snap(uri, wait=True)
         return send_from_directory(wb.img_path, img_file)
+
+    @app.route("/img/<path:img_file>")
+    def img(img_file: str):
+        """Serve static image if image exists else take a new snapshot from the rtsp stream."""
+        if Path(wb.img_path + img_file).exists():
+            return send_from_directory(wb.img_path, img_file)
+        return rtsp_snapshot(img_file)
 
     return app
 
