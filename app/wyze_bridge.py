@@ -453,9 +453,9 @@ class WyzeBridge:
             d["rtsp_url"] = base_rtsp + cam.name_uri
             d["name_uri"] = cam.name_uri
             d["enabled"] = cam.nickname in self.streams
+            d["connected"] = False
             if (stream := self.streams.get(cam.nickname)) and "connected" in stream:
-                stream = self.streams[cam.nickname]["connected"].is_set()
-            d["connected"] = stream
+                d["connected"] = self.streams[cam.nickname]["connected"].is_set()
             d["img"] = f"img/{img}" if os.path.exists(self.img_path + img) else None
             r[cam.name_uri] = d
         return r
