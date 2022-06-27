@@ -166,18 +166,18 @@ function refresh_img(imgUrl) {
 
   // update img.src
   document.querySelectorAll(`[src="${imgUrl}"]`).forEach(function (e) {
-    e.src = imgUrl;
+    e.src = imgUrl.replace("img/", "snapshot/");
   });
 
   // update video.poster
   document.querySelectorAll(`[poster="${imgUrl}"]`).forEach(function (e) {
-    e.poster = imgUrl;
+    e.poster = imgUrl.replace("img/", "snapshot/");
   });
 
   // update video js div for poster
   const styleString = `background-image: url("${imgUrl}");`;
   document.querySelectorAll(`[style='${styleString}']`).forEach(function (e) {
-    e.style = styleString;
+    e.style = styleString.replace("img/", "snapshot/");
   });
 }
 
@@ -305,7 +305,4 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
   );
-  [...document.getElementsByClassName("refresh_img")].forEach((img) => {
-    img.src = img.src.replace("img/", "snapshot/");
-  });
 });
