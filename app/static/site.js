@@ -71,13 +71,11 @@ function applyPreferences() {
   }
 
   const new_period = getCookie("refresh_period", 30);
-  if(refresh_period != new_period)
-  {
-    refresh_period = new_period
+  if (refresh_period != new_period) {
+    refresh_period = new_period;
     console.debug("applyPreferences refresh_period", refresh_period);
     clearInterval(refresh_interval);
-    if (refresh_period > 0)
-    {
+    if (refresh_period > 0) {
       refresh_interval = setInterval(refresh_imgs, refresh_period * 1000);
     }
   }
@@ -187,12 +185,14 @@ function refresh_imgs() {
   console.debug("refresh_imgs " + Date.now());
   document.querySelectorAll(".refresh_img").forEach(function (image) {
     let url = image.getAttribute("src");
-    fetch(url).then(_ => {
-      // reduce img flicker by pre-decode, before swapping it
-      const tmp = new Image();
-      tmp.src = url;
-      return tmp.decode();
-    }).then(() => refresh_img(url))
+    fetch(url)
+      .then((_) => {
+        // reduce img flicker by pre-decode, before swapping it
+        const tmp = new Image();
+        tmp.src = url;
+        return tmp.decode();
+      })
+      .then(() => refresh_img(url));
   });
 }
 
@@ -281,52 +281,31 @@ document.addEventListener("DOMContentLoaded", () => {
   checkAPI.addEventListener("click", getGithub);
 });
 
-function retspPreview() {
-  console.debug("retspPreview " + Date.now());
-  fetch("rtsp_snap")
-    .then((resp) => resp.json())
-    .then((json_data) => {
-      let cameras = Object.keys(json_data);
-      if (cameras.length === 0) {
-        console.log("try again");
-        setTimeout(() => {
-          retspPreview();
-        }, 5000);
-      }
-      cameras.forEach((camera) => {
-        let image = json_data[camera];
-        loadPreview(camera, image);
-      });
-    });
-}
-function loadPreview(cam_name, image) {
-  let preview = document.querySelector(".loading-preview");
-  if (preview) {
-    fetch(image).then((resp) => {
-      if (resp.status == 404) {
-        setTimeout(() => {
-          loadPreview(cam_name, image);
-        }, 1000);
-      } else {
-        if (preview.getAttribute("id") == "video-" + cam_name) {
-          let poster = preview.querySelectorAll(".vjs-poster")[0];
-          preview.classList.remove("loading-preview");
-          preview.setAttribute("poster", image);
-          poster.style.backgroundImage = `url("${image}")`;
-          preview.classList.add("refresh_poster");
-        } else if (preview.getAttribute("cam") == cam_name) {
-          preview.classList.remove("loading-preview");
-          preview.classList.add("refresh_img");
-          preview.src = image;
-        }
-      }
-    });
-  }
-}
 document.addEventListener("DOMContentLoaded", () => {
-  let preview = document.querySelector(".loading-preview");
-  if (preview !== null) {
-    retspPreview();
-  }
-  setInterval(retspPreview, 30000);
+  [...document.getElementsByClassName("loading-preview")].forEach(
+    (placeholder) => {
+      let cam_name = placeholder.getAttribute("cam");
+      if (cam_name === null) {
+        cam_name = placeholder.getAttribute("id").replace("video-", "");
+      }
+      let cam_img = "snapshot/" + cam_name + ".jpg";
+      let snapshot = new Image();
+      snapshot.src = cam_img;
+      snapshot.decode().then(function () {
+        placeholder.classList.remove("loading-preview");
+        if (placeholder.getAttribute("id") == "video-" + cam_name) {
+          let poster = placeholder.querySelectorAll(".vjs-poster")[0];
+          placeholder.setAttribute("poster", cam_img);
+          poster.style.backgroundImage = `url("${cam_img}")`;
+          placeholder.classList.add("refresh_poster");
+        } else {
+          placeholder.classList.add("refresh_img");
+          placeholder.src = cam_img;
+        }
+      });
+    }
+  );
+  [...document.getElementsByClassName("refresh_img")].forEach((img) => {
+    img.src = img.src.replace("img/", "snapshot/");
+  });
 });
