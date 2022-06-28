@@ -8,7 +8,7 @@ Once again, huge thanks to @dsheehan!
 - **NEW** Web-UI: Refresh button to update a snapshot on-demand.
 - **FIXED** Zombie processes should be gone now that we're waiting for the images to be returned from ffmpeg.
 
-**Full Changelog**: https://github.com/mrlt8/docker-wyze-bridge/compare/v1.6.7...v1.6.7
+**Full Changelog**: https://github.com/mrlt8/docker-wyze-bridge/compare/v1.6.7...v1.6.8
 
 ## Changes in v1.6.7
 
