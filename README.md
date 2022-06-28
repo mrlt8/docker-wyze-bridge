@@ -28,6 +28,18 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
+## Changes in v1.6.8
+
+Once again, huge thanks to @dsheehan!
+
+- **UPDATED** Web-UI: Customizable refresh interval, and improved /img/cam-name.jpg. Thanks @dsheehan!
+  - `:5000/snapshot/cam-name.jpg` - Always capture a new snapshot from the rtsp stream. This process may take a couple of seconds.
+  - `:5000/img/cam-name.jpg` - Will attempt to return an existing snapshot or capture a new one from the the rtsp stream.
+- **NEW** Web-UI: Refresh button to update a snapshot on-demand.
+- **FIXED** Zombie processes should be gone now that we're waiting for the images to be returned from ffmpeg.
+
+**Full Changelog**: https://github.com/mrlt8/docker-wyze-bridge/compare/v1.6.7...v1.6.7
+
 ## Changes in v1.6.7
 
 - **NEW** Web UI: Embed HLS video using videojs. Thanks @dsheehan!
@@ -41,8 +53,6 @@ See [basic usage](#basic-usage) for additional information.
 - **NEW**: WEB-UI - Automated RTSP snapshots while page is open. #437
 - **FIXED**: `panic: assignment to entry in nil map` in rtsp-simple-server. #419
 - **UPDATED**: rtsp-simple-server > [v0.19.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.19.2)
-
-**Full Changelog**: https://github.com/mrlt8/docker-wyze-bridge/compare/v1.6.5...v1.6.6
 
 ## Changes in v1.6.5
 
@@ -75,6 +85,7 @@ Huge thanks goes to @dsheehan for building and adding a web-ui for the bridge!
 
 ## Features
 
+- Web-UI to view all Wyze cameras in one place.
 - Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS/Low-Latency HLS.
 - Access to HD *or* SD stream with configurable bitrate.
 - Local and remote access to any of the cams on your account.
@@ -82,7 +93,7 @@ Huge thanks goes to @dsheehan for building and adding a web-ui for the bridge!
 - Support for Wyze 2FA.
 - Ability to rotate video for Wyze Doorbell.
 - Ability to record streams locally.
-- Ability to take snapshots on an interval.
+- Ability to take snapshots on an interval or on demand.
 - Ability to live stream directly from the bridge.
 - Ability to send a IFTTT webhook when a camera is offline (-90).
 
