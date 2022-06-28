@@ -19,32 +19,27 @@ function getCookie(name, def = null) {
   return def;
 }
 
-document.addEventListener("DOMContentLoaded", () => {
-  const videos = document.querySelectorAll("video");
+let refresh_interval = null; // refresh images interval
+let refresh_period = -1; // refresh images time period in seconds
 
-  for (var i = 0; i < videos.length; i++) {
-    var video = videos[i];
-    var videoSrc = video.getAttribute("data-src");
-    if (Hls.isSupported()) {
-      var config = {
-        liveDurationInfinity: true,
-      };
-      var hls = new Hls(config);
-      hls.loadSource(videoSrc);
-      hls.attachMedia(video);
-    } else if (video.canPlayType("application/vnd.apple.mpegurl")) {
-      video.src = videoSrc;
-    }
-  }
-});
+document.addEventListener("DOMContentLoaded", applyPreferences);
 
 document.addEventListener("DOMContentLoaded", () => {
   const select = document.querySelector("#select_number_of_columns");
-  applyPreferences();
 
   select.addEventListener("change", (e) => {
     const repeatNumber = select.value;
     setCookie("number_of_columns", repeatNumber);
+    applyPreferences();
+  });
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  const select = document.querySelector("#select_refresh_period");
+
+  select.addEventListener("change", (e) => {
+    const refresh_period = select.value;
+    setCookie("refresh_period", refresh_period);
     applyPreferences();
   });
 });
@@ -55,7 +50,7 @@ function applyPreferences() {
   const grid = document.querySelectorAll(".camera");
   for (var i = 0, len = grid.length; i < len; i++) {
     grid[i].classList.forEach((item) => {
-      if (item.startsWith("is-")) {
+      if (item.match(/^is\-\d/)) {
         grid[i].classList.remove(item);
       }
     });
@@ -73,6 +68,16 @@ function applyPreferences() {
       // only swap if they both exist
       swap(a, b);
     cameras = [...document.querySelectorAll(".camera")];
+  }
+
+  const new_period = getCookie("refresh_period", 30);
+  if (refresh_period != new_period) {
+    refresh_period = new_period;
+    console.debug("applyPreferences refresh_period", refresh_period);
+    clearInterval(refresh_interval);
+    if (refresh_period > 0) {
+      refresh_interval = setInterval(refresh_imgs, refresh_period * 1000);
+    }
   }
 }
 
@@ -156,18 +161,44 @@ function sortable(parent, selector, onUpdate = null) {
   parent.addEventListener("dragstart", _onDragStart);
 }
 
-function refresh_img(imgElement) {
-  const url = imgElement.src;
-  ((u) => fetch(u).then((response) => (imgElement.src = u)))(url);
+/**
+ * Update camera image.
+ * Self contained to fetch the new url, pre-decode it, and update the img.src, video.poster and videojs div overlay.
+ * @param oldUrl the img url, could either be img/cam-name.jpg or snapshot/cam-name.jpg
+ * @returns {Promise<void>}
+ */
+async function update_img(oldUrl) {
+  let newUrl = oldUrl.replace("img/", "snapshot/");
+  console.debug("update_img", oldUrl, newUrl);
+
+  await fetch(newUrl);
+  // reduce img flicker by pre-decode, before swapping it
+  const tmp = new Image();
+  tmp.src = newUrl;
+  await tmp.decode();
+
+  // update img.src
+  document.querySelectorAll(`[src="${oldUrl}"],[src="${newUrl}"]`).forEach(function (e) {
+    e.src = newUrl;
+  });
+
+  // update video.poster
+  document.querySelectorAll(`[poster="${oldUrl}"],[poster="${newUrl}"]`).forEach(function (e) {
+    e.setAttribute("poster", newUrl);
+  });
+
+  // update video js div for poster
+  document.querySelectorAll(`[style='background-image: url("${oldUrl}");'],[style='background-image: url("${newUrl}");']`).forEach(function (e) {
+    e.style = `background-image: url("${newUrl}");`;
+  });
 }
 
 function refresh_imgs() {
   console.debug("refresh_imgs " + Date.now());
-  var images = document.querySelectorAll(".refresh_img");
-  for (var i = 0; i < images.length; i++) {
-    var image = images[i];
-    refresh_img(image);
-  }
+  document.querySelectorAll(".refresh_img").forEach(function (image) {
+    let url = image.getAttribute("src");
+    update_img(url);
+  });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -183,19 +214,25 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-setInterval(refresh_imgs, 30000); // refresh images every 30 seconds
-
 document.addEventListener("DOMContentLoaded", () => {
   let clickHide = document.getElementsByClassName("hide-image");
-  function hide_img() {
+  function hideImg() {
     let uri = this.getAttribute("uri");
+    let icon = this.getElementsByClassName("fas")[0];
+    if (icon.classList.contains("fa-angle-down")) {
+      icon.classList.remove("fa-angle-down");
+      icon.classList.add("fa-angle-up");
+    } else {
+      icon.classList.remove("fa-angle-up");
+      icon.classList.add("fa-angle-down");
+    }
     var card = document
       .getElementById(uri)
       .getElementsByClassName("card-image")[0];
     card.classList.toggle("is-hidden");
   }
   for (var i = 0; i < clickHide.length; i++) {
-    clickHide[i].addEventListener("click", hide_img);
+    clickHide[i].addEventListener("click", hideImg);
   }
 });
 
@@ -257,45 +294,36 @@ document.addEventListener("DOMContentLoaded", () => {
   checkAPI.addEventListener("click", getGithub);
 });
 
-function rtsp_image() {
-  console.debug("rtsp_image " + Date.now());
-  fetch("rtsp_snap")
-    .then((resp) => resp.json())
-    .then((json_data) => {
-      let cameras = Object.keys(json_data);
-      if (cameras.length === 0) {
-        console.log("try again");
-        setTimeout(() => {
-          rtsp_image();
-        }, 5000);
-      }
-      cameras.forEach((camera) => {
-        let image = json_data[camera];
-        load_image(camera, image);
-      });
-    });
-}
-function load_image(camera, image) {
-  let img = document.querySelector(".loading-preview[cam=" + camera + "]");
-  if (!img) {
-    return;
-  }
-  fetch(image).then((resp) => {
-    if (resp.status == 404) {
-      setTimeout(() => {
-        load_image(camera, image);
-      }, 1000);
-    } else {
-      img.classList.remove("loading-preview");
-      img.classList.add("refresh_img");
-      img.src = image;
-    }
-  });
-}
 document.addEventListener("DOMContentLoaded", () => {
-  let preview = document.querySelector(".loading-preview");
-  if (preview !== null) {
-    rtsp_image();
+  async function loadPreview(placeholder) {
+    console.debug("loadPreview", placeholder);
+    let cam = placeholder.getAttribute("data-cam");
+    let oldUrl = `snapshot/${cam}.jpg`;
+    try {
+      await update_img(oldUrl);
+      placeholder.src=oldUrl;
+      placeholder.classList.remove("loading-preview");
+    } catch {
+      setTimeout(() => {
+        loadPreview(placeholder);
+      }, 30000);
+    }
   }
-  setInterval(rtsp_image, 30000);
+  async function updateSnapshot(e) {
+    console.debug("updateSnapshot", e);
+    let button = e.target.closest("button");
+    button.disabled = true;
+    button.getElementsByClassName("fas")[0].classList.add("fa-pulse");
+    button.parentElement.style.display = "block";
+    let cam = button.getAttribute("data-cam");
+    let oldUrl = `img/${cam}.jpg`;
+    await update_img(oldUrl);
+    button.disabled = false;
+    button.getElementsByClassName("fas")[0].classList.remove("fa-pulse");
+    button.parentElement.style.display = null;
+  }
+  document.querySelectorAll('.loading-preview').forEach(loadPreview);
+  document.querySelectorAll('.update-preview').forEach((up) => {
+    up.addEventListener("click", updateSnapshot);
+  });
 });

@@ -46,16 +46,17 @@ PLEASE NOTE: If enabled, anyone on your local network will be able to access/dow
 
 ## Features
 
+- Web-UI to view all Wyze cameras in one place.
 - Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS/Low-Latency HLS.
 - Access to HD *or* SD stream with configurable bitrate.
 - Local and remote access to any of the cams on your account.
 - Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker.
 - Support for Wyze 2FA.
-- Rotate video for Wyze Doorbell.
-- Record streams locally.
-- Take snapshots on an interval.
-- Live stream directly from the bridge.
-- Send a IFTTT webhook when a camera is offline (-90).
+- Ability to rotate video for Wyze Doorbell.
+- Ability to record streams locally.
+- Ability to take snapshots on an interval or on demand.
+- Ability to live stream directly from the bridge.
+- Ability to send a IFTTT webhook when a camera is offline (-90).
 - Start an HTTP server on the camera for local SD card access. ✨ NEW
 - On-demand high quality photos on the camera. ✨ NEW
 - Trigger MQTT/Webhook/HTTP on a motion event. ✨ NEW
