@@ -20,15 +20,24 @@
         <nav class="level">
             <div class="level-left">
                 <div class="level-item">
-                    <p class="subtitle">Detected <strong>{{cameras|length}}</strong> cameras</p>
+                    <p class="subtitle">Detected <strong>{{ cameras|length }}</strong> cameras</p>
                     </p>
                 </div>
             </div>
-            <div class="control has-icons-left level-right is-hidden-mobile">
-                <input class="input" id="select_number_of_columns" type="number" min="1" max="6"
-                    value="{{ number_of_columns }}" />
-                <div class="icon is-small is-left">
-                    <i class="fas fa-table-columns"></i>
+            <div class="level-right">
+                <div class="control has-icons-left level-item is-hidden-mobile">
+                    <input class="input" id="select_number_of_columns" type="number" min="1" max="6"
+                           value="{{ number_of_columns }}" title="Number of columns"/>
+                    <div class="icon is-small is-left">
+                        <i class="fas fa-table-columns"></i>
+                    </div>
+                </div>
+                <div class="control has-icons-left level-item">
+                    <input class="input" id="select_refresh_period" type="number" min="5" max="600"
+                           value="{{ refresh_period }}" title="Refresh (seconds)"/>
+                    <div class="icon is-small is-left">
+                        <i class="fa-solid fa-rotate"></i>
+                    </div>
                 </div>
             </div>
         </nav>
@@ -81,15 +90,13 @@
                         </button>
                     </header>
                     <div class="card-image has-text-centered">
-                        {% if show_video and camera.enabled %}
-                        <video-js id="video-{{camera.name_uri}}" class="video-js vjs-live vjs-big-play-centered {{'loading-preview' if not camera.img else 'refresh_poster'}}" controls preload="none" poster="{{camera.img if camera.img else url_for('static',filename='loading.svg')}}" data-setup='{"liveui": true, "fluid": true}' data-src="{{camera.hls_url}}stream.m3u8" width="100%">
+                        {% if show_video and camera.connected and camera.img %}
+                        <video-js id="video-{{camera.name_uri}}" class="video-js vjs-live vjs-big-play-centered" controls preload="none" poster="{{camera.img}}" data-setup='{"liveui": true, "fluid": true}' data-src="{{camera.hls_url}}stream.m3u8" width="100%">
                             <source src="{{camera.hls_url}}stream.m3u8" type="application/x-mpegURL">
                             <img class="refresh_img" src="{{camera.img}}" width="100%" />
                         </video-js>
-                        {% elif camera.img %}
-                        <img class="refresh_img" src="{{camera.img}}" width="100%" />
-                        {% elif camera.enabled and not camera.img %}
-                        <img class="loading-preview" src="{{url_for('static',filename='loading.svg')}}" cam="{{camera.name_uri}}">
+                        {% elif camera.connected %}
+                        <img class="refresh_img loading-preview" data-cam="{{camera.name_uri}}" src="{{camera.img if camera.img else url_for('static',filename='loading.svg')}}" width="100%" />
                         {% else %}
                         <section class="section is-small has-background-black has-text-white no-preview">
                             <span class="icon-text">
@@ -100,6 +107,15 @@
                             </span>
                         </section>
                         {% endif %}
+                        {% if camera.connected and not show_video %}
+                        <div class="card-content is-overlay has-text-right cam-overlay" >
+                            <button class="button is-primary update-preview" data-cam="{{camera.name_uri}}" title="Update image preview">
+                                <span class="icon is-small">
+                                  <i class="fas fa-arrows-rotate"></i>
+                                </span>
+                              </button>
+                         </div>
+                         {% endif %}
                     </div>
                     <footer class="card-footer">
                         <a href="{{camera.hls_url}}" class="card-footer-item">HLS</a>
