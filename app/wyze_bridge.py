@@ -36,7 +36,7 @@ class WyzeBridge:
         self.healthcheck: bool = bool(os.getenv("HEALTHCHECK"))
         self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
         self.img_path: str = "/%s/" % env_bool("IMG_DIR", "img").strip("/")
-        self.cameras: list[WyzeCamera] = []
+        self.cameras: List[WyzeCamera] = []
         self.streams: dict = {}
         self.rtsp = None
         self.auth: wyzecam.WyzeCredential = None
@@ -48,6 +48,7 @@ class WyzeBridge:
         self.rtmp_url = env_bool("WB_RTMP_URL")
         self.rtsp_url = env_bool("WB_RTSP_URL")
         self.show_video = env_bool("WB_SHOW_VIDEO", False, style="bool")
+        self.rtsp_snapshot_processes: Dict[str, Popen] = {}
 
         os.makedirs(self.token_path, exist_ok=True)
         os.makedirs(self.img_path, exist_ok=True)
@@ -461,7 +462,16 @@ class WyzeBridge:
         return r
 
     def rtsp_snap(self, cam_name: str, wait: bool = True) -> str:
-        """Take an rtsp snapshot with ffmpeg."""
+        """
+        Take an rtsp snapshot with ffmpeg.
+        @param cam_name: uri name of camera
+        @param wait: wait for rtsp snapshot to complete
+        @return: img path
+        """
+        cam = self.get_cameras().get(cam_name, None)
+        if not (cam and cam['enabled'] and cam['connected']):
+            return None
+
         img = f"{self.img_path}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
         ffmpeg_cmd = (
             ["ffmpeg", "-loglevel", "fatal", "-threads", "1"]
@@ -469,13 +479,17 @@ class WyzeBridge:
             + ["-rtsp_transport", "tcp", "-i", f"rtsp://0.0.0.0:8554/{cam_name}"]
             + ["-f", "image2", "-frames:v", "1", "-y", img]
         )
-        ffmpeg = Popen(ffmpeg_cmd)
+        ffmpeg = self.rtsp_snapshot_processes.get(cam_name, None)
+
+        if not ffmpeg or ffmpeg.poll() is not None:
+            ffmpeg = self.rtsp_snapshot_processes[cam_name] = Popen(ffmpeg_cmd)
+
         if wait:
             try:
                 ffmpeg.wait(30)
             except TimeoutExpired:
                 ffmpeg.kill()
-                return
+                return None
         return img
 
 
