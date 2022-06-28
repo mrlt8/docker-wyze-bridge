@@ -49,14 +49,14 @@
           </div>
         <div class="cameras columns is-multiline">
             {% for camera in cameras.values() %}
-            <div id="{{ camera.name_uri }}" draggable="true" class="camera column {{'is-hidden' if not camera.enabled}}" enabled="{{camera.enabled}}" connected="{{camera.connected}}">
+            <div id="{{ camera.name_uri }}" class="camera column {{'is-hidden' if not camera.enabled}}" enabled="{{camera.enabled}}" connected="{{camera.connected}}">
                 <div class="card">
                     <header class="card-header">
                         <div class="card-header-title">
                             <div class="dropdown is-hoverable">
                                 <div class="dropdown-trigger">
                                     <span class="icon">
-                                        <i class="fas fa-circle-info has-text-{{'grey-lighter' if not camera.enabled else 'success' if camera.connected else 'danger'}}" aria-hidden="true"></i>
+                                        <i class="fas has-text-{{'grey-lighter fa-circle-info' if not camera.enabled else ('success fa-circle-info' if camera.connected else 'danger fa-triangle-exclamation')}}" aria-hidden="true"></i>
                                     </span>
                                 </div>
                                 <div class="dropdown-menu" role="menu">
@@ -72,7 +72,12 @@
                                                 {% for key, value in camera.items() %}
                                                 <tr>
                                                     <td>{{ key }}</td>
-                                                    <td><code>{{ value }}</code>
+                                                    <td>
+                                                        {% if key is string and key.endswith('_url') %}
+                                                            <a href="{{ value }}">{{ value }}</a>
+                                                        {% else %}
+                                                        <code>{{ value }}</code>
+                                                        {% endif %}
                                                     </td>
                                                 </tr>
                                                 {% endfor %}
@@ -82,21 +87,21 @@
                                 </div>
                             </div>{{camera.nickname}}
                         </div>
-                        <span style="cursor: move; flex-grow: 2"></span>
-                        <button class="card-header-icon hide-image" uri={{camera.name_uri}}>
+                        <span class="drag_handle" draggable="true"></span>
+                        <button class="card-header-icon hide-image" data-cam="{{camera.name_uri}}">
                             <span class="icon">
                                 <i class="fas fa-angle-down" aria-hidden="true"></i>
                             </span>
                         </button>
                     </header>
                     <div class="card-image has-text-centered">
-                        {% if show_video and camera.connected and camera.img %}
-                        <video-js id="video-{{camera.name_uri}}" class="video-js vjs-live vjs-big-play-centered" controls preload="none" poster="{{camera.img}}" data-setup='{"liveui": true, "fluid": true}' data-src="{{camera.hls_url}}stream.m3u8" width="100%">
+                        {% if show_video and camera.connected and camera.img_url %}
+                        <video-js id="video-{{camera.name_uri}}" class="video-js vjs-live vjs-big-play-centered" controls preload="none" poster="{{camera.img_url}}" data-setup='{"liveui": true, "fluid": true}' data-src="{{camera.hls_url}}stream.m3u8" width="100%">
                             <source src="{{camera.hls_url}}stream.m3u8" type="application/x-mpegURL">
-                            <img class="refresh_img" src="{{camera.img}}" width="100%" />
+                            <img class="refresh_img" src="{{camera.img_url}}" width="100%" />
                         </video-js>
                         {% elif camera.connected %}
-                        <img class="refresh_img loading-preview" data-cam="{{camera.name_uri}}" src="{{camera.img if camera.img else url_for('static',filename='loading.svg')}}" width="100%" />
+                        <img class="refresh_img loading-preview" data-cam="{{camera.name_uri}}" src="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}" width="100%" />
                         {% else %}
                         <section class="section is-small has-background-black has-text-white no-preview">
                             <span class="icon-text">

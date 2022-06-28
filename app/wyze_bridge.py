@@ -446,7 +446,7 @@ class WyzeBridge:
             d["product_model"] = cam.product_model
             d["model_name"] = cam.model_name
             d["firmware_ver"] = cam.firmware_ver
-            d["thumbnail"] = cam.thumbnail
+            d["thumbnail_url"] = cam.thumbnail
             d["hls_url"] = base_hls + cam.name_uri + "/"
             if env_bool("LLHLS"):
                 d["hls_url"] = d["hls_url"].replace("http:", "https:")
@@ -457,7 +457,8 @@ class WyzeBridge:
             d["connected"] = False
             if (stream := self.streams.get(cam.nickname)) and "connected" in stream:
                 d["connected"] = self.streams[cam.nickname]["connected"].is_set()
-            d["img"] = f"img/{img}" if os.path.exists(self.img_path + img) else None
+            d["img_url"] = f"img/{img}" if os.path.exists(self.img_path + img) else None
+            d["snapshot_url"] = f"snapshot/{img}"
             r[cam.name_uri] = d
         return r
 

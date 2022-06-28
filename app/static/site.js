@@ -142,10 +142,11 @@ function sortable(parent, selector, onUpdate = null) {
    * @private
    */
   function _onDragStart(e) {
-    if (!e.target.matches(selector)) {
+    if (!e.target.matches('.drag_handle')) {
+      e.stopPropagation();
       return;
     }
-    dragEl = e.target;
+    dragEl = e.target.closest(selector);
     console.debug("_onDragStart()", e.target);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("Text", dragEl.textContent);
@@ -217,7 +218,7 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("DOMContentLoaded", () => {
   let clickHide = document.getElementsByClassName("hide-image");
   function hideImg() {
-    let uri = this.getAttribute("uri");
+    let uri = this.getAttribute("data-cam");
     let icon = this.getElementsByClassName("fas")[0];
     if (icon.classList.contains("fa-angle-down")) {
       icon.classList.remove("fa-angle-down");
