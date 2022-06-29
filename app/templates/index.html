@@ -41,12 +41,14 @@
                 </div>
             </div>
         </nav>
+        {% if enabled != cameras|length %}
         <div id="filter" class="tabs">
             <ul>
-                <li filter="enabled" class="is-active"><a><span class="icon is-small"><i class="fas fa-plug-circle-check"></i></span><span>Enabled</span></a></li>
+                <li filter="enabled" class="is-active"><a><span class="icon is-small"><i class="fas fa-plug-circle-check"></i></span><span><strong>{{ enabled }}</strong> Enabled</span></a></li>
                 <li filter="all"><a><span class="icon is-small"><i class="fas fa-users-viewfinder"></i></span><span>All</span></a></li>
             </ul>
           </div>
+        {% endif %}
         <div class="cameras columns is-multiline">
             {% for camera in cameras.values() %}
             <div id="{{ camera.name_uri }}" class="camera column {{'is-hidden' if not camera.enabled}}" enabled="{{camera.enabled}}" connected="{{camera.connected}}">
@@ -101,15 +103,13 @@
                             <img class="refresh_img" src="{{camera.img_url}}" width="100%" />
                         </video-js>
                         {% elif camera.connected %}
-                        <img class="refresh_img loading-preview" data-cam="{{camera.name_uri}}" src="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}" width="100%" />
+                        <img class="refresh_img {{'loading-preview' if not camera.img_url}}" data-cam="{{camera.name_uri}}" src="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}" width="100%" />
                         {% else %}
-                        <section class="section is-small has-background-black has-text-white no-preview">
-                            <span class="icon-text">
-                                <span class="icon">
+                        <section class="section has-background-black has-text-white no-preview">
+                                <span class="icon is-medium">
                                     <i class="fas fa-video-slash"></i>
                                 </span>
-                                <span>Preview not available</span>
-                            </span>
+                            <p>Preview not available</p>
                         </section>
                         {% endif %}
                         {% if camera.connected and not show_video %}

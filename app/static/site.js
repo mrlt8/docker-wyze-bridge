@@ -142,7 +142,7 @@ function sortable(parent, selector, onUpdate = null) {
    * @private
    */
   function _onDragStart(e) {
-    if (!e.target.matches('.drag_handle')) {
+    if (!e.target.matches(".drag_handle")) {
       e.stopPropagation();
       return;
     }
@@ -179,19 +179,27 @@ async function update_img(oldUrl) {
   await tmp.decode();
 
   // update img.src
-  document.querySelectorAll(`[src="${oldUrl}"],[src="${newUrl}"]`).forEach(function (e) {
-    e.src = newUrl;
-  });
+  document
+    .querySelectorAll(`[src="${oldUrl}"],[src="${newUrl}"]`)
+    .forEach(function (e) {
+      e.src = newUrl;
+    });
 
   // update video.poster
-  document.querySelectorAll(`[poster="${oldUrl}"],[poster="${newUrl}"]`).forEach(function (e) {
-    e.setAttribute("poster", newUrl);
-  });
+  document
+    .querySelectorAll(`[poster="${oldUrl}"],[poster="${newUrl}"]`)
+    .forEach(function (e) {
+      e.setAttribute("poster", newUrl);
+    });
 
   // update video js div for poster
-  document.querySelectorAll(`[style='background-image: url("${oldUrl}");'],[style='background-image: url("${newUrl}");']`).forEach(function (e) {
-    e.style = `background-image: url("${newUrl}");`;
-  });
+  document
+    .querySelectorAll(
+      `[style='background-image: url("${oldUrl}");'],[style='background-image: url("${newUrl}");']`
+    )
+    .forEach(function (e) {
+      e.style = `background-image: url("${newUrl}");`;
+    });
 }
 
 function refresh_imgs() {
@@ -302,7 +310,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let oldUrl = `snapshot/${cam}.jpg`;
     try {
       await update_img(oldUrl);
-      placeholder.src=oldUrl;
+      placeholder.src = oldUrl;
       placeholder.classList.remove("loading-preview");
     } catch {
       setTimeout(() => {
@@ -323,8 +331,8 @@ document.addEventListener("DOMContentLoaded", () => {
     button.getElementsByClassName("fas")[0].classList.remove("fa-pulse");
     button.parentElement.style.display = null;
   }
-  document.querySelectorAll('.loading-preview').forEach(loadPreview);
-  document.querySelectorAll('.update-preview').forEach((up) => {
+  document.querySelectorAll(".loading-preview").forEach(loadPreview);
+  document.querySelectorAll(".update-preview").forEach((up) => {
     up.addEventListener("click", updateSnapshot);
   });
 });

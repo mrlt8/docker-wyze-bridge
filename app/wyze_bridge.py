@@ -470,7 +470,7 @@ class WyzeBridge:
         @return: img path
         """
         cam = self.get_cameras().get(cam_name, None)
-        if not (cam and cam['enabled'] and cam['connected']):
+        if not (cam and cam["enabled"] and cam["connected"]):
             return None
 
         img = f"{self.img_path}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
