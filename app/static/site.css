@@ -39,7 +39,7 @@ video {
 }
 
 .ghost * {
-  display: none;
+  visibility:hidden;
 }
 
 .custom-drag-ghost {
@@ -79,4 +79,9 @@ span .fa-arrows-rotate {
 }
 .card:hover .cam-overlay {
   display: block;
+}
+
+.drag_handle {
+  cursor: move;
+  flex-grow: 2;
 }
