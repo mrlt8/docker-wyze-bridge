@@ -305,12 +305,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   async function loadPreview(placeholder) {
-    console.debug("loadPreview", placeholder);
+    // console.debug("loadPreview", placeholder);
     let cam = placeholder.getAttribute("data-cam");
     let oldUrl = `snapshot/${cam}.jpg`;
     try {
       await update_img(oldUrl);
-      placeholder.src = oldUrl;
+      if (placeholder.classList.contains("video-js")) {
+        let poster = placeholder.getElementsByClassName("vjs-poster")[0];
+        poster.style.backgroundImage = `url("${oldUrl}")`;
+        placeholder.setAttribute("poster", oldUrl);
+      } else {
+        placeholder.src = oldUrl;
+      }
       placeholder.classList.remove("loading-preview");
     } catch {
       setTimeout(() => {

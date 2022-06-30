@@ -39,7 +39,7 @@ video {
 }
 
 .ghost * {
-  visibility:hidden;
+  visibility: hidden;
 }
 
 .custom-drag-ghost {
@@ -70,13 +70,14 @@ span .fa-arrows-rotate {
   cursor: pointer;
 }
 
-.card-image:has(.loading-preview) {
+.card-image:has([src$=".svg"]) {
   background-color: #000;
 }
+
 .cam-overlay {
   display: none;
-  transition: 0.3s;
 }
+
 .card:hover .cam-overlay {
   display: block;
 }

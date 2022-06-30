@@ -97,13 +97,13 @@
                         </button>
                     </header>
                     <div class="card-image has-text-centered">
-                        {% if show_video and camera.connected and camera.img_url %}
-                        <video-js id="video-{{camera.name_uri}}" class="video-js vjs-live vjs-big-play-centered" controls preload="none" poster="{{camera.img_url}}" data-setup='{"liveui": true, "fluid": true}' data-src="{{camera.hls_url}}stream.m3u8" width="100%">
+                        {% if show_video and camera.connected %}
+                        <video-js id="video-{{camera.name_uri}}" class="video-js vjs-live vjs-big-play-centered loading-preview" controls preload="none" poster="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}"  data-cam="{{camera.name_uri}}" data-setup='{"liveui": true, "fluid": true}' data-src="{{camera.hls_url}}stream.m3u8" width="100%">
                             <source src="{{camera.hls_url}}stream.m3u8" type="application/x-mpegURL">
-                            <img class="refresh_img" src="{{camera.img_url}}" width="100%" />
+                            <img class="refresh_img loading-preview"  data-cam="{{camera.name_uri}}" src="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}" width="100%" />
                         </video-js>
                         {% elif camera.connected %}
-                        <img class="refresh_img {{'loading-preview' if not camera.img_url}}" data-cam="{{camera.name_uri}}" src="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}" width="100%" />
+                        <img class="refresh_img loading-preview" data-cam="{{camera.name_uri}}" src="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}" width="100%" />
                         {% else %}
                         <section class="section has-background-black has-text-white no-preview">
                                 <span class="icon is-medium">
