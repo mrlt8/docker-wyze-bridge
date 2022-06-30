@@ -28,6 +28,16 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
+## Changes in v1.6.9
+
+- **FIXED** dropdown triggering drag, only allow drag from card-title area. Thanks @dsheehan!
+- **FIXED** drag/drop ghost maintain height when columns set to 1. Thanks @dsheehan!
+- **CHANGED** Render _url as links in info dropdown. Thanks @dsheehan!
+- **CHANGED** Hide filter tabs if all cams enabled.
+- **CHANGED** Loading image to match 16x9 ratio.
+
+**Full Changelog**: https://github.com/mrlt8/docker-wyze-bridge/compare/v1.6.8...v1.6.9
+
 ## Changes in v1.6.8
 
 Once again, huge thanks to @dsheehan!
@@ -37,8 +47,6 @@ Once again, huge thanks to @dsheehan!
   - `:5000/img/cam-name.jpg` - Will attempt to return an existing snapshot or capture a new one from the the rtsp stream.
 - **NEW** Web-UI: Refresh button to update a snapshot on-demand.
 - **FIXED** Zombie processes should be gone now that we're waiting for the images to be returned from ffmpeg.
-
-**Full Changelog**: https://github.com/mrlt8/docker-wyze-bridge/compare/v1.6.7...v1.6.8
 
 ## Changes in v1.6.7
 
