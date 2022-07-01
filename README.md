@@ -28,15 +28,24 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
+## Changes in v1.6.10
+
+- **Home Assistant** Expose port `5000` for web-ui and snapshots. #455
+- **Web-UI** Disable reload button while snapshot is updating.
+- **Web-UI** Use navbar for filtering and other settings.
+- **FIXED** web-ui would fail to load if cookies values were set to none.
+
+**Full Changelog**: https://github.com/mrlt8/docker-wyze-bridge/compare/v1.6.9...v1.6.10
+
 ## Changes in v1.6.9
 
-- **FIXED** dropdown triggering drag, only allow drag from card-title area. Thanks @dsheehan!
-- **FIXED** drag/drop ghost maintain height when columns set to 1. Thanks @dsheehan!
+Web-UI:
+
+- **FIXED** Dropdown triggering drag, only allow drag from card-title area. Thanks @dsheehan!
+- **FIXED** Drag/drop ghost maintain height when columns set to 1. Thanks @dsheehan!
 - **CHANGED** Render _url as links in info dropdown. Thanks @dsheehan!
 - **CHANGED** Hide filter tabs if all cams enabled.
 - **CHANGED** Loading image to match 16x9 ratio.
-
-**Full Changelog**: https://github.com/mrlt8/docker-wyze-bridge/compare/v1.6.8...v1.6.9
 
 ## Changes in v1.6.8
 
@@ -586,6 +595,8 @@ or where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces a
 ```
 
 ### Rotate Video
+
+NOTE: The bridge may require additional resuorces when rotation is enabled as the video has to be re-encoded.
 
 - Rotate all doorbells:
 

@@ -1,3 +1,10 @@
+## Changes in v1.6.10
+
+- **Home Assistant** Expose port `5000` for web-ui and snapshots. #455
+- **Web-UI** Disable reload button while snapshot is updating.
+- **Web-UI** Use navbar for filtering and other settings.
+- **FIXED** web-ui would fail to load if cookies values were set to none.
+
 ## Changes in v1.6.9
 
 Web-UI:
