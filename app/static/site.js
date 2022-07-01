@@ -142,10 +142,11 @@ function sortable(parent, selector, onUpdate = null) {
    * @private
    */
   function _onDragStart(e) {
-    if (!e.target.matches(selector)) {
+    if (!e.target.matches(".drag_handle")) {
+      e.stopPropagation();
       return;
     }
-    dragEl = e.target;
+    dragEl = e.target.closest(selector);
     console.debug("_onDragStart()", e.target);
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("Text", dragEl.textContent);
@@ -170,6 +171,13 @@ function sortable(parent, selector, onUpdate = null) {
 async function update_img(oldUrl) {
   let newUrl = oldUrl.replace("img/", "snapshot/");
   console.debug("update_img", oldUrl, newUrl);
+  let cam = oldUrl.split("/").pop().split(".")[0];
+  let button = document.querySelector(`.is-overlay > [data-cam="${cam}"]`);
+  if (button) {
+    button.disabled = true;
+    button.getElementsByClassName("fas")[0].classList.add("fa-pulse");
+    button.parentElement.style.display = "block";
+  }
 
   await fetch(newUrl);
   // reduce img flicker by pre-decode, before swapping it
@@ -178,19 +186,32 @@ async function update_img(oldUrl) {
   await tmp.decode();
 
   // update img.src
-  document.querySelectorAll(`[src="${oldUrl}"],[src="${newUrl}"]`).forEach(function (e) {
-    e.src = newUrl;
-  });
+  document
+    .querySelectorAll(`[src="${oldUrl}"],[src="${newUrl}"]`)
+    .forEach(function (e) {
+      e.src = newUrl;
+    });
 
   // update video.poster
-  document.querySelectorAll(`[poster="${oldUrl}"],[poster="${newUrl}"]`).forEach(function (e) {
-    e.setAttribute("poster", newUrl);
-  });
+  document
+    .querySelectorAll(`[poster="${oldUrl}"],[poster="${newUrl}"]`)
+    .forEach(function (e) {
+      e.setAttribute("poster", newUrl);
+    });
 
   // update video js div for poster
-  document.querySelectorAll(`[style='background-image: url("${oldUrl}");'],[style='background-image: url("${newUrl}");']`).forEach(function (e) {
-    e.style = `background-image: url("${newUrl}");`;
-  });
+  document
+    .querySelectorAll(
+      `[style='background-image: url("${oldUrl}");'],[style='background-image: url("${newUrl}");']`
+    )
+    .forEach(function (e) {
+      e.style = `background-image: url("${newUrl}");`;
+    });
+  if (button) {
+    button.disabled = false;
+    button.getElementsByClassName("fas")[0].classList.remove("fa-pulse");
+    button.parentElement.style.display = null;
+  }
 }
 
 function refresh_imgs() {
@@ -217,7 +238,7 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("DOMContentLoaded", () => {
   let clickHide = document.getElementsByClassName("hide-image");
   function hideImg() {
-    let uri = this.getAttribute("uri");
+    let uri = this.getAttribute("data-cam");
     let icon = this.getElementsByClassName("fas")[0];
     if (icon.classList.contains("fa-angle-down")) {
       icon.classList.remove("fa-angle-down");
@@ -237,16 +258,15 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-  let clickFilter = document.querySelectorAll("#filter > ul > li");
-  function hide_cam() {
+  function filterCams() {
     document
-      .querySelector("#filter > ul > li.is-active")
+      .querySelector("[data-filter].is-active")
       .classList.remove("is-active");
     this.classList.add("is-active");
     document.querySelectorAll("div.camera.is-hidden").forEach((div) => {
       div.classList.remove("is-hidden");
     });
-    let filter = this.getAttribute("filter");
+    let filter = this.getAttribute("data-filter");
     if (filter != "all") {
       document
         .querySelectorAll("div.camera:not([" + filter + "='True'])")
@@ -255,9 +275,15 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
   }
-  for (var i = 0; i < clickFilter.length; i++) {
-    clickFilter[i].addEventListener("click", hide_cam);
-  }
+  document.querySelectorAll("a[data-filter]").forEach((a) => {
+    a.addEventListener("click", filterCams);
+  });
+  document
+    .querySelector(".navbar-brand .navbar-burger")
+    .addEventListener("click", function () {
+      this.classList.toggle("is-active");
+      document.getElementById("refresh-menu").classList.toggle("is-active");
+    });
 });
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -296,12 +322,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   async function loadPreview(placeholder) {
-    console.debug("loadPreview", placeholder);
+    // console.debug("loadPreview", placeholder);
     let cam = placeholder.getAttribute("data-cam");
     let oldUrl = `snapshot/${cam}.jpg`;
     try {
       await update_img(oldUrl);
-      placeholder.src=oldUrl;
+      if (placeholder.classList.contains("video-js")) {
+        let poster = placeholder.getElementsByClassName("vjs-poster")[0];
+        poster.style.backgroundImage = `url("${oldUrl}")`;
+        placeholder.setAttribute("poster", oldUrl);
+      } else {
+        placeholder.src = oldUrl;
+      }
       placeholder.classList.remove("loading-preview");
     } catch {
       setTimeout(() => {
@@ -309,21 +341,14 @@ document.addEventListener("DOMContentLoaded", () => {
       }, 30000);
     }
   }
-  async function updateSnapshot(e) {
-    console.debug("updateSnapshot", e);
-    let button = e.target.closest("button");
-    button.disabled = true;
-    button.getElementsByClassName("fas")[0].classList.add("fa-pulse");
-    button.parentElement.style.display = "block";
-    let cam = button.getAttribute("data-cam");
-    let oldUrl = `img/${cam}.jpg`;
-    await update_img(oldUrl);
-    button.disabled = false;
-    button.getElementsByClassName("fas")[0].classList.remove("fa-pulse");
-    button.parentElement.style.display = null;
+  function updateSnapshot(e) {
+    let cam = e.target.closest("button").getAttribute("data-cam");
+    if (cam !== null) {
+      update_img(`img/${cam}.jpg`);
+    }
   }
-  document.querySelectorAll('.loading-preview').forEach(loadPreview);
-  document.querySelectorAll('.update-preview').forEach((up) => {
+  document.querySelectorAll(".loading-preview").forEach(loadPreview);
+  document.querySelectorAll(".update-preview").forEach((up) => {
     up.addEventListener("click", updateSnapshot);
   });
 });

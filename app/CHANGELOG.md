@@ -1,3 +1,20 @@
+## Changes in v1.6.10
+
+- **Home Assistant** Expose port `5000` for web-ui and snapshots. #455
+- **Web-UI** Disable reload button while snapshot is updating.
+- **Web-UI** Use navbar for filtering and other settings.
+- **FIXED** web-ui would fail to load if cookies values were set to none.
+
+## Changes in v1.6.9
+
+Web-UI:
+
+- **FIXED** Dropdown triggering drag, only allow drag from card-title area. Thanks @dsheehan!
+- **FIXED** Drag/drop ghost maintain height when columns set to 1. Thanks @dsheehan!
+- **CHANGED** Render _url as links in info dropdown. Thanks @dsheehan!
+- **CHANGED** Hide filter tabs if all cams enabled.
+- **CHANGED** Loading image to match 16x9 ratio.
+
 ## Changes in v1.6.8
 
 Once again, huge thanks to @dsheehan!
@@ -7,8 +24,6 @@ Once again, huge thanks to @dsheehan!
   - `:5000/img/cam-name.jpg` - Will attempt to return an existing snapshot or capture a new one from the the rtsp stream.
 - **NEW** Web-UI: Refresh button to update a snapshot on-demand.
 - **FIXED** Zombie processes should be gone now that we're waiting for the images to be returned from ffmpeg.
-
-**Full Changelog**: https://github.com/mrlt8/docker-wyze-bridge/compare/v1.6.7...v1.6.8
 
 ## Changes in v1.6.7
 

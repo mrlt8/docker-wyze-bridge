@@ -632,6 +632,8 @@ or where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces a
 
 ### Rotate Video
 
+NOTE: The bridge may require additional resuorces when rotation is enabled as the video has to be re-encoded.
+
 - Rotate all doorbells:
 
   ```YAML
