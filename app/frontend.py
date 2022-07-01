@@ -30,8 +30,8 @@ def create_app():
 
     @app.route("/")
     def index():
-        number_of_columns = int(request.cookies.get("number_of_columns", default="2"))
-        refresh_period = int(request.cookies.get("refresh_period", default="30"))
+        number_of_columns = int(request.cookies.get("number_of_columns") or 2)
+        refresh_period = int(request.cookies.get("refresh_period") or 30)
         cameras = wb.get_cameras(urlparse(request.root_url).hostname)
         log.info(cameras)
         resp = make_response(
