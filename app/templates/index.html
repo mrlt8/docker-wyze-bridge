@@ -2,10 +2,10 @@
 <html lang="en" class="has-background-white-bis">
 
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Wyze-Bridge</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
     <link rel="stylesheet" type="text/css"
         href="{{ 'static/site.css' if hass else url_for('static',filename='site.css') }}" />
@@ -17,48 +17,62 @@
 
 <body class="has-background-light">
     <section class="section">
-        <nav class="level">
-            <div class="level-left">
-                <div class="level-item">
-                    <p class="subtitle">Detected <strong>{{ cameras|length }}</strong> cameras</p>
-                    </p>
-                </div>
+        <nav class="navbar block">
+            <div class="navbar-brand">
+                {% if enabled != cameras|length %}
+                <a data-filter="enabled" class="navbar-item is-tab is-active filter">
+                    <span class="icon-text">
+                        <span class="icon"><i class="fas fa-plug-circle-check"></i></span><span><strong> {{ enabled
+                                }}</strong> enabled</span></span></a>
+                <a data-filter="all" class="navbar-item is-tab filter">
+                    <span class="icon-text"><span class="icon"><i class="fas fa-users-viewfinder"></i></span><span>
+                            All cameras</span></span></a>
+                {%else%}
+                <p class="navbar-item"><span class="icon-text"><span class="icon"><i
+                                class="fas fa-users-viewfinder"></i></span><span>Detected <strong>{{ cameras|length
+                                }}</strong> cameras</span></p>
+                {% endif %}
+                <a class="navbar-burger">
+                    <span aria-hidden="true"></span>
+                    <span aria-hidden="true"></span>
+                    <span aria-hidden="true"></span>
+                </a>
             </div>
-            <div class="level-right">
-                <div class="control has-icons-left level-item is-hidden-mobile">
-                    <input class="input" id="select_number_of_columns" type="number" min="1" max="6"
-                           value="{{ number_of_columns }}" title="Number of columns"/>
-                    <div class="icon is-small is-left">
-                        <i class="fas fa-table-columns"></i>
-                    </div>
-                </div>
-                <div class="control has-icons-left level-item">
-                    <input class="input" id="select_refresh_period" type="number" min="5" max="600"
-                           value="{{ refresh_period }}" title="Refresh (seconds)"/>
-                    <div class="icon is-small is-left">
-                        <i class="fa-solid fa-rotate"></i>
+            <div class="navbar-menu" id="refresh-menu">
+                <div class="navbar-end">
+                    <div class="navbar-item">
+                        <div class="field is-grouped">
+                            <div class="control has-icons-left is-hidden-mobile">
+                                <input class="input" id="select_number_of_columns" type="number" min="1" max="6"
+                                    value="3" title="Number of columns" />
+                                <div class="icon is-small is-left">
+                                    <i class="fas fa-table-columns"></i>
+                                </div>
+                            </div>
+                            <div class="control has-icons-left is-expanded">
+                                <input class="input" id="select_refresh_period" type="number" min="5" max="600"
+                                    value="30" title="Refresh (seconds)" />
+                                <div class="icon is-small is-left">
+                                    <i class="fa-solid fa-rotate"></i>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </nav>
-        {% if enabled != cameras|length %}
-        <div id="filter" class="tabs">
-            <ul>
-                <li filter="enabled" class="is-active"><a><span class="icon is-small"><i class="fas fa-plug-circle-check"></i></span><span><strong>{{ enabled }}</strong> Enabled</span></a></li>
-                <li filter="all"><a><span class="icon is-small"><i class="fas fa-users-viewfinder"></i></span><span>All</span></a></li>
-            </ul>
-          </div>
-        {% endif %}
         <div class="cameras columns is-multiline">
             {% for camera in cameras.values() %}
-            <div id="{{ camera.name_uri }}" class="camera column {{'is-hidden' if not camera.enabled}}" enabled="{{camera.enabled}}" connected="{{camera.connected}}">
+            <div id="{{ camera.name_uri }}" class="camera column {{'is-hidden' if not camera.enabled}}"
+                enabled="{{camera.enabled}}" connected="{{camera.connected}}">
                 <div class="card">
                     <header class="card-header">
                         <div class="card-header-title">
                             <div class="dropdown is-hoverable">
                                 <div class="dropdown-trigger">
                                     <span class="icon">
-                                        <i class="fas has-text-{{'grey-lighter fa-circle-info' if not camera.enabled else ('success fa-circle-info' if camera.connected else 'danger fa-triangle-exclamation')}}" aria-hidden="true"></i>
+                                        <i class="fas has-text-{{'grey-lighter fa-circle-info' if not camera.enabled else ('success fa-circle-info' if camera.connected else 'danger fa-triangle-exclamation')}}"
+                                            aria-hidden="true"></i>
                                     </span>
                                 </div>
                                 <div class="dropdown-menu" role="menu">
@@ -76,7 +90,7 @@
                                                     <td>{{ key }}</td>
                                                     <td>
                                                         {% if key is string and key.endswith('_url') %}
-                                                            <a href="{{ value }}">{{ value }}</a>
+                                                        <a href="{{ value }}">{{ value }}</a>
                                                         {% else %}
                                                         <code>{{ value }}</code>
                                                         {% endif %}
@@ -87,7 +101,8 @@
                                         </table>
                                     </div>
                                 </div>
-                            </div>{{camera.nickname}}
+                            </div>
+                            {{camera.nickname}}
                         </div>
                         <span class="drag_handle" draggable="true"></span>
                         <button class="card-header-icon hide-image" data-cam="{{camera.name_uri}}">
@@ -98,29 +113,37 @@
                     </header>
                     <div class="card-image has-text-centered">
                         {% if show_video and camera.connected %}
-                        <video-js id="video-{{camera.name_uri}}" class="video-js vjs-live vjs-big-play-centered loading-preview" controls preload="none" poster="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}"  data-cam="{{camera.name_uri}}" data-setup='{"liveui": true, "fluid": true}' data-src="{{camera.hls_url}}stream.m3u8" width="100%">
-                            <source src="{{camera.hls_url}}stream.m3u8" type="application/x-mpegURL">
-                            <img class="refresh_img loading-preview"  data-cam="{{camera.name_uri}}" src="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}" width="100%" />
+                        <video-js id="video-{{camera.name_uri}}"
+                            class="video-js vjs-live vjs-big-play-centered loading-preview" controls preload="none"
+                            poster="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}"
+                            data-cam="{{camera.name_uri}}" data-setup='{"liveui": true, "fluid": true}'
+                            data-src="{{camera.hls_url}}stream.m3u8" width="100%">
+                            <source src="{{camera.hls_url}}stream.m3u8" type="application/x-mpegURL" />
+                            <img class="refresh_img loading-preview" data-cam="{{camera.name_uri}}"
+                                src="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}"
+                                width="100%" />
                         </video-js>
                         {% elif camera.connected %}
-                        <img class="refresh_img loading-preview" data-cam="{{camera.name_uri}}" src="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}" width="100%" />
+                        <img class="refresh_img loading-preview" data-cam="{{camera.name_uri}}"
+                            src="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}"
+                            width="100%" />
                         {% else %}
                         <section class="section has-background-black has-text-white no-preview">
-                                <span class="icon is-medium">
-                                    <i class="fas fa-video-slash"></i>
-                                </span>
+                            <span class="icon is-medium">
+                                <i class="fas fa-video-slash"></i>
+                            </span>
                             <p>Preview not available</p>
                         </section>
-                        {% endif %}
-                        {% if camera.connected and not show_video %}
-                        <div class="card-content is-overlay has-text-right cam-overlay" >
-                            <button class="button is-primary update-preview" data-cam="{{camera.name_uri}}" title="Update preview">
+                        {% endif %} {% if camera.connected and not show_video %}
+                        <div class="card-content is-overlay has-text-right cam-overlay">
+                            <button class="button is-primary update-preview" data-cam="{{camera.name_uri}}"
+                                title="Update preview">
                                 <span class="icon is-small">
-                                  <i class="fas fa-arrows-rotate"></i>
+                                    <i class="fas fa-arrows-rotate"></i>
                                 </span>
-                              </button>
-                         </div>
-                         {% endif %}
+                            </button>
+                        </div>
+                        {% endif %}
                     </div>
                     <footer class="card-footer">
                         <a href="{{camera.hls_url}}" class="card-footer-item">HLS</a>
@@ -136,8 +159,10 @@
         <div class="content has-text-centered">
             <p>
                 <a href="https://github.com/mrlt8/docker-wyze-bridge"><i class="fa-brands fa-github"></i>
-                    <strong>docker-wyze-bridge</strong></a> v{{ version }} <span id="checkUpdate" class="icon-text"
-                    version="{{version}}"><span class="icon"><i class="fas fa-arrows-rotate"></i></span>
+                    <strong>docker-wyze-bridge</strong></a>
+                v{{ version }}
+                <span id="checkUpdate" class="icon-text" version="{{version}}"><span class="icon"><i
+                            class="fas fa-arrows-rotate"></i></span>
                 </span>
             </p>
         </div>

@@ -258,16 +258,15 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-  let clickFilter = document.querySelectorAll("#filter > ul > li");
-  function hide_cam() {
+  function filterCams() {
     document
-      .querySelector("#filter > ul > li.is-active")
+      .querySelector("[data-filter].is-active")
       .classList.remove("is-active");
     this.classList.add("is-active");
     document.querySelectorAll("div.camera.is-hidden").forEach((div) => {
       div.classList.remove("is-hidden");
     });
-    let filter = this.getAttribute("filter");
+    let filter = this.getAttribute("data-filter");
     if (filter != "all") {
       document
         .querySelectorAll("div.camera:not([" + filter + "='True'])")
@@ -276,9 +275,15 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     }
   }
-  for (var i = 0; i < clickFilter.length; i++) {
-    clickFilter[i].addEventListener("click", hide_cam);
-  }
+  document.querySelectorAll("a[data-filter]").forEach((a) => {
+    a.addEventListener("click", filterCams);
+  });
+  document
+    .querySelector(".navbar-brand .navbar-burger")
+    .addEventListener("click", function () {
+      this.classList.toggle("is-active");
+      document.getElementById("refresh-menu").classList.toggle("is-active");
+    });
 });
 
 document.addEventListener("DOMContentLoaded", () => {
