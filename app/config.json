@@ -16,12 +16,14 @@
     "ports": {
         "1935/tcp": 1935,
         "8554/tcp": 8554,
-        "8888/tcp": 8888
+        "8888/tcp": 8888,
+        "5000/tcp": 5000
     },
     "ports_description": {
         "1935/tcp": "RTMP streams",
         "8554/tcp": "RTSP streams",
-        "8888/tcp": "HLS streams"
+        "8888/tcp": "HLS streams",
+        "5000/tcp": "Web-UI/Snapshots"
     },
     "environment": {
         "HASS": "true",
