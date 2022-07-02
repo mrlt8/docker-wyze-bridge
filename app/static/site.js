@@ -228,9 +228,9 @@ async function update_img(oldUrl) {
 
 function refresh_imgs() {
   console.debug("refresh_imgs " + Date.now());
-  document.querySelectorAll(".refresh_img").forEach(function (image) {
+  document.querySelectorAll(".refresh_img").forEach(async function (image) {
     let url = image.getAttribute("src");
-    update_img(url);
+    await update_img(url);
   });
 }
 
@@ -334,7 +334,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   async function loadPreview(placeholder) {
-    // console.debug("loadPreview", placeholder);
     let cam = placeholder.getAttribute("data-cam");
     let oldUrl = `snapshot/${cam}.jpg`;
     try {
@@ -353,10 +352,10 @@ document.addEventListener("DOMContentLoaded", () => {
       }, 30000);
     }
   }
-  function updateSnapshot(e) {
+  async function updateSnapshot(e) {
     let cam = e.target.closest("button").getAttribute("data-cam");
     if (cam !== null) {
-      update_img(`img/${cam}.jpg`);
+      await update_img(`img/${cam}.jpg`);
     }
   }
   document.querySelectorAll(".loading-preview").forEach(loadPreview);
