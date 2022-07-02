@@ -24,24 +24,34 @@ let refresh_period = -1; // refresh images time period in seconds
 
 document.addEventListener("DOMContentLoaded", applyPreferences);
 
+// Event listener for input and validate changes before applyPreferences
 document.addEventListener("DOMContentLoaded", () => {
-  const select = document.querySelector("#select_number_of_columns");
-
-  select.addEventListener("change", (e) => {
-    const repeatNumber = select.value;
-    setCookie("number_of_columns", repeatNumber);
+  function changeSetting(select) {
+    let changeValue = Number(select.value);
+    let cookieId = select.id.replace("select_", "");
+    if (changeValue < select.min || changeValue > select.max) {
+      select.classList.add("is-danger");
+      select.value = getCookie(
+        cookieId,
+        cookieId == "refresh_period" ? 300 : 2
+      );
+      setTimeout(() => {
+        select.classList.remove("is-danger");
+      }, 1000);
+      return;
+    }
+    setCookie(cookieId, changeValue);
     applyPreferences();
-  });
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  const select = document.querySelector("#select_refresh_period");
-
-  select.addEventListener("change", (e) => {
-    const refresh_period = select.value;
-    setCookie("refresh_period", refresh_period);
-    applyPreferences();
-  });
+    select.classList.add("is-success");
+    setTimeout(() => {
+      select.classList.remove("is-success");
+    }, 1000);
+  }
+  document
+    .querySelectorAll("#select_refresh_period, #select_number_of_columns")
+    .forEach((input) => {
+      input.addEventListener("change", (e) => changeSetting(e.target));
+    });
 });
 
 function applyPreferences() {
