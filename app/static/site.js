@@ -50,11 +50,13 @@ function applyPreferences() {
   const grid = document.querySelectorAll(".camera");
   for (var i = 0, len = grid.length; i < len; i++) {
     grid[i].classList.forEach((item) => {
-      if (item.match(/^is\-\d/)) {
+      if (item.match(/^is\-\d/) || item == "is-one-fifth") {
         grid[i].classList.remove(item);
       }
     });
-    grid[i].classList.add(`is-${12 / repeatNumber}`);
+    grid[i].classList.add(
+      `is-${repeatNumber == 5 ? "one-fifth" : 12 / repeatNumber}`
+    );
   }
 
   const sortOrder = getCookie("camera_order", "");
