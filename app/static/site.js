@@ -363,3 +363,23 @@ document.addEventListener("DOMContentLoaded", () => {
     up.addEventListener("click", updateSnapshot);
   });
 });
+
+// Restart bridge/rtsp-simple-server.
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("#restart-menu a").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.stopPropagation();
+      a.style = "pointer-events: none;";
+      a.classList.add("has-text-danger");
+      fetch("restart/" + a.dataset.restart)
+        .then((resp) => resp.json())
+        .then((data) => {
+          console.log(data);
+        });
+      setTimeout(() => {
+        a.style = null;
+        a.classList.remove("has-text-danger");
+      }, 3000);
+    });
+  });
+});

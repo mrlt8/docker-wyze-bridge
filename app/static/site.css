@@ -61,7 +61,7 @@ video {
   top: 0;
 }
 
-.dropdown-item td {
+.table.dropdown-item td {
   max-width: 250px;
   word-wrap: break-word;
 }
