@@ -72,6 +72,31 @@ def create_app():
         except NotFound:
             return rtsp_snapshot(img_file)
 
+    @app.route("/restart/<string:restart_cmd>")
+    def restart_bridge(restart_cmd: str):
+        """
+        Restart parts of the wyze-bridge.
+
+        /restart/cameras:       Stop and start all enabled cameras.
+        /restart/rtsp_server:   Stop and start rtsp-simple-server.
+        /restart/all:           Stop and start all enabled cameras and rtsp-simple-server.
+        """
+        if restart_cmd == "cameras":
+            wb.stop_cameras()
+            wb.start()
+        elif restart_cmd == "rtsp_server":
+            wb.stop_rtsp_server()
+            wb.start_rtsp_server()
+        elif restart_cmd == "all":
+            wb.stop_cameras()
+            wb.stop_rtsp_server()
+            wb.start()
+            restart_cmd = "cameras,rtsp_server"
+        else:
+            return {"result": "error"}
+
+        return {"result": "ok", "restart": restart_cmd.split(",")}
+
     return app
 
 

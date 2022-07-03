@@ -58,6 +58,43 @@
                             </div>
                         </div>
                     </div>
+                    <div class="navbar-item dropdown is-hoverable is-right">
+                        <div class="dropdown-trigger">
+                            <button class="button is-fullwidth is-danger is-outlined" aria-haspopup="true"
+                                aria-controls="dropdown-menu">
+                                <span class="icon is-small">
+                                    <i class="fas fa-power-off"></i>
+                                </span>
+                                <span>Restart</span>
+                                <span class="icon is-small">
+                                    <i class="fas fa-angle-down" aria-hidden="true"></i>
+                                </span>
+                            </button>
+                        </div>
+                        <div class="dropdown-menu" id="restart-menu" role="menu">
+                            <div class="dropdown-content">
+                                <a data-restart="cameras" class="dropdown-item">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-video"></i>
+                                    </span>
+                                    <span>cameras</span>
+                                </a>
+                                <a data-restart="rtsp_server" class="dropdown-item">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-solid fa-network-wired"></i>
+                                    </span>
+                                    <span>rtsp-simple-server</span>
+                                </a>
+                                <a data-restart="all" class="dropdown-item">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-solid fa-server"></i>
+                                    </span>
+                                    <span>cameras and server</span>
+                                </a>
+
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </nav>
