@@ -64,11 +64,33 @@ class WyzeBridge:
         self.start_rtsp_server()
         self.start_all_streams()
 
-    def start(self):
-        """Start asynchronously"""
+    def start(self) -> None:
+        """Start asynchronously."""
         if not self.thread:
             self.thread = threading.Thread(target=self.run)
             self.thread.start()
+
+    def stop_cameras(self) -> None:
+        """Stop all cameras."""
+        log.info("Stopping the cameras...")
+        self.stop_flag.set()
+        if len(self.streams) > 0:
+            for stream in self.streams.values():
+                if process := stream["process"]:
+                    process.join()
+        if self.thread:
+            self.thread.join()
+        self.thread = None
+        self.streams: dict = {}
+        self.cameras: List[WyzeCamera] = []
+        self.stop_flag.clear()
+
+    def stop_rtsp_server(self):
+        """Stop rtsp-simple-server."""
+        log.info("Stopping rtsp-simple-server...")
+        if self.rtsp.poll() is None:
+            self.rtsp.terminate()
+        self.rtsp = None
 
     def update_health(self):
         """Update healthcheck with number of cams down if enabled."""
@@ -147,19 +169,10 @@ class WyzeBridge:
 
     def clean_up(self) -> NoReturn:
         """Stop all streams and clean up before shutdown."""
-        self.stop_flag.set()
-        if self.rtsp.poll() is None:
-            self.rtsp.kill()
-        if len(self.streams) > 0:
-            for stream in self.streams.values():
-                if (process := stream["process"]) and process.is_alive():
-                    process.join()
-        if self.thread:
-            self.thread.join()
-            self.thread = None
-        self.cameras = []
-        self.streams = {}
+        self.stop_cameras()
+        self.stop_rtsp_server()
         log.info("👋 goodbye!")
+        sys.exit(0)
 
     def auth_wyze(self) -> wyzecam.WyzeCredential:
         """Authenticate and complete MFA if required."""
@@ -351,6 +364,8 @@ class WyzeBridge:
 
     def start_rtsp_server(self) -> None:
         """Start rtsp-simple-server in its own subprocess."""
+        if self.rtsp:
+            return
         os.environ["IMG_PATH"] = self.img_path
         os.environ["RTSP_READTIMEOUT"] = f"{self.timeout + 2}s"
         try:
