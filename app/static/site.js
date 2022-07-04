@@ -181,7 +181,8 @@ function sortable(parent, selector, onUpdate = null) {
  * @returns {Promise<void>}
  */
 async function update_img(oldUrl) {
-  let newUrl = oldUrl.replace("img/", "snapshot/");
+  let newUrl =
+    oldUrl.replace("img/", "snapshot/").split("?")[0] + "?" + Date.now();
   console.debug("update_img", oldUrl, newUrl);
   let cam = oldUrl.split("/").pop().split(".")[0];
   let button = document.querySelector(`.is-overlay > [data-cam="${cam}"]`);
@@ -342,8 +343,6 @@ document.addEventListener("DOMContentLoaded", () => {
         let poster = placeholder.getElementsByClassName("vjs-poster")[0];
         poster.style.backgroundImage = `url("${oldUrl}")`;
         placeholder.setAttribute("poster", oldUrl);
-      } else {
-        placeholder.src = oldUrl;
       }
       placeholder.classList.remove("loading-preview");
     } catch {
