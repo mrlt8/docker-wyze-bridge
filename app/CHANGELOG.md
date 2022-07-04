@@ -1,3 +1,14 @@
+## Changes in v1.6.11
+
+- **NEW** Restart connection to all cameras or restart rtsp-server from webui.
+  - `/restart/cameras`: Stop and start connection to all enabled cameras.
+  - `/restart/rtsp_server`: Stop and start rtsp-simple-server.
+  - `/restart/all`: Stop and start rtsp-simple-server and connection to all enabled cameras.
+- **NEW** ENV `AUDIO_STREAM` or `AUDIO_STREAM_CAM_NAME` to create an audio only sub-stream with the `_audio` suffix: /cam_name_audio #446
+- **FIXED** five column view in web-ui.
+- **FIXED** static values in web-ui load.
+- **FIXED** validate input in webui to prevent invalid values.
+
 ## Changes in v1.6.10
 
 - **Home Assistant** Expose port `5000` for web-ui and snapshots. #455
