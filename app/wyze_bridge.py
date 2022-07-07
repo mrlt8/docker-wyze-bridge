@@ -816,12 +816,12 @@ def setup_hass(hass: bool):
     log.info("🏠 Home Assistant Mode")
     with open("/data/options.json") as f:
         conf = json.load(f)
-    host_info = requests.get(
-        "http://supervisor/info",
-        headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
-    ).json()
-    if "ok" in host_info.get("result") and (data := host_info.get("data")):
-        os.environ["DOMAIN"] = data.get("hostname")
+    # host_info = requests.get(
+    #     "http://supervisor/info",
+    #     headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
+    # ).json()
+    # if "ok" in host_info.get("result") and (data := host_info.get("data")):
+    #     os.environ["DOMAIN"] = data.get("hostname")
 
     mqtt_conf = requests.get(
         "http://supervisor/services/mqtt",

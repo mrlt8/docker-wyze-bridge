@@ -1,3 +1,8 @@
+## Changes in v1.6.12
+
+- **FIXED** Web-UI image not refreshing in some browsers. #460
+- **CHANGED** Home Assistant: Use hostname from request for Web-UI. #465
+
 ## Changes in v1.6.11
 
 - **NEW** Restart connection to all cameras or restart rtsp-server from webui.

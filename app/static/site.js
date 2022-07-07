@@ -181,9 +181,9 @@ function sortable(parent, selector, onUpdate = null) {
  * @returns {Promise<void>}
  */
 async function update_img(oldUrl) {
-  let newUrl = oldUrl.replace("img/", "snapshot/");
+  let [cam, ext] = oldUrl.split("/").pop().split("?")[0].split(".");
+  let newUrl = "snapshot/" + cam + "." + ext + "?" + Date.now();
   console.debug("update_img", oldUrl, newUrl);
-  let cam = oldUrl.split("/").pop().split(".")[0];
   let button = document.querySelector(`.is-overlay > [data-cam="${cam}"]`);
   if (button) {
     button.disabled = true;
@@ -224,6 +224,7 @@ async function update_img(oldUrl) {
     button.getElementsByClassName("fas")[0].classList.remove("fa-pulse");
     button.parentElement.style.display = null;
   }
+  return newUrl;
 }
 
 function refresh_imgs() {
@@ -337,14 +338,23 @@ document.addEventListener("DOMContentLoaded", () => {
     let cam = placeholder.getAttribute("data-cam");
     let oldUrl = `snapshot/${cam}.jpg`;
     try {
-      await update_img(oldUrl);
-      if (placeholder.classList.contains("video-js")) {
-        let poster = placeholder.getElementsByClassName("vjs-poster")[0];
-        poster.style.backgroundImage = `url("${oldUrl}")`;
-        placeholder.setAttribute("poster", oldUrl);
-      } else {
-        placeholder.src = oldUrl;
-      }
+      let newUrl = await update_img(oldUrl);
+      placeholder.parentElement
+        .querySelectorAll(
+          "[src$=loading\\.svg],[style*=loading\\.svg],[poster$=loading\\.svg]"
+        )
+        .forEach((e) => {
+          let newVal = newUrl;
+          for (let attr of e.attributes) {
+            if (attr.value.includes("loading.svg")) {
+              if (attr.name == "style") {
+                newVal = `background-image: url(${newUrl});`;
+              }
+              e.setAttribute(attr.name, newVal);
+              continue;
+            }
+          }
+        });
       placeholder.classList.remove("loading-preview");
     } catch {
       setTimeout(() => {
@@ -354,8 +364,11 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   async function updateSnapshot(e) {
     let cam = e.target.closest("button").getAttribute("data-cam");
-    if (cam !== null) {
-      await update_img(`img/${cam}.jpg`);
+    let img = document
+      .querySelector(`.refresh_img[data-cam=${cam}]`)
+      .getAttribute("src");
+    if (img != null) {
+      await update_img(img);
     }
   }
   document.querySelectorAll(".loading-preview").forEach(loadPreview);
