@@ -28,6 +28,13 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
+## Changes in v1.6.12
+
+- **FIXED** Web-UI image not refreshing in some browsers. #460
+- **CHANGED** Home Assistant: Use hostname from request for Web-UI. #465
+
+**Full Changelog**: https://github.com/mrlt8/docker-wyze-bridge/compare/v1.6.11...v1.6.12
+
 ## Changes in v1.6.11
 
 - **NEW** Restart connection to all cameras or restart rtsp-server from webui.
@@ -38,8 +45,6 @@ See [basic usage](#basic-usage) for additional information.
 - **FIXED** five column view in web-ui.
 - **FIXED** static values in web-ui load.
 - **FIXED** validate input in webui to prevent invalid values.
-
-**Full Changelog**: https://github.com/mrlt8/docker-wyze-bridge/compare/v1.6.10...v1.6.11
 
 ## Changes in v1.6.10
 
