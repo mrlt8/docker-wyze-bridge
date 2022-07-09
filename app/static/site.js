@@ -24,24 +24,34 @@ let refresh_period = -1; // refresh images time period in seconds
 
 document.addEventListener("DOMContentLoaded", applyPreferences);
 
+// Event listener for input and validate changes before applyPreferences
 document.addEventListener("DOMContentLoaded", () => {
-  const select = document.querySelector("#select_number_of_columns");
-
-  select.addEventListener("change", (e) => {
-    const repeatNumber = select.value;
-    setCookie("number_of_columns", repeatNumber);
+  function changeSetting(select) {
+    let changeValue = Number(select.value);
+    let cookieId = select.id.replace("select_", "");
+    if (changeValue < select.min || changeValue > select.max) {
+      select.classList.add("is-danger");
+      select.value = getCookie(
+        cookieId,
+        cookieId == "refresh_period" ? 300 : 2
+      );
+      setTimeout(() => {
+        select.classList.remove("is-danger");
+      }, 1000);
+      return;
+    }
+    setCookie(cookieId, changeValue);
     applyPreferences();
-  });
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  const select = document.querySelector("#select_refresh_period");
-
-  select.addEventListener("change", (e) => {
-    const refresh_period = select.value;
-    setCookie("refresh_period", refresh_period);
-    applyPreferences();
-  });
+    select.classList.add("is-success");
+    setTimeout(() => {
+      select.classList.remove("is-success");
+    }, 1000);
+  }
+  document
+    .querySelectorAll("#select_refresh_period, #select_number_of_columns")
+    .forEach((input) => {
+      input.addEventListener("change", (e) => changeSetting(e.target));
+    });
 });
 
 function applyPreferences() {
@@ -50,11 +60,13 @@ function applyPreferences() {
   const grid = document.querySelectorAll(".camera");
   for (var i = 0, len = grid.length; i < len; i++) {
     grid[i].classList.forEach((item) => {
-      if (item.match(/^is\-\d/)) {
+      if (item.match(/^is\-\d/) || item == "is-one-fifth") {
         grid[i].classList.remove(item);
       }
     });
-    grid[i].classList.add(`is-${12 / repeatNumber}`);
+    grid[i].classList.add(
+      `is-${repeatNumber == 5 ? "one-fifth" : 12 / repeatNumber}`
+    );
   }
 
   const sortOrder = getCookie("camera_order", "");
@@ -169,9 +181,9 @@ function sortable(parent, selector, onUpdate = null) {
  * @returns {Promise<void>}
  */
 async function update_img(oldUrl) {
-  let newUrl = oldUrl.replace("img/", "snapshot/");
+  let [cam, ext] = oldUrl.split("/").pop().split("?")[0].split(".");
+  let newUrl = "snapshot/" + cam + "." + ext + "?" + Date.now();
   console.debug("update_img", oldUrl, newUrl);
-  let cam = oldUrl.split("/").pop().split(".")[0];
   let button = document.querySelector(`.is-overlay > [data-cam="${cam}"]`);
   if (button) {
     button.disabled = true;
@@ -212,13 +224,14 @@ async function update_img(oldUrl) {
     button.getElementsByClassName("fas")[0].classList.remove("fa-pulse");
     button.parentElement.style.display = null;
   }
+  return newUrl;
 }
 
 function refresh_imgs() {
   console.debug("refresh_imgs " + Date.now());
-  document.querySelectorAll(".refresh_img").forEach(function (image) {
+  document.querySelectorAll(".refresh_img").forEach(async function (image) {
     let url = image.getAttribute("src");
-    update_img(url);
+    await update_img(url);
   });
 }
 
@@ -322,18 +335,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
 document.addEventListener("DOMContentLoaded", () => {
   async function loadPreview(placeholder) {
-    // console.debug("loadPreview", placeholder);
     let cam = placeholder.getAttribute("data-cam");
     let oldUrl = `snapshot/${cam}.jpg`;
     try {
-      await update_img(oldUrl);
-      if (placeholder.classList.contains("video-js")) {
-        let poster = placeholder.getElementsByClassName("vjs-poster")[0];
-        poster.style.backgroundImage = `url("${oldUrl}")`;
-        placeholder.setAttribute("poster", oldUrl);
-      } else {
-        placeholder.src = oldUrl;
-      }
+      let newUrl = await update_img(oldUrl);
+      placeholder.parentElement
+        .querySelectorAll(
+          "[src$=loading\\.svg],[style*=loading\\.svg],[poster$=loading\\.svg]"
+        )
+        .forEach((e) => {
+          let newVal = newUrl;
+          for (let attr of e.attributes) {
+            if (attr.value.includes("loading.svg")) {
+              if (attr.name == "style") {
+                newVal = `background-image: url(${newUrl});`;
+              }
+              e.setAttribute(attr.name, newVal);
+              continue;
+            }
+          }
+        });
       placeholder.classList.remove("loading-preview");
     } catch {
       setTimeout(() => {
@@ -341,14 +362,37 @@ document.addEventListener("DOMContentLoaded", () => {
       }, 30000);
     }
   }
-  function updateSnapshot(e) {
+  async function updateSnapshot(e) {
     let cam = e.target.closest("button").getAttribute("data-cam");
-    if (cam !== null) {
-      update_img(`img/${cam}.jpg`);
+    let img = document
+      .querySelector(`.refresh_img[data-cam=${cam}]`)
+      .getAttribute("src");
+    if (img != null) {
+      await update_img(img);
     }
   }
   document.querySelectorAll(".loading-preview").forEach(loadPreview);
   document.querySelectorAll(".update-preview").forEach((up) => {
     up.addEventListener("click", updateSnapshot);
+  });
+});
+
+// Restart bridge/rtsp-simple-server.
+document.addEventListener("DOMContentLoaded", () => {
+  document.querySelectorAll("#restart-menu a").forEach((a) => {
+    a.addEventListener("click", (e) => {
+      e.stopPropagation();
+      a.style = "pointer-events: none;";
+      a.classList.add("has-text-danger");
+      fetch("restart/" + a.dataset.restart)
+        .then((resp) => resp.json())
+        .then((data) => {
+          console.log(data);
+        });
+      setTimeout(() => {
+        a.style = null;
+        a.classList.remove("has-text-danger");
+      }, 3000);
+    });
   });
 });

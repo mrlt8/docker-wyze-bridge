@@ -68,11 +68,33 @@ class WyzeBridge:
         self.start_rtsp_server()
         self.start_all_streams()
 
-    def start(self):
-        """Start asynchronously"""
+    def start(self) -> None:
+        """Start asynchronously."""
         if not self.thread:
             self.thread = threading.Thread(target=self.run)
             self.thread.start()
+
+    def stop_cameras(self) -> None:
+        """Stop all cameras."""
+        log.info("Stopping the cameras...")
+        self.stop_flag.set()
+        if len(self.streams) > 0:
+            for stream in self.streams.values():
+                if process := stream["process"]:
+                    process.join()
+        if self.thread:
+            self.thread.join()
+        self.thread = None
+        self.streams: dict = {}
+        self.cameras: List[WyzeCamera] = []
+        self.stop_flag.clear()
+
+    def stop_rtsp_server(self):
+        """Stop rtsp-simple-server."""
+        log.info("Stopping rtsp-simple-server...")
+        if self.rtsp.poll() is None:
+            self.rtsp.terminate()
+        self.rtsp = None
 
     def update_health(self):
         """Update healthcheck with number of cams down if enabled."""
@@ -157,19 +179,10 @@ class WyzeBridge:
 
     def clean_up(self) -> NoReturn:
         """Stop all streams and clean up before shutdown."""
-        self.stop_flag.set()
-        if self.rtsp.poll() is None:
-            self.rtsp.kill()
-        if len(self.streams) > 0:
-            for stream in self.streams.values():
-                if (process := stream["process"]) and process.is_alive():
-                    process.join()
-        if self.thread:
-            self.thread.join()
-            self.thread = None
-        self.cameras = []
-        self.streams = {}
+        self.stop_cameras()
+        self.stop_rtsp_server()
         log.info("👋 goodbye!")
+        sys.exit(0)
 
     def auth_wyze(self) -> wyzecam.WyzeCredential:
         """Authenticate and complete MFA if required."""
@@ -361,6 +374,8 @@ class WyzeBridge:
 
     def start_rtsp_server(self) -> None:
         """Start rtsp-simple-server in its own subprocess."""
+        if self.rtsp:
+            return
         os.environ["IMG_PATH"] = self.img_path
         os.environ["RTSP_READTIMEOUT"] = f"{self.timeout + 2}s"
         try:
@@ -672,9 +687,11 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list:
         audio_in = f"-f {audio['codec']} -ar {audio['rate']} -i /tmp/{uri.lower()}.wav"
         audio_out = audio["codec_out"] or "copy"
         a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
-    av_select = "select=" + ("v,a" if audio else "v")
-    rtsp_proto = "udp" if "udp" in env_bool("RTSP_PROTOCOLS") else "tcp"
-    rtsp_ss = f"[{av_select}:f=rtsp:rtsp_transport={rtsp_proto}]rtsp://0.0.0.0:8554/{uri.lower()}"
+    rtsp_transport = "udp" if "udp" in env_bool("RTSP_PROTOCOLS") else "tcp"
+    rss_cmd = f"[{{}}f=rtsp:{rtsp_transport=:}]rtsp://0.0.0.0:8554/{uri.lower()}"
+    rtsp_ss = rss_cmd.format("")
+    if env_bool(f"AUDIO_STREAM_{uri}", env_bool("AUDIO_STREAM")) and audio:
+        rtsp_ss += "|" + rss_cmd.format("select=a:") + "_audio"
 
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD")).format(
         cam_name=uri.lower(), CAM_NAME=uri, audio_in=audio_in
@@ -694,7 +711,7 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list:
         + ["-map", "0:v"]
         + (["-map", "1:a", "-shortest"] if audio_in else [])
         + ["-f", "tee"]
-        + [rtsp_ss + get_record_cmd(uri, av_select) + livestream]
+        + [rtsp_ss + get_record_cmd(uri) + livestream]
     )
     if "ffmpeg" not in cmd[0].lower():
         cmd.insert(0, "ffmpeg")
@@ -703,7 +720,7 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list:
     return cmd
 
 
-def get_record_cmd(uri: str, av_select: str) -> str:
+def get_record_cmd(uri: str) -> str:
     """Check if recording is enabled and return ffmpeg tee cmd."""
     if not env_bool(f"RECORD_{uri}", env_bool("RECORD_ALL")):
         return ""
@@ -716,7 +733,7 @@ def get_record_cmd(uri: str, av_select: str) -> str:
     os.makedirs(path, exist_ok=True)
     log.info(f"📹 Will record {seg_time}s clips to {path}")
     return (
-        f"|[onfail=ignore:{av_select}:f=segment"
+        f"|[onfail=ignore:f=segment"
         f":segment_time={seg_time}"
         ":segment_atclocktime=1"
         ":segment_format=mp4"
@@ -730,7 +747,7 @@ def get_record_cmd(uri: str, av_select: str) -> str:
 def get_livestream_cmd(uri: str) -> str:
     """Check if livestream is enabled and return ffmpeg tee cmd."""
     cmd = ""
-    flv = "|[select=v,a:f=flv:flvflags=no_duration_filesize:use_fifo=1]"
+    flv = "|[f=flv:flvflags=no_duration_filesize:use_fifo=1]"
     if len(key := env_bool(f"YOUTUBE_{uri}", style="original")) > 5:
         log.info("📺 YouTube livestream enabled")
         cmd += f"{flv}rtmp://a.rtmp.youtube.com/live2/{key}"
@@ -823,12 +840,12 @@ def setup_hass(hass: bool):
     log.info("🏠 Home Assistant Mode")
     with open("/data/options.json") as f:
         conf = json.load(f)
-    host_info = requests.get(
-        "http://supervisor/info",
-        headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
-    ).json()
-    if "ok" in host_info.get("result") and (data := host_info.get("data")):
-        os.environ["DOMAIN"] = data.get("hostname")
+    # host_info = requests.get(
+    #     "http://supervisor/info",
+    #     headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
+    # ).json()
+    # if "ok" in host_info.get("result") and (data := host_info.get("data")):
+    #     os.environ["DOMAIN"] = data.get("hostname")
 
     mqtt_conf = requests.get(
         "http://supervisor/services/mqtt",
