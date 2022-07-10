@@ -140,6 +140,11 @@
                                 </div>
                             </div>
                             {{camera.nickname}}
+                            {% if camera.boa_url %}
+                            <span class="icon">
+                                <i class="fas fa-sd-card" aria-hidden="true"></i>
+                            </span>
+                            {% endif %}
                         </div>
                         <span class="drag_handle" draggable="true"></span>
                         <button class="card-header-icon hide-image" data-cam="{{camera.name_uri}}">
@@ -186,6 +191,9 @@
                         <a href="{{camera.hls_url}}" class="card-footer-item">HLS</a>
                         <a href="{{camera.rtmp_url}}" class="card-footer-item">RTMP</a>
                         <a href="{{camera.rtsp_url}}" class="card-footer-item">RTSP</a>
+                        {% if camera.boa_url %}
+                        <a href="{{camera.boa_url}}" class="card-footer-item" target="_blank">SD Card</a>
+                        {% endif %}
                     </footer>
                 </div>
             </div>
