@@ -494,8 +494,10 @@ class WyzeBridge:
             d["name_uri"] = cam.name_uri
             d["enabled"] = cam.nickname in self.streams
             d["connected"] = False
-            if (stream := self.streams.get(cam.nickname)) and "camera_info" in stream:
+            d["camera_info"] = None
+            if (stream := self.streams.get(cam.nickname)) and stream.get("camera_info"):
                 d["connected"] = True
+                d["camera_info"] = stream["camera_info"]
             d["img_url"] = f"img/{img}" if os.path.exists(self.img_path + img) else None
             d["snapshot_url"] = f"snapshot/{img}"
             r[cam.name_uri] = d
@@ -946,7 +948,7 @@ def mqtt_sub_topic(
 ) -> paho.mqtt.client.Client:
     """Connect to mqtt and return the client."""
     if not env_bool("MQTT_HOST"):
-        return None, None
+        return None
 
     client = paho.mqtt.client.Client()
     m_auth = os.getenv("MQTT_AUTH", ":").split(":")
