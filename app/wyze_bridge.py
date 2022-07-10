@@ -411,12 +411,12 @@ class WyzeBridge:
                 audio_thread = threading.Thread(
                     target=sess.recv_audio_frames, args=(uri, fps), name=uri + "_AUDIO"
                 )
-                boa_thread = threading.Thread(
-                    target=camera_boa,
-                    args=(sess, uri, self.img_path, camera_info, camera_cmd),
-                    name=uri + "_BOA",
-                )
                 if env_bool("enable_boa"):
+                    boa_thread = threading.Thread(
+                        target=camera_boa,
+                        args=(sess, uri, self.img_path, camera_info, camera_cmd),
+                        name=uri + "_BOA",
+                    )
                     boa_thread.start()
                 with Popen(
                     get_ffmpeg_cmd(uri, cam.product_model, audio), stdin=PIPE
@@ -1040,8 +1040,11 @@ def camera_boa(
                 with sess.iotctrl_mux() as mux:
                     mux.send_ioctl(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
                 last_photo = pull_last_image(cam, "photo", last_photo)
-                boa_info["last_photo"] = last_photo
-                cam_info["boa_info"] = boa_info
+                cam_info = sess.camera.camera_info
+                cam_info["boa_info"] = {
+                    "last_alarm": last_alarm,
+                    "last_photo": last_photo,
+                }
                 camera_info.put(cam_info)
                 camera_cmd.task_done()
         except Empty:
