@@ -947,7 +947,7 @@ def get_header_dates(resp_header: dict) -> datetime:
 
 
 def mqtt_sub_topic(
-    m_topic: str, sess: wyzecam.WyzeIOTCSession
+    m_topics: list, sess: wyzecam.WyzeIOTCSession
 ) -> paho.mqtt.client.Client:
     """Connect to mqtt and return the client."""
     if not env_bool("MQTT_HOST"):
@@ -956,20 +956,24 @@ def mqtt_sub_topic(
     client = paho.mqtt.client.Client()
     m_auth = os.getenv("MQTT_AUTH", ":").split(":")
     m_host = os.getenv("MQTT_HOST", "localhost").split(":")
-    topic = f"wyzebridge/{m_topic}"
     client.username_pw_set(m_auth[0], m_auth[1] if len(m_auth) > 1 else None)
     client.user_data_set(sess)
-    client.on_connect = lambda mq_client, obj, flags, rc: mq_client.subscribe(topic)
-    client.on_message = _take_photo
+    client.on_connect = lambda mq_client, *_: [
+        mq_client.subscribe(f"wyzebridge/{m_topic}") for m_topic in m_topics
+    ]
+    client.on_message = _on_message
     client.connect(m_host[0], int(m_host[1] if len(m_host) > 1 else 1883), 60)
     client.loop_start()
     return client
 
 
-def _take_photo(client, sess, msg):
-    log.info("[MQTT] 📸 Take Photo via MQTT!")
-    with sess.iotctrl_mux() as mux:
-        mux.send_ioctl(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
+def _on_message(client, sess, msg):
+    if "takePhoto" in msg.topic:
+        log.info("[MQTT] 📸 Take Photo via MQTT!")
+        with sess.iotctrl_mux() as mux:
+            mux.send_ioctl(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
+        # if msg.payload:
+        #     client.publish(msg.topic, None)
 
 
 def camera_boa(
@@ -1002,11 +1006,10 @@ def camera_boa(
     interval = env_bool("boa_interval", 5)
     last_alarm = last_photo = (None, None)
     cooldown = datetime.now()
-    mqtt = mqtt_sub_topic(f"{uri.lower()}/takePhoto", sess)
+    mqtt = mqtt_sub_topic([f"{uri.lower()}/takePhoto"], sess)
 
     while sess.state == SessionState.AUTHENTICATION_SUCCEEDED:
         iotctrl_msg = []
-        boa_info = {}
         if env_bool("take_photo"):
             iotctrl_msg.append(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
         if not cam_http_alive(ip):
@@ -1016,24 +1019,24 @@ def camera_boa(
             with sess.iotctrl_mux() as mux:
                 for msg in iotctrl_msg:
                     mux.send_ioctl(msg)
-        if env_bool("pull_alarm") and datetime.now() > cooldown:
-            old = last_alarm
+        if datetime.now() > cooldown and (
+            env_bool("pull_alarm") or env_bool("motion_http")
+        ):
             last_alarm, cooldown = motion_alarm(cam, last_alarm, cooldown)
-            if old != last_photo:
-                boa_info["last_alarm"] = last_photo
         if env_bool("pull_photo"):
             as_snap = env_bool("pull_photo") and env_bool("take_photo")
-            old = last_photo
             last_photo = pull_last_image(cam, "photo", last_photo, as_snap)
-            if old != last_photo:
-                boa_info["last_photo"] = last_photo
-        if boa_info:
+        if camera_info.empty():
             cam_info = sess.camera.camera_info
-            cam_info["boa_info"] = boa_info
+            cam_info["boa_info"] = {
+                "last_alarm": last_alarm,
+                "last_photo": last_photo,
+            }
             camera_info.put(cam_info)
         try:
             cmd = camera_cmd.get(timeout=interval)
             if cmd == "take_photo":
+                log.info("[MQTT] 📸 Take Photo via WEB-UI!")
                 with sess.iotctrl_mux() as mux:
                     mux.send_ioctl(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
                 last_photo = pull_last_image(cam, "photo", last_photo)
