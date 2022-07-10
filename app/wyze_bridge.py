@@ -10,6 +10,7 @@ import threading
 import time
 import warnings
 from datetime import datetime, timedelta
+from queue import Empty
 from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
 from typing import Dict, List, NoReturn, Optional, Tuple, Union
 
@@ -115,9 +116,10 @@ class WyzeBridge:
             refresh_cams = True
             for name, stream in list(self.streams.items()):
                 if (
-                    "connected" in stream
-                    and not stream["connected"].is_set()
-                    and time.time() - stream["started"] > (self.connect_timeout + 2)
+                    not stream.get("sleep")
+                    and not stream.get("camera_info")
+                    and time.time() - stream.get("started", 0)
+                    > (self.connect_timeout + 2)
                 ):
                     log.warning(
                         f"⏰ Timed out connecting to {name} ({self.connect_timeout}s)."
@@ -157,21 +159,20 @@ class WyzeBridge:
                 proc.join()
         offline = bool(self.streams[name].get("sleep"))
         cam = next(c for c in self.cameras if c.nickname == name)
-        model = cam.model_name
-        log.info(f"🎉 Connecting to WyzeCam {model} - {name} on {cam.ip} (1/3)")
-        connected = multiprocessing.Event()
-        camera_info = multiprocessing.Queue()
+        log.info(f"🎉 Connecting to WyzeCam {cam.model_name} - {name} on {cam.ip} (1/3)")
+        camera_info = multiprocessing.Queue(1)
+        camera_cmd = multiprocessing.JoinableQueue(1)
 
         stream = multiprocessing.Process(
             target=self.start_tutk_stream,
-            args=(cam, connected, camera_info, offline),
+            args=(cam, camera_info, camera_cmd, offline),
             name=name,
         )
         self.streams[name] = {
             "process": stream,
             "sleep": False,
-            "connected": connected,
             "camera_info": None,
+            "camera_cmd": camera_cmd,
             "queue": camera_info,
             "started": time.time(),
         }
@@ -388,8 +389,8 @@ class WyzeBridge:
     def start_tutk_stream(
         self,
         cam: wyzecam.WyzeCamera,
-        connected: multiprocessing.Event,
         camera_info: multiprocessing.Queue,
+        camera_cmd: multiprocessing.JoinableQueue,
         offline: bool,
     ) -> None:
         """Connect and communicate with the camera using TUTK."""
@@ -405,7 +406,6 @@ class WyzeBridge:
                 enable_audio=audio,
                 connect_timeout=self.connect_timeout,
             ) as sess:
-                connected.set()
                 camera_info.put(sess.camera.camera_info)
                 fps, audio = get_cam_params(sess, uri, audio)
                 audio_thread = threading.Thread(
@@ -413,7 +413,7 @@ class WyzeBridge:
                 )
                 boa_thread = threading.Thread(
                     target=camera_boa,
-                    args=(sess, uri, self.img_path, camera_info),
+                    args=(sess, uri, self.img_path, camera_info, camera_cmd),
                     name=uri + "_BOA",
                 )
                 if env_bool("enable_boa"):
@@ -494,8 +494,8 @@ class WyzeBridge:
             d["name_uri"] = cam.name_uri
             d["enabled"] = cam.nickname in self.streams
             d["connected"] = False
-            if (stream := self.streams.get(cam.nickname)) and "connected" in stream:
-                d["connected"] = self.streams[cam.nickname]["connected"].is_set()
+            if (stream := self.streams.get(cam.nickname)) and "camera_info" in stream:
+                d["connected"] = True
             d["img_url"] = f"img/{img}" if os.path.exists(self.img_path + img) else None
             d["snapshot_url"] = f"snapshot/{img}"
             r[cam.name_uri] = d
@@ -531,6 +531,18 @@ class WyzeBridge:
                 ffmpeg.kill()
                 return None
         return img
+
+    def boa_photo(self, cam_name: str) -> Optional[str]:
+        """Take photo."""
+        if not (cam := self.streams.get(cam_name)) or cam.get("camera_info") is None:
+            return None
+        cam["camera_cmd"].put("take_photo")
+        cam["camera_cmd"].join()
+        if cam.get("queue") and not cam["queue"].empty():
+            cam["camera_info"] = cam["queue"].get()
+        if boa_info := cam["camera_info"].get("boa_info"):
+            return boa_info.get("last_photo")
+        return None
 
 
 mode_type = {0: "P2P", 1: "RELAY", 2: "LAN"}
@@ -908,7 +920,7 @@ def pull_last_image(cam: tuple, path: str, last: tuple, as_snap: bool = False) -
                 resp = req.get(f"http://{cam[1]}/SDPath/{path}/{date}/{file_name}")
                 _, modded = get_header_dates(resp.headers)
                 # with open(f"{img_dir}{path}_{file_name}", "wb") as img:
-                save_name = "_" + "alarm.jpg" if path == "alarm" else file_name
+                save_name = "_" + ("alarm.jpg" if path == "alarm" else file_name)
                 if as_snap:
                     save_name = ".jpg"
                 with open(f"{cam[2]}{cam[0]}{save_name}", "wb") as img:
@@ -955,7 +967,9 @@ def _take_photo(client, sess, msg):
         mux.send_ioctl(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
 
 
-def camera_boa(sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str, camera_info):
+def camera_boa(
+    sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str, camera_info, camera_cmd
+):
     """
     Start the boa server on the camera and pull photos.
 
@@ -1012,7 +1026,18 @@ def camera_boa(sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str, camera_inf
             cam_info = sess.camera.camera_info
             cam_info["boa_info"] = boa_info
             camera_info.put(cam_info)
-        time.sleep(interval)
+        try:
+            cmd = camera_cmd.get(timeout=interval)
+            if cmd == "take_photo":
+                with sess.iotctrl_mux() as mux:
+                    mux.send_ioctl(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
+                last_photo = pull_last_image(cam, "photo", last_photo)
+                boa_info["last_photo"] = last_photo
+                cam_info["boa_info"] = boa_info
+                camera_info.put(cam_info)
+                camera_cmd.task_done()
+        except Empty:
+            pass
     if mqtt:
         mqtt.loop_stop()
 
