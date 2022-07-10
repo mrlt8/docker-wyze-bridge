@@ -411,7 +411,12 @@ class WyzeBridge:
                 audio_thread = threading.Thread(
                     target=sess.recv_audio_frames, args=(uri, fps), name=uri + "_AUDIO"
                 )
-                if env_bool("enable_boa"):
+                if (
+                    env_bool("enable_boa")
+                    or env_bool("PULL_PHOTO")
+                    or env_bool("PULL_ALARM")
+                    or env_bool("MOTION_HTTP")
+                ):
                     boa_thread = threading.Thread(
                         target=camera_boa,
                         args=(sess, uri, self.img_path, camera_info, camera_cmd),
