@@ -336,7 +336,10 @@ document.addEventListener("DOMContentLoaded", () => {
 document.addEventListener("DOMContentLoaded", () => {
   async function loadPreview(placeholder) {
     let cam = placeholder.getAttribute("data-cam");
-    let oldUrl = `snapshot/${cam}.jpg`;
+    let oldUrl = placeholder.getAttribute("src");
+    if (!oldUrl.includes(cam)) {
+      let oldUrl = `snapshot/${cam}.jpg`;
+    }
     try {
       let newUrl = await update_img(oldUrl);
       placeholder.parentElement
