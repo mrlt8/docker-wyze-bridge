@@ -1,3 +1,10 @@
+## What's Changed in v1.7.2
+
+- **NEW** - SD card storage info and audio status icons in Web-UI.
+- **FIXED** - extra padding around image/video.
+- **FIXED** - Preview image would not load in some situations.
+- **FIXED** - Wrong version number in previous release.
+
 ## What's new in v1.7.0
 
 Some wyze cams have have a built-in http server "boa" that is enabled when downloading a time lapse from the camera. By enabling this http server, we can have access to the SD card on the camera, so you can download whatever you need off the SD card without having to take each camera down.
