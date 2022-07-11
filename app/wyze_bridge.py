@@ -1066,7 +1066,7 @@ def motion_alarm(
     motion = False
     if (alarm := pull_last_image(cam, "alarm", last_alarm)) != last_alarm:
         log.info(f"[MOTION] Alarm file detected at {alarm[1]}")
-        cooldown += timedelta(0, int(env_bool("motion_cooldown", 10)))
+        cooldown = datetime.now() + timedelta(0, int(env_bool("motion_cooldown", 10)))
         motion = True
     send_mqtt([(f"wyzebridge/{cam[0]}/motion", motion)])
     if motion and (http := env_bool("motion_http")):
