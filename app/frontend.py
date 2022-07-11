@@ -8,6 +8,7 @@ from flask import (
     make_response,
     render_template,
     request,
+    redirect,
     send_from_directory,
 )
 
@@ -63,6 +64,18 @@ def create_app():
             abort(404)
         wb.rtsp_snap(uri, wait=True)
         return send_from_directory(wb.img_path, img_file)
+
+    @app.route("/photo/<path:img_file>")
+    def boa_photo(img_file: str):
+        """Take a photo on the camera and grab it over the boa http server."""
+        uri = Path(img_file).stem
+        if not (cam := wb.get_cameras().get(uri)):
+            abort(404)
+        if photo := wb.boa_photo(cam.get("nickname")):
+            file = cam["nickname"] + "_" + photo[0]
+            return send_from_directory(wb.img_path, file)
+
+        return redirect(f"/img/{img_file}", code=302)
 
     @app.route("/img/<path:img_file>")
     def img(img_file: str):

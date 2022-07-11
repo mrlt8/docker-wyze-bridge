@@ -4,7 +4,7 @@
     "slug": "docker-wyze-bridge",
     "url": "http://github.com/mrlt8/docker-wyze-bridge",
     "image": "mrlt8/wyze-bridge",
-    "version": "1.6.12",
+    "version": "1.7.0",
     "arch": [
         "armv7",
         "aarch64",
@@ -86,6 +86,13 @@
         "FPS_FIX": "bool?",
         "WEBRTC": "bool?",
         "WB_SHOW_VIDEO":"bool?",
+        "ENABLE_BOA":"bool?",
+        "BOA_INTERVAL":"int?",
+        "TAKE_PHOTO":"bool?",
+        "PULL_PHOTO":"bool?",
+        "PULL_ALARM":"bool?",
+        "MOTION_HTTP":"str?",
+        "MOTION_COOLDOWN":"int?",
         "CAM_OPTIONS": [
             {
                 "CAM_NAME": "str?",

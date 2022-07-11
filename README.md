@@ -9,6 +9,8 @@ Docker container to expose a local RTMP, RTSP, and HLS or Low-Latency HLS stream
 
 It just works!
 
+Now with Web-UI - view all your cams in one place!
+
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
 Please consider starring or [sponsoring](https://ko-fi.com/mrlt8) this project if you found it useful.
@@ -28,91 +30,28 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
-## Changes in v1.6.12
+## What's new in v1.7.0
 
-- **FIXED** Web-UI image not refreshing in some browsers. #460
-- **CHANGED** Home Assistant: Use hostname from request for Web-UI. #465
+Some wyze cams have have a built-in http server "boa" that is enabled when downloading a time lapse from the camera. By enabling this http server, we can have access to the SD card on the camera, so you can download whatever you need off the SD card without having to take each camera down.
 
-**Full Changelog**: https://github.com/mrlt8/docker-wyze-bridge/compare/v1.6.11...v1.6.12
+PLEASE NOTE: If enabled, anyone on your local network will be able to access/download stuff from the SD Card on the camera.
 
-## Changes in v1.6.11
+**NEW** ENV options:
 
-- **NEW** Restart connection to all cameras or restart rtsp-server from webui.
-  - `/restart/cameras`: Stop and start connection to all enabled cameras.
-  - `/restart/rtsp_server`: Stop and start rtsp-simple-server.
-  - `/restart/all`: Stop and start rtsp-simple-server and connection to all enabled cameras.
-- **NEW** ENV `AUDIO_STREAM` or `AUDIO_STREAM_CAM_NAME` to create an audio only sub-stream with the `_audio` suffix: /cam_name_audio #446
-- **FIXED** five column view in web-ui.
-- **FIXED** static values in web-ui load.
-- **FIXED** validate input in webui to prevent invalid values.
+- `ENABLE_BOA` - Enable the boa HTTP server on select cameras with an SD card.
+- `BOA_INTERVAL` - The number of seconds between image pulls/keep alives.
+- `TAKE_PHOTO` - Take a high quality photo on the camera SD Card on `BOA_INTERVAL`.
+- `PULL_PHOTO` - Download latest high-quality photo from camera.
+- `PULL_ALARM` - Download latest alarm file from camera and notify via MQTT if available.
+- `MOTION_HTTP` - Make a Webhook/HTTP request to any url on motion, e.g., `http://localhost/triggerMotion?cam={cam_name}`.
+- `MOTION_COOLDOWN` - Number of seconds to keep the motion flag set to true before resetting it.
 
-## Changes in v1.6.10
+Other changes:
 
-- **Home Assistant** Expose port `5000` for web-ui and snapshots. #455
-- **Web-UI** Disable reload button while snapshot is updating.
-- **Web-UI** Use navbar for filtering and other settings.
-- **FIXED** web-ui would fail to load if cookies values were set to none.
-
-## Changes in v1.6.9
-
-Web-UI:
-
-- **FIXED** Dropdown triggering drag, only allow drag from card-title area. Thanks @dsheehan!
-- **FIXED** Drag/drop ghost maintain height when columns set to 1. Thanks @dsheehan!
-- **CHANGED** Render _url as links in info dropdown. Thanks @dsheehan!
-- **CHANGED** Hide filter tabs if all cams enabled.
-- **CHANGED** Loading image to match 16x9 ratio.
-
-## Changes in v1.6.8
-
-Once again, huge thanks to @dsheehan!
-
-- **UPDATED** Web-UI: Customizable refresh interval, and improved /img/cam-name.jpg. Thanks @dsheehan!
-  - `:5000/snapshot/cam-name.jpg` - Always capture a new snapshot from the rtsp stream. This process may take a couple of seconds.
-  - `:5000/img/cam-name.jpg` - Will attempt to return an existing snapshot or capture a new one from the the rtsp stream.
-- **NEW** Web-UI: Refresh button to update a snapshot on-demand.
-- **FIXED** Zombie processes should be gone now that we're waiting for the images to be returned from ffmpeg.
-
-## Changes in v1.6.7
-
-- **NEW** Web UI: Embed HLS video using videojs. Thanks @dsheehan!
-  - Can be enabled with `WB_SHOW_VIDEO=True`
-- **FIXED** Web UI: RTSP snapshots for cameras with spaces in their name.
-- **CHANGED** Web UI: Defaults to show enabled cameras on load.
-
-## Changes in v1.6.6
-
-- **NEW**: Initial ssupport for the original WyzeCam v1 (WYZEC1). #57 Thanks @jamescochran @Webtron18!
-- **NEW**: WEB-UI - Automated RTSP snapshots while page is open. #437
-- **FIXED**: `panic: assignment to entry in nil map` in rtsp-simple-server. #419
-- **UPDATED**: rtsp-simple-server > [v0.19.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.19.2)
-
-## Changes in v1.6.5
-
-- **NEW**: WEB-UI - filter out disabled/offline cameras. #439
-- **FIXED**: WEB-UI - Use hostname from request for hls/rtsp/rtmp. #429
-- **UPDATED**: ⬆️ API: Wyze app version number bump to 2.32.0.20.
-
-## Changes in v1.6.4
-
-- **IMPROVED**: Reliability of dragging/sorting cameras in Web-UI. Thanks @dsheehan!
-- **NEW**: Version check on footer of Web-UI.
-- **FIXED**: Static files for Web-UI in Home Assistant.
-
-## Changes in v1.6.3
-
-- **Fixed**: x264 rotation could cause issues with HLS and RTMP. #428 #431 Thanks @jamescochran!
-
-## Changes in v1.6.0/v1.6.1/v1.6.2
-
-Huge thanks goes to @dsheehan for building and adding a web-ui for the bridge!
-
-- **NEW**: Web-UI on port `5000` (must add `- 5000:5000` to the ports section of your docker-compose.yml)
-  - 🏠 Home Assistant: Web-ui will be automatically configured and you can add it to your sidebar by enabling it on the info page for the add-on.
-- **CHANGED**: `mfa_token` is now `mfa_token.txt` on the docker version to match Home Assistant mode.
-- **FIXED**: AttributeError with an unsupported WYZEC1. #422
-- **FIXED**: FLASK_APP env error. #424 Thanks @dsheehan
-- **FIXED**: clean_name. #424 Thanks @dsheehan
+- WEB-UI: `/photo/<cam-name>.jpg` endpoint to take a photo on the camera sensor and return it.
+- WEB-UI: Display additional `camera_info` from the current session. #436
+- MQTT: `/takePhoto` endpoint to take a photo on the camera sensor.
+- MQTT: `/motion` endpoint that updates when a new file is detected in the alarm folder on the camera's SD card. Requires `PULL_ALARM` to be enabled.
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -129,6 +68,9 @@ Huge thanks goes to @dsheehan for building and adding a web-ui for the bridge!
 - Ability to take snapshots on an interval or on demand.
 - Ability to live stream directly from the bridge.
 - Ability to send a IFTTT webhook when a camera is offline (-90).
+- Start an HTTP server on the camera for local SD card access. ✨ NEW
+- On-demand high quality photos on the camera. ✨ NEW
+- Trigger MQTT/Webhook/HTTP on a motion event. ✨ NEW
 
 ## Supported Cameras
 
@@ -442,6 +384,97 @@ In the event that you need to allow the bridge to access a select number of came
 - `IMG_DIR=/img/` Specify the directory where the snapshots will be saved *within the container*. Use volumes in docker to map to an external directory.
 
 - `IMG_TYPE` Specify the file type of the image, e.g. `IMG_TYPE=png`. Will default to jpg.
+
+### Boa HTTP Server
+
+Some wyze cams have have a built-in http server "boa" that is enabled when downloading a time lapse from the camera. By enabling this http server, we can have full local access to the SD card on the camera, so you can download whatever you need off the SD card without having to take each camera down.
+
+#### Enable Boa
+
+**SD Card and local connection REQUIRED.**
+
+This will enable the boa server on each camera `http://<cam-ip>:80/` that has the boa server and has an SD card in the camera.
+PLEASE NOTE: If enabled, anyone on your local network will be able to access/download stuff from the SD Card on the camera.
+  
+```yaml
+environment:
+    ..
+    - ENABLE_BOA=true
+```
+
+#### Boa Interval
+
+The boa server will go down after some time and needs to be restarted from time to time. This interval will keep the server up and pull any new images at the same time.
+
+This will default to 5 if not set.
+
+```yaml
+    - ENABLE_BOA=true
+    - BOA_INTERVAL=30
+```
+
+#### Take Photo
+
+**SD Card and local connection REQUIRED.**
+
+This will take a high quality photo on the camera on each `BOA_INTERVAL`.
+
+```yaml
+    - ENABLE_BOA=true
+    - TAKE_PHOTO=true
+```
+
+Photos can also be taken on-demand by publishing to the MQTT topic `wyzebridge/<camera-name>/takePhoto`.
+
+#### Pull Photo
+
+**SD Card and local connection REQUIRED.**
+
+This will pull the latest photo from the camera on each `BOA_INTERVAL`.
+
+Files will be saved to your local img_dir as `cam-name_YYYMMDD_HH_MM_SS.jpg` or `cam-name.jpg` if `TAKE_PHOTO` is enabled.
+
+```yaml
+    - ENABLE_BOA=true
+    - PULL_PHOTO=true
+```
+
+#### Pull Alarm
+
+**SD Card and local connection REQUIRED.**
+
+In addition to pulling the latest alarm image from the camera on each `BOA_INTERVAL`, this will also trigger a motion event to the MQTT topic `wyzebridge/<camera-name>/motion` if available.
+
+Files will be saved to your local img_dir as `cam-name_alarm.jpg`.
+
+```yaml
+    - ENABLE_BOA=true
+    - PULL_PHOTO=true
+```
+
+#### Motion Alerts
+
+**SD Card and local connection REQUIRED.**
+
+If the MQTT options are configured and enabled, motion events will be sent to the MQTT topic `wyzebridge/<camera-name>/motion`.
+
+Motion alerts can also be sent via Webhook/HTTP to any url by specifying the url and using the variable `{cam_name}`:
+
+```yaml
+    - ENABLE_BOA=true
+    - MOTION_HTTP=http://localhost/triggerMotion?cam={cam_name}
+```
+
+#### Motion Cooldown
+
+The number of seconds to keep the motion flag set to true in MQTT before it gets cleared or resending another HTTP/webhook event.
+
+This will default to 10 if not set.
+
+```yaml
+    - ENABLE_BOA=true
+    - MOTION_COOLDOWN=30
+```
 
 ### Stream Recording
 

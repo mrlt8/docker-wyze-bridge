@@ -29,3 +29,24 @@ configuration:
   RTSP_SIMPLE_SERVER:
     name: rtsp-simple-server config
     description: Use `=` to specify the value and use `_` in place of spaces.
+  ENABLE_BOA:
+    name: Enable Boa HTTP*
+    description: Enable http webserver on select cameras. *Req LAN and SD Card.
+  BOA_INTERVAL:
+    name: Boa Keep Alive
+    description: The number of seconds between photos/keep alive.
+  TAKE_PHOTO:
+    name: Interval Photo
+    description: Take a photo on the camera on Boa Keep Alive Interval.
+  PULL_PHOTO:
+    name: Pull Photo (MQTT Motion Alerts)
+    description: Pull the HQ photo from the SD card via Boa.
+  PULL_ALARM:
+    name: Pull Alarm (MQTT Motion Alerts)
+    description: Pull alarm/motion image from the SD card via Boa.
+  MOTION_COOLDOWN:
+    name: Motion Cooldown
+    description: Number of seconds to keep the motion flag set to true before resetting it.
+  MOTION_HTTP:
+   name: Webhook on Boa Motion
+   description: Make a Webhook/HTTP request to any url. e.g., http://localhost/motion?cam={cam_name} 
