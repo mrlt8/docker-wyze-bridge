@@ -391,6 +391,8 @@ Some wyze cams have have a built-in http server "boa" that is enabled when downl
 
 #### Enable Boa
 
+**SD Card and local connection REQUIRED.**
+
 This will enable the boa server on each camera `http://<cam-ip>:80/` that has the boa server and has an SD card in the camera.
 PLEASE NOTE: If enabled, anyone on your local network will be able to access/download stuff from the SD Card on the camera.
   
@@ -413,9 +415,9 @@ This will default to 5 if not set.
 
 #### Take Photo
 
-This will take a high quality photo on the camera on each `BOA_INTERVAL`.
+**SD Card and local connection REQUIRED.**
 
-PLEASE NOTE: Because the photos are stored on the SD card, `ENABLE_BOA` is required for this to work.
+This will take a high quality photo on the camera on each `BOA_INTERVAL`.
 
 ```yaml
     - ENABLE_BOA=true
@@ -426,11 +428,11 @@ Photos can also be taken on-demand by publishing to the MQTT topic `wyzebridge/<
 
 #### Pull Photo
 
+**SD Card and local connection REQUIRED.**
+
 This will pull the latest photo from the camera on each `BOA_INTERVAL`.
 
 Files will be saved to your local img_dir as `cam-name_YYYMMDD_HH_MM_SS.jpg` or `cam-name.jpg` if `TAKE_PHOTO` is enabled.
-
-PLEASE NOTE: Because the photos are stored on the SD card, `ENABLE_BOA` is required for this to work.
 
 ```yaml
     - ENABLE_BOA=true
@@ -439,11 +441,11 @@ PLEASE NOTE: Because the photos are stored on the SD card, `ENABLE_BOA` is requi
 
 #### Pull Alarm
 
+**SD Card and local connection REQUIRED.**
+
 In addition to pulling the latest alarm image from the camera on each `BOA_INTERVAL`, this will also trigger a motion event to the MQTT topic `wyzebridge/<camera-name>/motion` if available.
 
 Files will be saved to your local img_dir as `cam-name_alarm.jpg`.
-
-PLEASE NOTE: Because the images are stored on the SD card, `ENABLE_BOA` is required for this to work.
 
 ```yaml
     - ENABLE_BOA=true
@@ -451,6 +453,8 @@ PLEASE NOTE: Because the images are stored on the SD card, `ENABLE_BOA` is requi
 ```
 
 #### Motion Alerts
+
+**SD Card and local connection REQUIRED.**
 
 If the MQTT options are configured and enabled, motion events will be sent to the MQTT topic `wyzebridge/<camera-name>/motion`.
 
@@ -460,8 +464,6 @@ Motion alerts can also be sent via Webhook/HTTP to any url by specifying the url
     - ENABLE_BOA=true
     - MOTION_HTTP=http://localhost/triggerMotion?cam={cam_name}
 ```
-
-PLEASE NOTE: Because the images are stored on the SD card, `ENABLE_BOA` is required for this to work.
 
 #### Motion Cooldown
 
