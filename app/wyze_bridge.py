@@ -501,11 +501,14 @@ class WyzeBridge:
             d["connected"] = False
             d["camera_info"] = None
             d["boa_url"] = None
-            if (stream := self.streams.get(cam.nickname)) and stream.get("camera_info"):
-                d["connected"] = True
-                d["camera_info"] = stream["camera_info"]
-                if stream["camera_info"].get("boa_info"):
-                    d["boa_url"] = f"http://{cam.ip}/cgi-bin/hello.cgi?name=/"
+            d["started"] = 0
+            if stream := self.streams.get(cam.nickname):
+                d["started"] = int(stream.get("started", 0) * 1000)
+                if stream.get("camera_info"):
+                    d["connected"] = True
+                    d["camera_info"] = stream["camera_info"]
+                    if stream["camera_info"].get("boa_info"):
+                        d["boa_url"] = f"http://{cam.ip}/cgi-bin/hello.cgi?name=/"
             d["img_url"] = f"img/{img}" if os.path.exists(self.img_path + img) else None
             d["snapshot_url"] = f"snapshot/{img}"
             r[cam.name_uri] = d
