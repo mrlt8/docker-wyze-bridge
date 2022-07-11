@@ -126,7 +126,7 @@
                                                 <tr>
                                                     <td>{{ key }}</td>
                                                     <td>
-                                                        {% if key is string and key.endswith('_url') %}
+                                                        {% if value and key is string and key.endswith('_url') %}
                                                         <a href="{{ value }}">{{ value }}</a>
                                                         {% else %}
                                                         <code>{{ value }}</code>
@@ -140,10 +140,18 @@
                                 </div>
                             </div>
                             {{camera.nickname}}
-                            {% if camera.boa_url %}
-                            <span class="icon">
+                            {% if camera.camera_info %}
+                            {% if camera.camera_info.sdParm.status == "1"%}
+                            <span class="icon"
+                                title="{{ (camera.camera_info.sdParm.free|int/1024)|round(2) }}GB of {{ (camera.camera_info.sdParm.capacity|int/1024)|round(2) }}GB available">
                                 <i class="fas fa-sd-card" aria-hidden="true"></i>
                             </span>
+                            {% endif %}
+                            {% if camera.camera_info.channelResquestResult.audio == "1"%}
+                            <span class="icon" title="Audio Enabled">
+                                <i class="fas fa-volume-high" aria-hidden="true"></i>
+                            </span>
+                            {% endif %}
                             {% endif %}
                         </div>
                         <span class="drag_handle" draggable="true"></span>
