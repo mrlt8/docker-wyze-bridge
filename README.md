@@ -9,6 +9,8 @@ Docker container to expose a local RTMP, RTSP, and HLS or Low-Latency HLS stream
 
 It just works!
 
+Now with Web-UI - view all your cams in one place!
+
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
 Please consider starring or [sponsoring](https://ko-fi.com/mrlt8) this project if you found it useful.
@@ -28,19 +30,28 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
-## Changes in v1.7.0
+## What's new in v1.7.0
 
-Some wyze cams have have a built-in http server "boa" that is enabled when downloading a time lapse from the camera. By enabling this http server, we can have full access to the SD card on the camera, so you can download whatever you need off the SD card without having to take each camera down.
+Some wyze cams have have a built-in http server "boa" that is enabled when downloading a time lapse from the camera. By enabling this http server, we can have access to the SD card on the camera, so you can download whatever you need off the SD card without having to take each camera down.
 
 PLEASE NOTE: If enabled, anyone on your local network will be able to access/download stuff from the SD Card on the camera.
 
-- **NEW**: ✨ ENV: `ENABLE_BOA` - Enable the HTTP server on select cameras with an SD card.
-- **NEW**: ✨ ENV: `BOA_INTERVAL` - The number of seconds between image pulls/keep alives.
-- **NEW**: ✨ ENV: `TAKE_PHOTO` - Take a high quality photo on the camera SD Card on `BOA_INTERVAL`.
-- **NEW**: ✨ ENV: `PULL_PHOTO` - Download latest high-quality photo from camera.
-- **NEW**: ✨ ENV: `PULL_ALARM` - Download latest alarm file from camera and notify via MQTT if available.
-- **NEW**: ✨ ENV: `MOTION_HTTP` - Make a Webhook/HTTP request to any url on motion, e.g., `http://localhost/triggerMotion?cam={cam_name}`.
-- **NEW**: ✨ ENV: `MOTION_COOLDOWN` - Number of seconds to keep the motion flag set to true before resetting it.
+**NEW** ENV options:
+
+- `ENABLE_BOA` - Enable the boa HTTP server on select cameras with an SD card.
+- `BOA_INTERVAL` - The number of seconds between image pulls/keep alives.
+- `TAKE_PHOTO` - Take a high quality photo on the camera SD Card on `BOA_INTERVAL`.
+- `PULL_PHOTO` - Download latest high-quality photo from camera.
+- `PULL_ALARM` - Download latest alarm file from camera and notify via MQTT if available.
+- `MOTION_HTTP` - Make a Webhook/HTTP request to any url on motion, e.g., `http://localhost/triggerMotion?cam={cam_name}`.
+- `MOTION_COOLDOWN` - Number of seconds to keep the motion flag set to true before resetting it.
+
+Other changes:
+
+- WEB-UI: `/photo/<cam-name>.jpg` endpoint to take a photo on the camera sensor and return it.
+- WEB-UI: Display additional `camera_info` from the current session. #436
+- MQTT: `/takePhoto` endpoint to take a photo on the camera sensor.
+- MQTT: `/motion` endpoint that updates when a new file is detected in the alarm folder on the camera's SD card. Requires `PULL_ALARM` to be enabled.
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 

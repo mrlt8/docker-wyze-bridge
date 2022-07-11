@@ -1,3 +1,30 @@
+## What's new in v1.7.0
+
+Some wyze cams have have a built-in http server "boa" that is enabled when downloading a time lapse from the camera. By enabling this http server, we can have access to the SD card on the camera, so you can download whatever you need off the SD card without having to take each camera down.
+
+PLEASE NOTE: If enabled, anyone on your local network will be able to access/download stuff from the SD Card on the camera.
+
+**NEW** ENV options:
+
+- `ENABLE_BOA` - Enable the boa HTTP server on select cameras with an SD card.
+- `BOA_INTERVAL` - The number of seconds between image pulls/keep alives.
+- `TAKE_PHOTO` - Take a high quality photo on the camera SD Card on `BOA_INTERVAL`.
+- `PULL_PHOTO` - Download latest high-quality photo from camera.
+- `PULL_ALARM` - Download latest alarm file from camera and notify via MQTT if available.
+- `MOTION_HTTP` - Make a Webhook/HTTP request to any url on motion, e.g., `http://localhost/triggerMotion?cam={cam_name}`.
+- `MOTION_COOLDOWN` - Number of seconds to keep the motion flag set to true before resetting it.
+
+Other changes:
+
+- WEB-UI: `/photo/<cam-name>.jpg` endpoint to take a photo on the camera sensor and return it.
+- WEB-UI: Display additional `camera_info` from the current session. #436
+- MQTT: `/takePhoto` endpoint to take a photo on the camera sensor.
+- MQTT: `/motion` endpoint that updates when a new file is detected in the alarm folder on the camera's SD card. Requires `PULL_ALARM` to be enabled.
+
+## Changes in v1.6.13
+
+- **FIXED** Web-UI: reload cached images on page load
+
 ## Changes in v1.6.12
 
 - **FIXED** Web-UI image not refreshing in some browsers. #460
