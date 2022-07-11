@@ -337,7 +337,7 @@ document.addEventListener("DOMContentLoaded", () => {
   async function loadPreview(placeholder) {
     let cam = placeholder.getAttribute("data-cam");
     let oldUrl = placeholder.getAttribute("src");
-    if (!oldUrl.includes(cam)) {
+    if (oldUrl == null || !oldUrl.includes(cam)) {
       oldUrl = `snapshot/${cam}.jpg`;
     }
     try {
