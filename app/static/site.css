@@ -86,3 +86,51 @@ span .fa-arrows-rotate {
   cursor: move;
   flex-grow: 2;
 }
+html {
+  background-color: #fafafa;
+}
+body {
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+}
+section {
+  flex: 1;
+}
+
+@media (prefers-color-scheme: dark) {
+  html {
+    background-color: #1f2424;
+  }
+  .card,
+  .dropdown-content,
+  .dropdown-item,
+  .footer {
+    background-color: #363636;
+    color: #fff;
+  }
+  .card .card-footer,
+  .card .card-footer-item {
+    border-color: #5e6d6f;
+  }
+
+  .card-header-title,
+  .table thead th,
+  .dropdown-item {
+    color: #fff;
+  }
+  .input,
+  .table.is-hoverable tbody tr:not(.is-selected):hover {
+    background-color: #f5f5f5;
+    color: #0a0a0a;
+  }
+  a {
+    color: #1abc9c;
+  }
+  a:hover {
+    color: #1dd2af;
+  }
+  .card-footer a:hover {
+    background-color: #292929;
+  }
+}
