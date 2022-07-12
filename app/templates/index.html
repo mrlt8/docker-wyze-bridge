@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" class="has-background-white-bis">
+<html lang="en" class="has-background-black-ter">
 
 <head>
     <meta charset="UTF-8" />
@@ -15,9 +15,9 @@
     <script src="{{ 'static/site.js' if hass else url_for('static', filename='site.js') }}"></script>
 </head>
 
-<body class="has-background-light">
+<body>
     <section class="section">
-        <nav class="navbar block">
+        <nav class="navbar block is-dark">
             <div class="navbar-brand">
                 {% if enabled != cameras|length %}
                 <a data-filter="enabled" class="navbar-item is-tab is-active filter">
