@@ -85,14 +85,14 @@
         "KEEP_BAD_FRAMES": "bool?",
         "FPS_FIX": "bool?",
         "WEBRTC": "bool?",
-        "WB_SHOW_VIDEO":"bool?",
-        "ENABLE_BOA":"bool?",
-        "BOA_INTERVAL":"int?",
-        "TAKE_PHOTO":"bool?",
-        "PULL_PHOTO":"bool?",
-        "PULL_ALARM":"bool?",
-        "MOTION_HTTP":"str?",
-        "MOTION_COOLDOWN":"int?",
+        "WB_SHOW_VIDEO": "bool?",
+        "ENABLE_BOA": "bool?",
+        "BOA_INTERVAL": "int?",
+        "TAKE_PHOTO": "bool?",
+        "PULL_PHOTO": "bool?",
+        "PULL_ALARM": "bool?",
+        "MOTION_HTTP": "str?",
+        "MOTION_COOLDOWN": "int?",
         "CAM_OPTIONS": [
             {
                 "CAM_NAME": "str?",
@@ -107,6 +107,9 @@
         ],
         "RTSP_SIMPLE_SERVER": [
             "match(^\\w+=.*)?"
-        ]
+        ],
+        "WB_HLS_URL": "str?",
+        "WB_RTMP_URL": "str?",
+        "WB_RTSP_URL": "str?"
     }
 }
