@@ -1,22 +1,35 @@
 import logging
+import signal
+import sys
 from pathlib import Path
 from urllib.parse import urlparse
-from werkzeug.exceptions import NotFound
+
 from flask import (
     Flask,
     abort,
     make_response,
+    redirect,
     render_template,
     request,
-    redirect,
     send_from_directory,
 )
+from werkzeug.exceptions import NotFound
 
 import wyze_bridge
 from wyze_bridge import WyzeBridge
 
 log = logging.getLogger(__name__)
 wb: WyzeBridge = None
+
+
+def clean_up():
+    """Run cleanup before exit."""
+    if not wb:
+        sys.exit(0)
+    wb.clean_up()
+
+
+signal.signal(signal.SIGTERM, lambda *_: clean_up())
 
 
 def create_app():
