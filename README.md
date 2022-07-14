@@ -30,6 +30,12 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
+## What's Changed in v1.7.3
+
+- **NEW** - Dark mode for Web-UI!
+- **NEW** - Custom url config for HA. (#473)
+- **CHANGED** - Cleanup connections before exit.
+
 ## What's Changed in v1.7.2
 
 - **NEW** - SD card storage info and audio status icons in Web-UI.
