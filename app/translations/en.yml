@@ -48,5 +48,11 @@ configuration:
     name: Motion Cooldown
     description: Number of seconds to keep the motion flag set to true before resetting it.
   MOTION_HTTP:
-   name: Webhook on Boa Motion
-   description: Make a Webhook/HTTP request to any url. e.g., http://localhost/motion?cam={cam_name} 
+    name: Webhook on Boa Motion
+    description: Make a Webhook/HTTP request to any url. e.g., http://localhost/motion?cam={cam_name}
+  WB_HLS_URL:
+    name: Custom HLS url
+  WB_RTMP_URL:
+    name: Custom RTMP url
+  WB_RTSP_URL:
+    name: Custom RTSP url
