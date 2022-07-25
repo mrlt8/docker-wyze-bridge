@@ -23,10 +23,11 @@ Install [docker](https://docs.docker.com/get-docker/) and use your Wyze credenti
 docker run \
   -e WYZE_EMAIL=you@email.com \
   -e WYZE_PASSWORD=yourpassw0rd \
-  -p 8888:8888 mrlt8/wyze-bridge:latest
+  -p 1935:1935 -p 8554:8554 -p 8888:8888 -p 5000:5000 \
+  mrlt8/wyze-bridge:latest
 ```
 
-You can view your stream by visiting: `http://localhost:8888/cam-nickname` where localhost is the hostname or ip of the machine running the bridge followed by the cam nickname in lowercase with `-` in place of spaces.
+You can then use the web interface at `http://localhost:5000`, or view a specific stream by visiting `http://localhost:8888/cam-nickname` where localhost is the hostname or ip of the machine running the bridge followed by the cam nickname in lowercase with `-` in place of spaces.
 
 See [basic usage](#basic-usage) for additional information.
 
