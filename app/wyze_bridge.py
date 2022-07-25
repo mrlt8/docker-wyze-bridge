@@ -435,10 +435,10 @@ class WyzeBridge:
         except wyzecam.TutkError as ex:
             log.warning(ex)
             set_cam_offline(uri, ex, offline)
-            if ex.code == -13:  # IOTC_ER_TIMEOUT
-                time.sleep(2)
-            elif ex.code in (-19, -68, -90):
+            if ex.code in (-19, -68, -90):
                 exit_code = abs(ex.code)
+            else:
+                time.sleep(2)
         except ValueError as ex:
             log.warning(ex)
             if ex.args[0] == "ENR_AUTH_FAILED":
