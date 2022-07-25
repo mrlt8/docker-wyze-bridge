@@ -751,7 +751,7 @@ def get_record_cmd(uri: str) -> str:
         return ""
     seg_time = env_bool("RECORD_LENGTH", "60")
     file_name = "{CAM_NAME}_%Y-%m-%d_%H-%M-%S_%Z"
-    file_name = env_bool("RECORD_FILE_NAME", file_name).rstrip(".mp4")
+    file_name = env_bool("RECORD_FILE_NAME", file_name, style="original").rstrip(".mp4")
     path = "/%s/" % env_bool(
         f"RECORD_PATH_{uri}", env_bool("RECORD_PATH", "record/{CAM_NAME}")
     ).format(cam_name=uri.lower(), CAM_NAME=uri).strip("/")
