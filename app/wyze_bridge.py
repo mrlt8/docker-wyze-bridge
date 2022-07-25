@@ -29,7 +29,8 @@ log = logging.getLogger("WyzeBridge")
 
 class WyzeBridge:
     def __init__(self) -> None:
-        config = json.load(open("config.json"))
+        with open("config.json") as f:
+            config = json.load(f)
         self.version = config.get("version", "DEV")
         log.info(f"🚀 STARTING DOCKER-WYZE-BRIDGE v{self.version}\n")
         self.hass: bool = bool(os.getenv("HASS"))
@@ -53,7 +54,7 @@ class WyzeBridge:
         self.rtmp_url = env_bool("WB_RTMP_URL")
         self.rtsp_url = env_bool("WB_RTSP_URL")
         self.show_video = env_bool("WB_SHOW_VIDEO", False, style="bool")
-        self.rtsp_snapshot_processes: Dict[str, Popen] = {}
+        self.rtsp_snapshot_processes: Dict[str:Popen] = {}
 
         os.makedirs(self.token_path, exist_ok=True)
         os.makedirs(self.img_path, exist_ok=True)
@@ -539,7 +540,7 @@ class WyzeBridge:
 
         if wait:
             try:
-                ffmpeg.wait(30)
+                ffmpeg.communicate(timeout=15)
             except TimeoutExpired:
                 ffmpeg.kill()
                 return None
