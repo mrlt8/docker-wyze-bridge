@@ -30,6 +30,12 @@ You can view your stream by visiting: `http://localhost:8888/cam-nickname` where
 
 See [basic usage](#basic-usage) for additional information.
 
+## What's Changed in v1.7.4
+
+- **Fixed**: Custom strftime in the RECORD_FILE_NAME would produce the wrong format. #487  Thanks @WasabiNME
+- **Changed**: Sleep 2 seconds on TutkError
+- **Updated**: rtsp-simple-server to v0.19.3
+
 ## What's Changed in v1.7.3
 
 - **NEW** - Dark mode for Web-UI!
