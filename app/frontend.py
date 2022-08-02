@@ -44,8 +44,10 @@ def create_app():
 
     @app.route("/")
     def index():
-        number_of_columns = int(request.cookies.get("number_of_columns") or 2)
-        refresh_period = int(request.cookies.get("refresh_period") or 30)
+        number_of_columns = request.cookies.get("number_of_columns", "2")
+        number_of_columns = int(number_of_columns) if number_of_columns.isdigit() else 0
+        refresh_period = request.cookies.get("refresh_period", "30")
+        refresh_period = int(refresh_period) if refresh_period.isdigit() else 0
         cameras = wb.get_cameras(urlparse(request.root_url).hostname)
         log.info(cameras)
         resp = make_response(
@@ -54,13 +56,14 @@ def create_app():
                 cameras=cameras,
                 enabled=len([cam for cam in cameras.values() if cam.get("enabled")]),
                 number_of_columns=number_of_columns,
+                refresh_period=refresh_period,
                 hass=wb.hass,
                 version=wb.version,
                 show_video=wb.show_video,
-                refresh_period=refresh_period,
             )
         )
         resp.set_cookie("number_of_columns", str(number_of_columns))
+        resp.set_cookie("refresh_period", str(refresh_period))
         return resp
 
     @app.route("/cameras")
