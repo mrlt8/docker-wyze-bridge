@@ -73,7 +73,7 @@ def create_app():
     def rtsp_snapshot(img_file: str):
         """Use ffmpeg to take a snapshot from the rtsp stream."""
         uri = Path(img_file).stem
-        if not uri in wb.get_cameras():
+        if uri not in wb.get_cameras():
             abort(404)
         wb.rtsp_snap(uri, wait=True)
         return send_from_directory(wb.img_path, img_file)
