@@ -46,9 +46,11 @@ a:hover {
   color: #1dd2af;
 }
 
-
+.tabs.is-toggle a:hover,
 .card-footer a:hover {
   background-color: #292929;
+  border-color: #292929;
+  color: #009670;
 }
 
 .tabs.is-toggle li.is-active a {
