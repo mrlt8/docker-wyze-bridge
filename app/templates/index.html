@@ -209,6 +209,22 @@
             </div>
             {% endfor %}
         </div>
+        <div class="tabs is-toggle is-toggle is-centered">
+            <ul>
+                <li {% if not show_video %}class="is-active" {% endif %}>
+                    <a href="?snapshot">
+                        <span class="icon is-small"><i class="fas fa-image"></i></span>
+                        <span>Snapshot</span>
+                    </a>
+                </li>
+                <li {% if show_video %}class="is-active" {% endif %}>
+                    <a href="?video">
+                        <span class="icon is-small"><i class="fas fa-film"></i></span>
+                        <span>Video</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
     </section>
     <footer class="footer">
         <div class="content has-text-centered">

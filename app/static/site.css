@@ -12,6 +12,7 @@ section {
   flex: 1;
 }
 
+.tabs a,
 .card,
 .navbar-menu,
 .dropdown-content,
@@ -19,6 +20,10 @@ section {
 .footer {
   background-color: #363636;
   color: #fff;
+}
+
+.tabs.is-toggle a {
+  border-color: #363636;
 }
 
 .card .card-footer,
@@ -41,8 +46,18 @@ a:hover {
   color: #1dd2af;
 }
 
+
 .card-footer a:hover {
   background-color: #292929;
+}
+
+.tabs.is-toggle li.is-active a {
+  background-color: #00bc8c;
+  border-color: #00bc8c
+}
+
+.tabs.is-toggle li.is-active a:hover {
+  background-color: #00a077
 }
 
 code {

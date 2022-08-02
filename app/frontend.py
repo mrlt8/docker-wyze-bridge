@@ -49,7 +49,11 @@ def create_app():
         refresh_period = request.cookies.get("refresh_period", "30")
         refresh_period = int(refresh_period) if refresh_period.isdigit() else 0
         cameras = wb.get_cameras(urlparse(request.root_url).hostname)
-        log.info(cameras)
+        show_video = bool(request.cookies.get("show_video"))
+        if "video" in request.args:
+            show_video = True
+        elif "snapshot" in request.args:
+            show_video = False
         resp = make_response(
             render_template(
                 "index.html",
@@ -59,11 +63,12 @@ def create_app():
                 refresh_period=refresh_period,
                 hass=wb.hass,
                 version=wb.version,
-                show_video=wb.show_video,
+                show_video=show_video,
             )
         )
         resp.set_cookie("number_of_columns", str(number_of_columns))
         resp.set_cookie("refresh_period", str(refresh_period))
+        resp.set_cookie("show_video", "1" if show_video else "")
         return resp
 
     @app.route("/cameras")
