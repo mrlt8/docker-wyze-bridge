@@ -50,7 +50,7 @@
                                 </div>
                             </div>
                             <div class="control has-icons-left is-expanded">
-                                <input class="input" id="select_refresh_period" type="number" min="5" max="600"
+                                <input class="input" id="select_refresh_period" type="number" min="0" max="1200"
                                     value="{{refresh_period}}" title="Refresh (seconds)" />
                                 <div class="icon is-small is-left">
                                     <i class="fa-solid fa-rotate"></i>
@@ -209,6 +209,22 @@
             </div>
             {% endfor %}
         </div>
+        <div class="tabs is-toggle is-toggle is-centered">
+            <ul>
+                <li {% if not show_video %}class="is-active" {% endif %}>
+                    <a href="?snapshot">
+                        <span class="icon is-small"><i class="fas fa-image"></i></span>
+                        <span>Snapshot</span>
+                    </a>
+                </li>
+                <li {% if show_video %}class="is-active" {% endif %}>
+                    <a href="?video">
+                        <span class="icon is-small"><i class="fas fa-film"></i></span>
+                        <span>Video</span>
+                    </a>
+                </li>
+            </ul>
+        </div>
     </section>
     <footer class="footer">
         <div class="content has-text-centered">
@@ -216,7 +232,7 @@
                 <a href="https://github.com/mrlt8/docker-wyze-bridge"><i class="fa-brands fa-github"></i>
                     <strong>docker-wyze-bridge</strong></a>
                 v{{ version }}
-                <span id="checkUpdate" class="icon-text" version="{{version}}"><span class="icon"><i
+                <span id="checkUpdate" class="icon-text" data-version="{{version}}"><span class="icon"><i
                             class="fas fa-arrows-rotate"></i></span>
                 </span>
             </p>

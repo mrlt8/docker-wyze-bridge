@@ -31,6 +31,14 @@ You can then use the web interface at `http://localhost:5000`, or view a specifi
 
 See [basic usage](#basic-usage) for additional information.
 
+## What's Changed in v1.7.5
+
+- New: Switch between still preview and video-js directly in the web-ui without having to change the ENV.
+- Fixed: background color on mobile view of the Web-UI.
+- Web-UI: Disable snapshot reloads by setting reload time to 0. #36
+- Web-UI: Darker background on `prefers-color-scheme: dark`.
+- Updated: iOS and wyze app version numbers
+
 ## What's Changed in v1.7.4
 
 - **Fixed**: Custom strftime in the RECORD_FILE_NAME would produce the wrong format. #487  Thanks @WasabiNME
@@ -88,9 +96,9 @@ Other changes:
 - Ability to take snapshots on an interval or on demand.
 - Ability to live stream directly from the bridge.
 - Ability to send a IFTTT webhook when a camera is offline (-90).
-- Start an HTTP server on the camera for local SD card access. ✨ NEW
-- On-demand high quality photos on the camera. ✨ NEW
-- Trigger MQTT/Webhook/HTTP on a motion event. ✨ NEW
+- Start an HTTP server on the camera for local SD card access on older firmware.
+- Trigger MQTT/Webhook/HTTP on a motion event on older firmware.
+- On-demand high quality photos on the camera.
 
 ## Supported Cameras
 
@@ -168,7 +176,7 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 
 ### Additional Info
 
-- [Two-Step Verification](#Multi-Factor-Authentication)
+- [Two-Step Verification/MFA](https://github.com/mrlt8/docker-wyze-bridge/wiki/Multi-Factor-Authentication)
 - [ARM/Raspberry Pi](https://github.com/mrlt8/docker-wyze-bridge/wiki/Raspberry-Pi-(armv7-and-arm64))
 - [LAN mode](#LAN-Mode)
 - [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
@@ -181,28 +189,41 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 
 If your email or password contains a `%` or `$` character, you may need to escape them with an extra character. e.g., `pa$$word` should be entered as `pa$$$$word`
 
+#### Web-UI
+
+The bridge features a basic Web-UI which can display a preview of all your cameras as well as direct links to all the video streams.
+
+The web-ui can be accessed on the default port `5000`:
+
+```text
+http://localhost:5000/
+```
+
+Snapshots for each camera are accessible using the URI:
+
+```text
+http://localhost:5000/img/camera-nickname.jpg
+```
+
+New snapshots can also be generated on demand using the URI:
+
+```text
+http://localhost:5000/snapshot/camera-nickname.jpg
+```
+
+
 #### Camera Stream URIs
 
 By default, the bridge will create three streams for each of your cameras which can be accessed at the following URIs, where `camera-nickname` is the name of the camera set in the Wyze app and converted to lower case with hyphens in place of spaces. e.g. 'Front Door' would be `/front-door`
 
 Replace localhost with the hostname or ip of the machine running the bridge:
 
-- RTMP:
+```text
+rtmp://localhost:1935/camera-nickname
 
-  ```text
-  rtmp://localhost:1935/camera-nickname
-  ```
+rtsp://localhost:8554/camera-nickname
 
-- RTSP:
-
-  ```text
-  rtsp://localhost:8554/camera-nickname
-  ```
-
-- HLS:
-
-  ```text
-  http://localhost:8888/camera-nickname/stream.m3u8
+http://localhost:8888/camera-nickname/stream.m3u8
   ```
 
 - HLS can also be viewed in the browser using:
@@ -217,39 +238,6 @@ Replace localhost with the hostname or ip of the machine running the bridge:
   https://localhost:8888/camera-nickname
   or
   https://localhost:8888/camera-nickname/stream.m3u8
-  ```
-
-#### Multi-Factor Authentication
-
-Two-factor authentication ("Two-Step Verification" in the wyze app) is supported and will automatically be detected, however additional steps are required to enter your verification code.
-
-- Echo the verification code directly to `/tokens/mfa_token.txt` by opening a second terminal window and using:
-
-  ```bash
-  docker exec -it wyze-bridge sh -c 'echo "123456" > /tokens/mfa_token.txt'
-  ```
-
-- Mount `/tokens/` locally and add your verification code to a file named `mfa_token.txt`:
-
-  ```YAML
-  volumes:
-      - ./tokens:/tokens/
-  ```
-
-- Generate Time-based One-Time Passwords:
-
-  You can have the bridge auto generate and enter a Time-based One-Time Password (TOTP) by adding the secret key to the file `/tokens/totp` on standard installs or `/config/wyze-bridge/totp` for Home Assistant installs. You will need to create the file if it doesn't exist and mount it if necessary.
-
-- 🏠 Home Assistant:
-
-  Add your code to the text file: `/config/wyze-bridge/mfa_token.txt`.
-
-- Portainer:
-  
-  Use the console to echo your code to the container:
-
-  ```bash
-  echo "123456" > /tokens/mfa_token.txt
   ```
 
 ## Advanced Options
@@ -406,6 +394,8 @@ In the event that you need to allow the bridge to access a select number of came
 - `IMG_TYPE` Specify the file type of the image, e.g. `IMG_TYPE=png`. Will default to jpg.
 
 ### Boa HTTP Server
+
+NOTE: It appears that Boa has been disabled/removed in modern versions of the wyze firmware.
 
 Some wyze cams have have a built-in http server "boa" that is enabled when downloading a time lapse from the camera. By enabling this http server, we can have full local access to the SD card on the camera, so you can download whatever you need off the SD card without having to take each camera down.
 
@@ -694,8 +684,8 @@ NOTE: The bridge may require additional resuorces when rotation is enabled as th
   ```
 
  Available options:
-  `0` - Rotate by 90 degrees counter-clockwise and flip vertically. This is the default.
-  `1` - Rotate by 90 degrees clockwise.
+  `0` - Rotate by 90 degrees counter-clockwise and flip vertically.
+  `1` - Rotate by 90 degrees clockwise. This is the default.
   `2` - Rotate by 90 degrees counter-clockwise.
   `3` - Rotate by 90 degrees clockwise and flip vertically.
 

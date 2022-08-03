@@ -1,3 +1,11 @@
+## What's Changed in v1.7.5
+
+- New: Switch between still preview and video-js directly in the web-ui without having to change the ENV.
+- Fixed: background color on mobile view of the Web-UI.
+- Web-UI: Disable snapshot reloads by setting reload time to 0. #36
+- Web-UI: Darker background on `prefers-color-scheme: dark`.
+- Updated: iOS and wyze app version numbers
+
 ## What's Changed in v1.7.4
 
 - **Fixed**: Custom strftime in the RECORD_FILE_NAME would produce the wrong format. #487  Thanks @WasabiNME

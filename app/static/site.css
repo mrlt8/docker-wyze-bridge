@@ -1,56 +1,85 @@
 html {
   color: #fff;
 }
+
 body {
   display: flex;
   min-height: 100vh;
   flex-direction: column;
 }
+
 section {
   flex: 1;
 }
 
+.tabs a,
 .card,
+.navbar-menu,
 .dropdown-content,
 .dropdown-item,
 .footer {
   background-color: #363636;
   color: #fff;
 }
+
+.tabs.is-toggle a {
+  border-color: #363636;
+}
+
 .card .card-footer,
 .card .card-footer-item,
 .input {
   border-color: #222;
 }
+
 .card-header-title,
 .table thead th,
 .dropdown-item {
   color: #fff;
 }
+
 a {
   color: #1abc9c;
 }
+
 a:hover {
   color: #1dd2af;
 }
+
+.tabs.is-toggle a:hover,
 .card-footer a:hover {
   background-color: #292929;
+  border-color: #292929;
+  color: #009670;
 }
+
+.tabs.is-toggle li.is-active a {
+  background-color: #00bc8c;
+  border-color: #00bc8c
+}
+
+.tabs.is-toggle li.is-active a:hover {
+  background-color: #00a077
+}
+
 code {
   background-color: rgba(110, 118, 129, 0.4);
   color: rgb(255, 123, 114);
 }
+
 .input,
 .table.is-hoverable tbody tr:not(.is-selected):hover {
   background-color: #444;
   color: #adb5bd;
 }
+
 .input:hover,
 .input:active,
 .input:focus,
-.control.has-icons-left .input:focus ~ .icon {
+.control.has-icons-left .input:focus~.icon {
   color: #fff;
 }
+
 video {
   position: relative;
   width: 100%;
@@ -109,4 +138,10 @@ span .fa-arrows-rotate {
 .drag_handle {
   cursor: move;
   flex-grow: 2;
+}
+
+@media (prefers-color-scheme: dark) {
+  .has-background-black-ter {
+    background-color: #0a0a0a !important;
+  }
 }

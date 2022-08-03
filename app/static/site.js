@@ -33,7 +33,7 @@ document.addEventListener("DOMContentLoaded", () => {
       select.classList.add("is-danger");
       select.value = getCookie(
         cookieId,
-        cookieId == "refresh_period" ? 300 : 2
+        cookieId == "refresh_period" ? 30 : 2
       );
       setTimeout(() => {
         select.classList.remove("is-danger");
@@ -306,7 +306,7 @@ document.addEventListener("DOMContentLoaded", () => {
       return a.localeCompare(b, undefined, { numeric: true }) === 1;
     };
     let apiVersion = api.tag_name.replace(/[^0-9\.]/g, "");
-    let runVersion = checkAPI.getAttribute("version");
+    let runVersion = checkAPI.dataset.version;
     let icon = checkAPI.getElementsByClassName("fa-arrows-rotate")[0];
     let newSpan = document.createElement("span");
     icon.classList.remove("fa-arrows-rotate");
@@ -341,7 +341,7 @@ document.addEventListener("DOMContentLoaded", () => {
       oldUrl = `snapshot/${cam}.jpg`;
     }
     try {
-      let newUrl = await update_img(oldUrl);
+      let newUrl = (getCookie("refresh_period") > 0) ? await update_img(oldUrl) : `img/${cam}.jpg`;
       placeholder.parentElement
         .querySelectorAll(
           "[src$=loading\\.svg],[style*=loading\\.svg],[poster$=loading\\.svg]"

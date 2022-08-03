@@ -7,8 +7,8 @@ from hashlib import md5
 import requests
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
-IOS_VERSION = "15.5"
-APP_VERSION = "2.32.0.20"
+IOS_VERSION = "15.6"
+APP_VERSION = "2.33.0.17"
 
 SV_VALUE = "e1fe392906d54888a9b99b88de4162d7"
 SC_VALUE = "9f275790cab94a72bd206c8876429f3c"

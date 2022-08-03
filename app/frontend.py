@@ -44,23 +44,31 @@ def create_app():
 
     @app.route("/")
     def index():
-        number_of_columns = int(request.cookies.get("number_of_columns") or 2)
-        refresh_period = int(request.cookies.get("refresh_period") or 30)
+        number_of_columns = request.cookies.get("number_of_columns", "2")
+        number_of_columns = int(number_of_columns) if number_of_columns.isdigit() else 0
+        refresh_period = request.cookies.get("refresh_period", "30")
+        refresh_period = int(refresh_period) if refresh_period.isdigit() else 0
         cameras = wb.get_cameras(urlparse(request.root_url).hostname)
-        log.info(cameras)
+        show_video = bool(request.cookies.get("show_video"))
+        if "video" in request.args:
+            show_video = True
+        elif "snapshot" in request.args:
+            show_video = False
         resp = make_response(
             render_template(
                 "index.html",
                 cameras=cameras,
                 enabled=len([cam for cam in cameras.values() if cam.get("enabled")]),
                 number_of_columns=number_of_columns,
+                refresh_period=refresh_period,
                 hass=wb.hass,
                 version=wb.version,
-                show_video=wb.show_video,
-                refresh_period=refresh_period,
+                show_video=show_video,
             )
         )
         resp.set_cookie("number_of_columns", str(number_of_columns))
+        resp.set_cookie("refresh_period", str(refresh_period))
+        resp.set_cookie("show_video", "1" if show_video else "")
         return resp
 
     @app.route("/cameras")
@@ -73,7 +81,7 @@ def create_app():
     def rtsp_snapshot(img_file: str):
         """Use ffmpeg to take a snapshot from the rtsp stream."""
         uri = Path(img_file).stem
-        if not uri in wb.get_cameras():
+        if uri not in wb.get_cameras():
             abort(404)
         wb.rtsp_snap(uri, wait=True)
         return send_from_directory(wb.img_path, img_file)
