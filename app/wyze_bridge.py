@@ -53,7 +53,6 @@ class WyzeBridge:
         self.hls_url = env_bool("WB_HLS_URL")
         self.rtmp_url = env_bool("WB_RTMP_URL")
         self.rtsp_url = env_bool("WB_RTSP_URL")
-        self.show_video = env_bool("WB_SHOW_VIDEO", False, style="bool")
         self.rtsp_snapshot_processes: Dict[str:Popen] = {}
 
         os.makedirs(self.token_path, exist_ok=True)
