@@ -163,7 +163,7 @@
                     </header>
                     <div class="card-image has-text-centered">
                         <figure class="image">
-                            {% if show_video and camera.connected %}
+                            {% if show_video and (camera.connected or (on_demand and camera.enabled))%}
                             <video-js id="video-{{camera.name_uri}}"
                                 class="video-js vjs-live vjs-big-play-centered loading-preview" controls preload="none"
                                 poster="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}"
@@ -174,7 +174,7 @@
                                     src="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}"
                                     width="100%" />
                             </video-js>
-                            {% elif camera.connected %}
+                            {% elif camera.connected or (on_demand and camera.enabled) %}
                             <img class="refresh_img loading-preview" data-cam="{{camera.name_uri}}"
                                 src="{{camera.img_url if camera.img_url else url_for('static',filename='loading.svg')}}"
                                 width="100%" />
