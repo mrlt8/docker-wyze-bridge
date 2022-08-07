@@ -412,7 +412,7 @@ class WyzeBridge:
         while stop_flag.is_set():
             if self.stop_bridge.is_set():
                 return
-            time.sleep(1)
+            time.sleep(0.5)
         uri = cam.name_uri.upper()
         exit_code = 1
         audio = env_bool(f"ENABLE_AUDIO_{uri}", env_bool("ENABLE_AUDIO"), style="bool")
