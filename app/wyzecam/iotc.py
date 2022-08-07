@@ -90,8 +90,8 @@ class WyzeIOTC:
         if license_status < 0:
             raise tutk.TutkError(license_status)
 
-        # set_region = self.tutk_platform_lib.TUTK_SDK_Set_Region_Code("us".encode())
-        set_region = self.tutk_platform_lib.TUTK_SDK_Set_Region(3)  # REGION_US
+        # set_region = tutk_platform_lib.TUTK_SDK_Set_Region_Code("us".encode())
+        set_region = tutk_platform_lib.TUTK_SDK_Set_Region(3)  # REGION_US
         if set_region < 0:
             raise tutk.TutkError(set_region)
 
