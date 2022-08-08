@@ -60,6 +60,7 @@ class WyzeBridge:
 
     def run(self) -> None:
         """Start synchronously"""
+        self.stop_bridge.clear()
         setup_llhls(self.token_path)
         self.get_wyze_data("user")
         self.get_filtered_cams()
@@ -88,7 +89,6 @@ class WyzeBridge:
                     process.join()
         self.streams = {}
         self.cameras = []
-        self.stop_bridge.clear()
 
     def stop_rtsp_server(self):
         """Stop rtsp-simple-server."""
@@ -149,10 +149,10 @@ class WyzeBridge:
 
     def start_stream(self, name: str) -> None:
         """Start a single stream by cam name."""
-        old_stop = False
+        old_stop = True
         if name in self.streams and (proc := self.streams[name].get("process")):
-            if self.streams[name].get("stop_flag").is_set():
-                old_stop = True
+            if self.streams[name].get("on_demand", 0) > time.time():
+                old_stop = False
             if hasattr(proc, "alive") and proc.alive():
                 proc.terminate()
                 proc.join()
@@ -160,7 +160,7 @@ class WyzeBridge:
         cam = next(c for c in self.cameras if c.nickname == name)
         log.info(f"🎉 Connecting to WyzeCam {cam.model_name} - {name} on {cam.ip} (1/3)")
         stop_flag = multiprocessing.Event()
-        if self.on_demand and not old_stop:
+        if self.on_demand and old_stop:
             stop_flag.set()
         camera_info = multiprocessing.Queue(1)
         camera_cmd = multiprocessing.JoinableQueue(1)
@@ -572,8 +572,7 @@ class WyzeBridge:
     def start_on_demand(self, cam_name: str):
         """Start on-demand stream."""
         if not (cam := self.streams.get(cam_name)) or not cam.get("stop_flag"):
-            print(self.streams)
-            return None
+            return
         cam["stop_flag"].clear()
         cam["start_time"] = time.time()
         cam["on_demand"] = time.time() + 20
