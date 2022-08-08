@@ -1,3 +1,9 @@
+## What's Changed in v1.8.0
+
+- New: on-demand streaming. Use the optional `ON_DEMAND=True` ENV to enable.
+  - Outdoor cams (WVOD1 and HL_WCO2) will automatically be marked as on-demand.
+- Changed: WebUI will NOT auto reload snapshots for cameras marked as on-demand or if ON_DEMAND is enabled, but manually refreshing the image will continue to work.
+
 ## What's Changed in v1.7.5
 
 - New: Switch between still preview and video-js directly in the web-ui without having to change the ENV.

@@ -31,55 +31,11 @@ You can then use the web interface at `http://localhost:5000`, or view a specifi
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.7.5
+## What's Changed in v1.8.0
 
-- New: Switch between still preview and video-js directly in the web-ui without having to change the ENV.
-- Fixed: background color on mobile view of the Web-UI.
-- Web-UI: Disable snapshot reloads by setting reload time to 0. #36
-- Web-UI: Darker background on `prefers-color-scheme: dark`.
-- Updated: iOS and wyze app version numbers
-
-## What's Changed in v1.7.4
-
-- **Fixed**: Custom strftime in the RECORD_FILE_NAME would produce the wrong format. #487  Thanks @WasabiNME
-- **Changed**: Sleep 2 seconds on TutkError
-- **Updated**: rtsp-simple-server to v0.19.3
-
-## What's Changed in v1.7.3
-
-- **NEW** - Dark mode for Web-UI!
-- **NEW** - Custom url config for HA. (#473)
-- **CHANGED** - Cleanup connections before exit.
-
-## What's Changed in v1.7.2
-
-- **NEW** - SD card storage info and audio status icons in Web-UI.
-- **FIXED** - extra padding around image/video.
-- **FIXED** - Preview image would not load in some situations.
-- **FIXED** - Wrong version number in previous release.
-
-## What's new in v1.7.0
-
-Some wyze cams have have a built-in http server "boa" that is enabled when downloading a time lapse from the camera. By enabling this http server, we can have access to the SD card on the camera, so you can download whatever you need off the SD card without having to take each camera down.
-
-PLEASE NOTE: If enabled, anyone on your local network will be able to access/download stuff from the SD Card on the camera.
-
-**NEW** ENV options:
-
-- `ENABLE_BOA` - Enable the boa HTTP server on select cameras with an SD card.
-- `BOA_INTERVAL` - The number of seconds between image pulls/keep alives.
-- `TAKE_PHOTO` - Take a high quality photo on the camera SD Card on `BOA_INTERVAL`.
-- `PULL_PHOTO` - Download latest high-quality photo from camera.
-- `PULL_ALARM` - Download latest alarm file from camera and notify via MQTT if available.
-- `MOTION_HTTP` - Make a Webhook/HTTP request to any url on motion, e.g., `http://localhost/triggerMotion?cam={cam_name}`.
-- `MOTION_COOLDOWN` - Number of seconds to keep the motion flag set to true before resetting it.
-
-Other changes:
-
-- WEB-UI: `/photo/<cam-name>.jpg` endpoint to take a photo on the camera sensor and return it.
-- WEB-UI: Display additional `camera_info` from the current session. #436
-- MQTT: `/takePhoto` endpoint to take a photo on the camera sensor.
-- MQTT: `/motion` endpoint that updates when a new file is detected in the alarm folder on the camera's SD card. Requires `PULL_ALARM` to be enabled.
+- New: on-demand streaming. Use the optional `ON_DEMAND=True` ENV to enable.
+  - Outdoor cams (WVOD1 and HL_WCO2) will automatically be marked as on-demand.
+- Changed: WebUI will NOT auto reload snapshots for cameras marked as on-demand or if ON_DEMAND is enabled, but manually refreshing the image will continue to work.
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -211,6 +167,11 @@ New snapshots can also be generated on demand using the URI:
 http://localhost:5000/snapshot/camera-nickname.jpg
 ```
 
+In addition, you can also access a json object with all the camera information:
+
+```text
+http://localhost:5000/cameras
+```
 
 #### Camera Stream URIs
 
@@ -713,6 +674,8 @@ environment:
 environment options:
 
 - `FRESH_DATA` (bool) Remove local cache and pull new data from wyze servers.
+
+- `ON_DEMAND` (bool) Connect to and start streams on-demand/only when the stream is being viewd.
 
 - `URI_SEPARATOR` (-|_|#) Customize the separator used to replace spaces in the URI; available values are `-`, `_`, or use `#` to remove spaces.
 

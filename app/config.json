@@ -4,7 +4,7 @@
     "slug": "docker-wyze-bridge",
     "url": "https://github.com/mrlt8/docker-wyze-bridge",
     "image": "mrlt8/wyze-bridge",
-    "version": "1.7.5",
+    "version": "1.8.0",
     "arch": [
         "armv7",
         "aarch64",
@@ -47,6 +47,7 @@
         "SNAPSHOT": "API",
         "MQTT_DTOPIC": "homeassistant",
         "ENABLE_AUDIO": false,
+        "ON_DEMAND": false,
         "CAM_OPTIONS": []
     },
     "schema": {
@@ -56,6 +57,7 @@
         "SNAPSHOT": "list(API|RTSP|RTSP5|RTSP15|RTSP30|RTSP60|Disable)?",
         "IMG_TYPE": "list(jpg|png)?",
         "IMG_DIR": "str?",
+        "ON_DEMAND": "bool?",
         "ENABLE_AUDIO": "bool?",
         "AUDIO_CODEC": "list(COPY|AAC|MP3)?",
         "AUDIO_FILTER": "str?",
