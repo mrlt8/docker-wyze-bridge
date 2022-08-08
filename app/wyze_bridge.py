@@ -106,8 +106,7 @@ class WyzeBridge:
             refresh_cams = True
             for name, stream in list(self.streams.items()):
                 if (
-                    self.on_demand
-                    and stream.get("on_demand")
+                    stream.get("on_demand", 0) > 0
                     and stream["on_demand"] < time.time()
                     and not stream["stop_flag"].is_set()
                 ):
@@ -160,7 +159,7 @@ class WyzeBridge:
         cam = next(c for c in self.cameras if c.nickname == name)
         log.info(f"🎉 Connecting to WyzeCam {cam.model_name} - {name} on {cam.ip} (1/3)")
         stop_flag = multiprocessing.Event()
-        if self.on_demand and old_stop:
+        if (self.on_demand or cam.product_model in {"WVOD1", "HL_WCO2"}) and old_stop:
             stop_flag.set()
         camera_info = multiprocessing.Queue(1)
         camera_cmd = multiprocessing.JoinableQueue(1)
@@ -170,6 +169,7 @@ class WyzeBridge:
             args=(cam, stop_flag, camera_info, camera_cmd, offline),
             name=name,
         )
+
         self.streams[name] = {
             "process": stream,
             "sleep": False,
@@ -177,7 +177,7 @@ class WyzeBridge:
             "camera_info": None,
             "camera_cmd": camera_cmd,
             "queue": camera_info,
-            "started": time.time() * 2 if self.on_demand else time.time(),
+            "started": time.time() * 2 if stop_flag.is_set() else time.time(),
             "stop_flag": stop_flag,
         }
         stream.start()
@@ -331,13 +331,13 @@ class WyzeBridge:
         path = f"RTSP_PATHS_{cam.name_uri.upper()}_"
         py_event = "python3 /app/rtsp_event.py $RTSP_PATH "
         # py_event = "bash -c 'echo GET /events/{}/{} HTTP/1.1 >/dev/tcp/127.0.0.1/5000'"
-        if self.on_demand:
+        if self.on_demand or cam.product_model in {"WVOD1", "HL_WCO2"}:
             os.environ[path + "RUNONDEMANDRESTART"] = "yes"
             os.environ[path + "RUNONDEMANDSTARTTIMEOUT"] = "30s"
-            os.environ[path + "RUNONDEMANDCLOSEAFTER"] = "20s"
+            os.environ[path + "RUNONDEMANDCLOSEAFTER"] = "30s"
             os.environ[
                 path + "RUNONDEMAND"
-            ] = f"bash -c 'echo GET /events/DEMAND/{cam.nickname} >/dev/tcp/127.0.0.1/5000 && sleep 10'"
+            ] = f"bash -c 'echo GET /events/DEMAND/{cam.nickname} >/dev/tcp/127.0.0.1/5000 && sleep 20'"
             # os.environ[path + "RUNONDEMAND"] = py_event.format("DEMAND", cam.name_uri)
         for event in ("READ", "READY"):
             env = path + "RUNON" + event
@@ -522,7 +522,7 @@ class WyzeBridge:
             d["boa_url"] = None
             d["started"] = 0
             if stream := self.streams.get(cam.nickname):
-                if not self.on_demand:
+                if stream.get("stop_flag") and not stream["stop_flag"].is_set():
                     d["started"] = int(stream.get("started", 0) * 1000)
                 if stream.get("camera_info"):
                     d["connected"] = True
@@ -542,10 +542,13 @@ class WyzeBridge:
         @return: img path
         """
         cam = self.get_cameras().get(cam_name, None)
+        on_demand = self.on_demand or (
+            cam and cam.get("product_model") in {"WVOD1", "HL_WCO2"}
+        )
         if (
             not cam
             or not cam.get("connected")
-            and not (self.on_demand and cam.get("enabled"))
+            and not (on_demand and cam.get("enabled"))
         ):
             return None
 
