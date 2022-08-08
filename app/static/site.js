@@ -180,9 +180,9 @@ function sortable(parent, selector, onUpdate = null) {
  * @param oldUrl the img url, could either be img/cam-name.jpg or snapshot/cam-name.jpg
  * @returns {Promise<void>}
  */
-async function update_img(oldUrl) {
+async function update_img(oldUrl, useImg = false) {
   let [cam, ext] = oldUrl.split("/").pop().split("?")[0].split(".");
-  let newUrl = "snapshot/" + cam + "." + ext + "?" + Date.now();
+  let newUrl = useImg ? oldUrl : "snapshot/" + cam + "." + ext + "?" + Date.now();
   console.debug("update_img", oldUrl, newUrl);
   let button = document.querySelector(`.is-overlay > [data-cam="${cam}"]`);
   if (button) {
@@ -231,15 +231,15 @@ function refresh_imgs() {
   console.debug("refresh_imgs " + Date.now());
   document.querySelectorAll(".refresh_img").forEach(async function (image) {
     let url = image.getAttribute("src");
-    await update_img(url);
+    // Skip if on-demand
+    await update_img(url, image.classList.contains("on-demand"));
   });
 }
 
 document.addEventListener("DOMContentLoaded", () => {
   const grid = document.querySelector(".cameras");
   const selector = ".camera";
-  sortable(grid, selector, function (item) {
-    console.log(item);
+  sortable(grid, selector, function () {
     const cameras = document.querySelectorAll(selector);
     const ids = [...cameras].map((camera) => camera.id).filter((x) => x);
     const newOrdering = ids.join(",");
@@ -320,7 +320,6 @@ document.addEventListener("DOMContentLoaded", () => {
       icon.classList.add("fa-square-check");
     }
     checkAPI.appendChild(newSpan);
-    console.log(api.tag_name);
     checkAPI.removeEventListener("click", getGithub);
   }
   function getGithub() {
@@ -341,7 +340,8 @@ document.addEventListener("DOMContentLoaded", () => {
       oldUrl = `snapshot/${cam}.jpg`;
     }
     try {
-      let newUrl = (getCookie("refresh_period") > 0) ? await update_img(oldUrl) : `img/${cam}.jpg`;
+      let useImg = (getCookie("refresh_period") < 5 || placeholder.classList.contains("on-demand"));
+      let newUrl = await update_img(oldUrl, useImg);
       placeholder.parentElement
         .querySelectorAll(
           "[src$=loading\\.svg],[style*=loading\\.svg],[poster$=loading\\.svg]"

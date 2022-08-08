@@ -64,12 +64,19 @@ def create_app():
                 hass=wb.hass,
                 version=wb.version,
                 show_video=show_video,
+                on_demand=wb.on_demand,
             )
         )
         resp.set_cookie("number_of_columns", str(number_of_columns))
         resp.set_cookie("refresh_period", str(refresh_period))
         resp.set_cookie("show_video", "1" if show_video else "")
         return resp
+
+    @app.route("/events/<path:event>/<path:cam>")
+    def events(event: str, cam: str):
+        if event == "DEMAND":
+            wb.start_on_demand(cam)
+        return {}
 
     @app.route("/cameras")
     def cameras():

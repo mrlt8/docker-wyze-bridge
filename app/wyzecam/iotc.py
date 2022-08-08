@@ -90,9 +90,14 @@ class WyzeIOTC:
         if license_status < 0:
             raise tutk.TutkError(license_status)
 
+        # set_region = tutk_platform_lib.TUTK_SDK_Set_Region_Code("us".encode())
+        set_region = tutk_platform_lib.TUTK_SDK_Set_Region(3)  # REGION_US
+        if set_region < 0:
+            raise tutk.TutkError(set_region)
+
         self.tutk_platform_lib: CDLL = tutk_platform_lib
         self.initd = False
-        self.udp_port = udp_port
+        self.udp_port = udp_port or 0
         self.max_num_av_channels = max_num_av_channels
 
         if debug:
@@ -112,10 +117,7 @@ class WyzeIOTC:
         if self.initd:
             return
         self.initd = True
-
-        errno = tutk.iotc_initialize(
-            self.tutk_platform_lib, udp_port=self.udp_port or 0
-        )
+        errno = tutk.iotc_initialize(self.tutk_platform_lib, udp_port=self.udp_port)
         if errno < 0:
             raise tutk.TutkError(errno)
 

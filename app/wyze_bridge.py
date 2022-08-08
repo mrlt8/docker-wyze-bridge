@@ -39,16 +39,15 @@ class WyzeBridge:
         self.timeout: int = env_bool("RTSP_READTIMEOUT", 15, style="int")
         self.connect_timeout: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
         self.keep_bad_frames: bool = env_bool("KEEP_BAD_FRAMES", style="bool")
-        self.healthcheck: bool = bool(os.getenv("HEALTHCHECK"))
         self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
         self.img_path: str = "/%s/" % env_bool("IMG_DIR", "img").strip("/")
         self.cameras: List[WyzeCamera] = []
         self.streams: dict = {}
         self.rtsp = None
-        self.auth: wyzecam.WyzeCredential = None
-        self.user: wyzecam.WyzeAccount = None
-        self.stop_flag = multiprocessing.Event()
-        self.thread: threading.Thread = None
+        self.auth: Optional[wyzecam.WyzeCredential] = None
+        self.user: Optional[wyzecam.WyzeAccount] = None
+        self.thread: Optional[threading.Thread] = None
+        self.stop_bridge = multiprocessing.Event()
         self.hostname = env_bool("DOMAIN")
         self.hls_url = env_bool("WB_HLS_URL")
         self.rtmp_url = env_bool("WB_RTMP_URL")
@@ -61,6 +60,7 @@ class WyzeBridge:
 
     def run(self) -> None:
         """Start synchronously"""
+        self.stop_bridge.clear()
         setup_llhls(self.token_path)
         self.get_wyze_data("user")
         self.get_filtered_cams()
@@ -71,24 +71,24 @@ class WyzeBridge:
 
     def start(self) -> None:
         """Start asynchronously."""
-        if not self.thread:
-            self.thread = threading.Thread(target=self.run)
-            self.thread.start()
+        if self.thread:
+            self.thread.join()
+        self.thread = threading.Thread(target=self.run)
+        self.thread.start()
 
     def stop_cameras(self) -> None:
         """Stop all cameras."""
         log.info("Stopping the cameras...")
-        self.stop_flag.set()
+        self.stop_bridge.set()
         if len(self.streams) > 0:
+            for stream in self.streams.values():
+                if stop_flag := stream["stop_flag"]:
+                    stop_flag.set()
             for stream in self.streams.values():
                 if process := stream["process"]:
                     process.join()
-        if self.thread:
-            self.thread.join()
-        self.thread = None
-        self.streams: dict = {}
-        self.cameras: List[WyzeCamera] = []
-        self.stop_flag.clear()
+        self.streams = {}
+        self.cameras = []
 
     def stop_rtsp_server(self):
         """Stop rtsp-simple-server."""
@@ -97,30 +97,27 @@ class WyzeBridge:
             self.rtsp.terminate()
         self.rtsp = None
 
-    def update_health(self):
-        """Update healthcheck with number of cams down if enabled."""
-        if not self.healthcheck():
-            return
-        with open("/healthcheck", "r+") as healthcheck:
-            old = healthcheck.read().strip()
-            cams_down = int(old) if old.isnumeric() else 0
-            healthcheck.seek(0)
-            healthcheck.write(cams_down + 1)
-
     def start_all_streams(self) -> None:
         """Start all streams and keep them alive."""
         for cam_name in self.streams:
             self.start_stream(cam_name)
         cooldown = env_bool("OFFLINE_TIME", 10, style="int")
-        while self.streams and not self.stop_flag.is_set():
+        while self.streams and not self.stop_bridge.is_set():
             refresh_cams = True
             for name, stream in list(self.streams.items()):
                 if (
-                    not stream.get("sleep")
-                    and not stream.get("camera_info")
-                    and time.time() - stream.get("started", 0)
-                    > (self.connect_timeout + 2)
+                    stream.get("on_demand", 0) > 0
+                    and stream["on_demand"] < time.time()
+                    and not stream["stop_flag"].is_set()
                 ):
+                    log.info("Stopping on-demand")
+                    stream["stop_flag"].set()
+                    continue
+                if (sleep := stream["sleep"]) and sleep <= time.time():
+                    self.start_stream(name)
+                elif not stream.get("camera_info") and time.time() - stream.get(
+                    "started", 0
+                ) > (self.connect_timeout + 2):
                     log.warning(
                         f"⏰ Timed out connecting to {name} ({self.connect_timeout}s)."
                     )
@@ -144,8 +141,6 @@ class WyzeBridge:
                         self.streams[name] = {"sleep": int(time.time() + cooldown)}
                     elif process.exitcode:
                         del self.streams[name]
-                elif (sleep := stream["sleep"]) and sleep <= time.time():
-                    self.start_stream(name)
                 if stream.get("queue") and not stream["queue"].empty():
                     stream["camera_info"] = stream["queue"].get()
 
@@ -153,28 +148,37 @@ class WyzeBridge:
 
     def start_stream(self, name: str) -> None:
         """Start a single stream by cam name."""
+        old_stop = True
         if name in self.streams and (proc := self.streams[name].get("process")):
+            if self.streams[name].get("on_demand", 0) > time.time():
+                old_stop = False
             if hasattr(proc, "alive") and proc.alive():
                 proc.terminate()
                 proc.join()
         offline = bool(self.streams[name].get("sleep"))
         cam = next(c for c in self.cameras if c.nickname == name)
         log.info(f"🎉 Connecting to WyzeCam {cam.model_name} - {name} on {cam.ip} (1/3)")
+        stop_flag = multiprocessing.Event()
+        if (self.on_demand or cam.product_model in {"WVOD1", "HL_WCO2"}) and old_stop:
+            stop_flag.set()
         camera_info = multiprocessing.Queue(1)
         camera_cmd = multiprocessing.JoinableQueue(1)
 
         stream = multiprocessing.Process(
             target=self.start_tutk_stream,
-            args=(cam, camera_info, camera_cmd, offline),
+            args=(cam, stop_flag, camera_info, camera_cmd, offline),
             name=name,
         )
+
         self.streams[name] = {
             "process": stream,
             "sleep": False,
+            "on_demand": 0,
             "camera_info": None,
             "camera_cmd": camera_cmd,
             "queue": camera_info,
-            "started": time.time(),
+            "started": time.time() * 2 if stop_flag.is_set() else time.time(),
+            "stop_flag": stop_flag,
         }
         stream.start()
 
@@ -326,13 +330,21 @@ class WyzeBridge:
         """Configure and add env options for the camera that will be used by rtsp-simple-server."""
         path = f"RTSP_PATHS_{cam.name_uri.upper()}_"
         py_event = "python3 /app/rtsp_event.py $RTSP_PATH "
-        if self.on_demand:
-            os.environ[path + "RUNONDEMAND"] = py_event + cam.mac
+        # py_event = "bash -c 'echo GET /events/{}/{} HTTP/1.1 >/dev/tcp/127.0.0.1/5000'"
+        if self.on_demand or cam.product_model in {"WVOD1", "HL_WCO2"}:
+            os.environ[path + "RUNONDEMANDRESTART"] = "yes"
+            os.environ[path + "RUNONDEMANDSTARTTIMEOUT"] = "30s"
+            os.environ[path + "RUNONDEMANDCLOSEAFTER"] = "30s"
+            os.environ[
+                path + "RUNONDEMAND"
+            ] = f"bash -c 'echo GET /events/DEMAND/{cam.nickname} >/dev/tcp/127.0.0.1/5000 && sleep 20'"
+            # os.environ[path + "RUNONDEMAND"] = py_event.format("DEMAND", cam.name_uri)
         for event in ("READ", "READY"):
             env = path + "RUNON" + event
             if alt := env_bool(env):
                 event += " & " + alt
             os.environ[env] = py_event + event
+            # os.environ[env] = py_event.format(event, cam.name_uri)
 
         if user := env_bool(path + "READUSER", os.getenv("RTSP_PATHS_ALL_READUSER")):
             os.environ[path + "READUSER"] = user
@@ -389,11 +401,18 @@ class WyzeBridge:
     def start_tutk_stream(
         self,
         cam: wyzecam.WyzeCamera,
+        stop_flag: multiprocessing.Event,
         camera_info: multiprocessing.Queue,
         camera_cmd: multiprocessing.JoinableQueue,
         offline: bool,
     ) -> None:
         """Connect and communicate with the camera using TUTK."""
+        if stop_flag.is_set():
+            log.info("⌛️ Waiting for on-demand connection...")
+        while stop_flag.is_set():
+            if self.stop_bridge.is_set():
+                return
+            time.sleep(0.5)
         uri = cam.name_uri.upper()
         exit_code = 1
         audio = env_bool(f"ENABLE_AUDIO_{uri}", env_bool("ENABLE_AUDIO"), style="bool")
@@ -429,7 +448,7 @@ class WyzeBridge:
                     if audio:
                         audio_thread.start()
                     for frame in sess.recv_bridge_frame(
-                        self.stop_flag, self.keep_bad_frames, self.timeout, fps
+                        stop_flag, self.keep_bad_frames, self.timeout, fps
                     ):
                         ffmpeg.stdin.write(frame)
         except wyzecam.TutkError as ex:
@@ -503,7 +522,8 @@ class WyzeBridge:
             d["boa_url"] = None
             d["started"] = 0
             if stream := self.streams.get(cam.nickname):
-                d["started"] = int(stream.get("started", 0) * 1000)
+                if stream.get("stop_flag") and not stream["stop_flag"].is_set():
+                    d["started"] = int(stream.get("started", 0) * 1000)
                 if stream.get("camera_info"):
                     d["connected"] = True
                     d["camera_info"] = stream["camera_info"]
@@ -514,7 +534,7 @@ class WyzeBridge:
             r[cam.name_uri] = d
         return r
 
-    def rtsp_snap(self, cam_name: str, wait: bool = True) -> str:
+    def rtsp_snap(self, cam_name: str, wait: bool = True) -> Optional[str]:
         """
         Take an rtsp snapshot with ffmpeg.
         @param cam_name: uri name of camera
@@ -522,7 +542,14 @@ class WyzeBridge:
         @return: img path
         """
         cam = self.get_cameras().get(cam_name, None)
-        if not (cam and cam["enabled"] and cam["connected"]):
+        on_demand = self.on_demand or (
+            cam and cam.get("product_model") in {"WVOD1", "HL_WCO2"}
+        )
+        if (
+            not cam
+            or not cam.get("connected")
+            and not (on_demand and cam.get("enabled"))
+        ):
             return None
 
         img = f"{self.img_path}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
@@ -539,11 +566,19 @@ class WyzeBridge:
 
         if wait:
             try:
-                ffmpeg.communicate(timeout=15)
+                ffmpeg.communicate(timeout=30)
             except TimeoutExpired:
                 ffmpeg.kill()
                 return None
         return img
+
+    def start_on_demand(self, cam_name: str):
+        """Start on-demand stream."""
+        if not (cam := self.streams.get(cam_name)) or not cam.get("stop_flag"):
+            return
+        cam["stop_flag"].clear()
+        cam["start_time"] = time.time()
+        cam["on_demand"] = time.time() + 20
 
     def boa_photo(self, cam_name: str) -> Optional[str]:
         """Take photo."""

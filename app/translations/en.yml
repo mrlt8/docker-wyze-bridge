@@ -3,6 +3,8 @@ configuration:
     name: Allowed Net Modes
   SNAPSHOT:
     name: Snapshot Mode
+  ON_DEMAND:
+    name: On-Demand Streams
   ENABLE_AUDIO:
     name: Enable Audio For All Cameras
   AUDIO_CODEC:
