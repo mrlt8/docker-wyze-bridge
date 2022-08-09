@@ -337,7 +337,7 @@ class WyzeBridge:
             os.environ[path + "RUNONDEMANDCLOSEAFTER"] = "30s"
             os.environ[
                 path + "RUNONDEMAND"
-            ] = f"bash -c 'echo GET /events/DEMAND/{cam.nickname} >/dev/tcp/127.0.0.1/5000 && sleep 20'"
+            ] = f"bash -c 'echo GET /events/start/{cam.name_uri} >/dev/tcp/127.0.0.1/5000 && sleep 20'"
             # os.environ[path + "RUNONDEMAND"] = py_event.format("DEMAND", cam.name_uri)
         for event in ("READ", "READY"):
             env = path + "RUNON" + event
@@ -572,8 +572,9 @@ class WyzeBridge:
                 return None
         return img
 
-    def start_on_demand(self, cam_name: str):
+    def start_on_demand(self, cam_uri: str):
         """Start on-demand stream."""
+        cam_name = next(c.nickname for c in self.cameras if c.name_uri == cam_uri)
         if not (cam := self.streams.get(cam_name)) or not cam.get("stop_flag"):
             return
         cam["stop_flag"].clear()
