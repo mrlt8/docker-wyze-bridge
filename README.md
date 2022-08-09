@@ -31,11 +31,12 @@ You can then use the web interface at `http://localhost:5000`, or view a specifi
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.8.0
+## What's Changed in v1.8.0/1
 
 - New: on-demand streaming. Use the optional `ON_DEMAND=True` ENV to enable.
   - Outdoor cams (WVOD1 and HL_WCO2) will automatically be marked as on-demand.
 - Changed: WebUI will NOT auto reload snapshots for cameras marked as on-demand or if ON_DEMAND is enabled, but manually refreshing the image will continue to work.
+- Fixed: use url safe names for on-demand streams. #498 Thanks @terryhonn!
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
