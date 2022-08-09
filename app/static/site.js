@@ -182,7 +182,8 @@ function sortable(parent, selector, onUpdate = null) {
  */
 async function update_img(oldUrl, useImg = false) {
   let [cam, ext] = oldUrl.split("/").pop().split("?")[0].split(".");
-  let newUrl = useImg ? oldUrl : "snapshot/" + cam + "." + ext + "?" + Date.now();
+  let newUrl = "snapshot/" + cam + "." + ext + "?" + Date.now();
+  if (useImg) { newUrl = "img/" + cam + "." + ext }
   console.debug("update_img", oldUrl, newUrl);
   let button = document.querySelector(`.is-overlay > [data-cam="${cam}"]`);
   if (button) {
@@ -340,7 +341,7 @@ document.addEventListener("DOMContentLoaded", () => {
       oldUrl = `snapshot/${cam}.jpg`;
     }
     try {
-      let useImg = (getCookie("refresh_period") < 5 || placeholder.classList.contains("on-demand"));
+      let useImg = (getCookie("refresh_period") <= 10 || placeholder.classList.contains("on-demand"));
       let newUrl = await update_img(oldUrl, useImg);
       placeholder.parentElement
         .querySelectorAll(
