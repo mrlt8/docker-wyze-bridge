@@ -35,7 +35,7 @@ class WyzeBridge:
         log.info(f"🚀 STARTING DOCKER-WYZE-BRIDGE v{self.version}\n")
         self.hass: bool = bool(os.getenv("HASS"))
         setup_hass(self.hass)
-        self.on_demand: bool = bool(os.getenv("ON_DEMAND"))
+        self.on_demand: bool = env_bool("ON_DEMAND", style="bool")
         self.timeout: int = env_bool("RTSP_READTIMEOUT", 15, style="int")
         self.connect_timeout: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
         self.keep_bad_frames: bool = env_bool("KEEP_BAD_FRAMES", style="bool")
@@ -105,14 +105,6 @@ class WyzeBridge:
         while self.streams and not self.stop_bridge.is_set():
             refresh_cams = True
             for name, stream in list(self.streams.items()):
-                if (
-                    stream.get("on_demand", 0) > 0
-                    and stream["on_demand"] < time.time()
-                    and not stream["stop_flag"].is_set()
-                ):
-                    log.info("Stopping on-demand")
-                    stream["stop_flag"].set()
-                    continue
                 if (sleep := stream["sleep"]) and sleep <= time.time():
                     self.start_stream(name)
                 elif not stream.get("camera_info") and time.time() - stream.get(
@@ -173,7 +165,6 @@ class WyzeBridge:
         self.streams[name] = {
             "process": stream,
             "sleep": False,
-            "on_demand": 0,
             "camera_info": None,
             "camera_cmd": camera_cmd,
             "queue": camera_info,
@@ -332,12 +323,10 @@ class WyzeBridge:
         py_event = "python3 /app/rtsp_event.py $RTSP_PATH "
         # py_event = "bash -c 'echo GET /events/{}/{} HTTP/1.1 >/dev/tcp/127.0.0.1/5000'"
         if self.on_demand or cam.product_model in {"WVOD1", "HL_WCO2"}:
-            os.environ[path + "RUNONDEMANDRESTART"] = "yes"
             os.environ[path + "RUNONDEMANDSTARTTIMEOUT"] = "30s"
-            os.environ[path + "RUNONDEMANDCLOSEAFTER"] = "30s"
             os.environ[
                 path + "RUNONDEMAND"
-            ] = f"bash -c 'echo GET /events/start/{cam.name_uri} >/dev/tcp/127.0.0.1/5000 && sleep 20'"
+            ] = f"bash -c 'echo GET /events/start/{cam.name_uri} >/dev/tcp/127.0.0.1/5000'"
             # os.environ[path + "RUNONDEMAND"] = py_event.format("DEMAND", cam.name_uri)
         for event in ("READ", "READY"):
             env = path + "RUNON" + event
@@ -463,6 +452,8 @@ class WyzeBridge:
             if ex.args[0] == "ENR_AUTH_FAILED":
                 log.warning("⏰ Expired ENR?")
                 exit_code = 19
+        except BrokenPipeError:
+            log.info("FFMPEG stopped")
         except Exception as ex:
             log.warning(ex)
         else:
@@ -578,8 +569,7 @@ class WyzeBridge:
         if not (cam := self.streams.get(cam_name)) or not cam.get("stop_flag"):
             return
         cam["stop_flag"].clear()
-        cam["start_time"] = time.time()
-        cam["on_demand"] = time.time() + 20
+        cam["started"] = time.time()
 
     def boa_photo(self, cam_name: str) -> Optional[str]:
         """Take photo."""
@@ -757,7 +747,7 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list:
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD")).format(
         cam_name=uri.lower(), CAM_NAME=uri, audio_in=audio_in
     ).split() or (
-        ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "error"]
+        ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "fatal"]
         + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
         .split()
