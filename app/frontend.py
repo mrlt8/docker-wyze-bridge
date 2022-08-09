@@ -74,8 +74,11 @@ def create_app():
 
     @app.route("/events/<path:event>/<path:cam>")
     def events(event: str, cam: str):
-        if event == "DEMAND":
-            wb.start_on_demand(cam)
+        if event == "start":
+            try:
+                wb.start_on_demand(cam)
+            except StopIteration:
+                abort(404)
         return {}
 
     @app.route("/cameras")
