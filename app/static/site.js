@@ -280,10 +280,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("div.camera.is-hidden").forEach((div) => {
       div.classList.remove("is-hidden");
     });
-    let filter = this.getAttribute("data-filter");
+    let filter = this.dataset.filter;
     if (filter != "all") {
       document
-        .querySelectorAll("div.camera:not([" + filter + "='True'])")
+        .querySelectorAll("div.camera:not([data-" + filter + "='True'])")
         .forEach((cam) => {
           cam.classList.add("is-hidden");
         });

@@ -102,14 +102,14 @@
         <div class="cameras columns is-multiline">
             {% for cam_uri,camera in cameras.cameras.items() %}
             <div id="{{ cam_uri }}" class="camera column {{'is-hidden' if not camera.enabled}}"
-                enabled="{{camera.enabled}}" connected="{{camera.connected}}">
+                data-enabled="{{camera.enabled}}" data-connected="{{camera.connected}}">
                 <div class="card">
                     <header class="card-header">
                         <div class="card-header-title">
                             <div class="dropdown is-hoverable">
                                 <div class="dropdown-trigger">
                                     <span class="icon">
-                                        <i class="fas has-text-{{'warning fa-clock' if camera.on_demand and camera.enabled else 'grey-lighter fa-circle-info' if not camera.enabled else 'success fa-circle-info' if camera.connected else 'danger fa-triangle-exclamation'}}"
+                                        <i class="fas has-text-{{ 'success' if camera.status == 'online' else 'warning' if camera.status in ('standby','connecting') else 'danger' }} fa-{{'triangle-exclamation' if not camera.enabled else 'clock' if camera.on_demand else 'circle-info'}}"
                                             aria-hidden="true"></i>
                                     </span>
                                 </div>
