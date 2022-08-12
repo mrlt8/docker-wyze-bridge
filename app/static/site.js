@@ -31,10 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let cookieId = select.id.replace("select_", "");
     if (changeValue < select.min || changeValue > select.max) {
       select.classList.add("is-danger");
-      select.value = getCookie(
-        cookieId,
-        cookieId == "refresh_period" ? 30 : 2
-      );
+      select.value = getCookie(cookieId, cookieId == "refresh_period" ? 30 : 2);
       setTimeout(() => {
         select.classList.remove("is-danger");
       }, 1000);
@@ -183,7 +180,9 @@ function sortable(parent, selector, onUpdate = null) {
 async function update_img(oldUrl, useImg = false) {
   let [cam, ext] = oldUrl.split("/").pop().split("?")[0].split(".");
   let newUrl = "snapshot/" + cam + "." + ext + "?" + Date.now();
-  if (useImg) { newUrl = "img/" + cam + "." + ext }
+  if (useImg) {
+    newUrl = "img/" + cam + "." + ext;
+  }
   console.debug("update_img", oldUrl, newUrl);
   let button = document.querySelector(`.is-overlay > [data-cam="${cam}"]`);
   if (button) {
@@ -272,6 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
+  // filter cameras
   function filterCams() {
     document
       .querySelector("[data-filter].is-active")
@@ -298,9 +298,8 @@ document.addEventListener("DOMContentLoaded", () => {
       this.classList.toggle("is-active");
       document.getElementById("refresh-menu").classList.toggle("is-active");
     });
-});
 
-document.addEventListener("DOMContentLoaded", () => {
+  // Check for version update
   let checkAPI = document.getElementById("checkUpdate");
   function checkVersion(api) {
     let isNewer = (a, b) => {
@@ -331,9 +330,8 @@ document.addEventListener("DOMContentLoaded", () => {
       .then((data) => checkVersion(data));
   }
   checkAPI.addEventListener("click", getGithub);
-});
 
-document.addEventListener("DOMContentLoaded", () => {
+  // Update preview after loading the page
   async function loadPreview(placeholder) {
     let cam = placeholder.getAttribute("data-cam");
     let oldUrl = placeholder.getAttribute("src");
@@ -341,7 +339,9 @@ document.addEventListener("DOMContentLoaded", () => {
       oldUrl = `snapshot/${cam}.jpg`;
     }
     try {
-      let useImg = (getCookie("refresh_period") <= 10 || placeholder.classList.contains("on-demand"));
+      let useImg =
+        getCookie("refresh_period") <= 10 ||
+        placeholder.classList.contains("on-demand");
       let newUrl = await update_img(oldUrl, useImg);
       placeholder.parentElement
         .querySelectorAll(
@@ -379,10 +379,8 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".update-preview").forEach((up) => {
     up.addEventListener("click", updateSnapshot);
   });
-});
 
-// Restart bridge/rtsp-simple-server.
-document.addEventListener("DOMContentLoaded", () => {
+  // Restart bridge/rtsp-simple-server.
   document.querySelectorAll("#restart-menu a").forEach((a) => {
     a.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -399,4 +397,37 @@ document.addEventListener("DOMContentLoaded", () => {
       }, 3000);
     });
   });
+
+  // Update status icon based on connection status
+  let sse = new EventSource("cameras/sse_status");
+  sse.addEventListener("error", (e) => {
+    document
+      .querySelectorAll(
+        "[data-enabled=True] .card-header-title .dropdown-trigger i[class*=has-text-]"
+      )
+      .forEach((i) => {
+        i.classList.forEach((item) => {
+          if (item.match(/^has\-text\-\w/)) {
+            i.classList.remove(item);
+          }
+        })
+      });
+  });
+  sse.addEventListener("message", (e) => {
+    Object.entries(JSON.parse(e.data)).forEach(([cam, status]) => {
+      console.log(e.data);
+      let statusIcon = document.querySelector(`#${cam} .dropdown-trigger i`);
+      statusIcon.classList.forEach((item) => {
+        if (item.match(/^has\-text\-\w/)) {
+          statusIcon.classList.remove(item);
+        }
+      });
+      if (status == "online") {
+        statusIcon.classList.add("has-text-success");
+      } else if (["connecting", "standby"].includes(status)) {
+        statusIcon.classList.add("has-text-warning");
+      }
+    });
+  });
 });
+
