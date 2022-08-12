@@ -101,7 +101,7 @@ class WyzeBridge:
         """Start all streams and keep them alive."""
         for cam_name in self.streams:
             self.start_stream(cam_name)
-        cooldown = int(env_bool("OFFLINE_TIME", 10))
+        cooldown = env_bool("OFFLINE_TIME", "10", style="int")
         while self.streams and not self.stop_bridge.is_set():
             refresh_cams = True
             for name, stream in list(self.streams.items()):
@@ -618,7 +618,7 @@ class WyzeBridge:
 mode_type = {0: "P2P", 1: "RELAY", 2: "LAN"}
 
 
-def env_bool(env: str, false="", true="", style="") -> str:
+def env_bool(env: str, false="", true="", style=""):
     """Return env variable or empty string if the variable contains 'false' or is empty."""
     env_value = os.getenv(env.upper().replace("-", "_"), "")
     value = env_value.lower().replace("false", "").strip("'\" \n\t\r")
@@ -1042,7 +1042,11 @@ def _on_message(client, sess, msg):
 
 
 def camera_boa(
-    sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str, camera_info, camera_cmd
+    sess: wyzecam.WyzeIOTCSession,
+    uri: str,
+    img_dir: str,
+    camera_info: multiprocessing.Queue,
+    camera_cmd: multiprocessing.JoinableQueue,
 ):
     """
     Start the boa server on the camera and pull photos.
@@ -1068,7 +1072,7 @@ def camera_boa(
         return  # Stop thread if SD card isn't available
     log.info(f"Local boa HTTP server enabled on http://{ip}")
     cam = (uri.lower(), ip, img_dir)
-    interval = env_bool("boa_interval", 5)
+    interval = env_bool("boa_interval", "5", style="int")
     last_alarm = last_photo = (None, None)
     cooldown = datetime.now()
     mqtt = mqtt_sub_topic([f"{uri.lower()}/takePhoto"], sess)
