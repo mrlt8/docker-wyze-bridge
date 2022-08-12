@@ -6,6 +6,7 @@ from urllib.parse import urlparse
 
 from flask import (
     Flask,
+    Response,
     abort,
     make_response,
     redirect,
@@ -80,6 +81,9 @@ def create_app():
     @app.route("/cameras/<path:cam_name>/<path:cam_cmd>")
     def cameras(cam_name=None, cam_cmd=None):
         """JSON api endpoints."""
+        if cam_name == "sse_status":  # Server Side Event
+            return Response(wb.sse_status(), mimetype="text/event-stream")
+
         host = urlparse(request.root_url).hostname
         if cam_name and cam_cmd == "status":
             return {"status": wb.get_cam_status(cam_name)}

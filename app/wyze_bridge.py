@@ -12,7 +12,7 @@ import warnings
 from datetime import datetime, timedelta
 from queue import Empty
 from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
-from typing import Dict, List, NoReturn, Optional, Tuple, Union
+from typing import Dict, Generator, List, NoReturn, Optional, Tuple, Union
 
 import mintotp
 import paho.mqtt.client
@@ -486,6 +486,16 @@ class WyzeBridge:
                 if ex.response.status_code == 404:
                     ex = "Camera does not support WebRTC"
                 log.warning(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n{ex}\n---")
+
+    def sse_status(self) -> Generator[str, str, str]:
+        """Generator to return the status for enabled cameras."""
+        cameras = {}
+        while True:
+            if cameras != (
+                cameras := {cam: self.get_cam_status(cam) for cam in self.streams}
+            ):
+                yield f"data: {json.dumps(cameras)}\n\n"
+            time.sleep(1)
 
     def get_cam_status(self, name_uri: str) -> str:
         """Camera connection status."""
