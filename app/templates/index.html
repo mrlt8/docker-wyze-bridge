@@ -186,8 +186,7 @@
                                 </span>
                                 <p>Preview not available</p>
                             </section>
-                            {% endif %} {% if not show_video and (camera.connected or (camera.on_demand and
-                            camera.enabled)) %}
+                            {% endif %} {% if not show_video %}
                             <div class="card-content is-overlay has-text-right cam-overlay">
                                 <button class="button is-primary update-preview" data-cam="{{cam_uri}}"
                                     title="Update preview">
