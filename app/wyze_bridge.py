@@ -139,9 +139,12 @@ class WyzeBridge:
                     stream["camera_info"] = stream["queue"].get()
 
             if self.rtsp_snapshot_processes:
-                for cam_name, snap in self.rtsp_snapshot_processes.items():
+                for cam_name, snap in list(self.rtsp_snapshot_processes.items()):
                     if snap.poll() is not None:
-                        del self.rtsp_snapshot_processes[cam_name]
+                        try:
+                            del self.rtsp_snapshot_processes[cam_name]
+                        except KeyError:
+                            continue
 
             time.sleep(1)
 
@@ -608,7 +611,6 @@ class WyzeBridge:
             except TimeoutExpired:
                 ffmpeg.kill()
                 return None
-            del self.rtsp_snapshot_processes[cam_name]
         return img
 
     def start_on_demand(self, cam_uri: str) -> bool:
