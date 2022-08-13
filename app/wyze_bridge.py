@@ -107,9 +107,11 @@ class WyzeBridge:
             for name, stream in list(self.streams.items()):
                 if (sleep := stream["sleep"]) and sleep <= time.time():
                     self.start_stream(name)
-                elif not stream.get("camera_info") and time.time() - stream.get(
-                    "started", 0
-                ) > (self.connect_timeout + 2):
+                elif (
+                    not stream.get("camera_info")
+                    and stream.get("started")
+                    and time.time() - stream.get("started") > (self.connect_timeout + 2)
+                ):
                     log.warning(
                         f"⏰ Timed out connecting to {name} ({self.connect_timeout}s)."
                     )
