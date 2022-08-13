@@ -271,7 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-  // filter cameras
+  // Filter cameras
   function filterCams() {
     document
       .querySelector("[data-filter].is-active")
@@ -400,7 +400,14 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Update status icon based on connection status
   let sse = new EventSource("cameras/sse_status");
-  sse.addEventListener("error", (e) => {
+  sse.addEventListener("open", () => {
+    document.getElementById("connection-lost").style.display = "none";
+    applyPreferences();
+  });
+  sse.addEventListener("error", () => {
+    refresh_period = -1;
+    clearInterval(refresh_interval);
+    document.getElementById("connection-lost").style.display = "block";
     document
       .querySelectorAll(
         "[data-enabled=True] .card-header-title .dropdown-trigger i[class*=has-text-]"
@@ -410,7 +417,7 @@ document.addEventListener("DOMContentLoaded", () => {
           if (item.match(/^has\-text\-\w/)) {
             i.classList.remove(item);
           }
-        })
+        });
       });
   });
   sse.addEventListener("message", (e) => {
@@ -424,10 +431,22 @@ document.addEventListener("DOMContentLoaded", () => {
       });
       if (status == "online") {
         statusIcon.classList.add("has-text-success");
+        let noPreview = document.querySelector(`#${cam} .no-preview`)
+        if (noPreview) {
+          console.log(noPreview.dataset.onDemand ? "on-demand" : "")
+          console.log(noPreview.dataset.onDemand)
+          let fig = noPreview.parentElement
+          let preview = document.createElement("img")
+          preview.classList.add("refresh_img", "loading-preview", noPreview.dataset.onDemand ? "on-demand" : "")
+          preview.dataset.cam = cam
+          preview.src = "static/loading.svg"
+          noPreview.replaceWith(preview)
+          loadPreview(fig.querySelector("img"))
+        }
+
       } else if (["connecting", "standby"].includes(status)) {
         statusIcon.classList.add("has-text-warning");
       }
     });
   });
 });
-

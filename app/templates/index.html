@@ -99,6 +99,16 @@
                 </div>
             </div>
         </nav>
+        <article id="connection-lost" class="message is-danger" style="display:none;">
+            <div class="message-body">
+                <span class="icon-text">
+                    <span class="icon">
+                        <i class="fas fa-house-signal"></i>
+                    </span>
+                    <span>Lost connection to the bridge...</span>
+                </span>
+            </div>
+        </article>
         <div class="cameras columns is-multiline">
             {% for cam_uri,camera in cameras.cameras.items() %}
             <div id="{{ cam_uri }}" class="camera column {{'is-hidden' if not camera.enabled}}"
@@ -180,7 +190,8 @@
                                 src="{{ camera.img_url or url_for('static',filename='loading.svg') }}"
                                 data-cam="{{cam_uri}}" width="100%" />
                             {% else %}
-                            <section class="section has-background-black has-text-white no-preview">
+                            <section class="section has-background-black has-text-white no-preview"
+                                data-on-demand="{{camera.on_demand}}">
                                 <span class="icon is-medium">
                                     <i class="fas fa-video-slash"></i>
                                 </span>
