@@ -308,8 +308,7 @@ class WyzeBridge:
             except requests.exceptions.HTTPError as ex:
                 if "400 Client Error" in str(ex):
                     log.warning("🚷 Invalid credentials?")
-                else:
-                    log.warning(ex)
+                log.warning(ex)
                 time.sleep(60)
             except Exception as ex:
                 log.warning(ex)
