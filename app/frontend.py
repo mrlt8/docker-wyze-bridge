@@ -126,14 +126,14 @@ def create_app():
         """
         if restart_cmd == "cameras":
             wb.stop_cameras()
-            wb.start()
+            wb.run()
         elif restart_cmd == "rtsp_server":
             wb.stop_rtsp_server()
             wb.start_rtsp_server()
         elif restart_cmd == "all":
             wb.stop_cameras()
             wb.stop_rtsp_server()
-            wb.start()
+            wb.run()
             restart_cmd = "cameras,rtsp_server"
         else:
             return {"result": "error"}

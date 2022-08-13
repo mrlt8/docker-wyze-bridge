@@ -82,10 +82,10 @@ class WyzeBridge:
         self.stop_bridge.set()
         if len(self.streams) > 0:
             for stream in self.streams.values():
-                if stop_flag := stream["stop_flag"]:
+                if stop_flag := stream.get("stop_flag"):
                     stop_flag.set()
             for stream in self.streams.values():
-                if process := stream["process"]:
+                if process := stream.get("process"):
                     process.join()
         self.streams = {}
         self.cameras = {}
