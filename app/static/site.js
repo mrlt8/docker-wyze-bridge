@@ -408,7 +408,7 @@ document.addEventListener("DOMContentLoaded", () => {
     refresh_period = -1;
     clearInterval(refresh_interval);
     document.getElementById("connection-lost").style.display = "block";
-    document.querySelectorAll("img.connected").classList.remove("connected")
+    document.querySelectorAll("img.connected").forEach((i) => { i.classList.remove("connected") })
     document
       .querySelectorAll(
         "[data-enabled=True] .card-header-title .dropdown-trigger i[class*=has-text-]"
