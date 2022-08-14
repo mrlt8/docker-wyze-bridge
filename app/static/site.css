@@ -131,7 +131,7 @@ span .fa-arrows-rotate {
   display: none;
 }
 
-.card:hover .cam-overlay {
+.card:hover img+.cam-overlay {
   display: block;
 }
 

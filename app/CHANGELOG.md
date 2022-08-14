@@ -1,3 +1,19 @@
+## What's Changed in v1.8.3
+
+- Fixed: Bug where cameras would go into a "Timed out connecting to ..." loop #391 #484
+- Fixed: Bug when restarting the connection to the cameras in the WebUI #391 Thanks @mdabbs!
+- Fixed: TypeError when setting a custom `BOA_INTERVAL` #504 Thanks @stevenwbuehler!
+- Fixed: Check up on snapshots to prevent zombie processes.
+- New: Use server side events to update the connection status color on the Web-UI to show when a camera is actually connected.
+- New: Pause/resume snapshots in the web-ui based on the connection status.
+- New: API endpoints
+  - `/cameras/sse_status` server side event to monitor connection to all cameras.
+  - `/cameras/<camera-name>` return json for a single camera.
+  - `/cameras/<cam-name>/status` return json with current connection status only.
+- Changed: `/cameras` API endpoint format to include the total cameras and enabled cameras.
+- Changed: Display on-demand status in the logs.
+- Changed: More verbose http exceptions #505
+
 ## What's Changed in v1.8.1/2
 
 - Fixed: timeout issue with on-demand stream. #501 Thanks @tremfranz!

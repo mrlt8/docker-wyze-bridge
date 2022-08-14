@@ -19,17 +19,18 @@
     <section class="section">
         <nav class="navbar block is-dark">
             <div class="navbar-brand">
-                {% if enabled != cameras|length %}
+                {% if cameras.enabled != cameras.total %}
                 <a data-filter="enabled" class="navbar-item is-tab is-active filter">
                     <span class="icon-text">
-                        <span class="icon"><i class="fas fa-plug-circle-check"></i></span><span><strong> {{ enabled
+                        <span class="icon"><i class="fas fa-plug-circle-check"></i></span><span><strong> {{
+                                cameras.enabled
                                 }}</strong> enabled</span></span></a>
                 <a data-filter="all" class="navbar-item is-tab filter">
                     <span class="icon-text"><span class="icon"><i class="fas fa-users-viewfinder"></i></span><span>
                             All cameras</span></span></a>
                 {%else%}
                 <p class="navbar-item"><span class="icon-text"><span class="icon"><i
-                                class="fas fa-users-viewfinder"></i></span><span>Detected {{ cameras|length
+                                class="fas fa-users-viewfinder"></i></span><span>Detected {{ cameras.total
                             }} cameras</span></p>
                 {% endif %}
                 <a class="navbar-burger">
@@ -98,18 +99,27 @@
                 </div>
             </div>
         </nav>
+        <article id="connection-lost" class="message is-danger" style="display:none;">
+            <div class="message-body">
+                <span class="icon-text">
+                    <span class="icon">
+                        <i class="fas fa-house-signal"></i>
+                    </span>
+                    <span>Lost connection to the bridge...</span>
+                </span>
+            </div>
+        </article>
         <div class="cameras columns is-multiline">
-            {% for camera in cameras.values() %}
-            {% set on_demand = True if camera.product_model in ("WVOD1", "HL_WCO2") else on_demand %}
-            <div id="{{ camera.name_uri }}" class="camera column {{'is-hidden' if not camera.enabled}}"
-                enabled="{{camera.enabled}}" connected="{{camera.connected}}">
+            {% for cam_uri,camera in cameras.cameras.items() %}
+            <div id="{{ cam_uri }}" class="camera column {{'is-hidden' if not camera.enabled}}"
+                data-enabled="{{camera.enabled}}" data-connected="{{camera.connected}}">
                 <div class="card">
                     <header class="card-header">
                         <div class="card-header-title">
                             <div class="dropdown is-hoverable">
                                 <div class="dropdown-trigger">
                                     <span class="icon">
-                                        <i class="fas has-text-{{'warning fa-clock' if on_demand and camera.enabled else 'grey-lighter fa-circle-info' if not camera.enabled else 'success fa-circle-info' if camera.connected else 'danger fa-triangle-exclamation'}}"
+                                        <i class="fas has-text-{{ 'success' if camera.status == 'connected' else 'warning' if camera.status in ('standby','connecting') else 'danger' }} fa-{{'triangle-exclamation' if not camera.enabled else 'clock' if camera.on_demand else 'circle-info'}}"
                                             aria-hidden="true"></i>
                                     </span>
                                 </div>
@@ -156,7 +166,7 @@
                             {% endif %}
                         </div>
                         <span class="drag_handle" draggable="true"></span>
-                        <button class="card-header-icon hide-image" data-cam="{{camera.name_uri}}">
+                        <button class="card-header-icon hide-image" data-cam="{{cam_uri}}">
                             <span class="icon">
                                 <i class="fas fa-angle-down" aria-hidden="true"></i>
                             </span>
@@ -164,31 +174,32 @@
                     </header>
                     <div class="card-image has-text-centered">
                         <figure class="image">
-                            {% if show_video and (camera.connected or (on_demand and camera.enabled)) %}
-                            <video-js id="video-{{camera.name_uri}}"
+                            {% if show_video and (camera.connected or (camera.on_demand and camera.enabled)) %}
+                            <video-js id="video-{{cam_uri}}"
                                 class="video-js vjs-live vjs-big-play-centered loading-preview" controls preload="none"
                                 poster="{{camera.img_url or url_for('static',filename='loading.svg')}}"
-                                data-cam="{{camera.name_uri}}" data-setup='{"liveui": true, "fluid": true}'
+                                data-cam="{{cam_uri}}" data-setup='{"liveui": true, "fluid": true}'
                                 data-src="{{camera.hls_url}}stream.m3u8" width="100%">
                                 <source src="{{camera.hls_url}}stream.m3u8" type="application/x-mpegURL" />
-                                <img class="refresh_img loading-preview {{'on-demand' if on_demand}}"
+                                <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
                                     src="{{camera.img_url or url_for('static',filename='loading.svg')}}"
-                                    data-cam="{{camera.name_uri}}" width="100%" />
+                                    data-cam="{{cam_uri}}" width="100%" />
                             </video-js>
-                            {% elif camera.connected or (on_demand and camera.enabled) %}
-                            <img class="refresh_img loading-preview {{'on-demand' if on_demand}}"
+                            {% elif camera.connected or (camera.on_demand and camera.enabled) %}
+                            <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
                                 src="{{ camera.img_url or url_for('static',filename='loading.svg') }}"
-                                data-cam="{{camera.name_uri}}" width="100%" />
+                                data-cam="{{cam_uri}}" width="100%" />
                             {% else %}
-                            <section class="section has-background-black has-text-white no-preview">
+                            <section class="section has-background-black has-text-white no-preview"
+                                data-on-demand="{{camera.on_demand}}">
                                 <span class="icon is-medium">
                                     <i class="fas fa-video-slash"></i>
                                 </span>
                                 <p>Preview not available</p>
                             </section>
-                            {% endif %} {% if not show_video and (camera.connected or (on_demand and camera.enabled)) %}
+                            {% endif %} {% if not show_video %}
                             <div class="card-content is-overlay has-text-right cam-overlay">
-                                <button class="button is-primary update-preview" data-cam="{{camera.name_uri}}"
+                                <button class="button is-primary update-preview" data-cam="{{cam_uri}}"
                                     title="Update preview">
                                     <span class="icon is-small">
                                         <i class="fas fa-arrows-rotate"></i>

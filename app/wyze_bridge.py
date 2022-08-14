@@ -12,7 +12,7 @@ import warnings
 from datetime import datetime, timedelta
 from queue import Empty
 from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
-from typing import Dict, List, NoReturn, Optional, Tuple, Union
+from typing import Dict, Generator, List, NoReturn, Optional, Tuple, Union
 
 import mintotp
 import paho.mqtt.client
@@ -41,8 +41,8 @@ class WyzeBridge:
         self.keep_bad_frames: bool = env_bool("KEEP_BAD_FRAMES", style="bool")
         self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
         self.img_path: str = "/%s/" % env_bool("IMG_DIR", "img").strip("/")
-        self.cameras: List[WyzeCamera] = []
-        self.streams: dict = {}
+        self.cameras: dict[str, WyzeCamera] = {}
+        self.streams: dict[str, dict] = {}
         self.rtsp = None
         self.auth: Optional[wyzecam.WyzeCredential] = None
         self.user: Optional[wyzecam.WyzeAccount] = None
@@ -82,13 +82,13 @@ class WyzeBridge:
         self.stop_bridge.set()
         if len(self.streams) > 0:
             for stream in self.streams.values():
-                if stop_flag := stream["stop_flag"]:
+                if stop_flag := stream.get("stop_flag"):
                     stop_flag.set()
             for stream in self.streams.values():
-                if process := stream["process"]:
+                if process := stream.get("process"):
                     process.join()
         self.streams = {}
-        self.cameras = []
+        self.cameras = {}
 
     def stop_rtsp_server(self):
         """Stop rtsp-simple-server."""
@@ -101,15 +101,17 @@ class WyzeBridge:
         """Start all streams and keep them alive."""
         for cam_name in self.streams:
             self.start_stream(cam_name)
-        cooldown = env_bool("OFFLINE_TIME", 10, style="int")
+        cooldown = env_bool("OFFLINE_TIME", "10", style="int")
         while self.streams and not self.stop_bridge.is_set():
             refresh_cams = True
             for name, stream in list(self.streams.items()):
                 if (sleep := stream["sleep"]) and sleep <= time.time():
                     self.start_stream(name)
-                elif not stream.get("camera_info") and time.time() - stream.get(
-                    "started", 0
-                ) > (self.connect_timeout + 2):
+                elif (
+                    not stream.get("camera_info")
+                    and stream.get("started")
+                    and time.time() - stream.get("started") > (self.connect_timeout + 2)
+                ):
                     log.warning(
                         f"⏰ Timed out connecting to {name} ({self.connect_timeout}s)."
                     )
@@ -136,10 +138,21 @@ class WyzeBridge:
                 if stream.get("queue") and not stream["queue"].empty():
                     stream["camera_info"] = stream["queue"].get()
 
+            if self.rtsp_snapshot_processes:
+                for cam_name, snap in list(self.rtsp_snapshot_processes.items()):
+                    if snap.poll() is not None:
+                        try:
+                            del self.rtsp_snapshot_processes[cam_name]
+                        except KeyError:
+                            continue
+
             time.sleep(1)
 
     def start_stream(self, name: str) -> None:
         """Start a single stream by cam name."""
+        if not (cam := self.cameras.get(name)):
+            log.error(f"Could not find {name}")
+            return
         old_stop = True
         if name in self.streams and (proc := self.streams[name].get("process")):
             if self.streams[name].get("on_demand", 0) > time.time():
@@ -148,10 +161,10 @@ class WyzeBridge:
                 proc.terminate()
                 proc.join()
         offline = bool(self.streams[name].get("sleep"))
-        cam = next(c for c in self.cameras if c.nickname == name)
-        log.info(f"🎉 Connecting to WyzeCam {cam.model_name} - {name} on {cam.ip} (1/3)")
         stop_flag = multiprocessing.Event()
+        msg = f"🎉 Connecting to WyzeCam {cam.model_name} - {name} on {cam.ip} (1/3)"
         if (self.on_demand or cam.product_model in {"WVOD1", "HL_WCO2"}) and old_stop:
+            msg = f"[ON-DEMAND] ⌛️ WyzeCam {cam.model_name} - {name} on {cam.ip} (1/3)"
             stop_flag.set()
         camera_info = multiprocessing.Queue(1)
         camera_cmd = multiprocessing.JoinableQueue(1)
@@ -159,7 +172,7 @@ class WyzeBridge:
         stream = multiprocessing.Process(
             target=self.start_tutk_stream,
             args=(cam, stop_flag, camera_info, camera_cmd, offline),
-            name=name,
+            name=cam.nickname,
         )
 
         self.streams[name] = {
@@ -171,6 +184,7 @@ class WyzeBridge:
             "started": time.time() * 2 if stop_flag.is_set() else time.time(),
             "stop_flag": stop_flag,
         }
+        log.info(msg)
         stream.start()
 
     def clean_up(self) -> NoReturn:
@@ -262,7 +276,10 @@ class WyzeBridge:
         """Set and pickle wyze data for future use."""
         if not wyze_data:
             raise Exception(f"Missing data for {name}")
-        setattr(self, name, wyze_data)
+        if name == "cameras":
+            setattr(self, name, {cam.name_uri: cam for cam in wyze_data})
+        else:
+            setattr(self, name, wyze_data)
         if cache:
             with open(self.token_path + name + ".pickle", "wb") as f:
                 log.info(f"💾 Saving '{name}' to local cache...")
@@ -294,8 +311,7 @@ class WyzeBridge:
             except requests.exceptions.HTTPError as ex:
                 if "400 Client Error" in str(ex):
                     log.warning("🚷 Invalid credentials?")
-                else:
-                    log.warning(ex)
+                log.warning(ex)
                 time.sleep(60)
             except Exception as ex:
                 log.warning(ex)
@@ -372,7 +388,7 @@ class WyzeBridge:
             self.add_rtsp_path(cam)
             mqtt_discovery(cam)
             self.save_api_thumb(cam)
-            self.streams[cam.nickname] = {}
+            self.streams[cam.name_uri] = {}
 
     def start_rtsp_server(self) -> None:
         """Start rtsp-simple-server in its own subprocess."""
@@ -396,8 +412,6 @@ class WyzeBridge:
         offline: bool,
     ) -> None:
         """Connect and communicate with the camera using TUTK."""
-        if stop_flag.is_set():
-            log.info("⌛️ Waiting for on-demand connection...")
         while stop_flag.is_set():
             if self.stop_bridge.is_set():
                 return
@@ -470,7 +484,7 @@ class WyzeBridge:
         """Print out WebRTC related information for all available cameras."""
         self.get_wyze_data("cameras", False)
         log.info("\n======\nWebRTC\n======\n\n")
-        for i, cam in enumerate(self.cameras, 1):
+        for i, cam in enumerate(self.cameras.values(), 1):
             try:
                 wss = wyzecam.api.get_cam_webrtc(self.auth, cam.mac)
                 creds = json.dumps(wss, separators=("\n\n", ":\n"))[1:-1].replace(
@@ -481,49 +495,93 @@ class WyzeBridge:
                 if ex.response.status_code == 404:
                     ex = "Camera does not support WebRTC"
                 log.warning(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n{ex}\n---")
-        log.info("👋 goodbye!")
-        signal.pause()
 
-    def get_cameras(self, hostname: str = "localhost") -> Dict[str, dict]:
-        r: Dict[str, dict] = {}
+    def sse_status(self) -> Generator[str, str, str]:
+        """Generator to return the status for enabled cameras."""
+        cameras = {}
+        while True:
+            if cameras != (
+                cameras := {cam: self.get_cam_status(cam) for cam in self.streams}
+            ):
+                yield f"data: {json.dumps(cameras)}\n\n"
+            time.sleep(1)
+
+    def get_cam_status(self, name_uri: str) -> str:
+        """Camera connection status."""
+        if not (stream := self.streams.get(name_uri)):
+            return "unavailable"
+        if self.stop_bridge.is_set():
+            return "stopping"
+        if (stop_flag := stream.get("stop_flag")) and stop_flag.is_set():
+            return "standby"
+        if stream.get("camera_info"):
+            return "connected"
+        if stream.get("started", 0) > 0:
+            return "connecting"
+        return "offline"
+
+    def get_cam_info(
+        self,
+        name_uri: str,
+        hostname: Optional[str] = "localhost",
+        cam: Optional[WyzeCamera] = None,
+    ) -> dict:
+        """Camera info for webui."""
+        if not cam and not (cam := self.cameras.get(name_uri)):
+            return {"error": "Could not find camera"}
         if self.hostname:
             hostname = self.hostname
         base_hls = self.hls_url if self.hls_url else f"http://{hostname}:8888/"
         base_rtmp = self.rtmp_url if self.rtmp_url else f"rtmp://{hostname}:1935/"
         base_rtsp = self.rtsp_url if self.rtsp_url else f"rtsp://{hostname}:8554/"
-        for cam in self.cameras:
-            img = f"{cam.name_uri}.{env_bool('IMG_TYPE','jpg')}"
-            d: dict = {}
-            d["nickname"] = cam.nickname
-            d["ip"] = cam.ip
-            d["mac"] = cam.mac
-            d["product_model"] = cam.product_model
-            d["model_name"] = cam.model_name
-            d["firmware_ver"] = cam.firmware_ver
-            d["thumbnail_url"] = cam.thumbnail
-            d["hls_url"] = base_hls + cam.name_uri + "/"
-            if env_bool("LLHLS"):
-                d["hls_url"] = d["hls_url"].replace("http:", "https:")
-            d["rtmp_url"] = base_rtmp + cam.name_uri
-            d["rtsp_url"] = base_rtsp + cam.name_uri
-            d["name_uri"] = cam.name_uri
-            d["enabled"] = cam.nickname in self.streams
-            d["connected"] = False
-            d["camera_info"] = None
-            d["boa_url"] = None
-            d["started"] = 0
-            if stream := self.streams.get(cam.nickname):
-                if stream.get("stop_flag") and not stream["stop_flag"].is_set():
-                    d["started"] = int(stream.get("started", 0) * 1000)
-                if stream.get("camera_info"):
-                    d["connected"] = True
-                    d["camera_info"] = stream["camera_info"]
-                    if stream["camera_info"].get("boa_info"):
-                        d["boa_url"] = f"http://{cam.ip}/cgi-bin/hello.cgi?name=/"
-            d["img_url"] = f"img/{img}" if os.path.exists(self.img_path + img) else None
-            d["snapshot_url"] = f"snapshot/{img}"
-            r[cam.name_uri] = d
-        return r
+
+        img = f"{name_uri}.{env_bool('IMG_TYPE','jpg')}"
+        data = {
+            "nickname": cam.nickname,
+            "status": self.get_cam_status(name_uri),
+            "connected": False,
+            "on_demand": self.on_demand or cam.product_model in {"WVOD1", "HL_WCO2"},
+            "started": 0,
+            "ip": cam.ip,
+            "mac": cam.mac,
+            "product_model": cam.product_model,
+            "model_name": cam.model_name,
+            "firmware_ver": cam.firmware_ver,
+            "thumbnail_url": cam.thumbnail,
+            "hls_url": base_hls + name_uri + "/",
+            "rtmp_url": base_rtmp + name_uri,
+            "rtsp_url": base_rtsp + name_uri,
+            "name_uri": name_uri,
+            "enabled": name_uri in self.streams,
+            "camera_info": None,
+            "boa_url": None,
+            "img_url": f"img/{img}" if os.path.exists(self.img_path + img) else None,
+            "snapshot_url": f"snapshot/{img}",
+            "photo_url": None,
+        }
+        if env_bool("LLHLS"):
+            data["hls_url"] = data["hls_url"].replace("http:", "https:")
+        if stream := self.streams.get(name_uri):
+            if stream.get("stop_flag") and not stream["stop_flag"].is_set():
+                data["started"] = int(stream.get("started", 0) * 1000)
+            if stream.get("camera_info"):
+                data["connected"] = True
+                data["camera_info"] = stream["camera_info"]
+                if stream["camera_info"].get("boa_info"):
+                    data["boa_url"] = f"http://{cam.ip}/cgi-bin/hello.cgi?name=/"
+                    if photo := stream["camera_info"]["boa_info"].get("last_photo"):
+                        data["photo_url"] = f"photo/{name_uri}_{photo[0]}"
+
+        return data
+
+    def get_cameras(self, hostname: Optional[str] = "localhost") -> Dict[str, dict]:
+        camera_data = {"total": len(self.cameras), "enabled": 0, "cameras": {}}
+        for name, cam in self.cameras.items():
+            cam_data = self.get_cam_info(name, hostname, cam)
+            camera_data["cameras"][name] = cam_data
+            camera_data["enabled"] += 1 if cam_data.get("enabled") else 0
+
+        return camera_data
 
     def rtsp_snap(self, cam_name: str, wait: bool = True) -> Optional[str]:
         """
@@ -532,15 +590,7 @@ class WyzeBridge:
         @param wait: wait for rtsp snapshot to complete
         @return: img path
         """
-        cam = self.get_cameras().get(cam_name, None)
-        on_demand = self.on_demand or (
-            cam and cam.get("product_model") in {"WVOD1", "HL_WCO2"}
-        )
-        if (
-            not cam
-            or not cam.get("connected")
-            and not (on_demand and cam.get("enabled"))
-        ):
+        if self.get_cam_status(cam_name) in {"unavailable", "offline", "stopping"}:
             return None
 
         img = f"{self.img_path}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
@@ -557,19 +607,19 @@ class WyzeBridge:
 
         if wait:
             try:
-                ffmpeg.communicate(timeout=30)
+                ffmpeg.wait(timeout=30)
             except TimeoutExpired:
                 ffmpeg.kill()
                 return None
         return img
 
-    def start_on_demand(self, cam_uri: str):
+    def start_on_demand(self, cam_uri: str) -> bool:
         """Start on-demand stream."""
-        cam_name = next(c.nickname for c in self.cameras if c.name_uri == cam_uri)
-        if not (cam := self.streams.get(cam_name)) or not cam.get("stop_flag"):
-            return
+        if not (cam := self.streams.get(cam_uri)) or not cam.get("stop_flag"):
+            return False
         cam["stop_flag"].clear()
         cam["started"] = time.time()
+        return True
 
     def boa_photo(self, cam_name: str) -> Optional[str]:
         """Take photo."""
@@ -587,7 +637,7 @@ class WyzeBridge:
 mode_type = {0: "P2P", 1: "RELAY", 2: "LAN"}
 
 
-def env_bool(env: str, false="", true="", style="") -> str:
+def env_bool(env: str, false="", true="", style=""):
     """Return env variable or empty string if the variable contains 'false' or is empty."""
     env_value = os.getenv(env.upper().replace("-", "_"), "")
     value = env_value.lower().replace("false", "").strip("'\" \n\t\r")
@@ -1011,7 +1061,11 @@ def _on_message(client, sess, msg):
 
 
 def camera_boa(
-    sess: wyzecam.WyzeIOTCSession, uri: str, img_dir: str, camera_info, camera_cmd
+    sess: wyzecam.WyzeIOTCSession,
+    uri: str,
+    img_dir: str,
+    camera_info: multiprocessing.Queue,
+    camera_cmd: multiprocessing.JoinableQueue,
 ):
     """
     Start the boa server on the camera and pull photos.
@@ -1037,7 +1091,7 @@ def camera_boa(
         return  # Stop thread if SD card isn't available
     log.info(f"Local boa HTTP server enabled on http://{ip}")
     cam = (uri.lower(), ip, img_dir)
-    interval = env_bool("boa_interval", 5)
+    interval = env_bool("boa_interval", "5", style="int")
     last_alarm = last_photo = (None, None)
     cooldown = datetime.now()
     mqtt = mqtt_sub_topic([f"{uri.lower()}/takePhoto"], sess)

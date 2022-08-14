@@ -31,10 +31,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let cookieId = select.id.replace("select_", "");
     if (changeValue < select.min || changeValue > select.max) {
       select.classList.add("is-danger");
-      select.value = getCookie(
-        cookieId,
-        cookieId == "refresh_period" ? 30 : 2
-      );
+      select.value = getCookie(cookieId, cookieId == "refresh_period" ? 30 : 2);
       setTimeout(() => {
         select.classList.remove("is-danger");
       }, 1000);
@@ -183,7 +180,9 @@ function sortable(parent, selector, onUpdate = null) {
 async function update_img(oldUrl, useImg = false) {
   let [cam, ext] = oldUrl.split("/").pop().split("?")[0].split(".");
   let newUrl = "snapshot/" + cam + "." + ext + "?" + Date.now();
-  if (useImg) { newUrl = "img/" + cam + "." + ext }
+  if (useImg) {
+    newUrl = "img/" + cam + "." + ext;
+  }
   console.debug("update_img", oldUrl, newUrl);
   let button = document.querySelector(`.is-overlay > [data-cam="${cam}"]`);
   if (button) {
@@ -232,8 +231,8 @@ function refresh_imgs() {
   console.debug("refresh_imgs " + Date.now());
   document.querySelectorAll(".refresh_img").forEach(async function (image) {
     let url = image.getAttribute("src");
-    // Skip if on-demand
-    await update_img(url, image.classList.contains("on-demand"));
+    // Skip if not connected
+    await update_img(url, !image.classList.contains("connected"));
   });
 }
 
@@ -272,6 +271,7 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
+  // Filter cameras
   function filterCams() {
     document
       .querySelector("[data-filter].is-active")
@@ -280,10 +280,10 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("div.camera.is-hidden").forEach((div) => {
       div.classList.remove("is-hidden");
     });
-    let filter = this.getAttribute("data-filter");
+    let filter = this.dataset.filter;
     if (filter != "all") {
       document
-        .querySelectorAll("div.camera:not([" + filter + "='True'])")
+        .querySelectorAll("div.camera:not([data-" + filter + "='True'])")
         .forEach((cam) => {
           cam.classList.add("is-hidden");
         });
@@ -298,9 +298,8 @@ document.addEventListener("DOMContentLoaded", () => {
       this.classList.toggle("is-active");
       document.getElementById("refresh-menu").classList.toggle("is-active");
     });
-});
 
-document.addEventListener("DOMContentLoaded", () => {
+  // Check for version update
   let checkAPI = document.getElementById("checkUpdate");
   function checkVersion(api) {
     let isNewer = (a, b) => {
@@ -331,9 +330,8 @@ document.addEventListener("DOMContentLoaded", () => {
       .then((data) => checkVersion(data));
   }
   checkAPI.addEventListener("click", getGithub);
-});
 
-document.addEventListener("DOMContentLoaded", () => {
+  // Update preview after loading the page
   async function loadPreview(placeholder) {
     let cam = placeholder.getAttribute("data-cam");
     let oldUrl = placeholder.getAttribute("src");
@@ -341,7 +339,9 @@ document.addEventListener("DOMContentLoaded", () => {
       oldUrl = `snapshot/${cam}.jpg`;
     }
     try {
-      let useImg = (getCookie("refresh_period") <= 10 || placeholder.classList.contains("on-demand"));
+      let useImg =
+        getCookie("refresh_period") <= 10 ||
+        !placeholder.classList.contains("connected");
       let newUrl = await update_img(oldUrl, useImg);
       placeholder.parentElement
         .querySelectorAll(
@@ -379,10 +379,8 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".update-preview").forEach((up) => {
     up.addEventListener("click", updateSnapshot);
   });
-});
 
-// Restart bridge/rtsp-simple-server.
-document.addEventListener("DOMContentLoaded", () => {
+  // Restart bridge/rtsp-simple-server.
   document.querySelectorAll("#restart-menu a").forEach((a) => {
     a.addEventListener("click", (e) => {
       e.stopPropagation();
@@ -397,6 +395,60 @@ document.addEventListener("DOMContentLoaded", () => {
         a.style = null;
         a.classList.remove("has-text-danger");
       }, 3000);
+    });
+  });
+
+  // Update status icon based on connection status
+  let sse = new EventSource("cameras/sse_status");
+  sse.addEventListener("open", () => {
+    document.getElementById("connection-lost").style.display = "none";
+    applyPreferences();
+  });
+  sse.addEventListener("error", () => {
+    refresh_period = -1;
+    clearInterval(refresh_interval);
+    document.getElementById("connection-lost").style.display = "block";
+    document.querySelectorAll("img.connected").classList.remove("connected")
+    document
+      .querySelectorAll(
+        "[data-enabled=True] .card-header-title .dropdown-trigger i[class*=has-text-]"
+      )
+      .forEach((i) => {
+        i.classList.forEach((item) => {
+          if (item.match(/^has\-text\-\w/)) {
+            i.classList.remove(item);
+          }
+        });
+      });
+  });
+  sse.addEventListener("message", (e) => {
+    Object.entries(JSON.parse(e.data)).forEach(([cam, status]) => {
+      let statusIcon = document.querySelector(`#${cam} .dropdown-trigger i`);
+      let preview = document.querySelector(`#${cam} img.refresh_img`);
+      preview.classList.remove("connected")
+      statusIcon.classList.forEach((item) => {
+        if (item.match(/^has\-text\-\w/)) {
+          statusIcon.classList.remove(item);
+        }
+      });
+
+      if (status == "connected") {
+        statusIcon.classList.add("has-text-success");
+        preview.classList.add("connected")
+        let noPreview = document.querySelector(`#${cam} .no-preview`)
+        if (noPreview) {
+          let fig = noPreview.parentElement
+          let preview = document.createElement("img")
+          preview.classList.add("refresh_img", "loading-preview", "connected")
+          preview.dataset.cam = cam
+          preview.src = "static/loading.svg"
+          noPreview.replaceWith(preview)
+          loadPreview(fig.querySelector("img"))
+        }
+
+      } else if (["connecting", "standby"].includes(status)) {
+        statusIcon.classList.add("has-text-warning");
+      }
     });
   });
 });

@@ -31,18 +31,21 @@ You can then use the web interface at `http://localhost:5000`, or view a specifi
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.8.1/2
+## What's Changed in v1.8.3
 
-- Fixed: timeout issue with on-demand stream. #501 Thanks @tremfranz!
-- Fixed: disable on-demand wasn't working in HA.
-- Fixed: WebUI was still loading live snapshots for on-demand cameras.
-- Fixed: use url safe names for on-demand streams. #498 Thanks @terryhonn!
-
-## What's Changed in v1.8.0/1
-
-- New: on-demand streaming. Use the optional `ON_DEMAND=True` ENV to enable.
-  - Outdoor cams (WVOD1 and HL_WCO2) will automatically be marked as on-demand.
-- Changed: WebUI will NOT auto reload snapshots for cameras marked as on-demand or if ON_DEMAND is enabled, but manually refreshing the image will continue to work.
+- Fixed: Bug where cameras would go into a "Timed out connecting to ..." loop #391 #484
+- Fixed: Bug when restarting the connection to the cameras in the WebUI #391 Thanks @mdabbs!
+- Fixed: TypeError when setting a custom `BOA_INTERVAL` #504 Thanks @stevenwbuehler!
+- Fixed: Check up on snapshots to prevent zombie processes.
+- New: Use server side events to update the connection status color on the Web-UI to show when a camera is actually connected.
+- New: Pause/resume snapshots in the web-ui based on the connection status.
+- New: API endpoints
+  - `/cameras/sse_status` server side event to monitor connection to all cameras.
+  - `/cameras/<camera-name>` return json for a single camera.
+  - `/cameras/<cam-name>/status` return json with current connection status only.
+- Changed: `/cameras` API endpoint format to include the total cameras and enabled cameras.
+- Changed: Display on-demand status in the logs.
+- Changed: More verbose http exceptions #505
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -77,18 +80,23 @@ See [basic usage](#basic-usage) for additional information.
 
 ![Wyze Cam Doorbell Pro](https://img.shields.io/badge/wyze_doorbell_pro-no-inactive.svg)
 
-| Camera                | Model          | Supported |
-| --------------------- | -------------- | --------- |
-| Wyze Cam v1           | WYZEC1         | ✅         |
-| Wyze Cam V2           | WYZEC1-JZ      | ✅         |
-| Wyze Cam V3           | WYZE_CAKP2JFUS | ✅         |
-| Wyze Cam Floodlight   | WYZE_CAKP2JFUS | ✅         |
-| Wyze Cam Pan          | WYZECP1_JEF    | ✅         |
-| Wyze Cam Pan v2       | HL_PAN2        | ✅         |
-| Wyze Cam Outdoor      | WVOD1          | ✅         |
-| Wyze Cam Outdoor v2   | HL_WCO2        | ✅         |
-| Wyze Cam Doorbell     | WYZEDB3        | ✅         |
-| Wyze Cam Doorbell Pro | GW_BE1         | ❓         |
+| Camera                  | Model          | Supported |
+| ----------------------- | -------------- | --------- |
+| Wyze Cam v1             | WYZEC1         | ✅         |
+| Wyze Cam V2             | WYZEC1-JZ      | ✅         |
+| Wyze Cam V3             | WYZE_CAKP2JFUS | ✅         |
+| Wyze Cam Floodlight     | WYZE_CAKP2JFUS | ✅         |
+| Wyze Cam Pan            | WYZECP1_JEF    | ✅         |
+| Wyze Cam Pan v2         | HL_PAN2        | ✅         |
+| Wyze Cam Outdoor        | WVOD1          | ✅         |
+| Wyze Cam Outdoor v2     | HL_WCO2        | ✅         |
+| Wyze Cam Doorbell       | WYZEDB3        | ✅         |
+| Wyze Cam V3 Pro         | HL_CAM3P       | ❓         |
+| Wyze Cam Pan v3         | HL_PAN3        | ❓         |
+| Wyze Cam Pan Pro        | HL_PANP        | ❓         |
+| Wyze Cam Outdoor Pro    | AN_RSCW        | ❓         |
+| Wyze Cam Doorbell Pro   | GW_BE1         | ❓         |
+| Wyze Cam Doorbell Pro 2 | AN_RDB1        | ❓         |
 
 ### Firmware Compatibility
 
@@ -178,6 +186,8 @@ In addition, you can also access a json object with all the camera information:
 
 ```text
 http://localhost:5000/cameras
+http://localhost:5000/cameras/<camera-name>
+http://localhost:5000/cameras/<camera-name>/status
 ```
 
 #### Camera Stream URIs
