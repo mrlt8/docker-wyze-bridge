@@ -515,7 +515,7 @@ class WyzeBridge:
         if (stop_flag := stream.get("stop_flag")) and stop_flag.is_set():
             return "standby"
         if stream.get("camera_info"):
-            return "online"
+            return "connected"
         if stream.get("started", 0) > 0:
             return "connecting"
         return "offline"
@@ -590,7 +590,7 @@ class WyzeBridge:
         @param wait: wait for rtsp snapshot to complete
         @return: img path
         """
-        if self.get_cam_status(cam_name) not in {"online", "standby"}:
+        if self.get_cam_status(cam_name) in {"unavailable", "offline", "stopping"}:
             return None
 
         img = f"{self.img_path}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
@@ -607,7 +607,7 @@ class WyzeBridge:
 
         if wait:
             try:
-                ffmpeg.communicate(timeout=30)
+                ffmpeg.wait(timeout=30)
             except TimeoutExpired:
                 ffmpeg.kill()
                 return None

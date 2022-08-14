@@ -231,8 +231,8 @@ function refresh_imgs() {
   console.debug("refresh_imgs " + Date.now());
   document.querySelectorAll(".refresh_img").forEach(async function (image) {
     let url = image.getAttribute("src");
-    // Skip if on-demand
-    await update_img(url, image.classList.contains("on-demand"));
+    // Skip if not connected
+    await update_img(url, !image.classList.contains("connected"));
   });
 }
 
@@ -341,7 +341,7 @@ document.addEventListener("DOMContentLoaded", () => {
     try {
       let useImg =
         getCookie("refresh_period") <= 10 ||
-        placeholder.classList.contains("on-demand");
+        !placeholder.classList.contains("connected");
       let newUrl = await update_img(oldUrl, useImg);
       placeholder.parentElement
         .querySelectorAll(
@@ -408,6 +408,7 @@ document.addEventListener("DOMContentLoaded", () => {
     refresh_period = -1;
     clearInterval(refresh_interval);
     document.getElementById("connection-lost").style.display = "block";
+    document.querySelectorAll("img.connected").classList.remove("connected")
     document
       .querySelectorAll(
         "[data-enabled=True] .card-header-title .dropdown-trigger i[class*=has-text-]"
@@ -422,22 +423,23 @@ document.addEventListener("DOMContentLoaded", () => {
   });
   sse.addEventListener("message", (e) => {
     Object.entries(JSON.parse(e.data)).forEach(([cam, status]) => {
-      console.log(e.data);
       let statusIcon = document.querySelector(`#${cam} .dropdown-trigger i`);
+      let preview = document.querySelector(`#${cam} img.refresh_img`);
+      preview.classList.remove("connected")
       statusIcon.classList.forEach((item) => {
         if (item.match(/^has\-text\-\w/)) {
           statusIcon.classList.remove(item);
         }
       });
-      if (status == "online") {
+
+      if (status == "connected") {
         statusIcon.classList.add("has-text-success");
+        preview.classList.add("connected")
         let noPreview = document.querySelector(`#${cam} .no-preview`)
         if (noPreview) {
-          console.log(noPreview.dataset.onDemand ? "on-demand" : "")
-          console.log(noPreview.dataset.onDemand)
           let fig = noPreview.parentElement
           let preview = document.createElement("img")
-          preview.classList.add("refresh_img", "loading-preview", noPreview.dataset.onDemand ? "on-demand" : "")
+          preview.classList.add("refresh_img", "loading-preview", "connected")
           preview.dataset.cam = cam
           preview.src = "static/loading.svg"
           noPreview.replaceWith(preview)

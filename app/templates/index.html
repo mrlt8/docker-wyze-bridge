@@ -119,7 +119,7 @@
                             <div class="dropdown is-hoverable">
                                 <div class="dropdown-trigger">
                                     <span class="icon">
-                                        <i class="fas has-text-{{ 'success' if camera.status == 'online' else 'warning' if camera.status in ('standby','connecting') else 'danger' }} fa-{{'triangle-exclamation' if not camera.enabled else 'clock' if camera.on_demand else 'circle-info'}}"
+                                        <i class="fas has-text-{{ 'success' if camera.status == 'connected' else 'warning' if camera.status in ('standby','connecting') else 'danger' }} fa-{{'triangle-exclamation' if not camera.enabled else 'clock' if camera.on_demand else 'circle-info'}}"
                                             aria-hidden="true"></i>
                                     </span>
                                 </div>
@@ -181,12 +181,12 @@
                                 data-cam="{{cam_uri}}" data-setup='{"liveui": true, "fluid": true}'
                                 data-src="{{camera.hls_url}}stream.m3u8" width="100%">
                                 <source src="{{camera.hls_url}}stream.m3u8" type="application/x-mpegURL" />
-                                <img class="refresh_img loading-preview {{'on-demand' if camera.on_demand}}"
+                                <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
                                     src="{{camera.img_url or url_for('static',filename='loading.svg')}}"
                                     data-cam="{{cam_uri}}" width="100%" />
                             </video-js>
                             {% elif camera.connected or (camera.on_demand and camera.enabled) %}
-                            <img class="refresh_img loading-preview {{'on-demand' if camera.on_demand}}"
+                            <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
                                 src="{{ camera.img_url or url_for('static',filename='loading.svg') }}"
                                 data-cam="{{cam_uri}}" width="100%" />
                             {% else %}
