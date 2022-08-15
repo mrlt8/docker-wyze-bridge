@@ -425,7 +425,7 @@ document.addEventListener("DOMContentLoaded", () => {
     Object.entries(JSON.parse(e.data)).forEach(([cam, status]) => {
       let statusIcon = document.querySelector(`#${cam} .dropdown-trigger i`);
       let preview = document.querySelector(`#${cam} img.refresh_img`);
-      preview.classList.remove("connected")
+      if (preview) { preview.classList.remove("connected") }
       statusIcon.classList.forEach((item) => {
         if (item.match(/^has\-text\-\w/)) {
           statusIcon.classList.remove(item);
@@ -434,7 +434,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
       if (status == "connected") {
         statusIcon.classList.add("has-text-success");
-        preview.classList.add("connected")
+        if (preview) { preview.classList.add("connected") }
         let noPreview = document.querySelector(`#${cam} .no-preview`)
         if (noPreview) {
           let fig = noPreview.parentElement
