@@ -40,7 +40,7 @@ class WyzeBridge:
         self.connect_timeout: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
         self.keep_bad_frames: bool = env_bool("KEEP_BAD_FRAMES", style="bool")
         self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
-        self.img_path: str = "/%s/" % env_bool("IMG_DIR", "img").strip("/")
+        self.img_path: str = f'/{env_bool("IMG_DIR", "img").strip("/")}/'
         self.cameras: dict[str, WyzeCamera] = {}
         self.streams: dict[str, dict] = {}
         self.rtsp = None
@@ -53,17 +53,16 @@ class WyzeBridge:
         self.rtmp_url = env_bool("WB_RTMP_URL")
         self.rtsp_url = env_bool("WB_RTSP_URL")
         self.rtsp_snapshot_processes: Dict[str:Popen] = {}
-
         os.makedirs(self.token_path, exist_ok=True)
         os.makedirs(self.img_path, exist_ok=True)
-        open(self.token_path + "mfa_token.txt", "w").close()
+        open(f"{self.token_path}mfa_token.txt", "w").close()
 
-    def run(self) -> None:
+    def run(self, fresh_data: bool = False) -> None:
         """Start synchronously"""
         self.stop_bridge.clear()
         setup_llhls(self.token_path)
         self.get_wyze_data("user")
-        self.get_filtered_cams()
+        self.get_filtered_cams(fresh_data)
         if env_bool("WEBRTC"):
             self.get_webrtc()
         self.start_rtsp_server()
@@ -122,7 +121,7 @@ class WyzeBridge:
                     if process.exitcode in {13, 19, 68} and refresh_cams:
                         refresh_cams = False
                         log.info("♻️ Attempting to refresh list of cameras")
-                        self.get_wyze_data("cameras", enable_cached=False)
+                        self.get_wyze_data("cameras", fresh_data=True)
 
                     if process.exitcode in {1, 13, 19, 68}:
                         self.start_stream(name)
@@ -199,8 +198,8 @@ class WyzeBridge:
         auth = wyzecam.login(os.getenv("WYZE_EMAIL"), os.getenv("WYZE_PASSWORD"))
         if not auth.mfa_options:
             return auth
-        mfa_token = self.token_path + "mfa_token.txt"
-        totp_key = self.token_path + "totp"
+        mfa_token = f"{self.token_path}mfa_token.txt"
+        totp_key = f"{self.token_path}totp"
         log.warning("🔐 MFA Token Required")
         while True:
             verification = {}
@@ -241,7 +240,9 @@ class WyzeBridge:
 
     def cache_check(
         self, name: str
-    ) -> Union[wyzecam.WyzeCredential, wyzecam.WyzeAccount, List[wyzecam.WyzeCamera]]:
+    ) -> Optional[
+        Union[wyzecam.WyzeCredential, wyzecam.WyzeAccount, List[wyzecam.WyzeCamera]]
+    ]:
         """Check if local cache exists."""
         try:
             if "cameras" in name and "api" in env_bool("SNAPSHOT"):
@@ -260,7 +261,6 @@ class WyzeBridge:
             log.info(f"🔍 Could not find local cache for '{name}'")
         except Exception as ex:
             log.warning(ex)
-        return False
 
     def refresh_token(self) -> wyzecam.WyzeCredential:
         """Refresh auth token."""
@@ -270,7 +270,7 @@ class WyzeBridge:
             self.set_wyze_data("auth", wyze_data)
         except AssertionError:
             log.warning("⏰ Expired refresh token?")
-            self.get_wyze_data("auth", False)
+            self.get_wyze_data("auth", fresh_data=True)
 
     def set_wyze_data(self, name: str, wyze_data: object, cache: bool = True) -> None:
         """Set and pickle wyze data for future use."""
@@ -286,10 +286,10 @@ class WyzeBridge:
                 pickle.dump(wyze_data, f)
 
     def get_wyze_data(
-        self, name: str, enable_cached: bool = True
+        self, name: str, fresh_data: bool = False
     ) -> Union[wyzecam.WyzeCredential, wyzecam.WyzeAccount, List[wyzecam.WyzeCamera]]:
         """Check for local cache and fetch data from the wyze api if needed."""
-        if enable_cached and (wyze_data := self.cache_check(name)):
+        if not fresh_data and (wyze_data := self.cache_check(name)):
             log.info(f"📚 Using '{name}' from local cache...")
             self.set_wyze_data(name, wyze_data, cache=False)
             return wyze_data
@@ -356,25 +356,23 @@ class WyzeBridge:
         if pas := env_bool(path + "READPASS", os.getenv("RTSP_PATHS_ALL_READPASS")):
             os.environ[path + "READPASS"] = pas
 
-    def get_filtered_cams(self) -> None:
+    def get_filtered_cams(self, fresh_data: bool = False) -> None:
         """Get all cameras that are enabled."""
-        cams: List[WyzeCamera] = self.get_wyze_data("cameras")
+        cams: List[WyzeCamera] = self.get_wyze_data("cameras", fresh_data)
 
         # Update cameras
         if not hasattr(cams[0], "parent_dtls"):
             print("\n\n========\nAdditional data from Wyze API required.\n")
             print("\nRemoving old camera data..\n=======\n\n")
             os.remove(self.token_path + "cameras.pickle")
-            cams = self.get_wyze_data("cameras")
+            cams: List[WyzeCamera] = self.get_wyze_data("cameras", fresh_data=True)
         total = len(cams)
         if env_bool("FILTER_BLOCK"):
-            filtered = list(filter(lambda cam: not env_filter(cam), cams))
-            if len(filtered) > 0:
+            if filtered := list(filter(lambda cam: not env_filter(cam), cams)):
                 log.info("\n🪄 BLACKLIST MODE ON")
                 cams = filtered
         elif any(key.startswith("FILTER_") for key in os.environ):
-            filtered = list(filter(env_filter, cams))
-            if len(filtered) > 0:
+            if filtered := list(filter(env_filter, cams)):
                 log.info("🪄 WHITELIST MODE ON")
                 cams = filtered
         if total == 0:
@@ -424,14 +422,14 @@ class WyzeBridge:
                 wyze_iotc.tutk_platform_lib,
                 self.user,
                 cam,
-                *(get_env_quality(uri, cam.product_model)),
+                *get_env_quality(uri, cam.product_model),
                 enable_audio=audio,
                 connect_timeout=self.connect_timeout,
             ) as sess:
                 camera_info.put(sess.camera.camera_info)
                 fps, audio = get_cam_params(sess, uri, audio)
                 audio_thread = threading.Thread(
-                    target=sess.recv_audio_frames, args=(uri, fps), name=uri + "_AUDIO"
+                    target=sess.recv_audio_frames, args=(uri, fps), name=f"{uri}_AUDIO"
                 )
                 if (
                     env_bool("enable_boa")
@@ -516,9 +514,7 @@ class WyzeBridge:
             return "standby"
         if stream.get("camera_info"):
             return "connected"
-        if stream.get("started", 0) > 0:
-            return "connecting"
-        return "offline"
+        return "connecting" if stream.get("started", 0) > 0 else "offline"
 
     def get_cam_info(
         self,
@@ -641,7 +637,7 @@ def env_bool(env: str, false="", true="", style=""):
     """Return env variable or empty string if the variable contains 'false' or is empty."""
     env_value = os.getenv(env.upper().replace("-", "_"), "")
     value = env_value.lower().replace("false", "").strip("'\" \n\t\r")
-    if value == "no" or value == "none":
+    if value in {"no", "none"}:
         value = ""
     if style.lower() == "bool":
         return bool(value or false)
@@ -651,9 +647,7 @@ def env_bool(env: str, false="", true="", style=""):
         return value.upper()
     if style.lower() == "original" and value:
         return os.getenv(env.upper().replace("-", "_"))
-    if true and value:
-        return true
-    return value or false
+    return true if true and value else value or false
 
 
 def env_list(env: str) -> list:
@@ -666,7 +660,7 @@ def env_list(env: str) -> list:
 
 def env_filter(cam: WyzeCamera) -> bool:
     """Check if cam is being filtered in any env."""
-    return bool(
+    return (
         cam.nickname.upper() in env_list("FILTER_NAMES")
         or cam.mac in env_list("FILTER_MACS")
         or cam.product_model in env_list("FILTER_MODELS")
