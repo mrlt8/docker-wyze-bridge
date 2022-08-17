@@ -119,12 +119,12 @@ class WyzeBridge:
                         stream["process"].kill()
                     self.streams[name] = {"sleep": int(time.time() + cooldown)}
                 elif process := stream.get("process"):
-                    if process.exitcode in (19, 68) and refresh_cams:
+                    if process.exitcode in {13, 19, 68} and refresh_cams:
                         refresh_cams = False
                         log.info("♻️ Attempting to refresh list of cameras")
                         self.get_wyze_data("cameras", enable_cached=False)
 
-                    if process.exitcode in (1, 19, 68):
+                    if process.exitcode in {1, 13, 19, 68}:
                         self.start_stream(name)
                     elif process.exitcode in (90,):
                         if env_bool("IGNORE_OFFLINE"):
@@ -457,10 +457,10 @@ class WyzeBridge:
         except wyzecam.TutkError as ex:
             log.warning(ex)
             set_cam_offline(uri, ex, offline)
-            if ex.code in (-19, -68, -90):
+            if ex.code in {-13, -19, -68, -90}:
                 exit_code = abs(ex.code)
             else:
-                time.sleep(2)
+                time.sleep(5)
         except ValueError as ex:
             log.warning(ex)
             if ex.args[0] == "ENR_AUTH_FAILED":
