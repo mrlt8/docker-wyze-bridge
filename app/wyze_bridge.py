@@ -197,6 +197,9 @@ class WyzeBridge:
         if len(app_key := env_bool("WYZE_APP_API_KEY", style="original")) == 40:
             wyzecam.api.WYZE_APP_API_KEY = app_key
             log.info(f"Using custom WYZE_APP_API_KEY={app_key}")
+        if env_bool("WYZE_BETA_API"):
+            wyzecam.api.AUTH_URL = "https://auth-beta.api.wyze.com/user/login"
+            log.info(f"Using BETA AUTH_URL={wyzecam.api.AUTH_URL}")
         auth = wyzecam.login(os.getenv("WYZE_EMAIL"), os.getenv("WYZE_PASSWORD"))
         if not auth.mfa_options:
             return auth
