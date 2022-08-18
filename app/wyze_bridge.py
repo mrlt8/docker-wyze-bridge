@@ -195,6 +195,9 @@ class WyzeBridge:
 
     def auth_wyze(self) -> wyzecam.WyzeCredential:
         """Authenticate and complete MFA if required."""
+        if len(app_key := env_bool("WYZE_APP_API_KEY", style="original")) == 40:
+            wyzecam.api.WYZE_APP_API_KEY = app_key
+            log.info(f"Using custom WYZE_APP_API_KEY={app_key}")
         auth = wyzecam.login(os.getenv("WYZE_EMAIL"), os.getenv("WYZE_PASSWORD"))
         if not auth.mfa_options:
             return auth
