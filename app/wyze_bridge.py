@@ -101,8 +101,8 @@ class WyzeBridge:
         for cam_name in self.streams:
             self.start_stream(cam_name)
         cooldown = env_bool("OFFLINE_TIME", "10", style="int")
+        last_refresh = 0
         while self.streams and not self.stop_bridge.is_set():
-            refresh_cams = True
             for name, stream in list(self.streams.items()):
                 if (sleep := stream["sleep"]) and sleep <= time.time():
                     self.start_stream(name)
@@ -118,11 +118,10 @@ class WyzeBridge:
                         stream["process"].kill()
                     self.streams[name] = {"sleep": int(time.time() + cooldown)}
                 elif process := stream.get("process"):
-                    if process.exitcode in {13, 19, 68} and refresh_cams:
-                        refresh_cams = False
+                    if process.exitcode in {13, 19, 68} and last_refresh <= time.time():
+                        last_refresh = time.time() + 60 * 15
                         log.info("♻️ Attempting to refresh list of cameras")
                         self.get_wyze_data("cameras", fresh_data=True)
-
                     if process.exitcode in {1, 13, 19, 68}:
                         self.start_stream(name)
                     elif process.exitcode == 90:
