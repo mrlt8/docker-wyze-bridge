@@ -1,3 +1,11 @@
+## What's Changed in v1.8.4
+
+- Fixed: Remove connected status on lost connection to bridge.
+- Potential Fix: Pull fresh camera data on IOTC_ER_TIMEOUT which is potentially caused by wyze changing the ENR used for authenticating with the cameras. #508 #510 Thanks @krystiancharubin
+- Potential Fix: Invalid credentials message when attempting to login with the iOS x-api-key. Can now set a custom key using the ENV `WYZE_APP_API_KEY`. #505
+- Changed: The `/restart/all` endpoint will now clear the local cache and pull fresh camera data before restarting the cameras. #508
+- Updated: rtsp-simple-server to [v0.20.0](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.20.0)
+
 ## What's Changed in v1.8.3
 
 - Fixed: Bug where cameras would go into a "Timed out connecting to ..." loop #391 #484

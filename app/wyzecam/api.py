@@ -1,10 +1,10 @@
-from typing import Any, Dict, List, Optional
-
 import time
 import uuid
 from hashlib import md5
+from typing import Any, Dict, List, Optional
 
 import requests
+
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
 IOS_VERSION = "15.6"
@@ -167,9 +167,7 @@ def get_homepage_object_list(auth_info: WyzeCredential) -> Dict[str, Any]:
 
     resp_json = resp.json()
     assert resp_json["code"] == "1"
-
-    data = resp_json["data"]  # type: Dict[str, Any]
-    return data
+    return resp_json["data"]
 
 
 def get_camera_list(auth_info: WyzeCredential) -> List[WyzeCamera]:
@@ -251,8 +249,8 @@ def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
     }
 
 
-def _get_payload(access_token, phone_id):
-    payload = {
+def _get_payload(access_token: str, phone_id: str):
+    return {
         "sc": SC_VALUE,
         "sv": SV_VALUE,
         "app_ver": f"com.hualai.WyzeCam___{APP_VERSION}",
@@ -263,10 +261,9 @@ def _get_payload(access_token, phone_id):
         "access_token": access_token,
         "phone_id": phone_id,
     }
-    return payload
 
 
-def get_headers(phone_id, user_agent=False):
+def get_headers(phone_id: str, user_agent: Optional[str] = None) -> dict[str, str]:
     """Format request headers to be iOS like."""
     return {
         "X-API-Key": WYZE_APP_API_KEY,
@@ -275,9 +272,9 @@ def get_headers(phone_id, user_agent=False):
     }
 
 
-def triplemd5(password):
+def triplemd5(password: str) -> str:
     """Run hashlib.md5() algorithm 3 times."""
     encoded = password
-    for i in range(3):
+    for _ in range(3):
         encoded = md5(encoded.encode("ascii")).hexdigest()  # nosec
     return encoded
