@@ -79,7 +79,7 @@ class WyzeBridge:
         """Stop all cameras."""
         log.info("Stopping the cameras...")
         self.stop_bridge.set()
-        if len(self.streams) > 0:
+        if self.streams:
             for stream in self.streams.values():
                 if stop_flag := stream.get("stop_flag"):
                     stop_flag.set()
@@ -89,10 +89,10 @@ class WyzeBridge:
         self.streams = {}
         self.cameras = {}
 
-    def stop_rtsp_server(self):
+    def stop_rtsp_server(self) -> None:
         """Stop rtsp-simple-server."""
         log.info("Stopping rtsp-simple-server...")
-        if self.rtsp.poll() is None:
+        if self.rtsp and self.rtsp.poll() is None:
             self.rtsp.terminate()
         self.rtsp = None
 
@@ -125,7 +125,7 @@ class WyzeBridge:
 
                     if process.exitcode in {1, 13, 19, 68}:
                         self.start_stream(name)
-                    elif process.exitcode in (90,):
+                    elif process.exitcode == 90:
                         if env_bool("IGNORE_OFFLINE"):
                             log.info(f"🪦 {name} is offline. Will NOT try again.")
                             del self.streams[name]
@@ -480,7 +480,7 @@ class WyzeBridge:
 
     def get_webrtc(self):
         """Print out WebRTC related information for all available cameras."""
-        self.get_wyze_data("cameras", False)
+        self.get_wyze_data("cameras", fresh_data=True)
         log.info("\n======\nWebRTC\n======\n\n")
         for i, cam in enumerate(self.cameras.values(), 1):
             try:
@@ -768,7 +768,7 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list:
     transpose = "1"
     if env_bool(f"ROTATE_CAM_{uri}"):
         rotate = True
-        if os.getenv(f"ROTATE_CAM_{uri}") in ("0", "1", "2", "3"):
+        if os.getenv(f"ROTATE_CAM_{uri}") in {"0", "1", "2", "3"}:
             transpose = os.environ[f"ROTATE_CAM_{uri}"]
     lib264 = (
         ["libx264", "-filter:v", f"transpose={transpose}", "-b:v", "3000K"]
