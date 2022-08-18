@@ -49,7 +49,6 @@ def login(
         payload["verification_code"] = mfa["code"]
     if phone_id is None:
         phone_id = str(uuid.uuid4())
-    print(WYZE_APP_API_KEY)
     resp = requests.post(
         "https://auth-prod.api.wyze.com/user/login",
         json=payload,
