@@ -31,21 +31,13 @@ You can then use the web interface at `http://localhost:5000`, or view a specifi
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.8.3
+## What's Changed in v1.8.4
 
-- Fixed: Bug where cameras would go into a "Timed out connecting to ..." loop #391 #484
-- Fixed: Bug when restarting the connection to the cameras in the WebUI #391 Thanks @mdabbs!
-- Fixed: TypeError when setting a custom `BOA_INTERVAL` #504 Thanks @stevenwbuehler!
-- Fixed: Check up on snapshots to prevent zombie processes.
-- New: Use server side events to update the connection status color on the Web-UI to show when a camera is actually connected.
-- New: Pause/resume snapshots in the web-ui based on the connection status.
-- New: API endpoints
-  - `/cameras/sse_status` server side event to monitor connection to all cameras.
-  - `/cameras/<camera-name>` return json for a single camera.
-  - `/cameras/<cam-name>/status` return json with current connection status only.
-- Changed: `/cameras` API endpoint format to include the total cameras and enabled cameras.
-- Changed: Display on-demand status in the logs.
-- Changed: More verbose http exceptions #505
+- Fixed: Remove connected status on lost connection to bridge.
+- Potential Fix: Pull fresh camera data on IOTC_ER_TIMEOUT which is potentially caused by wyze changing the ENR used for authenticating with the cameras. #508 #510 Thanks @krystiancharubin
+- Potential Fix: Invalid credentials message when attempting to login with the iOS x-api-key. Can now set a custom key using the ENV `WYZE_APP_API_KEY`. #505
+- Changed: The `/restart/all` endpoint will now clear the local cache and pull fresh camera data before restarting the cameras. #508
+- Updated: rtsp-simple-server to [v0.20.0](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.20.0)
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
