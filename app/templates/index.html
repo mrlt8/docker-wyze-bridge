@@ -119,8 +119,7 @@
                             <div class="dropdown is-hoverable">
                                 <div class="dropdown-trigger">
                                     <span class="icon">
-                                        <i class="fas has-text-{{ 'success' if camera.status == 'connected' else 'warning' if camera.status in ('standby','connecting') else 'danger' }} fa-{{'triangle-exclamation' if not camera.enabled else 'clock' if camera.on_demand else 'circle-info'}}"
-                                            aria-hidden="true"></i>
+                                        <i class="fas fa-circle-info" aria-hidden="true"></i>
                                     </span>
                                 </div>
                                 <div class="dropdown-menu" role="menu">
@@ -185,7 +184,7 @@
                                     src="{{camera.img_url or url_for('static',filename='loading.svg')}}"
                                     data-cam="{{cam_uri}}" width="100%" />
                             </video-js>
-                            {% elif camera.connected or (camera.on_demand and camera.enabled) %}
+                            {% elif camera.img_url or camera.connected or (camera.on_demand and camera.enabled) %}
                             <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
                                 src="{{ camera.img_url or url_for('static',filename='loading.svg') }}"
                                 data-cam="{{cam_uri}}" width="100%" />
