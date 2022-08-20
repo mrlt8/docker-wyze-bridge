@@ -626,6 +626,13 @@ class WyzeBridge:
         cam["started"] = time.time()
         return True
 
+    def stop_on_demand(self, cam_uri: str) -> bool:
+        """Stop on-demand stream."""
+        if not (cam := self.streams.get(cam_uri)):
+            return False
+        cam["stop_flag"].set()
+        return True
+
     def boa_photo(self, cam_name: str) -> Optional[str]:
         """Take photo."""
         if not (cam := self.streams.get(cam_name)) or cam.get("camera_info") is None:
