@@ -217,14 +217,18 @@ class WyzeBridge:
                 verification["id"] = auth.mfa_details["totp_apps"][0]["app_id"]
             if os.path.exists(totp_key) and os.path.getsize(totp_key) > 1:
                 with open(totp_key, "r") as totp_f:
-                    verification["code"] = mintotp.totp(totp_f.read().strip("'\"\n "))
+                    verification["code"] = mintotp.totp(
+                        "".join(c for c in totp_f.read() if c.isdigit())
+                    )
                 log.info(f"🔏 Using {totp_key} to generate TOTP")
             else:
                 log.warning(f"📝 Add verification code to {mfa_token}")
                 while not os.path.exists(mfa_token) or os.path.getsize(mfa_token) == 0:
                     time.sleep(1)
                 with open(mfa_token, "r+") as mfa_f:
-                    verification["code"] = mfa_f.read().replace(" ", "").strip("'\"\n ")
+                    verification["code"] = "".join(
+                        c for c in mfa_f.read() if c.isdigit()
+                    )
                     mfa_f.truncate(0)
             log.info(f'🔑 Using {verification["code"]} for authentication')
             try:
