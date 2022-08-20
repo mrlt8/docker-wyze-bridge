@@ -119,7 +119,7 @@ class WyzeBridge:
                     self.streams[name] = {"sleep": int(time.time() + cooldown)}
                 elif process := stream.get("process"):
                     if process.exitcode in {13, 19, 68} and last_refresh <= time.time():
-                        last_refresh = time.time() + 60 * 15
+                        last_refresh = time.time() + 60 * 2
                         log.info("♻️ Attempting to refresh list of cameras")
                         self.get_wyze_data("cameras", fresh_data=True)
                     if process.exitcode in {1, 13, 19, 68}:
