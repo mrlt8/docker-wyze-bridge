@@ -1,10 +1,9 @@
-import typing
-from typing import Optional
-
 import json
 import logging
 import pathlib
+import typing
 from ctypes import LittleEndianStructure, c_char, c_uint16, c_uint32
+from typing import Optional
 
 import xxtea
 
@@ -114,7 +113,7 @@ class K10000ConnectRequest(TutkWyzeProtocolMessage):
 
     expected_response_code = 10001
 
-    def __init__(self, mac: str):
+    def __init__(self, mac: Optional[str]):
         """Construct a new K10000ConnectRequest"""
         super().__init__(10000)
         self.mac = mac
@@ -521,7 +520,10 @@ def respond_to_ioctrl_10001(
     elif camera_status == 4:
         logger.warning("Camera is checking enr, can't auth.")
         return None
-    elif camera_status not in [1, 3, 6]:
+    elif camera_status == 5:
+        logger.warning("Camera is off, can't auth.")
+        return None
+    elif camera_status not in {1, 3, 6}:
         logger.warning(
             f"Unexpected mode for connect challenge response (10001): {camera_status}"
         )

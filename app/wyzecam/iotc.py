@@ -890,8 +890,8 @@ class WyzeIOTCSession:
         auth = self.camera.enr + self.camera.mac.upper()
         if self.camera.parent_dtls:
             auth = self.camera.parent_enr + self.camera.parent_mac.upper()
-        hash = hashlib.sha256(auth.encode("utf-8"))
-        bArr = bytearray(hash.digest())[0:6]
+        hashed_enr = hashlib.sha256(auth.encode("utf-8"))
+        bArr = bytearray(hashed_enr.digest())[:6]
         return (
             base64.standard_b64encode(bArr)
             .decode()
@@ -912,10 +912,9 @@ class WyzeIOTCSession:
         self.state = WyzeIOTCSessionState.AUTHENTICATING
         try:
             with self.iotctrl_mux() as mux:
-                wake_mac = False
-                if self.camera.product_model in ("WVOD1", "HL_WCO2"):
+                wake_mac = None
+                if self.camera.product_model in {"WVOD1", "HL_WCO2"}:
                     wake_mac = self.camera.mac
-
                 challenge = mux.send_ioctl(K10000ConnectRequest(wake_mac))
                 challenge_response = respond_to_ioctrl_10001(
                     challenge.result(),
@@ -927,6 +926,8 @@ class WyzeIOTCSession:
                     self.account.open_user_id,
                     self.enable_audio,
                 )
+                if not challenge_response:
+                    raise ValueError("AUTH_FAILED")
                 auth_response = mux.send_ioctl(challenge_response).result()
                 if auth_response["connectionRes"] == "2":
                     raise ValueError("ENR_AUTH_FAILED")
