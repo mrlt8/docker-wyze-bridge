@@ -52,7 +52,7 @@ See [basic usage](#basic-usage) for additional information.
 - Access to HD *or* SD stream with configurable bitrate. [details](#bitrate-and-resolution)
 - Local and remote access to any of the cams on your account just like the app.
 - Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker. [details](#compatibility)
-- Support for Wyze 2FA. ![details](https://github.com/mrlt8/docker-wyze-bridge/wiki/Multi-Factor-Authentication)
+- Support for Wyze 2FA. [details](https://github.com/mrlt8/docker-wyze-bridge/wiki/Multi-Factor-Authentication)
 - Optional on-demand connection to cameras. [details](#on-demand-streaming)
 - Ability to rotate video for Wyze Doorbell. [details](#rotate-video)
 - Ability to record streams locally. [details](#stream-recording)
