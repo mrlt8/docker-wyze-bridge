@@ -249,28 +249,6 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 document.addEventListener("DOMContentLoaded", () => {
-  let clickHide = document.getElementsByClassName("hide-image");
-  function hideImg() {
-    let uri = this.getAttribute("data-cam");
-    let icon = this.getElementsByClassName("fas")[0];
-    if (icon.classList.contains("fa-angle-down")) {
-      icon.classList.remove("fa-angle-down");
-      icon.classList.add("fa-angle-up");
-    } else {
-      icon.classList.remove("fa-angle-up");
-      icon.classList.add("fa-angle-down");
-    }
-    var card = document
-      .getElementById(uri)
-      .getElementsByClassName("card-image")[0];
-    card.classList.toggle("is-hidden");
-  }
-  for (var i = 0; i < clickHide.length; i++) {
-    clickHide[i].addEventListener("click", hideImg);
-  }
-});
-
-document.addEventListener("DOMContentLoaded", () => {
   // Filter cameras
   function filterCams() {
     document
@@ -417,18 +395,20 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll(".cam-overlay").forEach((i) => {
       i.getElementsByClassName("fas")[0].classList.remove("fa-spin");
     })
-    document.querySelectorAll("[data-enabled=True] .card-header-title .dropdown-trigger i").forEach((i) => {
+    document.querySelectorAll("[data-enabled=True] .card-header-title .status i").forEach((i) => {
       i.setAttribute("class", "fas fa-circle-exclamation")
     });
   });
   sse.addEventListener("message", (e) => {
     Object.entries(JSON.parse(e.data)).forEach(([cam, status]) => {
-      const statusIcon = document.querySelector(`#${cam} .dropdown-trigger i.fas`);
-      statusIcon.setAttribute("class", "fas")
+      const statusIcon = document.querySelector(`#${cam} .status i.fas`);
       const preview = document.querySelector(`#${cam} img.refresh_img`);
+      statusIcon.setAttribute("class", "fas")
+      statusIcon.parentElement.title = null
       if (preview) { preview.classList.remove("connected") }
       if (status == "connected") {
         statusIcon.classList.add("fa-circle-play", "has-text-success");
+        statusIcon.parentElement.title = "Click/tap to pause";
         if (preview) { preview.classList.add("connected") }
         let noPreview = document.querySelector(`#${cam} .no-preview`)
         if (noPreview) {
@@ -442,8 +422,10 @@ document.addEventListener("DOMContentLoaded", () => {
         }
       } else if (status == "connecting") {
         statusIcon.classList.add("fa-satellite-dish", "has-text-warning");
+        statusIcon.parentElement.title = "Click/tap to pause";
       } else if (status == "standby") {
         statusIcon.classList.add("fa-circle-pause");
+        statusIcon.parentElement.title = "Click/tap to play";
       } else if (status == "offline") {
         statusIcon.classList.add("fa-ghost");
       } else {
@@ -451,4 +433,33 @@ document.addEventListener("DOMContentLoaded", () => {
       }
     });
   });
+
+  // Toggle Camera details
+  function toggleDetails() {
+    var card = document.getElementById(this.getAttribute("data-cam"));
+    this.getElementsByClassName("fas")[0].classList.toggle("fa-flip-horizontal");
+    card.getElementsByClassName("card-image")[0].classList.toggle("is-hidden");
+    card.getElementsByClassName("content")[0].classList.toggle("is-hidden");
+  }
+  document.querySelectorAll(".toggle-details").forEach((btn) => {
+    btn.addEventListener("click", toggleDetails);
+  });
+  // Play/pause on-demand
+  function clickDemand() {
+    const icon = this.querySelector("i.fas")
+    const uri = this.getAttribute("data-cam");
+    if (icon.matches(".fa-circle-play, .fa-satellite-dish")) {
+      icon.setAttribute("class", "fas fa-circle-notch fa-spin")
+      fetch(`events/stop/${uri}`)
+      console.debug("pause " + uri)
+    } else if (icon.matches(".fa-circle-pause, .fa-ghost")) {
+      icon.setAttribute("class", "fas fa-circle-notch fa-spin")
+      fetch(`events/start/${uri}`)
+      console.debug("play " + uri)
+    }
+  }
+  document.querySelectorAll(".status.enabled").forEach((span) => {
+    span.addEventListener("click", clickDemand);
+  });
+
 });
