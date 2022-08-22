@@ -537,9 +537,6 @@ class WyzeBridge:
             return {"error": "Could not find camera"}
         if self.hostname:
             hostname = self.hostname
-        base_hls = self.hls_url if self.hls_url else f"http://{hostname}:8888/"
-        base_rtmp = self.rtmp_url if self.rtmp_url else f"rtmp://{hostname}:1935/"
-        base_rtsp = self.rtsp_url if self.rtsp_url else f"rtsp://{hostname}:8554/"
 
         img = f"{name_uri}.{env_bool('IMG_TYPE','jpg')}"
         data = {
@@ -554,9 +551,10 @@ class WyzeBridge:
             "model_name": cam.model_name,
             "firmware_ver": cam.firmware_ver,
             "thumbnail_url": cam.thumbnail,
-            "hls_url": base_hls + name_uri + "/",
-            "rtmp_url": base_rtmp + name_uri,
-            "rtsp_url": base_rtsp + name_uri,
+            "hls_url": self.hls_url or f"http://{hostname}:8888/" + name_uri + "/",
+            "rtmp_url": self.rtmp_url or f"rtmp://{hostname}:1935/" + name_uri,
+            "rtsp_url": self.rtsp_url or f"rtsp://{hostname}:8554/" + name_uri,
+            "stream_auth": env_bool(f"RTSP_PATHS_{name_uri}_READUSER", style="bool"),
             "name_uri": name_uri,
             "enabled": name_uri in self.streams,
             "camera_info": None,
@@ -598,10 +596,9 @@ class WyzeBridge:
         """
         if self.get_cam_status(cam_name) in {"unavailable", "offline", "stopping"}:
             return None
-        r_user = env_bool(f"RTSP_PATHS_{cam_name.upper()}_READUSER", style="original")
-        r_pass = env_bool(f"RTSP_PATHS_{cam_name.upper()}_READPASS", style="original")
 
-        auth = f"{r_user}:{r_pass}@" if r_user and r_pass else ""
+        if auth := env_bool(f"RTSP_PATHS_{cam_name}_READUSER", style="original"):
+            auth += f':{env_bool(f"RTSP_PATHS_{cam_name}_READPASS", style="original")}@'
 
         img = f"{self.img_path}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
         ffmpeg_cmd = (
@@ -1233,9 +1230,10 @@ if __name__ == "__main__":
     if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
         print(
             "Missing credentials:",
-            ("WYZE_EMAIL " if not os.getenv("WYZE_EMAIL") else "")
-            + ("WYZE_PASSWORD" if not os.getenv("WYZE_PASSWORD") else ""),
+            ("" if os.getenv("WYZE_EMAIL") else "WYZE_EMAIL ")
+            + ("" if os.getenv("WYZE_PASSWORD") else "WYZE_PASSWORD"),
         )
+
         sys.exit(1)
 
     setup_logging()

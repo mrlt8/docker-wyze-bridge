@@ -209,9 +209,18 @@
                         </figure>
                     </div>
                     <footer class="card-footer">
-                        <a href="{{camera.hls_url}}" class="card-footer-item">HLS</a>
-                        <a href="{{camera.rtmp_url}}" class="card-footer-item">RTMP</a>
-                        <a href="{{camera.rtsp_url}}" class="card-footer-item">RTSP</a>
+                        <a href="{{camera.hls_url}}" class="card-footer-item">{% if camera.stream_auth %}<span
+                                class="icon">
+                                <i class="fas fa-lock"></i>
+                            </span> {% endif %}HLS</a>
+                        <a href="{{camera.rtmp_url}}" class="card-footer-item">{% if camera.stream_auth %}<span
+                                class="icon">
+                                <i class="fas fa-lock"></i>
+                            </span> {% endif %}RTMP</a>
+                        <a href="{{camera.rtsp_url}}" class="card-footer-item">{% if camera.stream_auth %}<span
+                                class="icon">
+                                <i class="fas fa-lock"></i>
+                            </span> {% endif %}RTSP</a>
                         {% if camera.boa_url %}
                         <a href="{{camera.boa_url}}" class="card-footer-item" target="_blank">SD Card</a>
                         {% endif %}
