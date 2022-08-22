@@ -13,6 +13,7 @@ APP_VERSION = "2.33.0.17"
 SV_VALUE = "e1fe392906d54888a9b99b88de4162d7"
 SC_VALUE = "9f275790cab94a72bd206c8876429f3c"
 WYZE_APP_API_KEY = "WMXHYf79Nr5gIlt3r0r7p9Tcw5bvs6BB4U8O8nGJ"
+AUTH_URL = "https://auth-prod.api.wyze.com/user/login"
 
 SCALE_USER_AGENT = f"Wyze/{APP_VERSION} (iPhone; iOS {IOS_VERSION}; Scale/3.00)"
 
@@ -49,11 +50,7 @@ def login(
         payload["verification_code"] = mfa["code"]
     if phone_id is None:
         phone_id = str(uuid.uuid4())
-    resp = requests.post(
-        "https://auth-prod.api.wyze.com/user/login",
-        json=payload,
-        headers=get_headers(phone_id),
-    )
+    resp = requests.post(AUTH_URL, json=payload, headers=get_headers(phone_id))
     if (limit := resp.headers.get("X-RateLimit-Remaining")) and int(limit) < 25:
         print(f"\n\nWYZE API: X-RateLimit-Remaining={limit}\n\n")
         if int(limit) < 5 and (reset := resp.headers.get("X-RateLimit-Reset-By")):
@@ -84,7 +81,7 @@ def send_sms_code(auth_info: WyzeCredential) -> str:
         "userId": auth_info.user_id,
     }
     resp = requests.post(
-        "https://auth-prod.api.wyze.com/user/login/sendSmsCode",
+        f"{AUTH_URL}/sendSmsCode",
         json={},
         params=payload,
         headers=get_headers(auth_info.phone_id),

@@ -116,40 +116,9 @@
                 <div class="card">
                     <header class="card-header">
                         <div class="card-header-title">
-                            <div class="dropdown is-hoverable">
-                                <div class="dropdown-trigger">
-                                    <span class="icon">
-                                        <i class="fas has-text-{{ 'success' if camera.status == 'connected' else 'warning' if camera.status in ('standby','connecting') else 'danger' }} fa-{{'triangle-exclamation' if not camera.enabled else 'clock' if camera.on_demand else 'circle-info'}}"
-                                            aria-hidden="true"></i>
-                                    </span>
-                                </div>
-                                <div class="dropdown-menu" role="menu">
-                                    <div class="dropdown-content table-container">
-                                        <table class="table dropdown-item is-hoverable is-narrow">
-                                            <thead>
-                                                <tr>
-                                                    <th>Key</th>
-                                                    <th>Value</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {% for key, value in camera.items() %}
-                                                <tr>
-                                                    <td>{{ key }}</td>
-                                                    <td>
-                                                        {% if value and key is string and key.endswith('_url') %}
-                                                        <a href="{{ value }}">{{ value }}</a>
-                                                        {% else %}
-                                                        <code>{{ value }}</code>
-                                                        {% endif %}
-                                                    </td>
-                                                </tr>
-                                                {% endfor %}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
+                            <span class="icon status {{'enabled' if camera.enabled}}" data-cam="{{cam_uri}}">
+                                <i class="fas fa-circle-stop" aria-hidden="true"></i>
+                            </span>
                             {{camera.nickname}}
                             {% if camera.camera_info %}
                             {% if camera.camera_info.sdParm.status == "1"%}
@@ -166,9 +135,9 @@
                             {% endif %}
                         </div>
                         <span class="drag_handle" draggable="true"></span>
-                        <button class="card-header-icon hide-image" data-cam="{{cam_uri}}">
+                        <button class="card-header-icon toggle-details" data-cam="{{cam_uri}}" title="Camera details">
                             <span class="icon">
-                                <i class="fas fa-angle-down" aria-hidden="true"></i>
+                                <i class="fas fa-sliders" aria-hidden="true"></i>
                             </span>
                         </button>
                     </header>
@@ -185,7 +154,7 @@
                                     src="{{camera.img_url or url_for('static',filename='loading.svg')}}"
                                     data-cam="{{cam_uri}}" width="100%" />
                             </video-js>
-                            {% elif camera.connected or (camera.on_demand and camera.enabled) %}
+                            {% elif camera.img_url or camera.connected or (camera.on_demand and camera.enabled) %}
                             <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
                                 src="{{ camera.img_url or url_for('static',filename='loading.svg') }}"
                                 data-cam="{{cam_uri}}" width="100%" />
@@ -209,10 +178,47 @@
                             {% endif %}
                         </figure>
                     </div>
+                    <div class="content table-container is-hidden">
+                        <table class="table is-hoverable is-fullwidth">
+                            <tbody>
+                                {% for key, value in camera.items() %}
+                                {% if key == "camera_info" and value %}
+                                {% for cam_info, cam_val in value.items() %}
+                                <tr>
+                                    <td>{{ cam_info }}</td>
+                                    <td><code>{{ cam_val }}</code></td>
+                                </tr>
+                                {% endfor %}
+                                {% else %}
+                                <tr>
+                                    <td>{{ key }}</td>
+                                    <td>
+                                        {% if value and key is string and key.endswith('_url') %}
+                                        <a href="{{ value }}" title="{{ value }}">{{ value|truncate(40, True,
+                                            '...') }}</a>
+                                        {% else %}
+                                        <code>{{ value }}</code>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
                     <footer class="card-footer">
-                        <a href="{{camera.hls_url}}" class="card-footer-item">HLS</a>
-                        <a href="{{camera.rtmp_url}}" class="card-footer-item">RTMP</a>
-                        <a href="{{camera.rtsp_url}}" class="card-footer-item">RTSP</a>
+                        <a href="{{camera.hls_url}}" class="card-footer-item">{% if camera.stream_auth %}<span
+                                class="icon">
+                                <i class="fas fa-lock"></i>
+                            </span> {% endif %}HLS</a>
+                        <a href="{{camera.rtmp_url}}" class="card-footer-item">{% if camera.stream_auth %}<span
+                                class="icon">
+                                <i class="fas fa-lock"></i>
+                            </span> {% endif %}RTMP</a>
+                        <a href="{{camera.rtsp_url}}" class="card-footer-item">{% if camera.stream_auth %}<span
+                                class="icon">
+                                <i class="fas fa-lock"></i>
+                            </span> {% endif %}RTSP</a>
                         {% if camera.boa_url %}
                         <a href="{{camera.boa_url}}" class="card-footer-item" target="_blank">SD Card</a>
                         {% endif %}

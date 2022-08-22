@@ -27,36 +27,41 @@ docker run \
   mrlt8/wyze-bridge:latest
 ```
 
-You can then use the web interface at `http://localhost:5000`, or view a specific stream by visiting `http://localhost:8888/cam-nickname` where localhost is the hostname or ip of the machine running the bridge followed by the cam nickname in lowercase with `-` in place of spaces.
+You can then use the web interface at `http://localhost:5000` where localhost is the hostname or ip of the machine running the bridge.
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.8.4
+## What's Changed in v1.8.5
 
-- Fixed: Remove connected status on lost connection to bridge.
-- Potential Fix: Pull fresh camera data on IOTC_ER_TIMEOUT which is potentially caused by wyze changing the ENR used for authenticating with the cameras. #508 #510 Thanks @krystiancharubin
-- Potential Fix: Invalid credentials message when attempting to login with the iOS x-api-key. Can now set a custom key using the ENV `WYZE_APP_API_KEY`. #505
-- Changed: The `/restart/all` endpoint will now clear the local cache and pull fresh camera data before restarting the cameras. #508
-- Updated: rtsp-simple-server to [v0.20.0](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.20.0)
+- Fixed: Remove all non-numeric characters when submitting the 2FA. #518
+- Fixed: Catch challenge_response error. #520
+- Fixed: RTSP snapshots for WebUI when authentication enabled for streams. #522
+- Potential Fix: Invalid credentials message when attempting to login with the production API. Use beta server with ENV `WYZE_BETA_API`. #505
+- Potential Fix: Reduce ENR/IOTC_ER_TIMEOUT API cooldown #510
+- New: WebUI endpoint to stop on-demand streams: `/events/stop/<camera-name>`
+- New: WebUI button to start/stop individual streams.
+- Changed: WebUI status icons for connected/connecting/offline/standby.
+- Changed: WebUI icon when using authentication for streams. #522
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
 ## Features
 
-- Web-UI to view all Wyze cameras in one place.
-- Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS/Low-Latency HLS.
-- Access to HD *or* SD stream with configurable bitrate.
-- Local and remote access to any of the cams on your account.
-- Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker.
-- Support for Wyze 2FA.
-- Ability to rotate video for Wyze Doorbell.
-- Ability to record streams locally.
-- Ability to take snapshots on an interval or on demand.
-- Ability to live stream directly from the bridge.
-- Ability to send a IFTTT webhook when a camera is offline (-90).
-- Start an HTTP server on the camera for local SD card access on older firmware.
-- Trigger MQTT/Webhook/HTTP on a motion event on older firmware.
-- On-demand high quality photos on the camera.
+- Web-UI to view all Wyze cameras in one place. [details](#web-ui)
+- Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS/Low-Latency HLS. [details](#camera-stream-uris)
+- Access to HD *or* SD stream with configurable bitrate. [details](#bitrate-and-resolution)
+- Local and remote access to any of the cams on your account just like the app.
+- Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker. [details](#compatibility)
+- Support for Wyze 2FA. [details](https://github.com/mrlt8/docker-wyze-bridge/wiki/Multi-Factor-Authentication)
+- Optional on-demand connection to cameras. [details](#on-demand-streaming)
+- Ability to rotate video for Wyze Doorbell. [details](#rotate-video)
+- Ability to record streams locally. [details](#stream-recording)
+- Ability to take snapshots on an interval or on demand. [details](#snapshotstill-images)
+- Ability to live stream directly from the bridge. [details](#livestream)
+- Ability to send a IFTTT webhook when a camera is offline (-90). [details](#offline-camera-ifttt-webhook-beta)
+- Start an HTTP server on the camera for local SD card access on older firmware. [details](#boa-http-server)
+- Trigger MQTT/Webhook/HTTP on a motion event on older firmware. [details](#motion-alerts)
+- On-demand high quality photos on the camera. [details](#take-photo)
 
 ## Supported Cameras
 
@@ -182,6 +187,12 @@ http://localhost:5000/cameras/<camera-name>
 http://localhost:5000/cameras/<camera-name>/status
 ```
 
+On-demand controls:
+```text
+http://localhost:5000/events/start/<camera-name>
+http://localhost:5000/events/stop/<camera-name>
+```
+
 #### Camera Stream URIs
 
 By default, the bridge will create three streams for each of your cameras which can be accessed at the following URIs, where `camera-nickname` is the name of the camera set in the Wyze app and converted to lower case with hyphens in place of spaces. e.g. 'Front Door' would be `/front-door`
@@ -215,6 +226,15 @@ http://localhost:8888/camera-nickname/stream.m3u8
 **WYZE_EMAIL** and **WYZE_PASSWORD** are the only two required environment variables.
 
 **The following envs are all optional.**
+
+### On-Demand Streaming
+
+The bridge will always attempt to connect and maintain an active connection to each of the non-battery powered cameras, however, you can change this default behavior to only connect to the cameras when needed by setting the ENV:
+
+```yaml
+  environment:
+    - ON_DEMAND=True
+```
 
 ### Audio
 

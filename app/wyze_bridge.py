@@ -119,7 +119,7 @@ class WyzeBridge:
                     self.streams[name] = {"sleep": int(time.time() + cooldown)}
                 elif process := stream.get("process"):
                     if process.exitcode in {13, 19, 68} and last_refresh <= time.time():
-                        last_refresh = time.time() + 60 * 15
+                        last_refresh = time.time() + 60 * 2
                         log.info("♻️ Attempting to refresh list of cameras")
                         self.get_wyze_data("cameras", fresh_data=True)
                     if process.exitcode in {1, 13, 19, 68}:
@@ -197,6 +197,9 @@ class WyzeBridge:
         if len(app_key := env_bool("WYZE_APP_API_KEY", style="original")) == 40:
             wyzecam.api.WYZE_APP_API_KEY = app_key
             log.info(f"Using custom WYZE_APP_API_KEY={app_key}")
+        if env_bool("WYZE_BETA_API"):
+            wyzecam.api.AUTH_URL = "https://auth-beta.api.wyze.com/user/login"
+            log.info(f"Using BETA AUTH_URL={wyzecam.api.AUTH_URL}")
         auth = wyzecam.login(os.getenv("WYZE_EMAIL"), os.getenv("WYZE_PASSWORD"))
         if not auth.mfa_options:
             return auth
@@ -214,14 +217,18 @@ class WyzeBridge:
                 verification["id"] = auth.mfa_details["totp_apps"][0]["app_id"]
             if os.path.exists(totp_key) and os.path.getsize(totp_key) > 1:
                 with open(totp_key, "r") as totp_f:
-                    verification["code"] = mintotp.totp(totp_f.read().strip("'\"\n "))
+                    verification["code"] = mintotp.totp(
+                        "".join(c for c in totp_f.read() if c.isdigit())
+                    )
                 log.info(f"🔏 Using {totp_key} to generate TOTP")
             else:
                 log.warning(f"📝 Add verification code to {mfa_token}")
                 while not os.path.exists(mfa_token) or os.path.getsize(mfa_token) == 0:
                     time.sleep(1)
                 with open(mfa_token, "r+") as mfa_f:
-                    verification["code"] = mfa_f.read().replace(" ", "").strip("'\"\n ")
+                    verification["code"] = "".join(
+                        c for c in mfa_f.read() if c.isdigit()
+                    )
                     mfa_f.truncate(0)
             log.info(f'🔑 Using {verification["code"]} for authentication')
             try:
@@ -341,22 +348,23 @@ class WyzeBridge:
         py_event = "python3 /app/rtsp_event.py $RTSP_PATH "
         # py_event = "bash -c 'echo GET /events/{}/{} HTTP/1.1 >/dev/tcp/127.0.0.1/5000'"
         if self.on_demand or cam.product_model in {"WVOD1", "HL_WCO2"}:
-            os.environ[path + "RUNONDEMANDSTARTTIMEOUT"] = "30s"
+            os.environ[f"{path}RUNONDEMANDSTARTTIMEOUT"] = "30s"
             os.environ[
-                path + "RUNONDEMAND"
+                f"{path}RUNONDEMAND"
             ] = f"bash -c 'echo GET /events/start/{cam.name_uri} >/dev/tcp/127.0.0.1/5000'"
+
             # os.environ[path + "RUNONDEMAND"] = py_event.format("DEMAND", cam.name_uri)
         for event in ("READ", "READY"):
-            env = path + "RUNON" + event
+            env = f"{path}RUNON{event}"
             if alt := env_bool(env):
                 event += " & " + alt
             os.environ[env] = py_event + event
             # os.environ[env] = py_event.format(event, cam.name_uri)
 
-        if user := env_bool(path + "READUSER", os.getenv("RTSP_PATHS_ALL_READUSER")):
-            os.environ[path + "READUSER"] = user
-        if pas := env_bool(path + "READPASS", os.getenv("RTSP_PATHS_ALL_READPASS")):
-            os.environ[path + "READPASS"] = pas
+        if user := env_bool(f"{path}READUSER", os.getenv("RTSP_PATHS_ALL_READUSER")):
+            os.environ[f"{path}READUSER"] = user
+        if pas := env_bool(f"{path}READPASS", os.getenv("RTSP_PATHS_ALL_READPASS")):
+            os.environ[f"{path}READPASS"] = pas
 
     def get_filtered_cams(self, fresh_data: bool = False) -> None:
         """Get all cameras that are enabled."""
@@ -529,9 +537,6 @@ class WyzeBridge:
             return {"error": "Could not find camera"}
         if self.hostname:
             hostname = self.hostname
-        base_hls = self.hls_url if self.hls_url else f"http://{hostname}:8888/"
-        base_rtmp = self.rtmp_url if self.rtmp_url else f"rtmp://{hostname}:1935/"
-        base_rtsp = self.rtsp_url if self.rtsp_url else f"rtsp://{hostname}:8554/"
 
         img = f"{name_uri}.{env_bool('IMG_TYPE','jpg')}"
         data = {
@@ -546,9 +551,10 @@ class WyzeBridge:
             "model_name": cam.model_name,
             "firmware_ver": cam.firmware_ver,
             "thumbnail_url": cam.thumbnail,
-            "hls_url": base_hls + name_uri + "/",
-            "rtmp_url": base_rtmp + name_uri,
-            "rtsp_url": base_rtsp + name_uri,
+            "hls_url": self.hls_url or f"http://{hostname}:8888/" + name_uri + "/",
+            "rtmp_url": self.rtmp_url or f"rtmp://{hostname}:1935/" + name_uri,
+            "rtsp_url": self.rtsp_url or f"rtsp://{hostname}:8554/" + name_uri,
+            "stream_auth": env_bool(f"RTSP_PATHS_{name_uri}_READUSER", style="bool"),
             "name_uri": name_uri,
             "enabled": name_uri in self.streams,
             "camera_info": None,
@@ -591,11 +597,14 @@ class WyzeBridge:
         if self.get_cam_status(cam_name) in {"unavailable", "offline", "stopping"}:
             return None
 
+        if auth := env_bool(f"RTSP_PATHS_{cam_name}_READUSER", style="original"):
+            auth += f':{env_bool(f"RTSP_PATHS_{cam_name}_READPASS", style="original")}@'
+
         img = f"{self.img_path}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
         ffmpeg_cmd = (
             ["ffmpeg", "-loglevel", "fatal", "-threads", "1"]
             + ["-analyzeduration", "50", "-probesize", "50"]
-            + ["-rtsp_transport", "tcp", "-i", f"rtsp://0.0.0.0:8554/{cam_name}"]
+            + ["-rtsp_transport", "tcp", "-i", f"rtsp://{auth}0.0.0.0:8554/{cam_name}"]
             + ["-f", "image2", "-frames:v", "1", "-y", img]
         )
         ffmpeg = self.rtsp_snapshot_processes.get(cam_name, None)
@@ -617,6 +626,13 @@ class WyzeBridge:
             return False
         cam["stop_flag"].clear()
         cam["started"] = time.time()
+        return True
+
+    def stop_on_demand(self, cam_uri: str) -> bool:
+        """Stop on-demand stream."""
+        if not (cam := self.streams.get(cam_uri)):
+            return False
+        cam["stop_flag"].set()
         return True
 
     def boa_photo(self, cam_name: str) -> Optional[str]:
@@ -1214,9 +1230,10 @@ if __name__ == "__main__":
     if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
         print(
             "Missing credentials:",
-            ("WYZE_EMAIL " if not os.getenv("WYZE_EMAIL") else "")
-            + ("WYZE_PASSWORD" if not os.getenv("WYZE_PASSWORD") else ""),
+            ("" if os.getenv("WYZE_EMAIL") else "WYZE_EMAIL ")
+            + ("" if os.getenv("WYZE_PASSWORD") else "WYZE_PASSWORD"),
         )
+
         sys.exit(1)
 
     setup_logging()

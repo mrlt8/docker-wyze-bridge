@@ -187,7 +187,7 @@ async function update_img(oldUrl, useImg = false) {
   let button = document.querySelector(`.is-overlay > [data-cam="${cam}"]`);
   if (button) {
     button.disabled = true;
-    button.getElementsByClassName("fas")[0].classList.add("fa-pulse");
+    button.getElementsByClassName("fas")[0].classList.add("fa-spin");
     button.parentElement.style.display = "block";
   }
 
@@ -221,7 +221,7 @@ async function update_img(oldUrl, useImg = false) {
     });
   if (button) {
     button.disabled = false;
-    button.getElementsByClassName("fas")[0].classList.remove("fa-pulse");
+    button.getElementsByClassName("fas")[0].classList.remove("fa-spin");
     button.parentElement.style.display = null;
   }
   return newUrl;
@@ -246,28 +246,6 @@ document.addEventListener("DOMContentLoaded", () => {
     console.debug("New camera_order", newOrdering);
     setCookie("camera_order", newOrdering);
   });
-});
-
-document.addEventListener("DOMContentLoaded", () => {
-  let clickHide = document.getElementsByClassName("hide-image");
-  function hideImg() {
-    let uri = this.getAttribute("data-cam");
-    let icon = this.getElementsByClassName("fas")[0];
-    if (icon.classList.contains("fa-angle-down")) {
-      icon.classList.remove("fa-angle-down");
-      icon.classList.add("fa-angle-up");
-    } else {
-      icon.classList.remove("fa-angle-up");
-      icon.classList.add("fa-angle-down");
-    }
-    var card = document
-      .getElementById(uri)
-      .getElementsByClassName("card-image")[0];
-    card.classList.toggle("is-hidden");
-  }
-  for (var i = 0; i < clickHide.length; i++) {
-    clickHide[i].addEventListener("click", hideImg);
-  }
 });
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -399,9 +377,14 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Update status icon based on connection status
-  let sse = new EventSource("cameras/sse_status");
+  const sse = new EventSource("cameras/sse_status");
   sse.addEventListener("open", () => {
     document.getElementById("connection-lost").style.display = "none";
+    document.querySelectorAll(".cam-overlay button").forEach((i) => {
+      i.disabled = false;
+      i.parentElement.style.display = null;
+      i.getElementsByClassName("fas")[0].classList.remove("fa-spin");
+    })
     applyPreferences();
   });
   sse.addEventListener("error", () => {
@@ -409,31 +392,23 @@ document.addEventListener("DOMContentLoaded", () => {
     clearInterval(refresh_interval);
     document.getElementById("connection-lost").style.display = "block";
     document.querySelectorAll("img.connected").forEach((i) => { i.classList.remove("connected") })
-    document
-      .querySelectorAll(
-        "[data-enabled=True] .card-header-title .dropdown-trigger i[class*=has-text-]"
-      )
-      .forEach((i) => {
-        i.classList.forEach((item) => {
-          if (item.match(/^has\-text\-\w/)) {
-            i.classList.remove(item);
-          }
-        });
-      });
+    document.querySelectorAll(".cam-overlay").forEach((i) => {
+      i.getElementsByClassName("fas")[0].classList.remove("fa-spin");
+    })
+    document.querySelectorAll("[data-enabled=True] .card-header-title .status i").forEach((i) => {
+      i.setAttribute("class", "fas fa-circle-exclamation")
+    });
   });
   sse.addEventListener("message", (e) => {
     Object.entries(JSON.parse(e.data)).forEach(([cam, status]) => {
-      let statusIcon = document.querySelector(`#${cam} .dropdown-trigger i`);
-      let preview = document.querySelector(`#${cam} img.refresh_img`);
+      const statusIcon = document.querySelector(`#${cam} .status i.fas`);
+      const preview = document.querySelector(`#${cam} img.refresh_img`);
+      statusIcon.setAttribute("class", "fas")
+      statusIcon.parentElement.title = null
       if (preview) { preview.classList.remove("connected") }
-      statusIcon.classList.forEach((item) => {
-        if (item.match(/^has\-text\-\w/)) {
-          statusIcon.classList.remove(item);
-        }
-      });
-
       if (status == "connected") {
-        statusIcon.classList.add("has-text-success");
+        statusIcon.classList.add("fa-circle-play", "has-text-success");
+        statusIcon.parentElement.title = "Click/tap to pause";
         if (preview) { preview.classList.add("connected") }
         let noPreview = document.querySelector(`#${cam} .no-preview`)
         if (noPreview) {
@@ -445,10 +420,46 @@ document.addEventListener("DOMContentLoaded", () => {
           noPreview.replaceWith(preview)
           loadPreview(fig.querySelector("img"))
         }
-
-      } else if (["connecting", "standby"].includes(status)) {
-        statusIcon.classList.add("has-text-warning");
+      } else if (status == "connecting") {
+        statusIcon.classList.add("fa-satellite-dish", "has-text-warning");
+        statusIcon.parentElement.title = "Click/tap to pause";
+      } else if (status == "standby") {
+        statusIcon.classList.add("fa-circle-pause");
+        statusIcon.parentElement.title = "Click/tap to play";
+      } else if (status == "offline") {
+        statusIcon.classList.add("fa-ghost");
+      } else {
+        statusIcon.setAttribute("class", "fas fa-circle-exclamation")
       }
     });
   });
+
+  // Toggle Camera details
+  function toggleDetails() {
+    var card = document.getElementById(this.getAttribute("data-cam"));
+    this.getElementsByClassName("fas")[0].classList.toggle("fa-flip-horizontal");
+    card.getElementsByClassName("card-image")[0].classList.toggle("is-hidden");
+    card.getElementsByClassName("content")[0].classList.toggle("is-hidden");
+  }
+  document.querySelectorAll(".toggle-details").forEach((btn) => {
+    btn.addEventListener("click", toggleDetails);
+  });
+  // Play/pause on-demand
+  function clickDemand() {
+    const icon = this.querySelector("i.fas")
+    const uri = this.getAttribute("data-cam");
+    if (icon.matches(".fa-circle-play, .fa-satellite-dish")) {
+      icon.setAttribute("class", "fas fa-circle-notch fa-spin")
+      fetch(`events/stop/${uri}`)
+      console.debug("pause " + uri)
+    } else if (icon.matches(".fa-circle-pause, .fa-ghost")) {
+      icon.setAttribute("class", "fas fa-circle-notch fa-spin")
+      fetch(`events/start/${uri}`)
+      console.debug("play " + uri)
+    }
+  }
+  document.querySelectorAll(".status.enabled").forEach((span) => {
+    span.addEventListener("click", clickDemand);
+  });
+
 });
