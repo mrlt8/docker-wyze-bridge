@@ -47,21 +47,21 @@ See [basic usage](#basic-usage) for additional information.
 
 ## Features
 
-- Web-UI to view all Wyze cameras in one place. ![details](#web-ui)
-- Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS/Low-Latency HLS. ![details](#camera-stream-uris)
-- Access to HD *or* SD stream with configurable bitrate. ![details](#bitrate-and-resolution)
+- Web-UI to view all Wyze cameras in one place. [details](#web-ui)
+- Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS/Low-Latency HLS. [details](#camera-stream-uris)
+- Access to HD *or* SD stream with configurable bitrate. [details](#bitrate-and-resolution)
 - Local and remote access to any of the cams on your account just like the app.
-- Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker. ![details](#compatibility)
+- Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker. [details](#compatibility)
 - Support for Wyze 2FA. ![details](https://github.com/mrlt8/docker-wyze-bridge/wiki/Multi-Factor-Authentication)
-- Optional on-demand connection to cameras. ![details](#on-demand-streaming)
-- Ability to rotate video for Wyze Doorbell. ![details](#rotate-video)
-- Ability to record streams locally. ![details](#stream-recording)
-- Ability to take snapshots on an interval or on demand. ![details](#snapshotstill-images)
-- Ability to live stream directly from the bridge. ![details](#livestream)
-- Ability to send a IFTTT webhook when a camera is offline (-90). ![details](#offline-camera-ifttt-webhook-beta)
-- Start an HTTP server on the camera for local SD card access on older firmware. ![details](#boa-http-server)
-- Trigger MQTT/Webhook/HTTP on a motion event on older firmware. ![details](#motion-alerts)
-- On-demand high quality photos on the camera. ![details](#take-photo)
+- Optional on-demand connection to cameras. [details](#on-demand-streaming)
+- Ability to rotate video for Wyze Doorbell. [details](#rotate-video)
+- Ability to record streams locally. [details](#stream-recording)
+- Ability to take snapshots on an interval or on demand. [details](#snapshotstill-images)
+- Ability to live stream directly from the bridge. [details](#livestream)
+- Ability to send a IFTTT webhook when a camera is offline (-90). [details](#offline-camera-ifttt-webhook-beta)
+- Start an HTTP server on the camera for local SD card access on older firmware. [details](#boa-http-server)
+- Trigger MQTT/Webhook/HTTP on a motion event on older firmware. [details](#motion-alerts)
+- On-demand high quality photos on the camera. [details](#take-photo)
 
 ## Supported Cameras
 
