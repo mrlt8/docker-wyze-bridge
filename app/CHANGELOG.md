@@ -1,3 +1,15 @@
+## What's Changed in v1.8.5
+
+- Fixed: Remove all non-numeric characters when submitting the 2FA. #518
+- Fixed: Catch challenge_response error. #520
+- Fixed: RTSP snapshots for WebUI when authentication enabled for streams. #522
+- Potential Fix: Invalid credentials message when attempting to login with the production API. Use beta server with ENV `WYZE_BETA_API`. #505
+- Potential Fix: Reduce ENR/IOTC_ER_TIMEOUT API cooldown #510
+- New: WebUI endpoint to stop on-demand streams: `/events/stop/<camera-name>`
+- New: WebUI button to start/stop individual streams.
+- Changed: WebUI status icons for connected/connecting/offline/standby.
+- Changed: WebUI icon when using authentication for streams. #522
+
 ## What's Changed in v1.8.4
 
 - Fixed: Remove connected status on lost connection to bridge.
