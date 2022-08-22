@@ -348,22 +348,23 @@ class WyzeBridge:
         py_event = "python3 /app/rtsp_event.py $RTSP_PATH "
         # py_event = "bash -c 'echo GET /events/{}/{} HTTP/1.1 >/dev/tcp/127.0.0.1/5000'"
         if self.on_demand or cam.product_model in {"WVOD1", "HL_WCO2"}:
-            os.environ[path + "RUNONDEMANDSTARTTIMEOUT"] = "30s"
+            os.environ[f"{path}RUNONDEMANDSTARTTIMEOUT"] = "30s"
             os.environ[
-                path + "RUNONDEMAND"
+                f"{path}RUNONDEMAND"
             ] = f"bash -c 'echo GET /events/start/{cam.name_uri} >/dev/tcp/127.0.0.1/5000'"
+
             # os.environ[path + "RUNONDEMAND"] = py_event.format("DEMAND", cam.name_uri)
         for event in ("READ", "READY"):
-            env = path + "RUNON" + event
+            env = f"{path}RUNON{event}"
             if alt := env_bool(env):
                 event += " & " + alt
             os.environ[env] = py_event + event
             # os.environ[env] = py_event.format(event, cam.name_uri)
 
-        if user := env_bool(path + "READUSER", os.getenv("RTSP_PATHS_ALL_READUSER")):
-            os.environ[path + "READUSER"] = user
-        if pas := env_bool(path + "READPASS", os.getenv("RTSP_PATHS_ALL_READPASS")):
-            os.environ[path + "READPASS"] = pas
+        if user := env_bool(f"{path}READUSER", os.getenv("RTSP_PATHS_ALL_READUSER")):
+            os.environ[f"{path}READUSER"] = user
+        if pas := env_bool(f"{path}READPASS", os.getenv("RTSP_PATHS_ALL_READPASS")):
+            os.environ[f"{path}READPASS"] = pas
 
     def get_filtered_cams(self, fresh_data: bool = False) -> None:
         """Get all cameras that are enabled."""
@@ -597,12 +598,16 @@ class WyzeBridge:
         """
         if self.get_cam_status(cam_name) in {"unavailable", "offline", "stopping"}:
             return None
+        r_user = env_bool(f"RTSP_PATHS_{cam_name.upper()}_READUSER", style="original")
+        r_pass = env_bool(f"RTSP_PATHS_{cam_name.upper()}_READPASS", style="original")
+
+        auth = f"{r_user}:{r_pass}@" if r_user and r_pass else ""
 
         img = f"{self.img_path}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
         ffmpeg_cmd = (
             ["ffmpeg", "-loglevel", "fatal", "-threads", "1"]
             + ["-analyzeduration", "50", "-probesize", "50"]
-            + ["-rtsp_transport", "tcp", "-i", f"rtsp://0.0.0.0:8554/{cam_name}"]
+            + ["-rtsp_transport", "tcp", "-i", f"rtsp://{auth}0.0.0.0:8554/{cam_name}"]
             + ["-f", "image2", "-frames:v", "1", "-y", img]
         )
         ffmpeg = self.rtsp_snapshot_processes.get(cam_name, None)
