@@ -182,16 +182,22 @@ http://localhost:5000/snapshot/camera-nickname.jpg
 In addition, you can also access a json object with all the camera information:
 
 ```text
-http://localhost:5000/cameras
-http://localhost:5000/cameras/<camera-name>
-http://localhost:5000/cameras/<camera-name>/status
+http://localhost:5000/api
+http://localhost:5000/api/<camera-name>
+http://localhost:5000/api/<camera-name>/status
 ```
 
 On-demand controls:
 
 ```text
-http://localhost:5000/events/start/<camera-name>
-http://localhost:5000/events/stop/<camera-name>
+http://localhost:5000/api/<camera-name>/start
+http://localhost:5000/api/<camera-name>/stop
+```
+
+Server Side Event with status for all cameras:
+
+```text
+http://localhost:5000/api/sse_status
 ```
 
 If you're running the WebUI behind a reverse-proxy or need to change the hostname and/or port for each stream, you can do so by passing the needed ENVs:
