@@ -70,24 +70,24 @@ def create_app():
         resp.set_cookie("show_video", "1" if show_video else "")
         return resp
 
-    @app.route("/events/<path:event>/<path:cam>")
-    def events(event: str, cam: str):
-        if event == "start" and not wb.start_on_demand(cam):
-            abort(404)
-        if event == "stop" and not wb.stop_on_demand(cam):
-            abort(404)
-        return {}
+    @app.route("/api/sse_status")
+    def sse_status():
+        """Server side event for camera status."""
+        return Response(wb.sse_status(), mimetype="text/event-stream")
 
-    @app.route("/cameras")
-    @app.route("/cameras/<path:cam_name>")
-    @app.route("/cameras/<path:cam_name>/<path:cam_cmd>")
-    def cameras(cam_name=None, cam_cmd=None):
+    @app.route("/api")
+    @app.route("/api/<path:cam_name>")
+    @app.route("/api/<path:cam_name>/<path:cam_cmd>")
+    def api(cam_name=None, cam_cmd=None):
         """JSON api endpoints."""
-        if cam_name == "sse_status":
-            return Response(wb.sse_status(), mimetype="text/event-stream")
-        host = urlparse(request.root_url).hostname
         if cam_name and cam_cmd == "status":
             return {"status": wb.get_cam_status(cam_name)}
+        if cam_name and cam_cmd == "start":
+            return {"success": wb.start_on_demand(cam_name)}
+        if cam_name and cam_cmd == "stop":
+            return {"success": wb.stop_on_demand(cam_name)}
+
+        host = urlparse(request.root_url).hostname
         return wb.get_cam_info(cam_name, host) if cam_name else wb.get_cameras(host)
 
     @app.route("/snapshot/<path:img_file>")
