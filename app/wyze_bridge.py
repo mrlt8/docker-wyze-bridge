@@ -161,6 +161,8 @@ class WyzeBridge:
         offline = bool(self.streams[name].get("sleep"))
         stop_flag = multiprocessing.Event()
         msg = f"🎉 Connecting to WyzeCam {cam.model_name} - {name} on {cam.ip} (1/3)"
+        if env_bool(f"RECORD_{name}", env_bool("RECORD_ALL")):
+            old_stop = False
         if (self.on_demand or cam.product_model in {"WVOD1", "HL_WCO2"}) and old_stop:
             msg = f"[ON-DEMAND] ⌛️ WyzeCam {cam.model_name} - {name} on {cam.ip} (1/3)"
             stop_flag.set()
@@ -348,10 +350,13 @@ class WyzeBridge:
         py_event = "python3 /app/rtsp_event.py $RTSP_PATH "
         # py_event = "bash -c 'echo GET /events/{}/{} HTTP/1.1 >/dev/tcp/127.0.0.1/5000'"
         if self.on_demand or cam.product_model in {"WVOD1", "HL_WCO2"}:
-            os.environ[f"{path}RUNONDEMANDSTARTTIMEOUT"] = "30s"
-            os.environ[
-                f"{path}RUNONDEMAND"
-            ] = f"bash -c 'echo GET /events/start/{cam.name_uri} >/dev/tcp/127.0.0.1/5000'"
+            if env_bool(f"RECORD_{cam.name_uri}", env_bool("RECORD_ALL")):
+                log.info(f"[RECORDING] Ignoring ON_DEMAND setting for {cam.name_uri}!")
+            else:
+                os.environ[f"{path}RUNONDEMANDSTARTTIMEOUT"] = "30s"
+                os.environ[
+                    f"{path}RUNONDEMAND"
+                ] = f"bash -c 'echo GET /events/start/{cam.name_uri} >/dev/tcp/127.0.0.1/5000'"
 
             # os.environ[path + "RUNONDEMAND"] = py_event.format("DEMAND", cam.name_uri)
         for event in ("READ", "READY"):
