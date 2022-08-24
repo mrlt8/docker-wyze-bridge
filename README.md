@@ -188,9 +188,19 @@ http://localhost:5000/cameras/<camera-name>/status
 ```
 
 On-demand controls:
+
 ```text
 http://localhost:5000/events/start/<camera-name>
 http://localhost:5000/events/stop/<camera-name>
+```
+
+If you're running the WebUI behind a reverse-proxy or need to change the hostname and/or port for each stream, you can do so by passing the needed ENVs:
+
+```yaml
+environment:
+  - WB_RTSP_URL=rtsp://my-hostname-or-ip:1234/
+  - WB_RTMP_URL=rtmp://my-hostname-or-ip:5678/
+  - WB_HLS_URL=http://my-hostname-or-ip:9090/
 ```
 
 #### Camera Stream URIs
