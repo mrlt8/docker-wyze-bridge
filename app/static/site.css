@@ -74,6 +74,9 @@ a:hover {
 code {
   background-color: rgba(110, 118, 129, 0.4);
   color: rgb(255, 123, 114);
+  -webkit-user-select: all;
+  -ms-user-select: all;
+  user-select: all;
 }
 
 .input,
