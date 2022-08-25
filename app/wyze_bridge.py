@@ -524,6 +524,8 @@ class WyzeBridge:
             return "standby"
         if stream.get("camera_info"):
             return "connected"
+        if stream.get("sleep"):
+            return "offline"
         return "connecting" if stream.get("started", 0) > 0 else "offline"
 
     def get_cam_info(
