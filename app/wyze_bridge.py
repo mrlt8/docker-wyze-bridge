@@ -60,7 +60,7 @@ class WyzeBridge:
     def run(self, fresh_data: bool = False) -> None:
         """Start synchronously"""
         self.stop_bridge.clear()
-        setup_llhls(self.token_path)
+        setup_llhls(self.token_path, hass=self.hass)
         self.get_wyze_data("user")
         self.get_filtered_cams(fresh_data)
         if env_bool("WEBRTC"):
@@ -1180,34 +1180,44 @@ def motion_alarm(
     return alarm, cooldown
 
 
-def setup_llhls(token_path: str = "/tokens/"):
+def setup_llhls(token_path: str = "/tokens/", hass: bool = False):
     """Generate necessary certificates for LL-HLS if needed."""
     if not env_bool("LLHLS"):
         return
     log.info("LL-HLS Enabled")
     os.environ["RTSP_HLSENCRYPTION"] = "yes"
-    if not env_bool("rtsp_hlsServerKey"):
-        cert_path = f"{token_path}hls_server"
-        if not os.path.isfile(f"{cert_path}.key"):
-            log.info("🔐 Generating key for LL-HLS")
-            Popen(
-                ["openssl", "genrsa", "-out", f"{cert_path}.key", "2048"],
-                stdout=DEVNULL,
-                stderr=DEVNULL,
-            ).wait()
-        if not os.path.isfile(f"{cert_path}.crt"):
-            log.info("🔏 Generating certificate for LL-HLS")
-            Popen(
-                ["openssl", "req", "-new", "-x509", "-sha256"]
-                + ["-key", f"{cert_path}.key"]
-                + ["-subj", "/C=US/ST=WA/L=Kirkland/O=WYZE BRIDGE/CN=wyze-bridge"]
-                + ["-out", f"{cert_path}.crt"]
-                + ["-days", "3650"],
-                stdout=DEVNULL,
-                stderr=DEVNULL,
-            ).wait()
-        os.environ["RTSP_HLSSERVERKEY"] = f"{cert_path}.key"
-        os.environ["RTSP_HLSSERVERCERT"] = f"{cert_path}.crt"
+    if env_bool("rtsp_hlsServerKey"):
+        return
+
+    key = "/ssl/privkey.pem"
+    cert = "/ssl/fullchain.pem"
+    if hass and os.path.isfile(key) and os.path.isfile(cert):
+        log.info("🔐 Using existing SSL certificate from Home Assistant")
+        os.environ["RTSP_HLSSERVERKEY"] = key
+        os.environ["RTSP_HLSSERVERCERT"] = cert
+        return
+
+    cert_path = f"{token_path}hls_server"
+    if not os.path.isfile(f"{cert_path}.key"):
+        log.info("🔐 Generating key for LL-HLS")
+        Popen(
+            ["openssl", "genrsa", "-out", f"{cert_path}.key", "2048"],
+            stdout=DEVNULL,
+            stderr=DEVNULL,
+        ).wait()
+    if not os.path.isfile(f"{cert_path}.crt"):
+        log.info("🔏 Generating certificate for LL-HLS")
+        Popen(
+            ["openssl", "req", "-new", "-x509", "-sha256"]
+            + ["-key", f"{cert_path}.key"]
+            + ["-subj", "/C=US/ST=WA/L=Kirkland/O=WYZE BRIDGE/CN=wyze-bridge"]
+            + ["-out", f"{cert_path}.crt"]
+            + ["-days", "3650"],
+            stdout=DEVNULL,
+            stderr=DEVNULL,
+        ).wait()
+    os.environ["RTSP_HLSSERVERKEY"] = f"{cert_path}.key"
+    os.environ["RTSP_HLSSERVERCERT"] = f"{cert_path}.crt"
 
 
 def setup_logging():

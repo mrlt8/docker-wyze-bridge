@@ -31,17 +31,16 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.8.5
+## What's Changed in v1.8.6
 
-- Fixed: Remove all non-numeric characters when submitting the 2FA. #518
-- Fixed: Catch challenge_response error. #520
-- Fixed: RTSP snapshots for WebUI when authentication enabled for streams. #522
-- Potential Fix: Invalid credentials message when attempting to login with the production API. Use beta server with ENV `WYZE_BETA_API`. #505
-- Potential Fix: Reduce ENR/IOTC_ER_TIMEOUT API cooldown #510
-- New: WebUI endpoint to stop on-demand streams: `/events/stop/<camera-name>`
-- New: WebUI button to start/stop individual streams.
-- Changed: WebUI status icons for connected/connecting/offline/standby.
-- Changed: WebUI icon when using authentication for streams. #522
+- Fixed: Custom paths for WebUI. #520 Thanks @peasem!
+- New: Update camera info from the API on click/tap in the WebUI.
+- New: Auto use Home Assistant SSL if available for HLS-LL. #473 Thanks @pgross41!
+- ⚠️ Changed: `/cameras` endpoint has changed to `/api`.
+- Changed: Ignore on-demand if recording is enabled for a camera.
+- Updated: iOS version number for Web API.
+- Updated: Wyze App version number for Web API.
+
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -244,6 +243,8 @@ http://localhost:8888/camera-nickname/stream.m3u8
 **The following envs are all optional.**
 
 ### On-Demand Streaming
+
+NOTE: on-demand settings will be ignred if local recording is enabled for a particular camera.
 
 The bridge will always attempt to connect and maintain an active connection to each of the non-battery powered cameras, however, you can change this default behavior to only connect to the cameras when needed by setting the ENV:
 

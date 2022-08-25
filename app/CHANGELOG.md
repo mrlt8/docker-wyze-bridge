@@ -1,3 +1,13 @@
+## What's Changed in v1.8.6
+
+- Fixed: Custom paths for WebUI. #520 Thanks @peasem!
+- New: Update camera info from the API on click/tap in the WebUI.
+- New: Auto use Home Assistant SSL if available for HLS-LL. #473 Thanks @pgross41!
+- ⚠️ Changed: `/cameras` endpoint has changed to `/api`.
+- Changed: Ignore on-demand if recording is enabled for a camera.
+- Updated: iOS version number for Web API.
+- Updated: Wyze App version number for Web API.
+
 ## What's Changed in v1.8.5
 
 - Fixed: Remove all non-numeric characters when submitting the 2FA. #518
