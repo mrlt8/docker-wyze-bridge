@@ -36,7 +36,7 @@ See [basic usage](#basic-usage) for additional information.
 - Fixed: Custom paths for WebUI. #520 Thanks @peasem!
 - New: Update camera info from the API on click/tap in the WebUI.
 - New: Auto use Home Assistant SSL if available for HLS-LL. #473 Thanks @pgross41!
-- ⚠️ Changed: `/cameras` endpoint has changed to `/api`.
+- ⚠️ Changed: `/cameras` endpoint has changed to `/api`. See [API](#api-endpoints)
 - Changed: Ignore on-demand if recording is enabled for a camera.
 - Updated: iOS version number for Web API.
 - Updated: Wyze App version number for Web API.
@@ -178,27 +178,6 @@ New snapshots can also be generated on demand using the URI:
 http://localhost:5000/snapshot/camera-nickname.jpg
 ```
 
-In addition, you can also access a json object with all the camera information:
-
-```text
-http://localhost:5000/api
-http://localhost:5000/api/<camera-name>
-http://localhost:5000/api/<camera-name>/status
-```
-
-On-demand controls:
-
-```text
-http://localhost:5000/api/<camera-name>/start
-http://localhost:5000/api/<camera-name>/stop
-```
-
-Server Side Event with status for all cameras:
-
-```text
-http://localhost:5000/api/sse_status
-```
-
 If you're running the WebUI behind a reverse-proxy or need to change the hostname and/or port for each stream, you can do so by passing the needed ENVs:
 
 ```yaml
@@ -235,6 +214,29 @@ http://localhost:8888/camera-nickname/stream.m3u8
   or
   https://localhost:8888/camera-nickname/stream.m3u8
   ```
+
+## API Endpoints
+
+In addition to the WebUI, you can also access the internal json API with the camera status/details:
+
+```text
+http://localhost:5000/api
+http://localhost:5000/api/<camera-name>
+http://localhost:5000/api/<camera-name>/status
+```
+
+On-demand controls:
+
+```text
+http://localhost:5000/api/<camera-name>/start
+http://localhost:5000/api/<camera-name>/stop
+```
+
+Server Side Event with status for all cameras:
+
+```text
+http://localhost:5000/api/sse_status
+```
 
 ## Advanced Options
 
