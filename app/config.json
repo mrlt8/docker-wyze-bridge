@@ -33,7 +33,8 @@
     },
     "map": [
         "config:rw",
-        "media:rw"
+        "media:rw",
+        "ssl:ro"
     ],
     "services": [
         "mqtt:want"
