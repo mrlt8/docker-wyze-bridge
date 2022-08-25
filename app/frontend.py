@@ -93,10 +93,9 @@ def create_app():
     @app.route("/snapshot/<path:img_file>")
     def rtsp_snapshot(img_file: str):
         """Use ffmpeg to take a snapshot from the rtsp stream."""
-        uri = Path(img_file).stem
-        if not wb.rtsp_snap(uri, wait=True):
-            abort(404)
-        return send_from_directory(wb.img_path, img_file)
+        if wb.rtsp_snap(Path(img_file).stem, wait=True):
+            return send_from_directory(wb.img_path, img_file)
+        return redirect("/static/notavailable.svg", code=307)
 
     @app.route("/photo/<path:img_file>")
     def boa_photo(img_file: str):
@@ -104,7 +103,7 @@ def create_app():
         uri = Path(img_file).stem
         if photo := wb.boa_photo(uri):
             return send_from_directory(wb.img_path, f"{uri}_{photo[0]}")
-        return redirect(f"/img/{img_file}", code=302)
+        return redirect(f"/img/{img_file}", code=307)
 
     @app.route("/img/<path:img_file>")
     def img(img_file: str):
