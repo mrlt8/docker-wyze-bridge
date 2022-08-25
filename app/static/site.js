@@ -462,8 +462,9 @@ document.addEventListener("DOMContentLoaded", () => {
           keyCell.innerHTML = key
           if (typeof value === 'string' && value.startsWith("http")) {
             let link = document.createElement('a');
-            link.setAttribute("href", value);
-            link.innerHTML = value.substring(0, Math.min(50, value.length))
+            link.href = value;
+            link.title = value;
+            link.innerHTML = value.substring(0, Math.min(50, value.length)) + (value.length >= 50 ? "..." : "");
             valCell.appendChild(link)
           } else {
             valCell.innerHTML = "<code>" + value + "</code>"
