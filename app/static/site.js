@@ -377,7 +377,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Update status icon based on connection status
-  const sse = new EventSource("cameras/sse_status");
+  const sse = new EventSource("api/sse_status");
   sse.addEventListener("open", () => {
     document.getElementById("connection-lost").style.display = "none";
     document.querySelectorAll(".cam-overlay button").forEach((i) => {
@@ -436,10 +436,44 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // Toggle Camera details
   function toggleDetails() {
-    var card = document.getElementById(this.getAttribute("data-cam"));
+    const cam = this.getAttribute("data-cam")
+    const card = document.getElementById(cam);
+    const img = card.getElementsByClassName("card-image")[0]
+    const content = card.getElementsByClassName("content")[0]
     this.getElementsByClassName("fas")[0].classList.toggle("fa-flip-horizontal");
-    card.getElementsByClassName("card-image")[0].classList.toggle("is-hidden");
-    card.getElementsByClassName("content")[0].classList.toggle("is-hidden");
+    if (content.classList.contains("is-hidden")) {
+      const table = content.getElementsByTagName("table")[0]
+      fetch(`api/${cam}`).then(resp => resp.json()).then(data => {
+        table.innerHTML = ""
+        for (const [key, value] of Object.entries(data)) {
+          if (key == "camera_info" && value != null) {
+            for (const [k, v] of Object.entries(value)) {
+              let newRow = table.insertRow();
+              let keyCell = newRow.insertCell(0)
+              let valCell = newRow.insertCell(1)
+              keyCell.innerHTML = k
+              valCell.innerHTML = "<code>" + JSON.stringify(v, null, 2) + "</code>"
+            }
+            continue;
+          }
+          let newRow = table.insertRow();
+          let keyCell = newRow.insertCell(0)
+          let valCell = newRow.insertCell(1)
+          keyCell.innerHTML = key
+          if (typeof value === 'string' && value.startsWith("http")) {
+            let link = document.createElement('a');
+            link.href = value;
+            link.title = value;
+            link.innerHTML = value.substring(0, Math.min(50, value.length)) + (value.length >= 50 ? "..." : "");
+            valCell.appendChild(link)
+          } else {
+            valCell.innerHTML = "<code>" + value + "</code>"
+          }
+        }
+      }).catch(console.error);
+    }
+    img.classList.toggle("is-hidden");
+    content.classList.toggle("is-hidden");
   }
   document.querySelectorAll(".toggle-details").forEach((btn) => {
     btn.addEventListener("click", toggleDetails);
@@ -450,11 +484,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const uri = this.getAttribute("data-cam");
     if (icon.matches(".fa-circle-play, .fa-satellite-dish")) {
       icon.setAttribute("class", "fas fa-circle-notch fa-spin")
-      fetch(`events/stop/${uri}`)
+      fetch(`api/${uri}/stop`)
       console.debug("pause " + uri)
     } else if (icon.matches(".fa-circle-pause, .fa-ghost")) {
       icon.setAttribute("class", "fas fa-circle-notch fa-spin")
-      fetch(`events/start/${uri}`)
+      fetch(`api/${uri}/start`)
       console.debug("play " + uri)
     }
   }

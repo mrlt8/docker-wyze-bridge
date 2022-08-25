@@ -356,7 +356,7 @@ class WyzeBridge:
                 os.environ[f"{path}RUNONDEMANDSTARTTIMEOUT"] = "30s"
                 os.environ[
                     f"{path}RUNONDEMAND"
-                ] = f"bash -c 'echo GET /events/start/{cam.name_uri} >/dev/tcp/127.0.0.1/5000'"
+                ] = f"bash -c 'echo GET /api/{cam.name_uri}/start >/dev/tcp/127.0.0.1/5000'"
 
             # os.environ[path + "RUNONDEMAND"] = py_event.format("DEMAND", cam.name_uri)
         for event in ("READ", "READY"):
@@ -529,6 +529,8 @@ class WyzeBridge:
             return "standby"
         if stream.get("camera_info"):
             return "connected"
+        if stream.get("sleep"):
+            return "offline"
         return "connecting" if stream.get("started", 0) > 0 else "offline"
 
     def get_cam_info(
