@@ -220,7 +220,7 @@ class WyzeBridge:
             if os.path.exists(totp_key) and os.path.getsize(totp_key) > 1:
                 with open(totp_key, "r") as totp_f:
                     verification["code"] = mintotp.totp(
-                        "".join(c for c in totp_f.read() if c.isdigit())
+                        "".join(c for c in totp_f.read() if c.isalnum())
                     )
                 log.info(f"🔏 Using {totp_key} to generate TOTP")
             else:
