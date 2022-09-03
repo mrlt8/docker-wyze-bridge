@@ -9,7 +9,9 @@ Docker container to expose a local RTMP, RTSP, and HLS or Low-Latency HLS stream
 
 It just works!
 
-Now with Web-UI - view all your cams in one place!
+Local cameras stream over your LAN without additional bandwidth.
+
+Now with a Web-UI - view all your cameras in one place!
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
@@ -31,14 +33,14 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.8.6
+## What's Changed in v1.8.7
 
-- Fixed: Custom paths for WebUI. #520 Thanks @peasem!
-- New: Update camera info from the API on click/tap in the WebUI.
-- New: Auto use Home Assistant SSL if available for HLS-LL. #473 Thanks @pgross41!
-- ⚠️ Changed: `/cameras` endpoint has changed to `/api`. See [API](#api-endpoints)
-- Changed: Ignore on-demand if recording is enabled for a camera.
-- Updated: iOS version number for Web API.
+This update brings more 2FA related changes as Wyze recently sent out some emails stating that "**all users will be required to use two-factor authentication to log into a Wyze account**".
+
+- Fixed: Adjusted totp parsing to accept alphanumeric chars (#530). Thanks @gusmann!
+- New: Enter Two-Factor Verification code directly in the WebUI.
+- New: `TOTP_KEY` ENV option as an alternate to the `/tokens/totp` file to automatically generate and enter a Time-based One-Time Password (TOTP).
+- New: `http://localhost:5000/mfa/<123456>` WebUI API endpoint to submit a 2FA code.
 - Updated: Wyze App version number for Web API.
 
 
@@ -49,7 +51,7 @@ See [basic usage](#basic-usage) for additional information.
 - Web-UI to view all Wyze cameras in one place. [details](#web-ui)
 - Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS/Low-Latency HLS. [details](#camera-stream-uris)
 - Access to HD *or* SD stream with configurable bitrate. [details](#bitrate-and-resolution)
-- Local and remote access to any of the cams on your account just like the app.
+- Local and remote access to any of the cams on your account just like the app. [details](#network-connection-modes)
 - Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker. [details](#compatibility)
 - Support for Wyze 2FA. [details](https://github.com/mrlt8/docker-wyze-bridge/wiki/Multi-Factor-Authentication)
 - Optional on-demand connection to cameras. [details](#on-demand-streaming)
@@ -225,6 +227,11 @@ http://localhost:5000/api/<camera-name>
 http://localhost:5000/api/<camera-name>/status
 ```
 
+Submit a Two-Factor Authentication (2FA) code:
+```text
+http://localhost:5000/mfa/<123456>
+```
+
 On-demand controls:
 
 ```text
@@ -232,7 +239,7 @@ http://localhost:5000/api/<camera-name>/start
 http://localhost:5000/api/<camera-name>/stop
 ```
 
-Server Side Event with status for all cameras:
+Server Sent Event with status for all cameras:
 
 ```text
 http://localhost:5000/api/sse_status
