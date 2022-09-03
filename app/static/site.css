@@ -80,6 +80,7 @@ code {
 }
 
 .input,
+.input::placeholder,
 .table.is-hoverable tbody tr:not(.is-selected):hover {
   background-color: #444;
   color: #adb5bd;

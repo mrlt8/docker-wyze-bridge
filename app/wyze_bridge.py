@@ -44,6 +44,7 @@ class WyzeBridge:
         self.cameras: dict[str, WyzeCamera] = {}
         self.streams: dict[str, dict] = {}
         self.rtsp = None
+        self.mfa_req: Optional[str] = None
         self.auth: Optional[wyzecam.WyzeCredential] = None
         self.user: Optional[wyzecam.WyzeAccount] = None
         self.thread: Optional[threading.Thread] = None
@@ -249,6 +250,19 @@ class WyzeBridge:
                 log.warning(f"Error: {ex}\n\nPlease try again!\n")
                 time.sleep(3)
 
+    def set_mfa(self, mfa_code: str):
+        """Set MFA code from WebUI."""
+        mfa_file = f"{self.token_path}mfa_token.txt"
+        try:
+            with open(mfa_file, "w") as f:
+                f.write(mfa_code)
+            while os.path.getsize(mfa_file) != 0:
+                time.sleep(1)
+            return True
+        except Exception as ex:
+            log.error(ex)
+            return False
+
     def cache_check(
         self, name: str
     ) -> Optional[
@@ -327,6 +341,8 @@ class WyzeBridge:
             except Exception as ex:
                 log.warning(ex)
                 time.sleep(10)
+            if not wyze_data:
+                time.sleep(15)
         self.set_wyze_data(name, wyze_data)
         return wyze_data
 
@@ -511,6 +527,11 @@ class WyzeBridge:
 
     def sse_status(self) -> Generator[str, str, str]:
         """Generator to return the status for enabled cameras."""
+        if self.mfa_req:
+            yield f"event: mfa\ndata: {self.mfa_req}\n\n"
+            while self.mfa_req:
+                time.sleep(1)
+            yield "event: mfa\ndata: clear\n\n"
         cameras = {}
         while True:
             if cameras != (
