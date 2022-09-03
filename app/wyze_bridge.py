@@ -218,14 +218,23 @@ class WyzeBridge:
             else:
                 verification["type"] = "TotpVerificationCode"
                 verification["id"] = auth.mfa_details["totp_apps"][0]["app_id"]
-            if os.path.exists(totp_key) and os.path.getsize(totp_key) > 1:
-                with open(totp_key, "r") as totp_f:
+            if "TotpVerificationCode" in auth.mfa_options:
+                if env_key := env_bool("totp_key", style="original"):
                     verification["code"] = mintotp.totp(
-                        "".join(c for c in totp_f.read() if c.isdigit())
+                        "".join(c for c in env_key if c.isalnum())
                     )
-                log.info(f"🔏 Using {totp_key} to generate TOTP")
-            else:
-                log.warning(f"📝 Add verification code to {mfa_token}")
+                    log.info(f"🔏 Using TOTP_KEY to generate TOTP")
+                elif os.path.exists(totp_key) and os.path.getsize(totp_key) > 1:
+                    with open(totp_key, "r") as totp_f:
+                        verification["code"] = mintotp.totp(
+                            "".join(c for c in totp_f.read() if c.isalnum())
+                        )
+                    log.info(f"🔏 Using {totp_key} to generate TOTP")
+            if not verification.get("code"):
+                self.mfa_req = verification["type"]
+                log.warning(
+                    f"📝 Enter verification code in the WebUI or add it to {mfa_token}"
+                )
                 while not os.path.exists(mfa_token) or os.path.getsize(mfa_token) == 0:
                     time.sleep(1)
                 with open(mfa_token, "r+") as mfa_f:
@@ -242,6 +251,7 @@ class WyzeBridge:
                     verification,
                 )
                 if mfa_auth.access_token:
+                    self.mfa_req = None
                     log.info("✅ Verification code accepted!")
                     return mfa_auth
             except Exception as ex:
