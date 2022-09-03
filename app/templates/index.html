@@ -109,7 +109,10 @@
                 </span>
             </div>
         </article>
+        <div id="alert" class="container is-hidden">
+        </div>
         <div class="cameras columns is-multiline">
+            {% if cameras.cameras %}
             {% for cam_uri,camera in cameras.cameras.items() %}
             <div id="{{ cam_uri }}" class="camera column {{'is-hidden' if not camera.enabled}}"
                 data-enabled="{{camera.enabled}}" data-connected="{{camera.connected}}">
@@ -243,6 +246,7 @@
                 </li>
             </ul>
         </div>
+        {% endif %}
     </section>
     <footer class="footer">
         <div class="content has-text-centered">

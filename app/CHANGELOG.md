@@ -1,3 +1,13 @@
+## What's Changed in v1.8.7
+
+This update brings more 2FA related changes as Wyze recently sent out some emails stating that "**all users will be required to use two-factor authentication to log into a Wyze account**".
+
+- Fixed: Adjusted totp parsing to accept alphanumeric chars (#530). Thanks @gusmann!
+- New: Enter Two-Factor Verification code directly in the WebUI.
+- New: `TOTP_KEY` ENV option as an alternate to the `/tokens/totp` file to automatically generate and enter a Time-based One-Time Password (TOTP).
+- New: `http://localhost:5000/mfa/<123456>` WebUI API endpoint to submit a 2FA code.
+- Updated: Wyze App version number for Web API.
+
 ## What's Changed in v1.8.6
 
 - Fixed: Custom paths for WebUI. #520 Thanks @peasem!

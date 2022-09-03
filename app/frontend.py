@@ -70,9 +70,16 @@ def create_app():
         resp.set_cookie("show_video", "1" if show_video else "")
         return resp
 
+    @app.route("/mfa/<path:mfa_code>")
+    def set_mfa_code(mfa_code):
+        """Set mfa code."""
+        if len(mfa_code) != 6:
+            return {"error": f"Wrong length: {len(mfa_code)}"}
+        return {"success" if wb.set_mfa(mfa_code) else "error": f"Using: {mfa_code}"}
+
     @app.route("/api/sse_status")
     def sse_status():
-        """Server side event for camera status."""
+        """Server sent event for camera status."""
         return Response(wb.sse_status(), mimetype="text/event-stream")
 
     @app.route("/api")

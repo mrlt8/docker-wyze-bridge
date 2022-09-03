@@ -44,6 +44,7 @@ class WyzeBridge:
         self.cameras: dict[str, WyzeCamera] = {}
         self.streams: dict[str, dict] = {}
         self.rtsp = None
+        self.mfa_req: Optional[str] = None
         self.auth: Optional[wyzecam.WyzeCredential] = None
         self.user: Optional[wyzecam.WyzeAccount] = None
         self.thread: Optional[threading.Thread] = None
@@ -217,14 +218,23 @@ class WyzeBridge:
             else:
                 verification["type"] = "TotpVerificationCode"
                 verification["id"] = auth.mfa_details["totp_apps"][0]["app_id"]
-            if os.path.exists(totp_key) and os.path.getsize(totp_key) > 1:
-                with open(totp_key, "r") as totp_f:
+            if "TotpVerificationCode" in auth.mfa_options:
+                if env_key := env_bool("totp_key", style="original"):
                     verification["code"] = mintotp.totp(
-                        "".join(c for c in totp_f.read() if c.isalnum())
+                        "".join(c for c in env_key if c.isalnum())
                     )
-                log.info(f"🔏 Using {totp_key} to generate TOTP")
-            else:
-                log.warning(f"📝 Add verification code to {mfa_token}")
+                    log.info(f"🔏 Using TOTP_KEY to generate TOTP")
+                elif os.path.exists(totp_key) and os.path.getsize(totp_key) > 1:
+                    with open(totp_key, "r") as totp_f:
+                        verification["code"] = mintotp.totp(
+                            "".join(c for c in totp_f.read() if c.isalnum())
+                        )
+                    log.info(f"🔏 Using {totp_key} to generate TOTP")
+            if not verification.get("code"):
+                self.mfa_req = verification["type"]
+                log.warning(
+                    f"📝 Enter verification code in the WebUI or add it to {mfa_token}"
+                )
                 while not os.path.exists(mfa_token) or os.path.getsize(mfa_token) == 0:
                     time.sleep(1)
                 with open(mfa_token, "r+") as mfa_f:
@@ -241,6 +251,7 @@ class WyzeBridge:
                     verification,
                 )
                 if mfa_auth.access_token:
+                    self.mfa_req = None
                     log.info("✅ Verification code accepted!")
                     return mfa_auth
             except Exception as ex:
@@ -248,6 +259,19 @@ class WyzeBridge:
                     log.warning("🚷 Wrong Code?")
                 log.warning(f"Error: {ex}\n\nPlease try again!\n")
                 time.sleep(3)
+
+    def set_mfa(self, mfa_code: str):
+        """Set MFA code from WebUI."""
+        mfa_file = f"{self.token_path}mfa_token.txt"
+        try:
+            with open(mfa_file, "w") as f:
+                f.write(mfa_code)
+            while os.path.getsize(mfa_file) != 0:
+                time.sleep(1)
+            return True
+        except Exception as ex:
+            log.error(ex)
+            return False
 
     def cache_check(
         self, name: str
@@ -327,6 +351,8 @@ class WyzeBridge:
             except Exception as ex:
                 log.warning(ex)
                 time.sleep(10)
+            if not wyze_data:
+                time.sleep(15)
         self.set_wyze_data(name, wyze_data)
         return wyze_data
 
@@ -511,6 +537,11 @@ class WyzeBridge:
 
     def sse_status(self) -> Generator[str, str, str]:
         """Generator to return the status for enabled cameras."""
+        if self.mfa_req:
+            yield f"event: mfa\ndata: {self.mfa_req}\n\n"
+            while self.mfa_req:
+                time.sleep(1)
+            yield "event: mfa\ndata: clear\n\n"
         cameras = {}
         while True:
             if cameras != (
