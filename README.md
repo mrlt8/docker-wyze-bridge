@@ -53,7 +53,7 @@ This update brings more 2FA related changes as Wyze recently sent out some email
 - Access to HD *or* SD stream with configurable bitrate. [details](#bitrate-and-resolution)
 - Local and remote access to any of the cams on your account just like the app. [details](#network-connection-modes)
 - Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker. [details](#compatibility)
-- Support for Wyze 2FA. [details](https://github.com/mrlt8/docker-wyze-bridge/wiki/Multi-Factor-Authentication)
+- Support for Wyze 2FA. [details](https://github.com/mrlt8/docker-wyze-bridge/wiki/Two-Factor-Authentication)
 - Optional on-demand connection to cameras. [details](#on-demand-streaming)
 - Ability to rotate video for Wyze Doorbell. [details](#rotate-video)
 - Ability to record streams locally. [details](#stream-recording)
@@ -145,7 +145,7 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 
 ### Additional Info
 
-- [Two-Step Verification/MFA](https://github.com/mrlt8/docker-wyze-bridge/wiki/Multi-Factor-Authentication)
+- [Two-Factor Authentication (2FA/MFA)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Two-Factor-Authentication)
 - [ARM/Raspberry Pi](https://github.com/mrlt8/docker-wyze-bridge/wiki/Raspberry-Pi-(armv7-and-arm64))
 - [LAN mode](#LAN-Mode)
 - [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
