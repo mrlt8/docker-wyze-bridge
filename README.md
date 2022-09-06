@@ -78,23 +78,23 @@ This update brings more 2FA related changes as Wyze recently sent out some email
 
 ![Wyze Cam Doorbell Pro](https://img.shields.io/badge/wyze_doorbell_pro-no-inactive.svg)
 
-| Camera                  | Model          | Supported |
-| ----------------------- | -------------- | --------- |
-| Wyze Cam v1             | WYZEC1         | ✅         |
-| Wyze Cam V2             | WYZEC1-JZ      | ✅         |
-| Wyze Cam V3             | WYZE_CAKP2JFUS | ✅         |
-| Wyze Cam Floodlight     | WYZE_CAKP2JFUS | ✅         |
-| Wyze Cam Pan            | WYZECP1_JEF    | ✅         |
-| Wyze Cam Pan v2         | HL_PAN2        | ✅         |
-| Wyze Cam Outdoor        | WVOD1          | ✅         |
-| Wyze Cam Outdoor v2     | HL_WCO2        | ✅         |
-| Wyze Cam Doorbell       | WYZEDB3        | ✅         |
-| Wyze Cam V3 Pro         | HL_CAM3P       | ❓         |
-| Wyze Cam Pan v3         | HL_PAN3        | ❓         |
-| Wyze Cam Pan Pro        | HL_PANP        | ❓         |
-| Wyze Cam Outdoor Pro    | AN_RSCW        | ❓         |
-| Wyze Cam Doorbell Pro   | GW_BE1         | ❓         |
-| Wyze Cam Doorbell Pro 2 | AN_RDB1        | ❓         |
+| Camera                  | Model          | Supported                                                   |
+| ----------------------- | -------------- | ----------------------------------------------------------- |
+| Wyze Cam v1             | WYZEC1         | ✅                                                           |
+| Wyze Cam V2             | WYZEC1-JZ      | ✅                                                           |
+| Wyze Cam V3             | WYZE_CAKP2JFUS | ✅                                                           |
+| Wyze Cam Floodlight     | WYZE_CAKP2JFUS | ✅                                                           |
+| Wyze Cam Pan            | WYZECP1_JEF    | ✅                                                           |
+| Wyze Cam Pan v2         | HL_PAN2        | ✅                                                           |
+| Wyze Cam Outdoor        | WVOD1          | ✅                                                           |
+| Wyze Cam Outdoor v2     | HL_WCO2        | ✅                                                           |
+| Wyze Cam Doorbell       | WYZEDB3        | ✅                                                           |
+| Wyze Cam V3 Pro [2K]    | HL_CAM3P       | ❓                                                           |
+| Wyze Cam Pan v3         | HL_PAN3        | ❓                                                           |
+| Wyze Cam Pan Pro [2K]   | HL_PANP        | ❓                                                           |
+| Wyze Cam Outdoor Pro    | AN_RSCW        | ❓                                                           |
+| Wyze Cam Doorbell Pro   | GW_BE1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276) |
+| Wyze Cam Doorbell Pro 2 | AN_RDB1        | ❓                                                           |
 
 ### Firmware Compatibility
 
