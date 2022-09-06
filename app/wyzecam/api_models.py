@@ -8,13 +8,16 @@ model_names = {
     "WYZEC1": "V1",
     "WYZEC1-JZ": "V2",
     "WYZE_CAKP2JFUS": "V3",
+    "HL_CAM3P": "V3 Pro",
     "WYZECP1_JEF": "Pan",
     "HL_PAN2": "Pan V2",
+    "HL_PANP": "Pan Pro",
     "WYZEDB3": "Doorbell",
     "GW_BE1": "Doorbell Pro",
     "WVOD1": "Outdoor",
     "HL_WCO2": "Outdoor V2",
 }
+
 
 class WyzeCredential(BaseModel):
     """Authenticated credentials; see [wyzecam.api.login][].
