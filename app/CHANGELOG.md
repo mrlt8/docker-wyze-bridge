@@ -1,6 +1,8 @@
 ## What's Changed in v1.8.8
 
   - Fixed: 2FA code was not working in Home Assistant Ingress/Web UI. #541 Thanks @rlust!
+  - Updated: iOS version number.
+  - Beta: Initial support HL_CAM3P (V3 Pro) and HL_PANP (Pan Pro) - 2K streams may need `IGNORE_RES=4`. Additional testing required.
 
 ## What's Changed in v1.8.7
 
