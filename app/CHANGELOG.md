@@ -1,3 +1,7 @@
+## What's Changed in v1.8.8
+
+  - Fixed: 2FA code was not working in Home Assistant Ingress/Web UI. #541 Thanks @rlust!
+
 ## What's Changed in v1.8.7
 
 This update brings more 2FA related changes as Wyze recently sent out some emails stating that "**all users will be required to use two-factor authentication to log into a Wyze account**".
