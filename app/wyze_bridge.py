@@ -592,7 +592,7 @@ class WyzeBridge:
             "hls_url": (self.hls_url or f"http://{hostname}:8888/") + name_uri + "/",
             "rtmp_url": (self.rtmp_url or f"rtmp://{hostname}:1935/") + name_uri,
             "rtsp_url": (self.rtsp_url or f"rtsp://{hostname}:8554/") + name_uri,
-            "stream_auth": env_bool(f"RTSP_PATHS_{name_uri}_READUSER", style="bool"),
+            "stream_auth": bool(os.getenv(f"RTSP_PATHS_{name_uri.upper()}_READUSER")),
             "name_uri": name_uri,
             "enabled": name_uri in self.streams,
             "camera_info": None,
@@ -635,8 +635,8 @@ class WyzeBridge:
         if self.get_cam_status(cam_name) in {"unavailable", "offline", "stopping"}:
             return None
 
-        if auth := env_bool(f"RTSP_PATHS_{cam_name}_READUSER", style="original"):
-            auth += f':{env_bool(f"RTSP_PATHS_{cam_name}_READPASS", style="original")}@'
+        if auth := os.getenv(f"RTSP_PATHS_{cam_name.upper()}_READUSER", ""):
+            auth += f':{os.getenv(f"RTSP_PATHS_{cam_name.upper()}_READPASS","")}@'
 
         img = f"{self.img_path}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
         ffmpeg_cmd = (
