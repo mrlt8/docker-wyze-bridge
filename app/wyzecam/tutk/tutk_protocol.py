@@ -463,6 +463,17 @@ class K10148StartBoa(TutkWyzeProtocolMessage):
         return encode(10148, 5, bytes([0, 1, 0, 0, 0]))
 
 
+class K10604GetRtspParam(TutkWyzeProtocolMessage):
+    """
+    Get RTSP parameters from supported firmware.
+    """
+
+    expected_response_code = 10605
+
+    def __init__(self):
+        super().__init__(10604)
+
+
 def encode(code: int, data_len: int, data: Optional[bytes]) -> bytes:
     assert (data is None and data_len == 0) or (
         data is not None and data_len == len(data)

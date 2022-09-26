@@ -323,6 +323,33 @@ class WyzeIOTCSession:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._disconnect()
 
+    def check_native_rtsp(self) -> Optional[str]:
+        """Check if Firmware supports RTSP.
+
+        Return local rtsp url if native stream is available and enabled.
+        """
+        rtsp_fw = {"4.19.", "4.20.", "4.28.", "4.29.", "4.61."}
+        if self.camera.firmware_ver[:5] not in rtsp_fw:
+            return None
+
+        with self.iotctrl_mux() as mux:
+            try:
+                resp = mux.send_ioctl(tutk_protocol.K10604GetRtspParam()).result(
+                    timeout=5
+                )
+            except:
+                logger.log("RTSP Check Failed.")
+                return None
+        if not resp:
+            logger.log("Could not determine if RTSP is supported.")
+            return None
+        if not resp[0]:
+            logger.log("RTSP disabled in the app.")
+            return None
+
+        decoded_url = resp.decode().split('"')
+        return decoded_url[1] if len(decoded_url) > 0 else None
+
     def recv_video_data(
         self,
     ) -> Iterator[
