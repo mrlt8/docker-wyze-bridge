@@ -18,6 +18,11 @@ from ctypes import (
 )
 from typing import Optional, Union
 
+RTSP_FW = {"4.19.", "4.20.", "4.28.", "4.29.", "4.61."}
+"""
+Firmware with official RTSP support.
+"""
+
 BITRATE_360P = 0x1E
 """
 The bitrate used by the "360P" setting in the app.  Approx 30 KB/s.
