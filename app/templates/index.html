@@ -222,6 +222,9 @@
                                 class="icon">
                                 <i class="fas fa-lock"></i>
                             </span> {% endif %}RTSP</a>
+                        {% if camera.fw_rtsp %}
+                        <a href="{{camera.rtsp_url}}fw" class="card-footer-item" target="_blank">FW_RTSP</a>
+                        {% endif %}
                         {% if camera.boa_url %}
                         <a href="{{camera.boa_url}}" class="card-footer-item" target="_blank">SD Card</a>
                         {% endif %}
