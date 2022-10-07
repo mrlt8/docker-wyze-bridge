@@ -832,7 +832,8 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list[str]
         log.info(f"Re-encoding stream using {h264_enc} [{transpose=}]")
     lib264 = (
         [h264_enc, "-filter:v", f"transpose={transpose}", "-b:v", "3000k"]
-        + ["-coder", "1", "-profile:v", "main", "-bufsize", "1000k"]
+        + ["-coder", "1", "-bufsize", "1000k"]
+        + ["-profile:v", "77" if h264_enc == "h264_v4l2m2m" else "main"]
         + ["-preset", "ultrafast", "-force_key_frames", "expr:gte(t,n_forced*2)"]
     )
     livestream = get_livestream_cmd(uri)
