@@ -817,17 +817,21 @@ def get_cam_params(
     return fps, audio
 
 
-def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list:
+def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list[str]:
     """Return the ffmpeg cmd with options from the env."""
     flags = "-fflags +genpts+flush_packets+nobuffer+bitexact -flags +low_delay"
     rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR")
-    transpose = "1"
+    transpose = "clock"
     if env_bool(f"ROTATE_CAM_{uri}"):
         rotate = True
         if os.getenv(f"ROTATE_CAM_{uri}") in {"0", "1", "2", "3"}:
+            # Numerical values are deprecated, and should be dropped in favor of symbolic constants.
             transpose = os.environ[f"ROTATE_CAM_{uri}"]
+    h264_enc = env_bool("h264_enc", "libx264")
+    if rotate:
+        log.info(f"Re-encoding stream using {h264_enc} [{transpose=}]")
     lib264 = (
-        ["libx264", "-filter:v", f"transpose={transpose}", "-b:v", "3000K"]
+        [h264_enc, "-filter:v", f"transpose={transpose}", "-b:v", "3000k"]
         + ["-coder", "1", "-profile:v", "main", "-bufsize", "1000k"]
         + ["-preset", "ultrafast", "-force_key_frames", "expr:gte(t,n_forced*2)"]
     )
@@ -839,7 +843,7 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list:
         audio_out = audio["codec_out"] or "copy"
         a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
     rtsp_transport = "udp" if "udp" in env_bool("RTSP_PROTOCOLS") else "tcp"
-    rss_cmd = f"[{{}}f=rtsp:{rtsp_transport=:}]rtsp://0.0.0.0:8554/{uri.lower()}"
+    rss_cmd = f"[{{}}f=rtsp:{rtsp_transport=:}:bsfs/v=dump_extra=freq=keyframe]rtsp://0.0.0.0:8554/{uri.lower()}"
     rtsp_ss = rss_cmd.format("")
     if env_bool(f"AUDIO_STREAM_{uri}", env_bool("AUDIO_STREAM")) and audio:
         rtsp_ss += "|" + rss_cmd.format("select=a:") + "_audio"
