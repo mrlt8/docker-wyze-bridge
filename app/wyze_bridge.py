@@ -385,7 +385,7 @@ class WyzeBridge:
                     f"{path}_RUNONDEMAND"
                 ] = f"bash -c 'echo GET /api/{cam.name_uri}/start >/dev/tcp/127.0.0.1/5000'"
 
-        if env_bool("rtsp_fw") and rtsp_path := self.check_rtsp_fw(cam):
+        if env_bool("rtsp_fw") and (rtsp_path := self.check_rtsp_fw(cam)):
             self.fw_rtsp.add(cam.name_uri)
             log.info(f"Proxying firmware RTSP to path: '/{cam.name_uri}fw'")
             os.environ[f"{path}FW_SOURCE"] = rtsp_path
