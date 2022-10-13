@@ -1,3 +1,15 @@
+## What's Changed in v1.8.9
+
+  - Fix: bitstream data when using rotation which could cause issues in some clients like Homebridge. Thanks @noelhibbard! #552
+  - Fix: broken snapshots for cameras with spaces in the name if stream auth enabled. Thanks @RUHavingFun! #542
+  - Updated: iOS and App version bump.
+  - New: ENV option `RTSP_FW=True` to proxy an extra RTSP stream if on official RTSP FW (4.19.x, 4.20.x, 4.28.x, 4.29.x, 4.61.x.).
+    - Additional stream will be available with the `fw` suffix e.g., `cam-namefw`
+  - New: ENV option `H264_ENC` to allow for custom h264 encoder (e.g. h264_cuvid or h264_v4l2m2m) for rotation/re-encoding. #548
+    - Additional configuration required for hwaccel encoding. 
+    - h264_v4l2m2m currently has bistream issues and is NOT working in certain clients like homebridge. 
+    - Use `Dockerfile.hwaccel` for ffmpeg compiled with with h264_cuvid.
+  
 ## What's Changed in v1.8.8
 
   - Fixed: 2FA code was not working in Home Assistant Ingress/Web UI. #541 Thanks @rlust!

@@ -431,7 +431,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const statusIcon = document.querySelector(`#${cam} .status i.fas`);
       const preview = document.querySelector(`#${cam} img.refresh_img`);
       statusIcon.setAttribute("class", "fas")
-      statusIcon.parentElement.title = null
+      statusIcon.parentElement.title = ""
       if (preview) { preview.classList.remove("connected") }
       if (status == "connected") {
         statusIcon.classList.add("fa-circle-play", "has-text-success");
@@ -455,8 +455,10 @@ document.addEventListener("DOMContentLoaded", () => {
         statusIcon.parentElement.title = "Click/tap to play";
       } else if (status == "offline") {
         statusIcon.classList.add("fa-ghost");
+        statusIcon.parentElement.title = "Camera offline";
       } else {
         statusIcon.setAttribute("class", "fas fa-circle-exclamation")
+        statusIcon.parentElement.title = "Not Connected";
       }
     });
   });

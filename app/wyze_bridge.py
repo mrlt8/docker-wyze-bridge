@@ -43,6 +43,7 @@ class WyzeBridge:
         self.img_path: str = f'/{env_bool("IMG_DIR", "img").strip("/")}/'
         self.cameras: dict[str, WyzeCamera] = {}
         self.streams: dict[str, dict] = {}
+        self.fw_rtsp: set[str] = set()
         self.rtsp = None
         self.mfa_req: Optional[str] = None
         self.auth: Optional[wyzecam.WyzeCredential] = None
@@ -372,30 +373,52 @@ class WyzeBridge:
 
     def add_rtsp_path(self, cam: WyzeCamera) -> None:
         """Configure and add env options for the camera that will be used by rtsp-simple-server."""
-        path = f"RTSP_PATHS_{cam.name_uri.upper()}_"
+        path = f"RTSP_PATHS_{cam.name_uri.upper()}"
         py_event = "python3 /app/rtsp_event.py $RTSP_PATH "
         # py_event = "bash -c 'echo GET /events/{}/{} HTTP/1.1 >/dev/tcp/127.0.0.1/5000'"
         if self.on_demand or cam.product_model in {"WVOD1", "HL_WCO2"}:
             if env_bool(f"RECORD_{cam.name_uri}", env_bool("RECORD_ALL")):
                 log.info(f"[RECORDING] Ignoring ON_DEMAND setting for {cam.name_uri}!")
             else:
-                os.environ[f"{path}RUNONDEMANDSTARTTIMEOUT"] = "30s"
+                os.environ[f"{path}_RUNONDEMANDSTARTTIMEOUT"] = "30s"
                 os.environ[
-                    f"{path}RUNONDEMAND"
+                    f"{path}_RUNONDEMAND"
                 ] = f"bash -c 'echo GET /api/{cam.name_uri}/start >/dev/tcp/127.0.0.1/5000'"
 
-            # os.environ[path + "RUNONDEMAND"] = py_event.format("DEMAND", cam.name_uri)
+        if env_bool("rtsp_fw") and rtsp_path := self.check_rtsp_fw(cam):
+            self.fw_rtsp.add(cam.name_uri)
+            log.info(f"Proxying firmware RTSP to path: '/{cam.name_uri}fw'")
+            os.environ[f"{path}FW_SOURCE"] = rtsp_path
+            # os.environ[f"{path}FW_SOURCEONDEMAND"] = "yes"
+
+        # os.environ[path + "RUNONDEMAND"] = py_event.format("DEMAND", cam.name_uri)
         for event in ("READ", "READY"):
-            env = f"{path}RUNON{event}"
+            env = f"{path}_RUNON{event}"
             if alt := env_bool(env):
                 event += " & " + alt
             os.environ[env] = py_event + event
+            if rtsp_path:
+                os.environ[f"{path}FW_RUNON{event}"] = py_event + event
+
             # os.environ[env] = py_event.format(event, cam.name_uri)
 
-        if user := env_bool(f"{path}READUSER", os.getenv("RTSP_PATHS_ALL_READUSER")):
-            os.environ[f"{path}READUSER"] = user
-        if pas := env_bool(f"{path}READPASS", os.getenv("RTSP_PATHS_ALL_READPASS")):
-            os.environ[f"{path}READPASS"] = pas
+        if user := env_bool(f"{path}_READUSER", os.getenv("RTSP_PATHS_ALL_READUSER")):
+            os.environ[f"{path}_READUSER"] = user
+        if pas := env_bool(f"{path}_READPASS", os.getenv("RTSP_PATHS_ALL_READPASS")):
+            os.environ[f"{path}_READPASS"] = pas
+
+    def check_rtsp_fw(self, cam: WyzeCamera) -> Optional[str]:
+        """Check and add rtsp."""
+        if cam.firmware_ver[:5] not in wyzecam.tutk.tutk.RTSP_FW:
+            return None
+        log.info(f"Checking {cam.nickname} for firmware RTSP on v{cam.firmware_ver}")
+        with wyzecam.WyzeIOTC() as iotc, wyzecam.WyzeIOTCSession(
+            iotc.tutk_platform_lib, self.user, cam
+        ) as session:
+            if session.session_check().mode != 2:
+                log.warning(f"[{cam.nickname}] Camera is not on same LAN")
+                return None
+            return session.check_native_rtsp()
 
     def get_filtered_cams(self, fresh_data: bool = False) -> None:
         """Get all cameras that are enabled."""
@@ -592,8 +615,9 @@ class WyzeBridge:
             "hls_url": (self.hls_url or f"http://{hostname}:8888/") + name_uri + "/",
             "rtmp_url": (self.rtmp_url or f"rtmp://{hostname}:1935/") + name_uri,
             "rtsp_url": (self.rtsp_url or f"rtsp://{hostname}:8554/") + name_uri,
-            "stream_auth": env_bool(f"RTSP_PATHS_{name_uri}_READUSER", style="bool"),
+            "stream_auth": bool(os.getenv(f"RTSP_PATHS_{name_uri.upper()}_READUSER")),
             "name_uri": name_uri,
+            "fw_rtsp": name_uri in self.fw_rtsp,
             "enabled": name_uri in self.streams,
             "camera_info": None,
             "boa_url": None,
@@ -635,8 +659,8 @@ class WyzeBridge:
         if self.get_cam_status(cam_name) in {"unavailable", "offline", "stopping"}:
             return None
 
-        if auth := env_bool(f"RTSP_PATHS_{cam_name}_READUSER", style="original"):
-            auth += f':{env_bool(f"RTSP_PATHS_{cam_name}_READPASS", style="original")}@'
+        if auth := os.getenv(f"RTSP_PATHS_{cam_name.upper()}_READUSER", ""):
+            auth += f':{os.getenv(f"RTSP_PATHS_{cam_name.upper()}_READPASS","")}@'
 
         img = f"{self.img_path}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
         ffmpeg_cmd = (

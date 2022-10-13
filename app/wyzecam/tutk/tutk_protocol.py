@@ -463,6 +463,34 @@ class K10148StartBoa(TutkWyzeProtocolMessage):
         return encode(10148, 5, bytes([0, 1, 0, 0, 0]))
 
 
+class K10600SetRtspSwitch(TutkWyzeProtocolMessage):
+    """
+    Set switch value for RTSP server on camera.
+
+    :param enable: Optional Bool. Set True for on, False for off. Defaults to True.
+    """
+
+    expected_response_code = 10601
+
+    def __init__(self, enable: bool = True):
+        super().__init__(10600)
+        self.enable = 1 if enable else 0
+
+    def encode(self) -> bytes:
+        return encode(10600, 1, bytes([self.enable]))
+
+
+class K10604GetRtspParam(TutkWyzeProtocolMessage):
+    """
+    Get RTSP parameters from supported firmware.
+    """
+
+    expected_response_code = 10605
+
+    def __init__(self):
+        super().__init__(10604)
+
+
 def encode(code: int, data_len: int, data: Optional[bytes]) -> bytes:
     assert (data is None and data_len == 0) or (
         data is not None and data_len == len(data)

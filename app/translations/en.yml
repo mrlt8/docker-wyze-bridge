@@ -58,3 +58,6 @@ configuration:
     name: Custom RTMP url
   WB_RTSP_URL:
     name: Custom RTSP url
+  RTSP_FW:
+    name: Firmware RTSP
+    description: Proxy additional RTSP stream from official RTSP firmware.
