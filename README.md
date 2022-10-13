@@ -33,7 +33,7 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.8.9
+## What's Changed in v1.8.10
 
   - Fix: bitstream data when using rotation which could cause issues in some clients like Homebridge. Thanks @noelhibbard! #552
   - Fix: broken snapshots for cameras with spaces in the name if stream auth enabled. Thanks @RUHavingFun! #542
@@ -44,6 +44,7 @@ See [basic usage](#basic-usage) for additional information.
     - Additional configuration required for hwaccel encoding. 
     - h264_v4l2m2m currently has bistream issues and is NOT working in certain clients like homebridge. 
     - Use `Dockerfile.hwaccel` for ffmpeg compiled with with h264_cuvid.
+  - Fixed: env bug on startup #559 Thanks @tbrausch!
   
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
