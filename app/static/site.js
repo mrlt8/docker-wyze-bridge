@@ -188,10 +188,10 @@ async function update_img(oldUrl, useImg = false) {
   if (button) {
     button.disabled = true;
     button.getElementsByClassName("fas")[0].classList.add("fa-spin");
-    button.parentElement.style.display = "block";
+    button.style.display = "inline-block";
   }
 
-  await fetch(newUrl);
+  let imgDate = await fetch(newUrl);
   // reduce img flicker by pre-decode, before swapping it
   const tmp = new Image();
   tmp.src = newUrl;
@@ -222,7 +222,11 @@ async function update_img(oldUrl, useImg = false) {
   if (button) {
     button.disabled = false;
     button.getElementsByClassName("fas")[0].classList.remove("fa-spin");
-    button.parentElement.style.display = null;
+    button.style.display = null;
+    let ageSpan = button.parentElement.querySelectorAll(".age")[0];
+    if (!imgDate.url.endsWith(".svg")) {
+      ageSpan.dataset.age = imgDate.headers.get("Last-Modified");
+    }
   }
   return newUrl;
 }
@@ -524,5 +528,18 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".status.enabled").forEach((span) => {
     span.addEventListener("click", clickDemand);
   });
+
+  // Preview age
+  function imgAge() {
+    document.querySelectorAll("span.age[data-age]").forEach((span) => {
+      var created = new Date(span.dataset.age).getTime(),
+        s = Math.floor((new Date() - created) / 1000),
+        age = s < 60 ? `${s}s` : s < 3600 ? `+${Math.floor(s / 60)}m` : s < 86400 ? `+${Math.floor(s / 3600)}h` : `+${Math.floor(s / 86400)}d`
+      span.textContent = age
+    })
+    clearTimeout(imgAge.interval);
+    imgAge.interval = setTimeout(() => { imgAge() }, 1000);
+  }
+  imgAge()
 
 });
