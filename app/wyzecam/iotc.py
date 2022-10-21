@@ -363,8 +363,8 @@ class WyzeIOTCSession:
             except:
                 logger.warning("Can't start RTSP server on camera.")
                 return None
-        decoded_url = resp.decode().split('"')
-        return decoded_url[1] if len(decoded_url) > 1 else None
+        decoded_url = resp.decode().split("rtsp://")
+        return f"rtsp://{decoded_url[1]}" if len(decoded_url) > 1 else None
 
     def recv_video_data(
         self,
