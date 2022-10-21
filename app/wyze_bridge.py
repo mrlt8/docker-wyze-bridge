@@ -18,7 +18,6 @@ import mintotp
 import paho.mqtt.client
 import paho.mqtt.publish
 import requests
-
 import wyzecam
 from wyzecam import WyzeCamera
 from wyzecam import WyzeIOTCSessionState as SessionState
@@ -409,7 +408,7 @@ class WyzeBridge:
 
     def check_rtsp_fw(self, cam: WyzeCamera) -> Optional[str]:
         """Check and add rtsp."""
-        if not env_bool("rtsp_fw"):
+        if not (rtsp_fw := env_bool("rtsp_fw")):
             return None
         if cam.firmware_ver[:5] not in wyzecam.tutk.tutk.RTSP_FW:
             return None
@@ -420,7 +419,7 @@ class WyzeBridge:
             if session.session_check().mode != 2:
                 log.warning(f"[{cam.nickname}] Camera is not on same LAN")
                 return None
-            return session.check_native_rtsp()
+            return session.check_native_rtsp(start_rtsp=rtsp_fw.lower() == "force")
 
     def get_filtered_cams(self, fresh_data: bool = False) -> None:
         """Get all cameras that are enabled."""
