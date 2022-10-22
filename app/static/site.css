@@ -156,3 +156,17 @@ video {
     background-color: #0a0a0a !important;
   }
 }
+
+.fullscreen button {
+  display: inline-block;
+  position: fixed;
+  bottom: 30px;
+  right: 30px;
+  z-index: 1000;
+  opacity: 0.25;
+  transition: 0.5s;
+}
+
+.fullscreen button:hover {
+  opacity: 1;
+}

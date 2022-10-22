@@ -65,8 +65,12 @@ function applyPreferences() {
       `is-${repeatNumber == 5 ? "one-fifth" : 12 / repeatNumber}`
     );
   }
-
-  const sortOrder = getCookie("camera_order", "");
+  var sortOrder = getCookie("camera_order", "");
+  // clean escaped camera_order from flask args
+  if (/["]/.test(sortOrder)) {
+    sortOrder = sortOrder.replace(/\\054/g, ",").replace(/["]+/g, '')
+    setCookie("camera_order", sortOrder)
+  }
   console.debug("applyPreferences camera_order", sortOrder);
   const ids = sortOrder.split(",");
   var cameras = [...document.querySelectorAll(".camera")];
@@ -525,4 +529,23 @@ document.addEventListener("DOMContentLoaded", () => {
     span.addEventListener("click", clickDemand);
   });
 
+  // fullscreen mode
+  function toggleFullscreen(fs) {
+    if (fs === undefined) {
+      fs = getCookie("fullscreen");
+    }
+    let icon = document.querySelector(".fullscreen .fas");
+    icon.classList.remove("fa-maximize", "fa-minimize")
+    icon.classList.add(fs ? "fa-minimize" : "fa-maximize")
+    document.querySelector(".section").style.paddingTop = fs ? ".75rem" : "";
+    document.querySelectorAll(".fs-display-none").forEach((e) => {
+      e.style.display = fs ? "none" : ""
+    })
+  }
+  document.querySelector(".fullscreen button").addEventListener("click", () => {
+    let fs = !getCookie("fullscreen", false) ? "1" : "";
+    setCookie("fullscreen", fs)
+    toggleFullscreen(fs)
+  })
+  toggleFullscreen()
 });
