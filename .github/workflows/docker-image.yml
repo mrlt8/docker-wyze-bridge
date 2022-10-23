@@ -72,6 +72,9 @@ jobs:
           images: |
             ${{ github.repository_owner }}/wyze-bridge
             ghcr.io/${{ github.repository }}
+          flavor: |
+            latest=auto
+            suffix=-hw
           tags: |
             type=schedule,suffix=-hw
             type=semver,pattern={{ version }},suffix=-hw
