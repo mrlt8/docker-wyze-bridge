@@ -2,7 +2,7 @@ name: Docker
 
 on:
   schedule:
-    - cron: "31 22 * * *"
+    - cron: "31 22 * * 0"
   push:
     branches: [main, dev]
     # Publish semver tags as releases.
@@ -63,9 +63,24 @@ jobs:
             type=edge,branch=main,enable=${{ github.event_name == 'push' }}
             type=ref,event=branch,enable=${{ contains(github.ref,'dev') }}
 
+      # Extract metadata (tags, labels) for Docker
+      # https://github.com/docker/metadata-action
+      - name: Extract Docker metadata for hwaccel builds
+        id: hwmeta
+        uses: docker/metadata-action@v3
+        with:
+          images: |
+            ${{ github.repository_owner }}/wyze-bridge
+            ghcr.io/${{ github.repository }}
+          tags: |
+            type=schedule,suffix=-hw
+            type=semver,pattern={{ version }},suffix=-hw
+            type=edge,branch=main,enable=${{ github.event_name == 'push' }},suffix=-hw
+            type=ref,event=branch,enable=${{ contains(github.ref,'dev') }},suffix=-hw
+
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
-      - name: Build and push Docker image
+      - name: Build and push a multi-arch Docker image
         uses: docker/build-push-action@v2
         with:
           builder: ${{ steps.buildx.outputs.name }}
@@ -81,4 +96,24 @@ jobs:
             io.hass.version=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
             io.hass.type=addon
             io.hass.arch=amd64,armhf,aarch64
+          tags: ${{ steps.meta.outputs.tags }}
+
+      # Build and push Docker image with Buildx (don't push on PR)
+      # https://github.com/docker/build-push-action
+      - name: Build and push an amd64 Docker image with hwaccel enabled
+        uses: docker/build-push-action@v2
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ./app/
+          push: ${{ github.event_name != 'pull_request' }}
+          file: ./app/Dockerfile.hwaccel
+          platforms: linux/amd64
+          # build-args: SDK_KEY=${{secrets.SDK_KEY}}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            io.hass.name=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.title'] }}
+            io.hass.description=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.description'] }}
+            io.hass.version=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            io.hass.type=addon
+            io.hass.arch=amd64
           tags: ${{ steps.meta.outputs.tags }}
