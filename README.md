@@ -33,19 +33,19 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.8.10
+## What's Changed in v1.8.11
 
-  - Fix: bitstream data when using rotation which could cause issues in some clients like Homebridge. Thanks @noelhibbard! #552
-  - Fix: broken snapshots for cameras with spaces in the name if stream auth enabled. Thanks @RUHavingFun! #542
-  - Updated: iOS and App version bump.
-  - New: ENV option `RTSP_FW=True` to proxy an extra RTSP stream if on official RTSP FW (4.19.x, 4.20.x, 4.28.x, 4.29.x, 4.61.x.).
-    - Additional stream will be available with the `fw` suffix e.g., `cam-namefw`
-  - New: ENV option `H264_ENC` to allow for custom h264 encoder (e.g. h264_cuvid or h264_v4l2m2m) for rotation/re-encoding. #548
-    - Additional configuration required for hwaccel encoding. 
-    - h264_v4l2m2m currently has bistream issues and is NOT working in certain clients like homebridge. 
-    - Use `Dockerfile.hwaccel` for ffmpeg compiled with with h264_cuvid.
-  - Fixed: env bug on startup #559 Thanks @tbrausch!
-  
+  - Fix: missing url for RTSP_FW #564 Thanks @anderfrank!
+  - New: `RTSP_FW=force` option to force toggle the RTSP stream on official RTSP FW (4.19.x, 4.20.x, 4.28.x, 4.29.x, 4.61.x.).
+  - New: Fullscreen/kiosk mode for web-ui that hides all the extra links and buttons. #567 Thanks @RUHavingFun! 
+  - New: Pre-built docker images with hwaccel enabled for amd64 #548
+  - New: Show time since last snapshot
+  - New: Query params for web-ui:
+    - Fullscreen/kiosk mode `http://localhost:5000/?fullscreen`
+    - Number of columns `http://localhost:5000/?columns=4`
+    - Preview refresh interval `http://localhost:5000/?refresh=60`
+    - Camera order `http://localhost:5000/?order=front-cam,back-cam,garage,other`
+
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
 ## Features
@@ -190,6 +190,12 @@ environment:
   - WB_RTMP_URL=rtmp://my-hostname-or-ip:5678/
   - WB_HLS_URL=http://my-hostname-or-ip:9090/
 ```
+Query params to adjust web-ui:
+
+    - Fullscreen/kiosk mode `http://localhost:5000/?fullscreen`
+    - Number of columns `http://localhost:5000/?columns=4`
+    - Preview refresh interval `http://localhost:5000/?refresh=60`
+    - Camera order `http://localhost:5000/?order=front-cam,back-cam,garage,other`
 
 #### Camera Stream URIs
 
@@ -401,7 +407,23 @@ In the event that you need to allow the bridge to access a select number of came
     NET_MODE: P2P
   ```
 
+### Proxy stream from RTSP firmware
+
+**For cameras on official RTSP FW (4.19.x, 4.20.x, 4.28.x, 4.29.x, 4.61.x.) only.**
+
+The bridge can pull the credentials from the camera and proxy the stream over the bridge.
+
+The secondary stream will be available with the `fw` suffix e.g., `cam-namefw`.
+
+```yaml
+# Add cameras that have RTSP enabled in the app:
+RTSP_FW=true
+# or use force to turn on the rtsp stream:
+RTSP_FW=force
+```
 ### Snapshot/Still Images
+
+**See [web-ui](#web-ui) to pull snapshots on-demand.**
 
 - `SNAPSHOT=API` Will run ONCE at startup and will grab a *high-quality* thumbnail from the wyze api and save it to `/img/cam-name.jpg` on docker installs or `/config/www/cam-name.jpg` in Home Assistant mode.
 

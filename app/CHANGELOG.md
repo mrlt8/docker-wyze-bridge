@@ -1,3 +1,14 @@
+## What's Changed in v1.8.11
+
+  - Fix: missing url for RTSP_FW #564 Thanks @anderfrank!
+  - New: Fullscreen/kiosk mode for web-ui that hides all the extra links and buttons. #567 Thanks @RUHavingFun! 
+  - New: Pre-built docker images with hwaccel enabled for amd64 #548
+  - New: Show time since last snapshot
+  - New: Query params for web-ui:
+    - Fullscreen/kiosk mode `http://localhost:5000/?fullscreen`
+    - Number of columns `http://localhost:5000/?columns=4`
+    - Preview refresh interval `http://localhost:5000/?refresh=60`
+    - Camera order `http://localhost:5000/?order=front-cam,back-cam,garage,other`
 ## What's Changed in v1.8.10
 
   - Fix: bitstream data when using rotation which could cause issues in some clients like Homebridge. Thanks @noelhibbard! #552
