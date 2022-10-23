@@ -75,6 +75,7 @@ jobs:
           flavor: |
             latest=auto
             suffix=-hw
+            suffixLatest=true
           tags: |
             type=schedule,suffix=-hw
             type=semver,pattern={{ version }},suffix=-hw
