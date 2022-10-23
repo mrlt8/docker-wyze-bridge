@@ -554,7 +554,7 @@ document.addEventListener("DOMContentLoaded", () => {
     let icon = document.querySelector(".fullscreen .fas");
     icon.classList.remove("fa-maximize", "fa-minimize")
     icon.classList.add(fs ? "fa-minimize" : "fa-maximize")
-    document.querySelector(".section").style.paddingTop = fs ? ".75rem" : "";
+    document.querySelector(".section").style.padding = fs ? "1.5rem" : "";
     document.querySelectorAll(".fs-display-none").forEach((e) => {
       e.style.display = fs ? "none" : ""
     })
