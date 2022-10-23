@@ -138,13 +138,20 @@ video {
   background-color: #000;
 }
 
-.cam-overlay {
+.is-overlay button,
+.card:hover .age,
+button:disabled+.age {
   display: none;
 }
 
-.card:hover img+.cam-overlay {
-  display: block;
+.card:hover .is-overlay button {
+  display: inline-block;
 }
+
+.is-overlay .age {
+  text-shadow: #000 0px 0px 3px;
+}
+
 
 .drag_handle {
   cursor: move;
