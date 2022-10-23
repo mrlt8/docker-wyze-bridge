@@ -4,6 +4,7 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
+import wyze_bridge
 from flask import (
     Flask,
     Response,
@@ -15,8 +16,6 @@ from flask import (
     send_from_directory,
 )
 from werkzeug.exceptions import NotFound
-
-import wyze_bridge
 from wyze_bridge import WyzeBridge
 
 log = logging.getLogger(__name__)
@@ -44,11 +43,14 @@ def create_app():
 
     @app.route("/")
     def index():
-        columns = request.cookies.get("number_of_columns", "2")
+        if not (columns := request.args.get("columns")):
+            columns = request.cookies.get("number_of_columns", "2")
+        if not (refresh := request.args.get("refresh")):
+            refresh = request.cookies.get("refresh_period", "30")
         number_of_columns = int(columns) if columns.isdigit() else 0
-        refresh = request.cookies.get("refresh_period", "30")
         refresh_period = int(refresh) if refresh.isdigit() else 0
         show_video = bool(request.cookies.get("show_video"))
+
         if "video" in request.args:
             show_video = True
         elif "snapshot" in request.args:
@@ -68,6 +70,13 @@ def create_app():
         resp.set_cookie("number_of_columns", str(number_of_columns))
         resp.set_cookie("refresh_period", str(refresh_period))
         resp.set_cookie("show_video", "1" if show_video else "")
+        fullscreen = "fullscreen" in request.args or bool(
+            request.cookies.get("fullscreen")
+        )
+        resp.set_cookie("fullscreen", "1" if fullscreen else "")
+        if order := request.args.get("order"):
+            resp.set_cookie("camera_order", order)
+
         return resp
 
     @app.route("/mfa/<path:mfa_code>")

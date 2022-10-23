@@ -17,7 +17,7 @@
 
 <body>
     <section class="section">
-        <nav class="navbar block is-dark">
+        <nav class="navbar block is-dark fs-display-none">
             <div class="navbar-brand">
                 {% if cameras.enabled != cameras.total %}
                 <a data-filter="enabled" class="navbar-item is-tab is-active filter">
@@ -117,7 +117,7 @@
             <div id="{{ cam_uri }}" class="camera column {{'is-hidden' if not camera.enabled}}"
                 data-enabled="{{camera.enabled}}" data-connected="{{camera.connected}}">
                 <div class="card">
-                    <header class="card-header">
+                    <header class="card-header fs-display-none">
                         <div class="card-header-title">
                             <span class="icon status {{'enabled' if camera.enabled}}" data-cam="{{cam_uri}}">
                                 <i class="fas fa-circle-stop" aria-hidden="true"></i>
@@ -209,7 +209,7 @@
                             </tbody>
                         </table>
                     </div>
-                    <footer class="card-footer">
+                    <footer class="card-footer fs-display-none">
                         <a href="{{camera.hls_url}}" class="card-footer-item">{% if camera.stream_auth %}<span
                                 class="icon">
                                 <i class="fas fa-lock"></i>
@@ -233,7 +233,7 @@
             </div>
             {% endfor %}
         </div>
-        <div class="tabs is-toggle is-toggle is-centered">
+        <div class="tabs is-toggle is-toggle is-centered fs-display-none">
             <ul>
                 <li {% if not show_video %}class="is-active" {% endif %}>
                     <a href="?snapshot">
@@ -249,9 +249,16 @@
                 </li>
             </ul>
         </div>
+        <div class="fullscreen">
+            <button class="button is-small">
+                <span class="icon is-small">
+                    <i class="fas fa-maximize"></i>
+                </span>
+            </button>
+        </div>
         {% endif %}
     </section>
-    <footer class="footer">
+    <footer class="footer fs-display-none">
         <div class="content has-text-centered">
             <p>
                 <a href="https://github.com/mrlt8/docker-wyze-bridge"><i class="fa-brands fa-github"></i>
