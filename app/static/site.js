@@ -556,7 +556,7 @@ document.addEventListener("DOMContentLoaded", () => {
     icon.classList.add(fs ? "fa-minimize" : "fa-maximize")
     document.querySelector(".section").style.padding = fs ? "1.5rem" : "";
     document.querySelectorAll(".fs-display-none").forEach((e) => {
-      e.style.display = fs ? "none" : ""
+      if (fs) { e.classList.add("fs-mode") } else { e.classList.remove("fs-mode") }
     })
   }
   document.querySelector(".fullscreen button").addEventListener("click", () => {
