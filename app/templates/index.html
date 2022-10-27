@@ -150,7 +150,7 @@
                             <video-js id="video-{{cam_uri}}"
                                 class="video-js vjs-live vjs-big-play-centered loading-preview" controls preload="none"
                                 poster="{{camera.img_url or url_for('static',filename='loading.svg')}}"
-                                data-cam="{{cam_uri}}" data-setup='{"liveui": true, "fluid": true}'
+                                data-cam="{{cam_uri}}" data-setup='{"liveui": true, "fluid": true, "autoplay": "muted"}'
                                 data-src="{{camera.hls_url}}stream.m3u8" width="100%">
                                 <source src="{{camera.hls_url}}stream.m3u8" type="application/x-mpegURL" />
                                 <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
@@ -271,7 +271,7 @@
             </p>
         </div>
     </footer>
-    <script src="https://vjs.zencdn.net/7.19.2/video.min.js"></script>
+    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
 </body>
 
 </html>
