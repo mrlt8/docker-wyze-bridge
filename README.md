@@ -94,7 +94,7 @@ See [basic usage](#basic-usage) for additional information.
 | Wyze Cam V3 Pro [2K]    | HL_CAM3P       | ❓                                                           |
 | Wyze Cam Pan v3         | HL_PAN3        | ❓                                                           |
 | Wyze Cam Pan Pro [2K]   | HL_PANP        | ❓                                                           |
-| Wyze Cam Outdoor Pro    | AN_RSCW        | ❓                                                           |
+| Wyze Battery Cam Pro    | AN_RSCW        | ❓                                                           |
 | Wyze Cam Doorbell Pro   | GW_BE1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276) |
 | Wyze Cam Doorbell Pro 2 | AN_RDB1        | ❓                                                           |
 
