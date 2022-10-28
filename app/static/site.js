@@ -565,4 +565,12 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleFullscreen(fs)
   })
   toggleFullscreen()
+
+  // Auto-play video
+  document.querySelector("#enable-autoplay").addEventListener("change", box => {
+    let checked = box.target.checked;
+    setCookie("autoplay", checked);
+    if (checked) { document.querySelectorAll('video').forEach(video => { videojs(video).play() }); }
+  })
+
 });
