@@ -4,10 +4,9 @@ from hashlib import md5
 from typing import Any, Dict, List, Optional
 
 import requests
-
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
-IOS_VERSION = "16.0.3"
+IOS_VERSION = "16.1"
 APP_VERSION = "2.35.0.13"
 
 SV_VALUE = "e1fe392906d54888a9b99b88de4162d7"

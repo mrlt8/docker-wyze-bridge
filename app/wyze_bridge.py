@@ -892,7 +892,7 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list[str]
         + ["-map", "0:v"]
         + (["-map", "1:a", "-shortest"] if audio_in else [])
         + ["-f", "tee"]
-        + [rtsp_ss + get_record_cmd(uri) + livestream]
+        + [rtsp_ss + get_record_cmd(uri, audio_out) + livestream]
     )
     if "ffmpeg" not in cmd[0].lower():
         cmd.insert(0, "ffmpeg")
@@ -901,27 +901,28 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list[str]
     return cmd
 
 
-def get_record_cmd(uri: str) -> str:
+def get_record_cmd(uri: str, audio_codec: str) -> str:
     """Check if recording is enabled and return ffmpeg tee cmd."""
     if not env_bool(f"RECORD_{uri}", env_bool("RECORD_ALL")):
         return ""
     seg_time = env_bool("RECORD_LENGTH", "60")
     file_name = "{CAM_NAME}_%Y-%m-%d_%H-%M-%S_%Z"
     file_name = env_bool("RECORD_FILE_NAME", file_name, style="original").rstrip(".mp4")
+    container = "mp4" if audio_codec.lower() == "aac" else "mov"
     path = "/%s/" % env_bool(
         f"RECORD_PATH_{uri}", env_bool("RECORD_PATH", "record/{CAM_NAME}")
     ).format(cam_name=uri.lower(), CAM_NAME=uri).strip("/")
     os.makedirs(path, exist_ok=True)
-    log.info(f"📹 Will record {seg_time}s clips to {path}")
+    log.info(f"📹 Will record {seg_time}s {container} clips to {path}")
     return (
         f"|[onfail=ignore:f=segment"
         f":segment_time={seg_time}"
         ":segment_atclocktime=1"
-        ":segment_format=mp4"
+        f":segment_format={container}"
         ":reset_timestamps=1"
         ":strftime=1"
         ":use_fifo=1]"
-        f"{path}{file_name.format(cam_name=uri.lower(),CAM_NAME=uri)}.mp4"
+        f"{path}{file_name.format(cam_name=uri.lower(),CAM_NAME=uri)}.{container}"
     )
 
 

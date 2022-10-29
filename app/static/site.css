@@ -148,8 +148,9 @@ button:disabled+.age {
   display: inline-block;
 }
 
-.is-overlay .age {
-  text-shadow: #000 0px 0px 3px;
+.is-overlay .age,
+.fs-mode .card-header-title {
+  text-shadow: #000 0px 0px 2px;
 }
 
 
@@ -176,4 +177,25 @@ button:disabled+.age {
 
 .fullscreen button:hover {
   opacity: 1;
+}
+
+.card-content {
+  padding: 1rem;
+}
+
+.fs-mode {
+  visibility: hidden;
+  height: 0;
+}
+
+.fs-mode .card-header-title {
+  visibility: visible;
+  z-index: 100;
+  margin: 0;
+  padding: 1.5rem 1rem;
+}
+
+nav.fs-mode,
+footer.fs-mode {
+  display: none;
 }

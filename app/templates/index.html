@@ -148,10 +148,12 @@
                         <figure class="image">
                             {% if show_video and (camera.connected or (camera.on_demand and camera.enabled)) %}
                             <video-js id="video-{{cam_uri}}"
-                                class="video-js vjs-live vjs-big-play-centered loading-preview" controls preload="none"
+                                class="video-js vjs-live vjs-big-play-centered loading-preview" controls muted
+                                playsinline preload={{"true" if autoplay else "false" }}
                                 poster="{{camera.img_url or url_for('static',filename='loading.svg')}}"
-                                data-cam="{{cam_uri}}" data-setup='{"liveui": true, "fluid": true}'
-                                data-src="{{camera.hls_url}}stream.m3u8" width="100%">
+                                data-cam="{{cam_uri}}"
+                                data-setup='{"liveui": true, "fluid": true, "muted": true, "autoplay": {{'"muted"' if autoplay
+                                else "false" }}}' data-src="{{camera.hls_url}}stream.m3u8" width="100%">
                                 <source src="{{camera.hls_url}}stream.m3u8" type="application/x-mpegURL" />
                                 <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
                                     src="{{camera.img_url or url_for('static',filename='loading.svg')}}"
@@ -250,6 +252,12 @@
                 </li>
             </ul>
         </div>
+        <div class="has-text-centered has-text-grey-light fs-display-none">
+            <label class="checkbox">
+                <input type="checkbox" id="enable-autoplay" {{"checked" if autoplay}}>
+                Autoplay
+            </label>
+        </div>
         <div class="fullscreen">
             <button class="button is-small">
                 <span class="icon is-small">
@@ -271,7 +279,7 @@
             </p>
         </div>
     </footer>
-    <script src="https://vjs.zencdn.net/7.19.2/video.min.js"></script>
+    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
 </body>
 
 </html>

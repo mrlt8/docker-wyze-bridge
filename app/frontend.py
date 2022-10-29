@@ -50,6 +50,9 @@ def create_app():
         number_of_columns = int(columns) if columns.isdigit() else 0
         refresh_period = int(refresh) if refresh.isdigit() else 0
         show_video = bool(request.cookies.get("show_video"))
+        autoplay = bool(request.cookies.get("autoplay"))
+        if "autoplay" in request.args:
+            autoplay = True
 
         if "video" in request.args:
             show_video = True
@@ -64,6 +67,7 @@ def create_app():
                 hass=wb.hass,
                 version=wb.version,
                 show_video=show_video,
+                autoplay=autoplay,
             )
         )
 

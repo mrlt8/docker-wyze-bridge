@@ -399,6 +399,7 @@ document.addEventListener("DOMContentLoaded", () => {
     refresh_period = -1;
     clearInterval(refresh_interval);
     document.getElementById("connection-lost").style.display = "block";
+    autoplay("stop");
     document.querySelectorAll("img.connected").forEach((i) => { i.classList.remove("connected") })
     document.querySelectorAll(".cam-overlay").forEach((i) => {
       i.getElementsByClassName("fas")[0].classList.remove("fa-spin");
@@ -444,6 +445,7 @@ document.addEventListener("DOMContentLoaded", () => {
       if (status == "connected") {
         statusIcon.classList.add("fa-circle-play", "has-text-success");
         statusIcon.parentElement.title = "Click/tap to pause";
+        autoplay();
         if (preview) { preview.classList.add("connected") }
         let noPreview = document.querySelector(`#${cam} .no-preview`)
         if (noPreview) {
@@ -556,7 +558,7 @@ document.addEventListener("DOMContentLoaded", () => {
     icon.classList.add(fs ? "fa-minimize" : "fa-maximize")
     document.querySelector(".section").style.padding = fs ? "1.5rem" : "";
     document.querySelectorAll(".fs-display-none").forEach((e) => {
-      e.style.display = fs ? "none" : ""
+      if (fs) { e.classList.add("fs-mode") } else { e.classList.remove("fs-mode") }
     })
   }
   document.querySelector(".fullscreen button").addEventListener("click", () => {
@@ -565,4 +567,19 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleFullscreen(fs)
   })
   toggleFullscreen()
+
+  // Auto-play video
+  function autoplay(action) {
+    let videos = document.querySelectorAll('video');
+    if (action == "stop") {
+      videos.forEach(video => { videojs(video).pause(); });
+    } else if (getCookie("autoplay")) {
+      videos.forEach(video => { videojs(video).play(); });
+    }
+  }
+  document.querySelector("#enable-autoplay").addEventListener("change", box => {
+    setCookie("autoplay", box.target.checked);
+    autoplay();
+  })
+
 });

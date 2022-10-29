@@ -33,18 +33,16 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.8.11
+## What's Changed in v1.8.12
 
-  - Fix: missing url for RTSP_FW #564 Thanks @anderfrank!
-  - New: `RTSP_FW=force` option to force toggle the RTSP stream on official RTSP FW (4.19.x, 4.20.x, 4.28.x, 4.29.x, 4.61.x.).
-  - New: Fullscreen/kiosk mode for web-ui that hides all the extra links and buttons. #567 Thanks @RUHavingFun! 
-  - New: Pre-built docker images with hwaccel enabled for amd64 #548
-  - New: Show time since last snapshot
+  - Fixed: Local recording creating zero byte files when audio codec was not supported by the mp4 container. #575 Thanks @pldimarco!
+    - Note: Bridge wil use the `mov` container if using the raw PCM from camera. Please usee `AUDIO_CODEC=aac` if you require an mp4.
+  - New: Show camera status and name in fullscreen WebUI. 
+  - New: Optional autoplay in WebUI - Requires autoplay support in the browser. #574 Thanks @JA16122000!
   - New: Query params for web-ui:
-    - Fullscreen/kiosk mode `http://localhost:5000/?fullscreen`
-    - Number of columns `http://localhost:5000/?columns=4`
-    - Preview refresh interval `http://localhost:5000/?refresh=60`
-    - Camera order `http://localhost:5000/?order=front-cam,back-cam,garage,other`
+    - autoplay `http://localhost:5000/?autoplay`
+  - Updated: rtsp-simple-server to v0.20.1
+  - Updated: iOS Version
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -94,7 +92,7 @@ See [basic usage](#basic-usage) for additional information.
 | Wyze Cam V3 Pro [2K]    | HL_CAM3P       | ❓                                                           |
 | Wyze Cam Pan v3         | HL_PAN3        | ❓                                                           |
 | Wyze Cam Pan Pro [2K]   | HL_PANP        | ❓                                                           |
-| Wyze Cam Outdoor Pro    | AN_RSCW        | ❓                                                           |
+| Wyze Battery Cam Pro    | AN_RSCW        | ❓                                                           |
 | Wyze Cam Doorbell Pro   | GW_BE1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276) |
 | Wyze Cam Doorbell Pro 2 | AN_RDB1        | ❓                                                           |
 
@@ -196,6 +194,12 @@ Query params to adjust web-ui:
     - Number of columns `http://localhost:5000/?columns=4`
     - Preview refresh interval `http://localhost:5000/?refresh=60`
     - Camera order `http://localhost:5000/?order=front-cam,back-cam,garage,other`
+    - autoplay `http://localhost:5000/?autoplay`
+
+NOTE: You can combine multiple queries into a single request:
+```text
+http://localhost:5000/?fullscreen&autoplay&columns=2&refresh=0&order=front,side
+```
 
 #### Camera Stream URIs
 
