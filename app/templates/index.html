@@ -149,7 +149,7 @@
                             {% if show_video and (camera.connected or (camera.on_demand and camera.enabled)) %}
                             <video-js id="video-{{cam_uri}}"
                                 class="video-js vjs-live vjs-big-play-centered loading-preview" controls muted
-                                preload={{"true" if autoplay else "false" }}
+                                playsinline preload={{"true" if autoplay else "false" }}
                                 poster="{{camera.img_url or url_for('static',filename='loading.svg')}}"
                                 data-cam="{{cam_uri}}"
                                 data-setup='{"liveui": true, "fluid": true, "muted": true, "autoplay": {{'"muted"' if autoplay
