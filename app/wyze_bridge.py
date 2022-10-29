@@ -865,9 +865,9 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list[str]
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
     if audio and "codec" in audio:
-        audio_in = f"-f {audio['codec']} -ar {audio['rate']} -i /tmp/{uri.lower()}.wav"
+        audio_in = f"-f {audio['codec']} -ar {audio['rate']} -thread_queue_size 100 -i /tmp/{uri.lower()}.wav"
         audio_out = audio["codec_out"] or "copy"
-        a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
+        a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=10").split()
     rtsp_transport = "udp" if "udp" in env_bool("RTSP_PROTOCOLS") else "tcp"
     rss_cmd = f"[{{}}f=rtsp:{rtsp_transport=:}:bsfs/v=dump_extra=freq=keyframe]rtsp://0.0.0.0:8554/{uri.lower()}"
     rtsp_ss = rss_cmd.format("")
@@ -881,7 +881,7 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list[str]
         + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
         .split()
-        + ["-thread_queue_size", "64", "-threads", "1"]
+        + ["-thread_queue_size", "100", "-threads", "0"]
         + ["-analyzeduration", "50", "-probesize", "50", "-f", "h264", "-i", "pipe:"]
         + audio_in.split()
         + ["-flags", "+global_header", "-c:v"]
@@ -890,7 +890,7 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list[str]
         + (a_filter if audio and audio_out != "copy" else [])
         + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
         + ["-map", "0:v"]
-        + (["-map", "1:a", "-shortest"] if audio_in else [])
+        + (["-map", "1:a"] if audio_in else [])
         + ["-f", "tee"]
         + [rtsp_ss + get_record_cmd(uri, audio_out) + livestream]
     )
