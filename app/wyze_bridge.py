@@ -411,13 +411,16 @@ class WyzeBridge:
         if cam.firmware_ver[:5] not in wyzecam.tutk.tutk.RTSP_FW:
             return None
         log.info(f"Checking {cam.nickname} for firmware RTSP on v{cam.firmware_ver}")
-        with wyzecam.WyzeIOTC() as iotc, wyzecam.WyzeIOTCSession(
-            iotc.tutk_platform_lib, self.user, cam
-        ) as session:
-            if session.session_check().mode != 2:
-                log.warning(f"[{cam.nickname}] Camera is not on same LAN")
-                return None
-            return session.check_native_rtsp(start_rtsp=rtsp_fw.lower() == "force")
+        try:
+            with wyzecam.WyzeIOTC() as iotc, wyzecam.WyzeIOTCSession(
+                iotc.tutk_platform_lib, self.user, cam
+            ) as session:
+                if session.session_check().mode != 2:
+                    log.warning(f"[{cam.nickname}] Camera is not on same LAN")
+                    return None
+                return session.check_native_rtsp(start_rtsp=rtsp_fw.lower() == "force")
+        except wyzecam.tutk.tutk.TutkError:
+            return None
 
     def get_filtered_cams(self, fresh_data: bool = False) -> None:
         """Get all cameras that are enabled."""
