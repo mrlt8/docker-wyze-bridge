@@ -648,7 +648,9 @@ class WyzeBridge:
 
         return camera_data
 
-    def rtsp_snap(self, cam_name: str, wait: bool = True) -> Optional[str]:
+    def rtsp_snap(
+        self, cam_name: str, wait: bool = True, fast: bool = True
+    ) -> Optional[str]:
         """
         Take an rtsp snapshot with ffmpeg.
         @param cam_name: uri name of camera
@@ -664,18 +666,21 @@ class WyzeBridge:
         img = f"{self.img_path}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
         ffmpeg_cmd = (
             ["ffmpeg", "-loglevel", "fatal", "-threads", "1"]
-            + ["-analyzeduration", "50", "-probesize", "50"]
-            + ["-rtsp_transport", "tcp", "-i", f"rtsp://{auth}0.0.0.0:8554/{cam_name}"]
+            + ["-analyzeduration", "50", "-probesize", "500" if fast else "1000"]
+            + ["-f", "rtsp", "-rtsp_transport", "tcp", "-thread_queue_size", "100"]
+            + ["-i", f"rtsp://{auth}0.0.0.0:8554/{cam_name}", "-an"]
             + ["-f", "image2", "-frames:v", "1", "-y", img]
         )
         ffmpeg = self.rtsp_snapshot_processes.get(cam_name, None)
 
         if not ffmpeg or ffmpeg.poll() is not None:
             ffmpeg = self.rtsp_snapshot_processes[cam_name] = Popen(ffmpeg_cmd)
-
         if wait:
             try:
-                ffmpeg.wait(timeout=30)
+                if ffmpeg.wait(timeout=30) != 0:
+                    if not fast:
+                        return None
+                    self.rtsp_snap(cam_name, fast=False)
             except TimeoutExpired:
                 ffmpeg.kill()
                 return None
