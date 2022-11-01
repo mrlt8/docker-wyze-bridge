@@ -376,7 +376,7 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Update status icon based on connection status
-  var sse = new EventSource("api/sse_status");
+  const sse = new EventSource("api/sse_status");
   sse.addEventListener("open", () => {
     document.getElementById("connection-lost").style.display = "none";
     document.querySelectorAll(".cam-overlay button.offline").forEach((btn) => {
