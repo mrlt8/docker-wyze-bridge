@@ -184,11 +184,11 @@ function sortable(parent, selector, onUpdate = null) {
 async function update_img(oldUrl, useImg = false) {
   let [cam, ext] = oldUrl.split("/").pop().split("?")[0].split(".");
   let newUrl = "snapshot/" + cam + "." + ext + "?" + Date.now();
-  if (useImg) {
+  if (useImg || ext == "svg") {
     newUrl = "img/" + cam + "." + ext;
   }
   console.debug("update_img", oldUrl, newUrl);
-  let button = document.querySelector(`.is-overlay > [data-cam="${cam}"]`);
+  let button = document.querySelector(`.update-preview[data-cam="${cam}"]`);
   if (button) {
     button.disabled = true;
     button.getElementsByClassName("fas")[0].classList.add("fa-spin");
@@ -227,10 +227,9 @@ async function update_img(oldUrl, useImg = false) {
     button.disabled = false;
     button.getElementsByClassName("fas")[0].classList.remove("fa-spin");
     button.style.display = null;
-    let ageSpan = button.parentElement.querySelectorAll(".age")[0];
-    if (!imgDate.url.endsWith(".svg")) {
-      ageSpan.dataset.age = imgDate.headers.get("Last-Modified");
-    }
+  }
+  if (!imgDate.url.endsWith(".svg")) {
+    button.parentElement.querySelector(".age").dataset.age = new Date(imgDate.headers.get("Last-Modified")).getTime();
   }
   return newUrl;
 }
@@ -318,23 +317,17 @@ document.addEventListener("DOMContentLoaded", () => {
   checkAPI.addEventListener("click", getGithub);
 
   // Update preview after loading the page
-  async function loadPreview(placeholder) {
-    let cam = placeholder.getAttribute("data-cam");
-    let oldUrl = placeholder.getAttribute("src");
+  async function loadPreview(img) {
+    let cam = img.getAttribute("data-cam");
+    var oldUrl = img.getAttribute("src");
     if (oldUrl == null || !oldUrl.includes(cam)) {
       oldUrl = `snapshot/${cam}.jpg`;
     }
     try {
-      let useImg =
-        getCookie("refresh_period") <= 10 ||
-        !placeholder.classList.contains("connected");
-      let newUrl = await update_img(oldUrl, useImg);
-      placeholder.parentElement
-        .querySelectorAll(
-          "[src$=loading\\.svg],[style*=loading\\.svg],[poster$=loading\\.svg]"
-        )
+      let newUrl = await update_img(oldUrl, (getCookie("refresh_period") <= 10 || !img.classList.contains("connected")));
+      let newVal = newUrl;
+      img.parentElement.querySelectorAll("[src$=loading\\.svg],[style*=loading\\.svg],[poster$=loading\\.svg]")
         .forEach((e) => {
-          let newVal = newUrl;
           for (let attr of e.attributes) {
             if (attr.value.includes("loading.svg")) {
               if (attr.name == "style") {
@@ -345,25 +338,23 @@ document.addEventListener("DOMContentLoaded", () => {
             }
           }
         });
-      placeholder.classList.remove("loading-preview");
+      img.classList.remove("loading-preview");
     } catch {
       setTimeout(() => {
-        loadPreview(placeholder);
+        loadPreview(img);
       }, 30000);
     }
   }
-  async function updateSnapshot(e) {
-    let cam = e.target.closest("button").getAttribute("data-cam");
-    let img = document
-      .querySelector(`.refresh_img[data-cam=${cam}]`)
-      .getAttribute("src");
-    if (img != null) {
-      await update_img(img);
-    }
-  }
-  document.querySelectorAll(".loading-preview").forEach(loadPreview);
-  document.querySelectorAll(".update-preview").forEach((up) => {
-    up.addEventListener("click", updateSnapshot);
+  document.querySelectorAll(".loading-preview").forEach((img) => { loadPreview(img) });
+
+  // click to update preview
+  document.querySelectorAll(".update-preview[data-cam]").forEach((button) => {
+    button.addEventListener("click", async () => {
+      let img = document.querySelector(`.refresh_img[data-cam=${button.getAttribute("data-cam")}]`);
+      if (img && img.getAttribute("src")) {
+        await update_img(img.getAttribute("src"));
+      }
+    });
   });
 
   // Restart bridge/rtsp-simple-server.
@@ -388,10 +379,12 @@ document.addEventListener("DOMContentLoaded", () => {
   const sse = new EventSource("api/sse_status");
   sse.addEventListener("open", () => {
     document.getElementById("connection-lost").style.display = "none";
-    document.querySelectorAll(".cam-overlay button").forEach((i) => {
-      i.disabled = false;
-      i.parentElement.style.display = null;
-      i.getElementsByClassName("fas")[0].classList.remove("fa-spin");
+    document.querySelectorAll(".cam-overlay button.offline").forEach((btn) => {
+      btn.disabled = false;
+      btn.classList.remove("offline");
+      let icon = btn.getElementsByClassName("fas")[0]
+      icon.classList.remove("fa-plug-circle-exclamation");
+      icon.classList.add("fa-arrows-rotate");
     })
     applyPreferences();
   });
@@ -407,6 +400,14 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll("[data-enabled=True] .card-header-title .status i").forEach((i) => {
       i.setAttribute("class", "fas fa-circle-exclamation")
     });
+    document.querySelectorAll(".cam-overlay button").forEach((btn) => {
+      btn.disabled = true;
+      btn.parentElement.style.display = null;
+      btn.classList.add("offline");
+      let icon = btn.getElementsByClassName("fas")[0]
+      icon.classList.remove("fa-arrows-rotate", "fa-spin");
+      icon.classList.add("fa-plug-circle-exclamation");
+    })
   });
   sse.addEventListener("mfa", (e) => {
     const alertDiv = document.getElementById("alert")
@@ -538,15 +539,18 @@ document.addEventListener("DOMContentLoaded", () => {
   // Preview age
   function imgAge() {
     document.querySelectorAll("span.age[data-age]").forEach((span) => {
-      var created = new Date(span.dataset.age).getTime(),
-        s = Math.floor((new Date() - created) / 1000),
-        age = s < 60 ? `${s}s` : s < 3600 ? `+${Math.floor(s / 60)}m` : s < 86400 ? `+${Math.floor(s / 3600)}h` : `+${Math.floor(s / 86400)}d`
-      span.textContent = age
+      timestamp = parseInt(span.dataset.age)
+      if (timestamp) {
+        var created = new Date(timestamp).getTime(),
+          s = Math.floor((new Date() - created) / 1000),
+          age = s < 60 ? `${s}s` : s < 3600 ? `+${Math.floor(s / 60)}m` : s < 86400 ? `+${Math.floor(s / 3600)}h` : `+${Math.floor(s / 86400)}d`
+        span.textContent = age
+      }
     })
-    clearTimeout(imgAge.interval);
-    imgAge.interval = setTimeout(() => { imgAge() }, 1000);
+    setTimeout(imgAge, 1000);
   }
-  imgAge()
+  if (!getCookie("show_video")) { imgAge() }
+
 
   // fullscreen mode
   function toggleFullscreen(fs) {

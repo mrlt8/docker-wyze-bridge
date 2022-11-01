@@ -602,6 +602,11 @@ class WyzeBridge:
             hostname = self.hostname
 
         img = f"{name_uri}.{env_bool('IMG_TYPE','jpg')}"
+        try:
+            img_time = int(os.path.getmtime(self.img_path + img) * 1000)
+        except FileNotFoundError:
+            img_time = None
+
         data = {
             "nickname": cam.nickname,
             "status": self.get_cam_status(name_uri),
@@ -623,7 +628,8 @@ class WyzeBridge:
             "enabled": name_uri in self.streams,
             "camera_info": None,
             "boa_url": None,
-            "img_url": f"img/{img}" if os.path.exists(self.img_path + img) else None,
+            "img_url": f"img/{img}" if img_time else None,
+            "img_time": img_time,
             "snapshot_url": f"snapshot/{img}",
             "photo_url": None,
         }

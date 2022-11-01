@@ -140,7 +140,7 @@ video {
 
 .is-overlay button,
 .card:hover .age,
-button:disabled+.age {
+button:not(.offline):disabled+.age {
   display: none;
 }
 
