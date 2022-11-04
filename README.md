@@ -33,16 +33,15 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.8.12
+## What's Changed in v1.8.13
 
-  - Fixed: Local recording creating zero byte files when audio codec was not supported by the mp4 container. #575 Thanks @pldimarco!
-    - Note: Bridge wil use the `mov` container if using the raw PCM from camera. Please usee `AUDIO_CODEC=aac` if you require an mp4.
-  - New: Show camera status and name in fullscreen WebUI. 
-  - New: Optional autoplay in WebUI - Requires autoplay support in the browser. #574 Thanks @JA16122000!
-  - New: Query params for web-ui:
-    - autoplay `http://localhost:5000/?autoplay`
-  - Updated: rtsp-simple-server to v0.20.1
-  - Updated: iOS Version
+  - Fix: "Fatal Python error" on read/ready events.
+  - Fix: occasional snapshot timeouts.
+  - Fix: ignore TutkError if camera is offline when using rtsp_fw.
+  - Fix: refresh button for WebUI.
+  - New: timestamp for last snapshot in API.
+  - Update: wyze app version number for web API.
+  - Updated: rtsp-simple-server to [v0.20.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.20.2).
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -700,6 +699,8 @@ or where `CAM_NAME` is the camera name in UPPERCASE and `_` in place of spaces a
 ### Rotate Video
 
 NOTE: The bridge may require additional resuorces when rotation is enabled as the video has to be re-encoded.
+
+[Hardware Acceleration](https://github.com/mrlt8/docker-wyze-bridge/wiki/Hardware-Acceleration) may be available for h264 encoding on certain devices.
 
 - Rotate all doorbells:
 

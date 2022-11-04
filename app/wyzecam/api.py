@@ -7,7 +7,7 @@ import requests
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
 IOS_VERSION = "16.1"
-APP_VERSION = "2.35.0.13"
+APP_VERSION = "2.36.0.14"
 
 SV_VALUE = "e1fe392906d54888a9b99b88de4162d7"
 SC_VALUE = "9f275790cab94a72bd206c8876429f3c"

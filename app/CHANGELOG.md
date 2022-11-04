@@ -1,3 +1,13 @@
+## What's Changed in v1.8.13
+
+  - Fix: "Fatal Python error" on read/ready events.
+  - Fix: occasional snapshot timeouts.
+  - Fix: ignore TutkError if camera is offline when using rtsp_fw.
+  - Fix: refresh button for WebUI.
+  - New: timestamp for last snapshot in API.
+  - Update: wyze app version number for web API.
+  - Updated: rtsp-simple-server to [v0.20.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.20.2).
+
 ## What's Changed in v1.8.12
 
   - Fixed: Local recording creating zero byte files when audio codec was not supported by the mp4 container. #575 Thanks @pldimarco!
