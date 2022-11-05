@@ -509,9 +509,7 @@ class WyzeBridge:
                         name=uri + "_BOA",
                     )
                     boa_thread.start()
-                with Popen(
-                    get_ffmpeg_cmd(uri, cam.product_model, audio), stdin=PIPE
-                ) as ffmpeg:
+                with Popen(get_ffmpeg_cmd(uri, cam, audio), stdin=PIPE) as ffmpeg:
                     if audio:
                         audio_thread.start()
                     for frame in sess.recv_bridge_frame(
@@ -818,7 +816,7 @@ def get_cam_params(
     frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
     bit_frame = f"{sess.preferred_bitrate}kb/s {frame_size} stream"
     fps = 20
-    if video_param := sess.camera.camera_info.get("videoParm", False):
+    if video_param := sess.camera.camera_info.get("videoParm"):
         if fps := int(video_param.get("fps", 0)):
             if fps % 5 != 0:
                 log.error(f"⚠️ Unusual FPS detected: {fps}")
@@ -826,7 +824,7 @@ def get_cam_params(
             log.info(f"Attempting to change FPS to {force_fps}")
             sess.change_fps(force_fps)
             fps = force_fps
-        bit_frame += f" ({fps}fps)"
+        bit_frame += f" ({video_param.get('type', 'h264')}/{fps}fps)"
         if env_bool("DEBUG_LEVEL"):
             log.info(f"[videoParm] {video_param}")
     firmware = sess.camera.camera_info["basicInfo"].get("firmware", "NA")
@@ -854,10 +852,13 @@ def get_cam_params(
     return fps, audio
 
 
-def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list[str]:
+def get_ffmpeg_cmd(uri: str, cam: WyzeCamera, audio: Optional[dict]) -> list[str]:
     """Return the ffmpeg cmd with options from the env."""
+    vcodec = "h264"
+    if vid_param := cam.camera_info.get("videoParm"):
+        vcodec = vid_param.get("type", vcodec)
     flags = "-fflags +genpts+flush_packets+nobuffer+bitexact -flags +low_delay"
-    rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR")
+    rotate = cam.product_model == "WYZEDB3" and env_bool("ROTATE_DOOR")
     transpose = "clock"
     if env_bool(f"ROTATE_CAM_{uri}"):
         rotate = True
@@ -889,12 +890,12 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list[str]
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD")).format(
         cam_name=uri.lower(), CAM_NAME=uri, audio_in=audio_in
     ).split() or (
-        ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "fatal"]
+        ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "error"]
         + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
         .split()
         + ["-thread_queue_size", "64", "-threads", "1"]
-        + ["-analyzeduration", "50", "-probesize", "50", "-f", "h264", "-i", "pipe:"]
+        + ["-analyzeduration", "50", "-probesize", "50", "-f", vcodec, "-i", "pipe:"]
         + audio_in.split()
         + ["-flags", "+global_header", "-c:v"]
         + (["copy"] if not rotate else lib264)
