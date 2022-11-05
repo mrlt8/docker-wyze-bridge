@@ -852,14 +852,15 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list[str]
         if os.getenv(f"ROTATE_CAM_{uri}") in {"0", "1", "2", "3"}:
             # Numerical values are deprecated, and should be dropped in favor of symbolic constants.
             transpose = os.environ[f"ROTATE_CAM_{uri}"]
-    h264_enc = env_bool("h264_enc", "libx264")
+    h264_enc = env_bool("h264_enc", "libx264").lower()
     if rotate:
         log.info(f"Re-encoding stream using {h264_enc} [{transpose=}]")
     lib264 = (
         [h264_enc, "-filter:v", f"transpose={transpose}", "-b:v", "3000k"]
         + ["-coder", "1", "-bufsize", "1000k"]
         + ["-profile:v", "77" if h264_enc == "h264_v4l2m2m" else "main"]
-        + ["-preset", "ultrafast", "-force_key_frames", "expr:gte(t,n_forced*2)"]
+        + ["-preset", "fast" if h264_enc == "h264_nvenc" else "ultrafast"]
+        + ["-force_key_frames", "expr:gte(t,n_forced*2)"]
     )
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
