@@ -5,17 +5,17 @@
 [![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/mrlt8/wyze-bridge?sort=semver&logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 [![Docker Pulls](https://img.shields.io/docker/pulls/mrlt8/wyze-bridge?logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 
-Docker container to expose a local RTMP, RTSP, and HLS or Low-Latency HLS stream for ALL your Wyze cameras including the outdoor and doorbell cams. No third-party or special firmware required.
+Docker container to expose a local RTMP, RTSP, and HLS or Low-Latency HLS stream for ALL your Wyze cameras including the outdoor, doorbell, and 2K cams. No third-party or special firmware required.
 
 It just works!
 
-Local cameras stream locally without additional bandwidth.
+Cameras stream locally without additional bandwidth.
 
-Now with a Web-UI - view all your cameras in one place!
+View all your cameras in one place with the Web-UI!
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
-Please consider starring or [sponsoring](https://ko-fi.com/mrlt8) this project if you found it useful.
+Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) this project if you found it useful, or use our [affiliate link](https://amzn.to/3NLnbvt) if shopping on amazon!
 
 ## Quick Start
 
@@ -33,23 +33,17 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.8.13
+## What's Changed in v1.9.0
 
-  - Fix: "Fatal Python error" on read/ready events.
-  - Fix: occasional snapshot timeouts.
-  - Fix: ignore TutkError if camera is offline when using rtsp_fw.
-  - Fix: refresh button for WebUI.
-  - New: timestamp for last snapshot in API.
-  - Update: wyze app version number for web API.
-  - Updated: rtsp-simple-server to [v0.20.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.20.2).
+  - New: Wyze Cam V3 Pro 2K support! Should also work with the Pan Pro 2k. #595 Huge thanks to @carldanley!
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
 ## Features
 
-- Web-UI to view all Wyze cameras in one place. [details](#web-ui)
+- Web-UI with **dark mode** to view all Wyze cameras in one place. [details](#web-ui)
 - Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS/Low-Latency HLS. [details](#camera-stream-uris)
-- Access to HD *or* SD stream with configurable bitrate. [details](#bitrate-and-resolution)
+- Access to 2K, HD, *or* SD stream with configurable bitrate. [details](#bitrate-and-resolution)
 - Local and remote access to any of the cams on your account just like the app. [details](#network-connection-modes)
 - Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker. [details](#compatibility)
 - Support for Wyze 2FA. [details](https://github.com/mrlt8/docker-wyze-bridge/wiki/Two-Factor-Authentication)
@@ -68,9 +62,11 @@ See [basic usage](#basic-usage) for additional information.
 ![Wyze Cam v1](https://img.shields.io/badge/wyze_v1-yes-success.svg)
 ![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
 ![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
+![Wyze Cam V3 Pro](https://img.shields.io/badge/wyze_v3_pro-yes-success.svg)
 ![Wyze Cam Floodlight](https://img.shields.io/badge/wyze_floodlight-yes-success.svg)
 ![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-yes-success.svg)
 ![Wyze Cam Pan V2](https://img.shields.io/badge/wyze_pan_v2-yes-success.svg)
+![Wyze Cam Pan Pro](https://img.shields.io/badge/wyze_pan_pro-yes-success.svg)
 ![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-yes-success.svg)
 ![Wyze Cam Outdoor V2](https://img.shields.io/badge/wyze_outdoor_v2-yes-success.svg)
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
@@ -79,25 +75,25 @@ See [basic usage](#basic-usage) for additional information.
 
 | Camera                  | Model          | Supported                                                   |
 | ----------------------- | -------------- | ----------------------------------------------------------- |
-| Wyze Cam v1             | WYZEC1         | ✅                                                           |
+| Wyze Cam v1 [HD only]   | WYZEC1         | ✅                                                           |
 | Wyze Cam V2             | WYZEC1-JZ      | ✅                                                           |
 | Wyze Cam V3             | WYZE_CAKP2JFUS | ✅                                                           |
+| Wyze Cam V3 Pro [2K]    | HL_CAM3P       | ✅                                                           |
 | Wyze Cam Floodlight     | WYZE_CAKP2JFUS | ✅                                                           |
 | Wyze Cam Pan            | WYZECP1_JEF    | ✅                                                           |
 | Wyze Cam Pan v2         | HL_PAN2        | ✅                                                           |
+| Wyze Cam Pan Pro [2K]   | HL_PANP        | ✅                                                           |
 | Wyze Cam Outdoor        | WVOD1          | ✅                                                           |
 | Wyze Cam Outdoor v2     | HL_WCO2        | ✅                                                           |
 | Wyze Cam Doorbell       | WYZEDB3        | ✅                                                           |
-| Wyze Cam V3 Pro [2K]    | HL_CAM3P       | ❓                                                           |
 | Wyze Cam Pan v3         | HL_PAN3        | ❓                                                           |
-| Wyze Cam Pan Pro [2K]   | HL_PANP        | ❓                                                           |
 | Wyze Battery Cam Pro    | AN_RSCW        | ❓                                                           |
 | Wyze Cam Doorbell Pro   | GW_BE1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276) |
 | Wyze Cam Doorbell Pro 2 | AN_RDB1        | ❓                                                           |
 
 ### Firmware Compatibility
 
-The bridge should be compatible with official firmware from wyze.
+The bridge should be compatible with the latest official firmware from wyze.
 
 ## Compatibility
 
@@ -187,13 +183,14 @@ environment:
   - WB_RTMP_URL=rtmp://my-hostname-or-ip:5678/
   - WB_HLS_URL=http://my-hostname-or-ip:9090/
 ```
+
 Query params to adjust web-ui:
 
-    - Fullscreen/kiosk mode `http://localhost:5000/?fullscreen`
-    - Number of columns `http://localhost:5000/?columns=4`
-    - Preview refresh interval `http://localhost:5000/?refresh=60`
-    - Camera order `http://localhost:5000/?order=front-cam,back-cam,garage,other`
-    - autoplay `http://localhost:5000/?autoplay`
+  - Fullscreen/kiosk mode `http://localhost:5000/?fullscreen`
+  - Number of columns `http://localhost:5000/?columns=4`
+  - Preview refresh interval `http://localhost:5000/?refresh=60`
+  - Camera order `http://localhost:5000/?order=front-cam,back-cam,garage,other`
+  - autoplay `http://localhost:5000/?autoplay`
 
 NOTE: You can combine multiple queries into a single request:
 ```text
@@ -619,6 +616,8 @@ MQTT auth and discovery should be automatic in Home Assistant mode - can be disa
 
 ### Bitrate and Resolution
 
+Default option will select HD/2K resolution with 120 for bitrate (180 for doorbells).
+
 Bitrate and resolution of the stream from the wyze camera can be adjusted with:
 
 #### Set quality for all cameras
@@ -639,7 +638,8 @@ environment:
 
 Additional info:
 
-- Resolution can be set to `SD` (360p in the app) or `HD` - 640x360/1920x1080 for cams or 480x640/1296x1728 for doorbells.
+- Resolution can be set to `SD` (360p in the app), `HD` - 640x360/1920x1080 for cams or 480x640/1296x1728 for doorbells.
+- Use `HD` to select the 2K (2560x1440) stream on the Pro cameras.
 - Bitrate can be set from 30 to 255. Some bitrates may not work with certain resolutions.
 - Adjusting the bitrate and resolution in the bridge will also change the stream in the wyze app and vice versa.
 - App equivalents would be:
@@ -729,10 +729,11 @@ NOTE: The bridge may require additional resuorces when rotation is enabled as th
   ```
 
  Available options:
-  `0` - Rotate by 90 degrees counter-clockwise and flip vertically.
-  `1` - Rotate by 90 degrees clockwise. This is the default.
-  `2` - Rotate by 90 degrees counter-clockwise.
-  `3` - Rotate by 90 degrees clockwise and flip vertically.
+
+- `0` - Rotate by 90 degrees counter-clockwise and flip vertically.
+- `1` - Rotate by 90 degrees clockwise. This is the default.
+- `2` - Rotate by 90 degrees counter-clockwise.
+- `3` - Rotate by 90 degrees clockwise and flip vertically.
 
 ### rtsp-simple-server
 

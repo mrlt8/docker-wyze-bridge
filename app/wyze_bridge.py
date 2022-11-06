@@ -768,6 +768,8 @@ def get_env_quality(uri: str, cam_model: str) -> Tuple[int, int]:
     frame_size = 1 if env_quality[:2] == "sd" else 0
     if doorbell := (cam_model == "WYZEDB3"):
         frame_size = int(env_bool("DOOR_SIZE", frame_size))
+    elif cam_model in {"HL_CAM3P", "HL_PANP"} and frame_size == 0:
+        frame_size = 3  # Actually 4, but we set it to 3 because tutk_protocol adds 1.
     elif cam_model == "WYZEC1" and frame_size > 0:
         log.warning("v1 (WYZEC1) only supports HD")
         frame_size = 0
@@ -814,9 +816,7 @@ def get_cam_params(
             cam_info += "no camera_info"
         print(cam_info, "\n\n")
     # WYZEC1 DEBUGGING
-
-    frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
-    bit_frame = f"{sess.preferred_bitrate}kb/s {frame_size} stream"
+    bit_frame = f"{sess.preferred_bitrate}kb/s {sess.resolution} stream"
     fps = 20
     if video_param := sess.camera.camera_info.get("videoParm", False):
         if fps := int(video_param.get("fps", 0)):

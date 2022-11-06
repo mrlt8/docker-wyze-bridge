@@ -200,6 +200,9 @@ class WyzeIOTCSessionState(enum.IntEnum):
     """Authentication failed, no longer connected"""
 
 
+FRAME_SIZE = {0: "HD", 1: "SD", 3: "2K"}
+
+
 class WyzeIOTCSession:
     """An IOTC session object, used for communicating with Wyze cameras.
 
@@ -273,6 +276,10 @@ class WyzeIOTCSession:
         self.preferred_bitrate: int = bitrate
         self.connect_timeout: int = connect_timeout
         self.enable_audio: bool = enable_audio
+
+    @property
+    def resolution(self) -> str:
+        return FRAME_SIZE.get(self.preferred_frame_size, self.preferred_frame_size)
 
     def session_check(self) -> tutk.SInfoStructEx:
         """Used by a device or a client to check the IOTC session info.
@@ -457,10 +464,11 @@ class WyzeIOTCSession:
         :param timeout: Number of seconds since the last yield before raising an exception.
         """
         assert self.av_chan_id is not None, "Please call _connect() first!"
-        ignore_res = (
-            self.preferred_frame_size,
-            int(os.getenv("IGNORE_RES", self.preferred_frame_size + 3)),
-        )
+        if self.camera.product_model in {"HL_CAM3P", "HL_PANP"}:
+            alt = 4  # 2K video
+        else:
+            alt = self.preferred_frame_size + 3
+        ignore_res = {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
         last_keyframe = 0, 0
         last_frame = 0, time.time()
         while not stop_flag.is_set():
