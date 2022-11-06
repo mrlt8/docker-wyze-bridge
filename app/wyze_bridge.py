@@ -816,14 +816,7 @@ def get_cam_params(
             cam_info += "no camera_info"
         print(cam_info, "\n\n")
     # WYZEC1 DEBUGGING
-
-    frame_size = "SD" if sess.preferred_frame_size == 1 else "HD"
-    if (
-        sess.camera.product_model in {"HL_CAM3P", "HL_PANP"}
-        and sess.preferred_frame_size == 3
-    ):
-        frame_size = "2K"
-    bit_frame = f"{sess.preferred_bitrate}kb/s {frame_size} stream"
+    bit_frame = f"{sess.preferred_bitrate}kb/s {sess.resolution} stream"
     fps = 20
     if video_param := sess.camera.camera_info.get("videoParm", False):
         if fps := int(video_param.get("fps", 0)):
