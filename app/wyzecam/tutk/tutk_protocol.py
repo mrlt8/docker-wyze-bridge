@@ -585,7 +585,7 @@ class K10626SetAutoSwitchNightType(TutkWyzeProtocolMessage):
         return resp_data[0]
 
 
-class k10630SetAlarmFlashing(TutkWyzeProtocolMessage):
+class K10630SetAlarmFlashing(TutkWyzeProtocolMessage):
     """
     A message used to control the alarm/siren on the camera.
 
@@ -605,7 +605,7 @@ class k10630SetAlarmFlashing(TutkWyzeProtocolMessage):
         return resp_data[0], resp_data[1]
 
 
-class k10632GetAlarmFlashing(TutkWyzeProtocolMessage):
+class K10632GetAlarmFlashing(TutkWyzeProtocolMessage):
     """
     A message used to get the alarm/siren status on the camera.
 
