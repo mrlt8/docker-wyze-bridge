@@ -457,10 +457,11 @@ class WyzeIOTCSession:
         :param timeout: Number of seconds since the last yield before raising an exception.
         """
         assert self.av_chan_id is not None, "Please call _connect() first!"
-        ignore_res = (
+        alt = 1 if self.camera.product_model in {"HL_CAM3P", "HL_PANP"} else 3
+        ignore_res = {
             self.preferred_frame_size,
-            int(os.getenv("IGNORE_RES", self.preferred_frame_size + 3)),
-        )
+            int(os.getenv("IGNORE_RES", self.preferred_frame_size + alt)),
+        }
         last_keyframe = 0, 0
         last_frame = 0, time.time()
         while not stop_flag.is_set():
