@@ -333,7 +333,7 @@ class K10030GetNetworkLightStatus(TutkWyzeProtocolMessage):
     def __init__(self):
         super().__init__(10030)
 
-    def parse_response(self, resp_data):
+    def parse_response(self, resp_data) -> int:
         return resp_data[0]
 
 
@@ -348,12 +348,12 @@ class K10032SetNetworkLightStatus(TutkWyzeProtocolMessage):
 
     def __init__(self, light_status: bool):
         super().__init__(10032)
-        self.light_status = 1 if light_status else 2
+        self.light_status: int = 1 if light_status else 2
 
     def encode(self) -> bytes:
         return encode(self.code, 1, bytearray([self.light_status]))
 
-    def parse_response(self, resp_data):
+    def parse_response(self, resp_data) -> int:
         return resp_data[0]
 
 
@@ -372,7 +372,7 @@ class K10040GetNightVisionStatus(TutkWyzeProtocolMessage):
     def __init__(self):
         super().__init__(10040)
 
-    def parse_response(self, resp_data):
+    def parse_response(self, resp_data) -> int:
         return resp_data[0]
 
 
@@ -390,12 +390,12 @@ class K10042SetNightVisionStatus(TutkWyzeProtocolMessage):
 
     def __init__(self, status: int):
         super().__init__(10042)
-        self.status = status
+        self.status: int = status
 
     def encode(self) -> bytes:
         return encode(10042, 1, bytes([self.status]))
 
-    def parse_response(self, resp_data):
+    def parse_response(self, resp_data) -> int:
         return resp_data[0]
 
 
@@ -413,7 +413,7 @@ class K10044GetIRLEDStatus(TutkWyzeProtocolMessage):
     def __init__(self):
         super().__init__(10044)
 
-    def parse_response(self, resp_data):
+    def parse_response(self, resp_data) -> int:
         return resp_data[0]
 
 
@@ -430,12 +430,12 @@ class K10046SetIRLEDStatus(TutkWyzeProtocolMessage):
 
     def __init__(self, status: int):
         super().__init__(10046)
-        self.status = status
+        self.status: int = status
 
     def encode(self) -> bytes:
         return encode(10046, 1, bytes([self.status]))
 
-    def parse_response(self, resp_data):
+    def parse_response(self, resp_data) -> int:
         return resp_data[0]
 
 
@@ -559,7 +559,7 @@ class K10624GetAutoSwitchNightType(TutkWyzeProtocolMessage):
     def __init__(self):
         super().__init__(10624)
 
-    def parse_response(self, resp_data):
+    def parse_response(self, resp_data) -> int:
         return resp_data[0]
 
 
@@ -576,12 +576,12 @@ class K10626SetAutoSwitchNightType(TutkWyzeProtocolMessage):
 
     def __init__(self, type: int):
         super().__init__(10626)
-        self.type = type
+        self.type: int = type
 
     def encode(self) -> bytes:
         return encode(10626, 1, bytes([self.type]))
 
-    def parse_response(self, resp_data):
+    def parse_response(self, resp_data) -> int:
         return resp_data[0]
 
 
@@ -596,12 +596,12 @@ class K10630SetAlarmFlashing(TutkWyzeProtocolMessage):
 
     def __init__(self, enabled: bool):
         super().__init__(10630)
-        self.enabled = 2 if enabled else 1
+        self.enabled: int = 2 if enabled else 1
 
     def encode(self) -> bytes:
         return encode(10630, 2, bytes([self.enabled, self.enabled]))
 
-    def parse_response(self, resp_data):
+    def parse_response(self, resp_data) -> tuple[int, int]:
         return resp_data[0], resp_data[1]
 
 
@@ -619,7 +619,7 @@ class K10632GetAlarmFlashing(TutkWyzeProtocolMessage):
     def __init__(self):
         super().__init__(10632)
 
-    def parse_response(self, resp_data):
+    def parse_response(self, resp_data) -> tuple[int, int]:
         return resp_data[0], resp_data[1]
 
 
