@@ -1266,7 +1266,6 @@ def camera_control(
     mqtt = mqtt_sub_topic([f"{uri.lower()}/cmd"], sess)
 
     while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
-        print(sess.camera.camera_info)
         boa_control(sess, boa_cam)
         resp = {}
         try:
