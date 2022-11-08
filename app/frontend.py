@@ -4,11 +4,9 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
-import wyze_bridge
 from flask import (
     Flask,
     Response,
-    abort,
     make_response,
     redirect,
     render_template,
@@ -16,7 +14,7 @@ from flask import (
     send_from_directory,
 )
 from werkzeug.exceptions import NotFound
-from wyze_bridge import WyzeBridge
+from wyze_bridge import CAM_CMDS, WyzeBridge, setup_logging
 
 log = logging.getLogger(__name__)
 wb: WyzeBridge = None
@@ -33,8 +31,7 @@ signal.signal(signal.SIGTERM, lambda *_: clean_up())
 
 
 def create_app():
-    wyze_bridge.setup_logging()
-    log.info("create_app")
+    setup_logging()
     app = Flask(__name__)
     global wb
     if not wb:
@@ -106,6 +103,8 @@ def create_app():
             return {"success": wb.start_on_demand(cam_name)}
         if cam_name and cam_cmd == "stop":
             return {"success": wb.stop_on_demand(cam_name)}
+        if cam_name and cam_cmd and cam_cmd in CAM_CMDS:
+            return wb.cam_cmd(cam_name, cam_cmd)
 
         host = urlparse(request.root_url).hostname
         return wb.get_cam_info(cam_name, host) if cam_name else wb.get_cameras(host)
