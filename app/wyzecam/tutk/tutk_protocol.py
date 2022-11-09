@@ -323,9 +323,7 @@ class K10030GetNetworkLightStatus(TutkWyzeProtocolMessage):
     """
     A message used to check if the Camera Status Light is enabled on the camera.
 
-    :return: returns the current status of the light:
-        - 1: Enabled.
-        - 2: Disabled.
+    :return: returns the current status of the light.
     """
 
     expected_response_code = 10031
@@ -334,7 +332,7 @@ class K10030GetNetworkLightStatus(TutkWyzeProtocolMessage):
         super().__init__(10030)
 
     def parse_response(self, resp_data) -> int:
-        return resp_data[0]
+        return resp_data[0] == 1
 
 
 class K10032SetNetworkLightStatus(TutkWyzeProtocolMessage):
@@ -530,6 +528,42 @@ class K10052DBSetResolvingBit(TutkWyzeProtocolMessage):
 
     def parse_response(self, resp_data):
         return resp_data == b"\x01"
+
+
+class K10290GetMotionTagging(TutkWyzeProtocolMessage):
+    """
+    A message used to check if motion tagging (green box around motion) is enabled.
+
+    :return: returns the current motion tagging status.
+    """
+
+    expected_response_code = 10291
+
+    def __init__(self):
+        super().__init__(10290)
+
+    def parse_response(self, resp_data):
+        return resp_data[0] == 1
+
+
+class K10292SetMotionTagging(TutkWyzeProtocolMessage):
+    """
+    A message used to enable/disable motion tagging (green box around motion).
+
+    :param enabled: boolean to turn on/off motion tagging.
+    """
+
+    expected_response_code = 10293
+
+    def __init__(self, enabled: bool):
+        super().__init__(10292)
+        self.enabled = 1 if enabled else 2
+
+    def encode(self) -> bytes:
+        return encode(10292, 1, bytes([self.enabled]))
+
+    def parse_response(self, resp_data):
+        return resp_data[0]
 
 
 class K10620CheckNight(TutkWyzeProtocolMessage):
