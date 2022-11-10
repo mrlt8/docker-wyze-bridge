@@ -872,7 +872,8 @@ def get_ffmpeg_cmd(uri: str, cam: WyzeCamera, audio: Optional[dict]) -> list[str
         [h264_enc, "-filter:v", f"transpose={transpose}", "-b:v", "3000k"]
         + ["-coder", "1", "-bufsize", "1000k"]
         + ["-profile:v", "77" if h264_enc == "h264_v4l2m2m" else "main"]
-        + ["-preset", "ultrafast", "-force_key_frames", "expr:gte(t,n_forced*2)"]
+        + ["-preset", "fast" if h264_enc == "h264_nvenc" else "ultrafast"]
+        + ["-forced-idr", "1", "-force_key_frames", "expr:gte(t,n_forced*2)"]
     )
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
