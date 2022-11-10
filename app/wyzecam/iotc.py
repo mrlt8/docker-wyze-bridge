@@ -464,10 +464,8 @@ class WyzeIOTCSession:
         :param timeout: Number of seconds since the last yield before raising an exception.
         """
         assert self.av_chan_id is not None, "Please call _connect() first!"
-        if self.camera.product_model in {"HL_CAM3P", "HL_PANP"}:
-            alt = 4  # 2K video
-        else:
-            alt = self.preferred_frame_size + 3
+        # Doorbell returns frame_size 3 or 4; 2K returns frame_size=4
+        alt = self.preferred_frame_size + (1 if self.preferred_frame_size == 3 else 3)
         ignore_res = {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
         last_keyframe = 0, 0
         last_frame = 0, time.time()
@@ -480,18 +478,17 @@ class WyzeIOTCSession:
                     continue
                 self.state = WyzeIOTCSessionState.CONNECTING_FAILED
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
-            if last_keyframe[1] and (slowdown := (0.75 / fps) - delta) > 0:
-                time.sleep(slowdown)
-
+            # if last_keyframe[1] and (slowdown := (0.75 / fps) - delta) > 0:
+            #     time.sleep(slowdown)
             errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
                 if errno == tutk.AV_ER_DATA_NOREADY:
-                    if last_keyframe[1] and delta >= 1.0:
-                        warnings.warn("Frame not available yet")
-                        time.sleep(1.0 / fps)
-                    time.sleep(1.0 / fps)
+                    # if last_keyframe[1] and delta >= 1.0:
+                    #     warnings.warn("Frame not available yet")
+                    #     time.sleep(1.0 / fps)
+                    time.sleep(0.5 / fps)
                     continue
                 if errno in (
                     tutk.AV_ER_INCOMPLETE_FRAME,
@@ -512,8 +509,8 @@ class WyzeIOTCSession:
                 last_keyframe = 0, 0
                 last_frame = last_frame[0], time.time()
                 continue
-            if frame_index and frame_index % 1000 == 0:
-                fps = self.update_frame_size_rate(True, frame_info.framerate) or fps
+            # if frame_index and frame_index % 1000 == 0:
+            #     fps = self.update_frame_size_rate(True, frame_info.framerate) or fps
 
             if frame_info.is_keyframe:
                 last_keyframe = frame_info.frame_no, time.time()
