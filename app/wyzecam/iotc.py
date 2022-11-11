@@ -467,69 +467,64 @@ class WyzeIOTCSession:
         # Doorbell returns frame_size 3 or 4; 2K returns frame_size=4
         alt = self.preferred_frame_size + (1 if self.preferred_frame_size == 3 else 3)
         ignore_res = {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
-        last_keyframe = 0, 0
-        last_frame = 0, time.time()
+        last = {"key_frame": 0, "key_time": 0, "frame": 0, "time": time.time()}
         while not stop_flag.is_set():
-            if (delta := time.time() - last_frame[1]) >= timeout:
-                if last_keyframe[1] == 0:
+            if (time.time() - last["time"]) >= timeout:
+                if last["key_time"] == 0:
                     warnings.warn("Still waiting for first frame. Updating frame size.")
-                    last_keyframe = last_frame = 0, time.time()
+                    last["key_time"] = last["time"] = time.time()
                     self.update_frame_size_rate()
                     continue
                 self.state = WyzeIOTCSessionState.CONNECTING_FAILED
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
-            # if last_keyframe[1] and (slowdown := (0.75 / fps) - delta) > 0:
-            #     time.sleep(slowdown)
             errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
+                time.sleep(0.5 / fps)
                 if errno == tutk.AV_ER_DATA_NOREADY:
-                    # if last_keyframe[1] and delta >= 1.0:
-                    #     warnings.warn("Frame not available yet")
-                    #     time.sleep(1.0 / fps)
-                    time.sleep(0.5 / fps)
                     continue
                 if errno in (
                     tutk.AV_ER_INCOMPLETE_FRAME,
                     tutk.AV_ER_LOSED_THIS_FRAME,
                 ):
-                    warnings.warn(tutk.TutkError(errno).name)
+                    warnings.warn(str(tutk.TutkError(errno).name))
                     continue
                 raise tutk.TutkError(errno)
             assert frame_info is not None, "Got no frame info without an error!"
             if frame_info.frame_size not in ignore_res:
-                if last_keyframe[0] == 0:
+                if last["key_frame"] == 0:
                     warnings.warn(
                         f"Skipping smaller frame at start of stream (frame_size={frame_info.frame_size})"
                     )
                     continue
                 warnings.warn(f"Wrong resolution (frame_size={frame_info.frame_size})")
                 self.update_frame_size_rate()
-                last_keyframe = 0, 0
-                last_frame = last_frame[0], time.time()
+                last |= {"key_frame": 0, "key_time": 0, "time": time.time()}
                 continue
             # if frame_index and frame_index % 1000 == 0:
             #     fps = self.update_frame_size_rate(True, frame_info.framerate) or fps
 
             if frame_info.is_keyframe:
-                last_keyframe = frame_info.frame_no, time.time()
+                last |= {"key_frame": frame_info.frame_no, "key_time": time.time()}
             elif (
-                frame_info.frame_no - last_keyframe[0] > fps * 2
-                and frame_info.frame_no - last_frame[0] > 6
+                frame_info.frame_no - last["key_frame"] > fps * 3
+                and frame_info.frame_no - last["frame"] > 8
                 and not keep_bad_frames
             ):
                 warnings.warn("Waiting for keyframe")
                 time.sleep(0.5 / fps)
                 continue
-            # elif time.time() - last_keyframe[1] > 5 and not keep_bad_frames:
+            # elif time.time() - last["key_time"] > 5 and not keep_bad_frames:
             #     warnings.warn("Keyframe too old")
             #     continue
 
             yield frame_data
-            last_frame = frame_info.frame_no, time.time()
+            last |= {"frame": frame_info.frame_no, "time": time.time()}
 
-    def update_frame_size_rate(self, bitrate: bool = False, fps: int = None) -> int:
+    def update_frame_size_rate(
+        self, bitrate: bool = False, fps: Optional[int] = None
+    ) -> int:
         """Send a message to the camera to update the frame_size and bitrate."""
         iotc_msg = self.preferred_frame_size, self.preferred_bitrate
         with self.iotctrl_mux() as mux:
