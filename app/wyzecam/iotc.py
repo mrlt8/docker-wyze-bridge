@@ -504,7 +504,6 @@ class WyzeIOTCSession:
                 continue
             # if frame_index and frame_index % 1000 == 0:
             #     fps = self.update_frame_size_rate(True, frame_info.framerate) or fps
-
             if frame_info.is_keyframe:
                 last |= {"key_frame": frame_info.frame_no, "key_time": time.time()}
             elif (
@@ -515,9 +514,9 @@ class WyzeIOTCSession:
                 warnings.warn("Waiting for keyframe")
                 time.sleep(0.5 / fps)
                 continue
-            # elif time.time() - last["key_time"] > 5 and not keep_bad_frames:
-            #     warnings.warn("Keyframe too old")
-            #     continue
+            elif time.time() - frame_info.timestamp > timeout:
+                warnings.warn("frame too old")
+                continue
 
             yield frame_data
             last |= {"frame": frame_info.frame_no, "time": time.time()}
