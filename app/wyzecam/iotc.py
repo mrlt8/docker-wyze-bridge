@@ -579,7 +579,7 @@ class WyzeIOTCSession:
                     if (buf := tutk.av_check_audio_buf(*tutav)) < 3:
                         if buf < 0:
                             raise tutk.TutkError(buf)
-                        time.sleep(2 / fps)
+                        time.sleep(1 / fps)
                         continue
                     errno, frame_data, _ = tutk.av_recv_audio_data(*tutav)
                     if errno < 0:
@@ -588,7 +588,7 @@ class WyzeIOTCSession:
                             tutk.AV_ER_INCOMPLETE_FRAME,
                             tutk.AV_ER_LOSED_THIS_FRAME,
                         ):
-                            time.sleep(2 / fps)
+                            time.sleep(1 / fps)
                             continue
                         warnings.warn(f"Error: {errno}")
                         break
