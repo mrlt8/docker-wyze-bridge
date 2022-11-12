@@ -771,7 +771,7 @@ def get_env_quality(uri: str, cam_model: str) -> Tuple[int, int]:
     elif cam_model == "WYZEC1" and frame_size > 0:
         log.warning("v1 (WYZEC1) only supports HD")
         frame_size = 0
-    return frame_size, (env_bit if 30 <= env_bit <= 255 else (180 if doorbell else 120))
+    return frame_size, (env_bit if 1 <= env_bit <= 255 else (180 if doorbell else 120))
 
 
 def check_net_mode(session_mode: int, uri: str) -> str:
