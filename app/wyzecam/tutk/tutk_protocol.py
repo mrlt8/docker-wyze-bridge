@@ -1,6 +1,7 @@
 import json
 import logging
 import pathlib
+import time
 import typing
 from ctypes import LittleEndianStructure, c_char, c_uint16, c_uint32
 from typing import Optional
@@ -528,6 +529,38 @@ class K10052DBSetResolvingBit(TutkWyzeProtocolMessage):
 
     def parse_response(self, resp_data):
         return resp_data == b"\x01"
+
+
+class K10090GetCameraTime(TutkWyzeProtocolMessage):
+    """
+    A message used to get the current time on the camera.
+
+    :return time: The current unix timestamp in seconds.
+    """
+
+    expected_response_code = 10091
+
+    def __init__(self):
+        super().__init__(10090)
+
+    def parse_response(self, resp_data):
+        return int.from_bytes(resp_data, "little")
+
+
+class K10092SetCameraTime(TutkWyzeProtocolMessage):
+    """
+    A message used to set the time on the camera.
+
+    This will use the current time on the bridge +1 to set the time on the camera.
+    """
+
+    expected_response_code = 10093
+
+    def __init__(self):
+        super().__init__(10092)
+
+    def encode(self) -> bytes:
+        return encode(10092, 4, int(time.time() + 1).to_bytes(4, "little"))
 
 
 class K10290GetMotionTagging(TutkWyzeProtocolMessage):
