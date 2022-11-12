@@ -879,7 +879,7 @@ def get_ffmpeg_cmd(uri: str, cam: WyzeCamera, audio: Optional[dict]) -> list[str
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
     if audio and "codec" in audio:
-        audio_in = f"-f {audio['codec']} -ar {audio['rate']} -i /tmp/{uri.lower()}.wav"
+        audio_in = f"-thread_queue_size 64 -f {audio['codec']} -ar {audio['rate']} -i /tmp/{uri.lower()}.wav"
         audio_out = audio["codec_out"] or "copy"
         a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
     rtsp_transport = "udp" if "udp" in env_bool("RTSP_PROTOCOLS") else "tcp"
@@ -903,9 +903,12 @@ def get_ffmpeg_cmd(uri: str, cam: WyzeCamera, audio: Optional[dict]) -> list[str
         + (["-c:a", audio_out] if audio_in else [])
         + (a_filter if audio and audio_out != "copy" else [])
         + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
+        + ["-muxdelay", "0", "-muxpreload", "0"]
         + ["-map", "0:v"]
-        + (["-map", "1:a", "-shortest"] if audio_in else [])
-        + ["-f", "tee"]
+        + (["-map", "1:a", "-max_interleave_delta", "10"] if audio_in else [])
+        # + (["-map", "1:a"] if audio_in else [])
+        + ["-vsync", "passthrough", "-f", "tee"]
+        # + ["-f", "tee"]
         + [rtsp_ss + get_record_cmd(uri, audio_out) + livestream]
     )
     if "ffmpeg" not in cmd[0].lower():
