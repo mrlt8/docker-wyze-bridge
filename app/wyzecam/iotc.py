@@ -565,7 +565,7 @@ class WyzeIOTCSession:
             with contextlib.suppress(tutk_ioctl_mux.Empty):
                 mux.send_ioctl(K10052DBSetResolvingBit(0, 0, fps)).result(block=False)
 
-    def recv_audio_frames(self, uri: str, fps: int = 20) -> None:
+    def recv_audio_frames(self, uri: str) -> None:
         """Write raw audio frames to a named pipe."""
         FIFO = f"/tmp/{uri.lower()}.wav"
         try:
@@ -574,13 +574,18 @@ class WyzeIOTCSession:
             if e.errno != 17:
                 raise e
         tutav = self.tutk_platform_lib, self.av_chan_id
+
+        # sample_rate = self.get_audio_sample_rate()
+        # sleep_interval = 1 / (sample_rate / (320 if sample_rate <= 8000 else 640))
+        sleep_interval = 1 / 5
         try:
             with open(FIFO, "wb") as audio_pipe:
                 while self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
-                    if (buf := tutk.av_check_audio_buf(*tutav)) < 3:
+                    if (buf := tutk.av_check_audio_buf(*tutav)) < 1:
+                        print(buf)
                         if buf < 0:
                             raise tutk.TutkError(buf)
-                        time.sleep(1 / fps)
+                        time.sleep(sleep_interval)
                         continue
                     errno, frame_data, _ = tutk.av_recv_audio_data(*tutav)
                     if errno < 0:
@@ -589,7 +594,7 @@ class WyzeIOTCSession:
                             tutk.AV_ER_INCOMPLETE_FRAME,
                             tutk.AV_ER_LOSED_THIS_FRAME,
                         ):
-                            time.sleep(1 / fps)
+                            # time.sleep(sleep_interval)
                             continue
                         warnings.warn(f"Error: {errno}")
                         break
@@ -603,11 +608,16 @@ class WyzeIOTCSession:
             os.unlink(FIFO)
             warnings.warn("Audio pipe closed")
 
+    def get_audio_sample_rate(self) -> int:
+        """Attempt to get the audio sample rate."""
+        sample_rate = 16000 if self.camera.product_model == "WYZE_CAKP2JFUS" else 8000
+        if audio_param := self.camera.camera_info.get("audioParm", False):
+            sample_rate = int(audio_param.get("sampleRate", sample_rate))
+        return sample_rate
+
     def get_audio_codec(self, limit: int = 25) -> Tuple[str, int]:
         """Identify audio codec."""
-        bitrate = 16000 if self.camera.product_model == "WYZE_CAKP2JFUS" else 8000
-        if audio_param := self.camera.camera_info.get("audioParm", False):
-            bitrate = int(audio_param.get("sampleRate", bitrate))
+        sample_rate = self.get_audio_sample_rate()
         for _ in range(limit):
             errno, _, frame_info = tutk.av_recv_audio_data(
                 self.tutk_platform_lib, self.av_chan_id
@@ -624,8 +634,8 @@ class WyzeIOTCSession:
                     codec = "alaw"
                 else:
                     raise Exception(f"\nUnknown audio codec {codec_id=}\n")
-                logger.info(f"[AUDIO] {codec=} {bitrate=} {codec_id=}")
-                return codec, bitrate
+                logger.info(f"[AUDIO] {codec=} {sample_rate=} {codec_id=}")
+                return codec, sample_rate
             time.sleep(0.5)
         raise Exception("Unable to identify audio.")
 

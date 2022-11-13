@@ -495,7 +495,7 @@ class WyzeBridge:
                 camera_info.put(sess.camera.camera_info)
                 fps, audio = get_cam_params(sess, uri, audio)
                 audio_thread = threading.Thread(
-                    target=sess.recv_audio_frames, args=(uri, fps), name=f"{uri}_AUDIO"
+                    target=sess.recv_audio_frames, args=(uri,), name=f"{uri}_AUDIO"
                 )
                 if (
                     env_bool("enable_boa")
