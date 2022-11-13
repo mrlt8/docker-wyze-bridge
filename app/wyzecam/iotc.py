@@ -1,4 +1,5 @@
 import base64
+import contextlib
 import enum
 import hashlib
 import logging
@@ -469,7 +470,7 @@ class WyzeIOTCSession:
         ignore_res = {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
         last = {"key_frame": 0, "key_time": 0, "frame": 0, "time": time.time()}
         while not stop_flag.is_set():
-            if (time.time() - last["time"]) >= timeout:
+            if (delta := time.time() - last["time"]) >= timeout:
                 if last["key_time"] == 0:
                     warnings.warn("Still waiting for first frame. Updating frame size.")
                     last["key_time"] = last["time"] = time.time()
@@ -477,11 +478,14 @@ class WyzeIOTCSession:
                     continue
                 self.state = WyzeIOTCSessionState.CONNECTING_FAILED
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
+            elif delta < (1 / fps):
+                time.sleep((1 / (fps + 5)) - delta)
+
             errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
-                time.sleep(0.5 / fps)
+                time.sleep(1 / (fps + 10))
                 if errno == tutk.AV_ER_DATA_NOREADY:
                     continue
                 if errno in (
@@ -502,8 +506,8 @@ class WyzeIOTCSession:
                 self.update_frame_size_rate()
                 last |= {"key_frame": 0, "key_time": 0, "time": time.time()}
                 continue
-            # if frame_index and frame_index % 1000 == 0:
-            #     fps = self.update_frame_size_rate(True, frame_info.framerate) or fps
+            if frame_index and frame_index % 1000 == 0:
+                fps = self.update_frame_size_rate(True, frame_info.framerate) or fps
             if frame_info.is_keyframe:
                 last |= {"key_frame": frame_info.frame_no, "key_time": time.time()}
             elif (
@@ -512,7 +516,7 @@ class WyzeIOTCSession:
                 and not keep_bad_frames
             ):
                 warnings.warn("Waiting for keyframe")
-                time.sleep(0.5 / fps)
+                time.sleep(1 / (fps + 10))
                 continue
             elif time.time() - frame_info.timestamp > timeout:
                 warnings.warn("frame too old")
@@ -530,7 +534,7 @@ class WyzeIOTCSession:
             if bitrate:
                 param = mux.send_ioctl(K10020CheckCameraParams(3, 5)).result()
                 if fps and (cam_fps := int(param.get("5", fps))) != fps:
-                    warnings.warn(f"FPS param mismatch (avRecv FPS={fps})")
+                    warnings.warn(f"FPS mismatch: param FPS={cam_fps} avRecv FPS={fps}")
                     if os.getenv("FPS_FIX"):
                         self.change_fps(fps)
                     return cam_fps
@@ -540,13 +544,11 @@ class WyzeIOTCSession:
                     iotc_msg = False
             if iotc_msg:
                 logger.warning("Requesting frame_size=%d and bitrate=%d" % iotc_msg)
-                try:
+                with contextlib.suppress(tutk_ioctl_mux.Empty):
                     if self.camera.product_model in ("WYZEDB3", "WVOD1", "HL_WCO2"):
                         mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result(False)
                     else:
                         mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result(False)
-                except tutk_ioctl_mux.Empty:
-                    pass  # Ignore queue.Empty
         return 0
 
     def clear_local_buffer(self) -> None:
@@ -558,10 +560,8 @@ class WyzeIOTCSession:
         """Send a message to the camera to update the FPS."""
         logger.warning("Requesting frame_rate=%d" % fps)
         with self.iotctrl_mux() as mux:
-            try:
+            with contextlib.suppress(tutk_ioctl_mux.Empty):
                 mux.send_ioctl(K10052DBSetResolvingBit(0, 0, fps)).result(block=False)
-            except tutk_ioctl_mux.Empty:
-                pass  # Ignore queue.Empty
 
     def recv_audio_frames(self, uri: str, fps: int = 20) -> None:
         """Write raw audio frames to a named pipe."""
