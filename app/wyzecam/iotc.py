@@ -478,15 +478,14 @@ class WyzeIOTCSession:
                     continue
                 self.state = WyzeIOTCSessionState.CONNECTING_FAILED
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
-
-            if (sleep_interval := (1 / (fps + 5)) - delta) > 0:
+            if (sleep_interval := ((1 / fps) - 0.01) - delta) > 0:
                 time.sleep(sleep_interval)
 
             errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
-                time.sleep(1 / (fps + 10))
+                time.sleep((1 / (fps)) - 0.02)
                 if errno == tutk.AV_ER_DATA_NOREADY:
                     continue
                 if errno in (
@@ -519,7 +518,7 @@ class WyzeIOTCSession:
                 and not keep_bad_frames
             ):
                 warnings.warn("Waiting for keyframe")
-                time.sleep(1 / (fps + 10))
+                time.sleep((1 / (fps)) - 0.02)
                 continue
             elif time.time() - frame_info.timestamp > timeout:
                 warnings.warn("frame too old")
