@@ -507,7 +507,9 @@ class WyzeIOTCSession:
                 last |= {"key_frame": 0, "key_time": 0, "time": time.time()}
                 continue
             if frame_index and frame_index % 1000 == 0:
-                fps = self.update_frame_size_rate(True, frame_info.framerate) or fps
+                fps = max(
+                    self.update_frame_size_rate(True, frame_info.framerate), fps, 10
+                )
             if frame_info.is_keyframe:
                 last |= {"key_frame": frame_info.frame_no, "key_time": time.time()}
             elif (
