@@ -582,7 +582,6 @@ class WyzeIOTCSession:
             with open(FIFO, "wb") as audio_pipe:
                 while self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
                     if (buf := tutk.av_check_audio_buf(*tutav)) < 1:
-                        print(buf)
                         if buf < 0:
                             raise tutk.TutkError(buf)
                         time.sleep(sleep_interval)
@@ -594,9 +593,8 @@ class WyzeIOTCSession:
                             tutk.AV_ER_INCOMPLETE_FRAME,
                             tutk.AV_ER_LOSED_THIS_FRAME,
                         ):
-                            # time.sleep(sleep_interval)
                             continue
-                        warnings.warn(f"Error: {errno}")
+                        warnings.warn(f"Error: {errno=}")
                         break
                     audio_pipe.write(frame_data)
         except tutk.TutkError as ex:
