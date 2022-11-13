@@ -478,8 +478,9 @@ class WyzeIOTCSession:
                     continue
                 self.state = WyzeIOTCSessionState.CONNECTING_FAILED
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
-            elif delta < (1 / fps):
-                time.sleep((1 / (fps + 5)) - delta)
+
+            if (sleep_interval := (1 / (fps + 5)) - delta) > 0:
+                time.sleep(sleep_interval)
 
             errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
