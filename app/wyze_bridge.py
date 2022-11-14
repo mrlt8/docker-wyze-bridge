@@ -909,8 +909,7 @@ def get_ffmpeg_cmd(uri: str, cam: WyzeCamera, audio: Optional[dict]) -> list[str
         + ["-map", "0:v"]
         + (["-map", "1:a", "-max_interleave_delta", "10"] if audio_in else [])
         # + (["-map", "1:a"] if audio_in else [])
-        + ["-fps_mode", "passthrough", "-f", "tee"]
-        # + ["-f", "tee"]
+        + ["-f", "tee"]
         + [rtsp_ss + get_record_cmd(uri, audio_out) + livestream]
     )
     if "ffmpeg" not in cmd[0].lower():
