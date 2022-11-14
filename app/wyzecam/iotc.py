@@ -8,6 +8,7 @@ import pathlib
 import time
 import warnings
 from ctypes import CDLL, c_int
+from multiprocessing.synchronize import Event
 from typing import Any, Dict, Iterator, Optional, Tuple, Union
 
 from wyzecam.api_models import WyzeAccount, WyzeCamera
@@ -252,6 +253,7 @@ class WyzeIOTCSession:
         bitrate: int = tutk.BITRATE_HD,
         enable_audio: bool = True,
         connect_timeout: int = 20,
+        stop_flag: Optional[Event] = None,
     ) -> None:
         """Construct a wyze iotc session.
 
@@ -277,6 +279,7 @@ class WyzeIOTCSession:
         self.preferred_bitrate: int = bitrate
         self.connect_timeout: int = connect_timeout
         self.enable_audio: bool = enable_audio
+        self.stop_flag: Optional[Event] = stop_flag
 
     @property
     def resolution(self) -> str:
@@ -454,7 +457,7 @@ class WyzeIOTCSession:
             first_run = False
 
     def recv_bridge_frame(
-        self, stop_flag, keep_bad_frames: bool = False, timeout: int = 15, fps: int = 15
+        self, keep_bad_frames: bool = False, timeout: int = 15, fps: int = 15
     ) -> Iterator[Optional[bytes]]:
         """A generator for returning raw video frames for the bridge.
 
@@ -469,7 +472,9 @@ class WyzeIOTCSession:
         alt = self.preferred_frame_size + (1 if self.preferred_frame_size == 3 else 3)
         ignore_res = {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
         last = {"key_frame": 0, "key_time": 0, "frame": 0, "time": time.time()}
-        while not stop_flag.is_set():
+        while self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED and (
+            not self.stop_flag or not self.stop_flag.is_set()
+        ):
             if (delta := time.time() - last["time"]) >= timeout:
                 if last["key_time"] == 0:
                     warnings.warn("Still waiting for first frame. Updating frame size.")
@@ -526,6 +531,7 @@ class WyzeIOTCSession:
 
             yield frame_data
             last |= {"frame": frame_info.frame_no, "time": time.time()}
+        self.state = WyzeIOTCSessionState.CONNECTING_FAILED
 
     def update_frame_size_rate(
         self, bitrate: bool = False, fps: Optional[int] = None
@@ -580,7 +586,9 @@ class WyzeIOTCSession:
         sleep_interval = 1 / 5
         try:
             with open(FIFO, "wb") as audio_pipe:
-                while self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
+                while self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED and (
+                    not self.stop_flag or not self.stop_flag.is_set()
+                ):
                     if (buf := tutk.av_check_audio_buf(*tutav)) < 1:
                         if buf < 0:
                             raise tutk.TutkError(buf)
@@ -603,6 +611,7 @@ class WyzeIOTCSession:
             if ex.errno != 32:  # Ignore errno.EPIPE - Broken pipe
                 warnings.warn(str(ex))
         finally:
+            self.state = WyzeIOTCSessionState.CONNECTING_FAILED
             os.unlink(FIFO)
             warnings.warn("Audio pipe closed")
 

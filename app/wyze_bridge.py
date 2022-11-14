@@ -10,6 +10,7 @@ import threading
 import time
 import warnings
 from datetime import datetime, timedelta
+from multiprocessing.synchronize import Event
 from queue import Empty
 from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
 from typing import Dict, Generator, List, NoReturn, Optional, Tuple, Union
@@ -470,7 +471,7 @@ class WyzeBridge:
     def start_tutk_stream(
         self,
         cam: wyzecam.WyzeCamera,
-        stop_flag: multiprocessing.Event,
+        stop_flag: Event,
         camera_info: multiprocessing.Queue,
         camera_cmd: multiprocessing.JoinableQueue,
         offline: bool,
@@ -491,6 +492,7 @@ class WyzeBridge:
                 *get_env_quality(uri, cam.product_model),
                 enable_audio=audio,
                 connect_timeout=self.connect_timeout,
+                stop_flag=stop_flag,
             ) as sess:
                 camera_info.put(sess.camera.camera_info)
                 fps, audio = get_cam_params(sess, uri, audio)
@@ -506,14 +508,14 @@ class WyzeBridge:
                     boa_thread = threading.Thread(
                         target=camera_boa,
                         args=(sess, uri, self.img_path, camera_info, camera_cmd),
-                        name=uri + "_BOA",
+                        name=f"{uri}_BOA",
                     )
                     boa_thread.start()
                 with Popen(get_ffmpeg_cmd(uri, cam, audio), stdin=PIPE) as ffmpeg:
                     if audio:
                         audio_thread.start()
                     for frame in sess.recv_bridge_frame(
-                        stop_flag, self.keep_bad_frames, self.timeout, fps
+                        self.keep_bad_frames, self.timeout, fps
                     ):
                         ffmpeg.stdin.write(frame)
         except wyzecam.TutkError as ex:
@@ -907,7 +909,7 @@ def get_ffmpeg_cmd(uri: str, cam: WyzeCamera, audio: Optional[dict]) -> list[str
         + ["-map", "0:v"]
         + (["-map", "1:a", "-max_interleave_delta", "10"] if audio_in else [])
         # + (["-map", "1:a"] if audio_in else [])
-        + ["-vsync", "passthrough", "-f", "tee"]
+        + ["-fps_mode", "passthrough", "-f", "tee"]
         # + ["-f", "tee"]
         + [rtsp_ss + get_record_cmd(uri, audio_out) + livestream]
     )
