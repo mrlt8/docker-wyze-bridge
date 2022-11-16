@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 import multiprocessing
@@ -714,6 +715,8 @@ class WyzeBridge:
 
     def cam_cmd(self, cam_name: str, cmd: str) -> dict[str, Any]:
         """Cam command."""
+        if cmd not in CAM_CMDS:
+            return {"error": f"{cmd=} not found"}
         if not (cam := self.streams.get(cam_name)) or cam.get("camera_info") is None:
             return {"error": "cam offline"}
         cam["camera_cmd"].put(cmd)
@@ -1268,23 +1271,25 @@ def camera_control(
     while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
         boa_control(sess, boa_cam)
         resp = {}
-        try:
+        with contextlib.suppress(Empty):
             cmd = camera_cmd.get(timeout=interval)
             if resp := send_tutk_msg(sess, cmd, "web-ui"):
                 pull_last_image(boa_cam, "photo")
             camera_cmd.task_done()
-        except Empty:
-            pass
-        finally:
-            if not resp and camera_info.qsize() > 0:
-                continue
-            cam_info = sess.camera.camera_info or {}
-            if boa_cam.get("ip"):
-                cam_info["boa_info"] = {
-                    "last_alarm": boa_cam["last_alarm"],
-                    "last_photo": boa_cam["last_photo"],
-                }
-            camera_info.put(cam_info | resp)
+
+        # Check bitrate
+        # sess.update_frame_size_rate(True)
+
+        if not resp and camera_info.qsize() > 0:
+            continue
+        cam_info = sess.camera.camera_info or {}
+        if boa_cam.get("ip"):
+            cam_info["boa_info"] = {
+                "last_alarm": boa_cam["last_alarm"],
+                "last_photo": boa_cam["last_photo"],
+            }
+        camera_info.put(cam_info | resp)
+
     if mqtt:
         mqtt.loop_stop()
 

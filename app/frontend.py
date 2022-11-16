@@ -14,7 +14,7 @@ from flask import (
     send_from_directory,
 )
 from werkzeug.exceptions import NotFound
-from wyze_bridge import CAM_CMDS, WyzeBridge, setup_logging
+from wyze_bridge import WyzeBridge, setup_logging
 
 log = logging.getLogger(__name__)
 wb: WyzeBridge = None
@@ -103,7 +103,7 @@ def create_app():
             return {"success": wb.start_on_demand(cam_name)}
         if cam_name and cam_cmd == "stop":
             return {"success": wb.stop_on_demand(cam_name)}
-        if cam_name and cam_cmd and cam_cmd in CAM_CMDS:
+        if cam_name and cam_cmd:
             return wb.cam_cmd(cam_name, cam_cmd)
 
         host = urlparse(request.root_url).hostname
