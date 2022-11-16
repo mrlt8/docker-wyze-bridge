@@ -486,7 +486,7 @@ class WyzeIOTCSession:
             if (sleep_interval := ((1 / fps) - 0.01) - delta) > 0:
                 time.sleep(sleep_interval)
 
-            errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
+            errno, frame_data, frame_info, _ = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
@@ -511,10 +511,10 @@ class WyzeIOTCSession:
                 self.update_frame_size_rate()
                 last |= {"key_frame": 0, "key_time": 0, "time": time.time()}
                 continue
-            if frame_index and frame_index % 1000 == 0:
-                fps = max(
-                    self.update_frame_size_rate(True, frame_info.framerate), fps, 10
-                )
+            # if frame_index and frame_index % 1000 == 0:
+            #     fps = max(
+            #         self.update_frame_size_rate(True, frame_info.framerate), fps, 10
+            #     )
             if frame_info.is_keyframe:
                 last |= {"key_frame": frame_info.frame_no, "key_time": time.time()}
             elif (
@@ -529,8 +529,8 @@ class WyzeIOTCSession:
                 warnings.warn("frame too old")
                 continue
 
-            yield frame_data
             last |= {"frame": frame_info.frame_no, "time": time.time()}
+            yield frame_data
         self.state = WyzeIOTCSessionState.CONNECTING_FAILED
 
     def update_frame_size_rate(
