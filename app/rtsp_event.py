@@ -69,6 +69,7 @@ class RtspEvent:
                     ffmpeg_sub.wait(15)
                 except TimeoutExpired:
                     ffmpeg_sub.kill()
+                    ffmpeg_sub.wait()
                     self.write_log("snapshot timed out")
                     continue
             if os.path.exists(img_file) and os.path.getsize(img_file) > 1:

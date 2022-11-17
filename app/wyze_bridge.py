@@ -96,6 +96,7 @@ class WyzeBridge:
         log.info("Stopping rtsp-simple-server...")
         if self.rtsp and self.rtsp.poll() is None:
             self.rtsp.terminate()
+            self.rtsp.wait()
         self.rtsp = None
 
     def start_all_streams(self) -> None:
@@ -118,6 +119,7 @@ class WyzeBridge:
                     )
                     if stream.get("process"):
                         stream["process"].kill()
+                        stream["process"].wait()
                     self.streams[name] = {"sleep": int(time.time() + cooldown)}
                 elif process := stream.get("process"):
                     if process.exitcode in {13, 19, 68} and last_refresh <= time.time():
@@ -692,6 +694,7 @@ class WyzeBridge:
                     self.rtsp_snap(cam_name, fast=False)
             except TimeoutExpired:
                 ffmpeg.kill()
+                ffmpeg.wait()
                 return None
         return img
 
