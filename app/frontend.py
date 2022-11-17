@@ -38,10 +38,8 @@ signal.signal(signal.SIGTERM, lambda *_: clean_up())
 
 @auth.verify_password
 def verify_password(username, password):
-    if username in user:
-        log.warn("username in user")
+    if username == user:
         return check_password_hash(pw, password)
-    log.info("returning false")
     return False
 
 def create_app():
