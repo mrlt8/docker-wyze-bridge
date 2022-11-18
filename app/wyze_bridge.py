@@ -82,22 +82,19 @@ class WyzeBridge:
         """Stop all cameras."""
         log.info("Stopping the cameras...")
         self.stop_bridge.set()
-        if self.streams:
-            for stream in self.streams.values():
-                if stop_flag := stream.get("stop_flag"):
-                    stop_flag.set()
-            for stream in self.streams.values():
-                if process := stream.get("process"):
-                    process.join()
-        self.streams = {}
+        for cam, stream in list(self.streams.items()):
+            with contextlib.suppress(AttributeError, KeyError):
+                stream["stop_flag"].set()
+                stream["process"].join()
+                del self.streams[cam]
         self.cameras = {}
 
     def stop_rtsp_server(self) -> None:
         """Stop rtsp-simple-server."""
         log.info("Stopping rtsp-simple-server...")
         if self.rtsp and self.rtsp.poll() is None:
-            self.rtsp.terminate()
-            self.rtsp.wait()
+            self.rtsp.send_signal(signal.SIGINT)
+            self.rtsp.communicate()
         self.rtsp = None
 
     def start_all_streams(self) -> None:
@@ -140,15 +137,6 @@ class WyzeBridge:
                         del self.streams[name]
                 if stream.get("queue") and not stream["queue"].empty():
                     stream["camera_info"] = stream["queue"].get()
-
-            if self.rtsp_snapshot_processes:
-                for cam_name, snap in list(self.rtsp_snapshot_processes.items()):
-                    if snap.poll() is not None:
-                        try:
-                            del self.rtsp_snapshot_processes[cam_name]
-                        except KeyError:
-                            continue
-
             time.sleep(1)
 
     def start_stream(self, name: str) -> None:
@@ -697,7 +685,7 @@ class WyzeBridge:
             except TimeoutExpired:
                 if ffmpeg.poll() is None:
                     ffmpeg.terminate()
-                    ffmpeg.wait()
+                    ffmpeg.communicate()
                 return None
             finally:
                 if cam_name in self.rtsp_snapshot_processes and ffmpeg.poll():
