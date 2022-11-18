@@ -117,9 +117,9 @@ class WyzeBridge:
                     log.warning(
                         f"⏰ Timed out connecting to {name} ({self.connect_timeout}s)."
                     )
-                    if stream.get("process"):
-                        stream["process"].kill()
-                        stream["process"].wait()
+                    if stream.get("process") and stream["process"].is_alive():
+                        stream["process"].terminate()
+                        stream["process"].join()
                     self.streams[name] = {"sleep": int(time.time() + cooldown)}
                 elif process := stream.get("process"):
                     if process.exitcode in {13, 19, 68} and last_refresh <= time.time():
@@ -159,7 +159,7 @@ class WyzeBridge:
         if name in self.streams and (proc := self.streams[name].get("process")):
             if self.streams[name].get("on_demand", 0) > time.time():
                 old_stop = False
-            if hasattr(proc, "alive") and proc.alive():
+            if proc.is_alive():
                 proc.terminate()
                 proc.join()
         offline = bool(self.streams[name].get("sleep"))
@@ -486,6 +486,7 @@ class WyzeBridge:
         uri = cam.name_uri.upper()
         exit_code = 1
         audio = env_bool(f"ENABLE_AUDIO_{uri}", env_bool("ENABLE_AUDIO"), style="bool")
+        audio_thread = boa_thread = None
         try:
             with wyzecam.WyzeIOTC() as wyze_iotc, wyzecam.WyzeIOTCSession(
                 wyze_iotc.tutk_platform_lib,
@@ -498,9 +499,6 @@ class WyzeBridge:
             ) as sess:
                 camera_info.put(sess.camera.camera_info)
                 fps, audio = get_cam_params(sess, uri, audio)
-                audio_thread = threading.Thread(
-                    target=sess.recv_audio_frames, args=(uri,), name=f"{uri}_AUDIO"
-                )
                 if (
                     env_bool("enable_boa")
                     or env_bool("PULL_PHOTO")
@@ -513,9 +511,12 @@ class WyzeBridge:
                         name=f"{uri}_BOA",
                     )
                     boa_thread.start()
+                if audio:
+                    audio_thread = threading.Thread(
+                        target=sess.recv_audio_frames, args=(uri,), name=f"{uri}_AUDIO"
+                    )
+                    audio_thread.start()
                 with Popen(get_ffmpeg_cmd(uri, cam, audio), stdin=PIPE) as ffmpeg:
-                    if audio:
-                        audio_thread.start()
                     for frame in sess.recv_bridge_frame(
                         self.keep_bad_frames, self.timeout, fps
                     ):
@@ -539,10 +540,10 @@ class WyzeBridge:
         else:
             log.warning("Stream is down.")
         finally:
-            if "audio_thread" in locals() and audio_thread.is_alive():
+            if audio_thread and audio_thread.is_alive():
                 open(f"/tmp/{uri.lower()}.wav", "r").close()
                 audio_thread.join()
-            if "boa_thread" in locals() and boa_thread.is_alive():
+            if boa_thread and boa_thread.is_alive():
                 boa_thread.join()
             sys.exit(exit_code)
 
@@ -693,8 +694,9 @@ class WyzeBridge:
                         return None
                     self.rtsp_snap(cam_name, fast=False)
             except TimeoutExpired:
-                ffmpeg.kill()
-                ffmpeg.wait()
+                if ffmpeg.poll() is None:
+                    ffmpeg.terminate()
+                    ffmpeg.wait()
                 return None
         return img
 
