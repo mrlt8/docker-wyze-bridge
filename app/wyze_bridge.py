@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 import multiprocessing
@@ -698,6 +699,10 @@ class WyzeBridge:
                     ffmpeg.terminate()
                     ffmpeg.wait()
                 return None
+            finally:
+                if cam_name in self.rtsp_snapshot_processes and ffmpeg.poll():
+                    with contextlib.suppress(KeyError):
+                        del self.rtsp_snapshot_processes[cam_name]
         return img
 
     def start_on_demand(self, cam_uri: str) -> bool:
