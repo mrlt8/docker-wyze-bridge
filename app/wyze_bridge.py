@@ -83,10 +83,11 @@ class WyzeBridge:
         log.info("Stopping the cameras...")
         self.stop_bridge.set()
         for cam, stream in list(self.streams.items()):
-            with contextlib.suppress(AttributeError, KeyError):
+            if stream.get("stop_flag") != None:
                 stream["stop_flag"].set()
+            if stream.get("process") != None:
                 stream["process"].join()
-                del self.streams[cam]
+            del self.streams[cam]
         self.cameras = {}
 
     def stop_rtsp_server(self) -> None:
@@ -367,7 +368,6 @@ class WyzeBridge:
         path = f"RTSP_PATHS_{cam.name_uri.upper()}"
         py_event = "python3 /app/rtsp_event.py $RTSP_PATH "
         # py_event = "bash -c 'echo GET /events/{}/{} HTTP/1.1 >/dev/tcp/127.0.0.1/5000'"
-        py_wait = "bash -c 'trap stop INT; {} & stop(){{ sleep 1; kill -2 %1; wait %1; }}; wait %1;'"
         if self.on_demand or cam.product_model in {"WVOD1", "HL_WCO2"}:
             if env_bool(f"RECORD_{cam.name_uri}", env_bool("RECORD_ALL")):
                 log.info(f"[RECORDING] Ignoring ON_DEMAND setting for {cam.name_uri}!")
@@ -382,15 +382,13 @@ class WyzeBridge:
             log.info(f"Proxying firmware RTSP to path: '/{cam.name_uri}fw'")
             os.environ[f"{path}FW_SOURCE"] = rtsp_path
             # os.environ[f"{path}FW_SOURCEONDEMAND"] = "yes"
-
-        # os.environ[path + "RUNONDEMAND"] = py_event.format("DEMAND", cam.name_uri)
         for event in {"READ", "READY"}:
             env = f"{path}_RUNON{event}"
             if alt := env_bool(env):
                 event += " & " + alt
-            os.environ[env] = py_wait.format(py_event + event)
+            os.environ[env] = py_event + event
             if rtsp_path:
-                os.environ[f"{path}FW_RUNON{event}"] = py_wait.format(py_event + event)
+                os.environ[f"{path}FW_RUNON{event}"] = py_event + event
         if user := env_bool(f"{path}_READUSER", os.getenv("RTSP_PATHS_ALL_READUSER")):
             os.environ[f"{path}_READUSER"] = user
         if pas := env_bool(f"{path}_READPASS", os.getenv("RTSP_PATHS_ALL_READPASS")):
@@ -705,7 +703,8 @@ class WyzeBridge:
         """Stop on-demand stream."""
         if not (cam := self.streams.get(cam_uri)):
             return False
-        cam["stop_flag"].set()
+        if cam.get("stop_flag") != None:
+            cam["stop_flag"].set()
         return True
 
     def boa_photo(self, cam_name: str) -> Optional[str]:
