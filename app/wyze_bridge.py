@@ -1,3 +1,4 @@
+import contextlib
 import json
 import logging
 import multiprocessing
@@ -10,6 +11,7 @@ import threading
 import time
 import warnings
 from datetime import datetime, timedelta
+from multiprocessing.synchronize import Event
 from queue import Empty
 from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
 from typing import Dict, Generator, List, NoReturn, Optional, Tuple, Union
@@ -80,21 +82,20 @@ class WyzeBridge:
         """Stop all cameras."""
         log.info("Stopping the cameras...")
         self.stop_bridge.set()
-        if self.streams:
-            for stream in self.streams.values():
-                if stop_flag := stream.get("stop_flag"):
-                    stop_flag.set()
-            for stream in self.streams.values():
-                if process := stream.get("process"):
-                    process.join()
-        self.streams = {}
+        for cam, stream in list(self.streams.items()):
+            if stream.get("stop_flag") != None:
+                stream["stop_flag"].set()
+            if stream.get("process") != None:
+                stream["process"].join()
+            del self.streams[cam]
         self.cameras = {}
 
     def stop_rtsp_server(self) -> None:
         """Stop rtsp-simple-server."""
         log.info("Stopping rtsp-simple-server...")
         if self.rtsp and self.rtsp.poll() is None:
-            self.rtsp.terminate()
+            self.rtsp.send_signal(signal.SIGINT)
+            self.rtsp.communicate()
         self.rtsp = None
 
     def start_all_streams(self) -> None:
@@ -115,8 +116,9 @@ class WyzeBridge:
                     log.warning(
                         f"⏰ Timed out connecting to {name} ({self.connect_timeout}s)."
                     )
-                    if stream.get("process"):
-                        stream["process"].kill()
+                    if stream.get("process") and stream["process"].is_alive():
+                        stream["process"].terminate()
+                        stream["process"].join()
                     self.streams[name] = {"sleep": int(time.time() + cooldown)}
                 elif process := stream.get("process"):
                     if process.exitcode in {13, 19, 68} and last_refresh <= time.time():
@@ -136,15 +138,6 @@ class WyzeBridge:
                         del self.streams[name]
                 if stream.get("queue") and not stream["queue"].empty():
                     stream["camera_info"] = stream["queue"].get()
-
-            if self.rtsp_snapshot_processes:
-                for cam_name, snap in list(self.rtsp_snapshot_processes.items()):
-                    if snap.poll() is not None:
-                        try:
-                            del self.rtsp_snapshot_processes[cam_name]
-                        except KeyError:
-                            continue
-
             time.sleep(1)
 
     def start_stream(self, name: str) -> None:
@@ -156,7 +149,7 @@ class WyzeBridge:
         if name in self.streams and (proc := self.streams[name].get("process")):
             if self.streams[name].get("on_demand", 0) > time.time():
                 old_stop = False
-            if hasattr(proc, "alive") and proc.alive():
+            if proc.is_alive():
                 proc.terminate()
                 proc.join()
         offline = bool(self.streams[name].get("sleep"))
@@ -375,7 +368,6 @@ class WyzeBridge:
         path = f"RTSP_PATHS_{cam.name_uri.upper()}"
         py_event = "python3 /app/rtsp_event.py $RTSP_PATH "
         # py_event = "bash -c 'echo GET /events/{}/{} HTTP/1.1 >/dev/tcp/127.0.0.1/5000'"
-        py_wait = "bash -c 'trap stop INT; {} & stop(){{ sleep 1; kill -2 %1; wait %1; }}; wait %1;'"
         if self.on_demand or cam.product_model in {"WVOD1", "HL_WCO2"}:
             if env_bool(f"RECORD_{cam.name_uri}", env_bool("RECORD_ALL")):
                 log.info(f"[RECORDING] Ignoring ON_DEMAND setting for {cam.name_uri}!")
@@ -390,15 +382,12 @@ class WyzeBridge:
             log.info(f"Proxying firmware RTSP to path: '/{cam.name_uri}fw'")
             os.environ[f"{path}FW_SOURCE"] = rtsp_path
             # os.environ[f"{path}FW_SOURCEONDEMAND"] = "yes"
-
-        # os.environ[path + "RUNONDEMAND"] = py_event.format("DEMAND", cam.name_uri)
         for event in {"READ", "READY"}:
             env = f"{path}_RUNON{event}"
-            if alt := env_bool(env):
-                event += " & " + alt
-            os.environ[env] = py_wait.format(py_event + event)
+            if not env_bool(env):
+                os.environ[env] = py_event + event
             if rtsp_path:
-                os.environ[f"{path}FW_RUNON{event}"] = py_wait.format(py_event + event)
+                os.environ[f"{path}FW_RUNON{event}"] = py_event + event
         if user := env_bool(f"{path}_READUSER", os.getenv("RTSP_PATHS_ALL_READUSER")):
             os.environ[f"{path}_READUSER"] = user
         if pas := env_bool(f"{path}_READPASS", os.getenv("RTSP_PATHS_ALL_READPASS")):
@@ -470,7 +459,7 @@ class WyzeBridge:
     def start_tutk_stream(
         self,
         cam: wyzecam.WyzeCamera,
-        stop_flag: multiprocessing.Event,
+        stop_flag: Event,
         camera_info: multiprocessing.Queue,
         camera_cmd: multiprocessing.JoinableQueue,
         offline: bool,
@@ -483,6 +472,7 @@ class WyzeBridge:
         uri = cam.name_uri.upper()
         exit_code = 1
         audio = env_bool(f"ENABLE_AUDIO_{uri}", env_bool("ENABLE_AUDIO"), style="bool")
+        audio_thread = boa_thread = None
         try:
             with wyzecam.WyzeIOTC() as wyze_iotc, wyzecam.WyzeIOTCSession(
                 wyze_iotc.tutk_platform_lib,
@@ -491,12 +481,10 @@ class WyzeBridge:
                 *get_env_quality(uri, cam.product_model),
                 enable_audio=audio,
                 connect_timeout=self.connect_timeout,
+                stop_flag=stop_flag,
             ) as sess:
                 camera_info.put(sess.camera.camera_info)
                 fps, audio = get_cam_params(sess, uri, audio)
-                audio_thread = threading.Thread(
-                    target=sess.recv_audio_frames, args=(uri, fps), name=f"{uri}_AUDIO"
-                )
                 if (
                     env_bool("enable_boa")
                     or env_bool("PULL_PHOTO")
@@ -506,16 +494,17 @@ class WyzeBridge:
                     boa_thread = threading.Thread(
                         target=camera_boa,
                         args=(sess, uri, self.img_path, camera_info, camera_cmd),
-                        name=uri + "_BOA",
+                        name=f"{uri}_BOA",
                     )
                     boa_thread.start()
-                with Popen(
-                    get_ffmpeg_cmd(uri, cam.product_model, audio), stdin=PIPE
-                ) as ffmpeg:
-                    if audio:
-                        audio_thread.start()
+                if audio:
+                    audio_thread = threading.Thread(
+                        target=sess.recv_audio_frames, args=(uri,), name=f"{uri}_AUDIO"
+                    )
+                    audio_thread.start()
+                with Popen(get_ffmpeg_cmd(uri, cam, audio), stdin=PIPE) as ffmpeg:
                     for frame in sess.recv_bridge_frame(
-                        stop_flag, self.keep_bad_frames, self.timeout, fps
+                        self.keep_bad_frames, self.timeout, fps
                     ):
                         ffmpeg.stdin.write(frame)
         except wyzecam.TutkError as ex:
@@ -537,10 +526,10 @@ class WyzeBridge:
         else:
             log.warning("Stream is down.")
         finally:
-            if "audio_thread" in locals() and audio_thread.is_alive():
+            if audio_thread and audio_thread.is_alive():
                 open(f"/tmp/{uri.lower()}.wav", "r").close()
                 audio_thread.join()
-            if "boa_thread" in locals() and boa_thread.is_alive():
+            if boa_thread and boa_thread.is_alive():
                 boa_thread.join()
             sys.exit(exit_code)
 
@@ -691,8 +680,14 @@ class WyzeBridge:
                         return None
                     self.rtsp_snap(cam_name, fast=False)
             except TimeoutExpired:
-                ffmpeg.kill()
+                if ffmpeg.poll() is None:
+                    ffmpeg.terminate()
+                    ffmpeg.communicate()
                 return None
+            finally:
+                if cam_name in self.rtsp_snapshot_processes and ffmpeg.poll():
+                    with contextlib.suppress(KeyError):
+                        del self.rtsp_snapshot_processes[cam_name]
         return img
 
     def start_on_demand(self, cam_uri: str) -> bool:
@@ -707,7 +702,8 @@ class WyzeBridge:
         """Stop on-demand stream."""
         if not (cam := self.streams.get(cam_uri)):
             return False
-        cam["stop_flag"].set()
+        if cam.get("stop_flag") != None:
+            cam["stop_flag"].set()
         return True
 
     def boa_photo(self, cam_name: str) -> Optional[str]:
@@ -773,7 +769,7 @@ def get_env_quality(uri: str, cam_model: str) -> Tuple[int, int]:
     elif cam_model == "WYZEC1" and frame_size > 0:
         log.warning("v1 (WYZEC1) only supports HD")
         frame_size = 0
-    return frame_size, (env_bit if 30 <= env_bit <= 255 else (180 if doorbell else 120))
+    return frame_size, (env_bit if 1 <= env_bit <= 255 else (180 if doorbell else 120))
 
 
 def check_net_mode(session_mode: int, uri: str) -> str:
@@ -818,15 +814,15 @@ def get_cam_params(
     # WYZEC1 DEBUGGING
     bit_frame = f"{sess.preferred_bitrate}kb/s {sess.resolution} stream"
     fps = 20
-    if video_param := sess.camera.camera_info.get("videoParm", False):
+    if video_param := sess.camera.camera_info.get("videoParm"):
         if fps := int(video_param.get("fps", 0)):
             if fps % 5 != 0:
                 log.error(f"⚠️ Unusual FPS detected: {fps}")
-        if (force_fps := int(env_bool(f"FORCE_FPS_{uri}", 0))) and force_fps != fps:
-            log.info(f"Attempting to change FPS to {force_fps}")
+        if force_fps := int(env_bool(f"FORCE_FPS_{uri}", 0)):
+            log.info(f"Attempting to force fps={force_fps}")
             sess.change_fps(force_fps)
             fps = force_fps
-        bit_frame += f" ({fps}fps)"
+        bit_frame += f" ({video_param.get('type', 'h264')}/{fps}fps)"
         if env_bool("DEBUG_LEVEL"):
             log.info(f"[videoParm] {video_param}")
     firmware = sess.camera.camera_info["basicInfo"].get("firmware", "NA")
@@ -854,30 +850,34 @@ def get_cam_params(
     return fps, audio
 
 
-def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list[str]:
+def get_ffmpeg_cmd(uri: str, cam: WyzeCamera, audio: Optional[dict]) -> list[str]:
     """Return the ffmpeg cmd with options from the env."""
+    vcodec = "h264"
+    if vid_param := cam.camera_info.get("videoParm"):
+        vcodec = vid_param.get("type", vcodec)
     flags = "-fflags +genpts+flush_packets+nobuffer+bitexact -flags +low_delay"
-    rotate = cam_model == "WYZEDB3" and env_bool("ROTATE_DOOR")
+    rotate = cam.product_model == "WYZEDB3" and env_bool("ROTATE_DOOR")
     transpose = "clock"
     if env_bool(f"ROTATE_CAM_{uri}"):
         rotate = True
         if os.getenv(f"ROTATE_CAM_{uri}") in {"0", "1", "2", "3"}:
             # Numerical values are deprecated, and should be dropped in favor of symbolic constants.
             transpose = os.environ[f"ROTATE_CAM_{uri}"]
-    h264_enc = env_bool("h264_enc", "libx264")
+    h264_enc = env_bool("h264_enc", "libx264").lower()
     if rotate:
         log.info(f"Re-encoding stream using {h264_enc} [{transpose=}]")
     lib264 = (
         [h264_enc, "-filter:v", f"transpose={transpose}", "-b:v", "3000k"]
         + ["-coder", "1", "-bufsize", "1000k"]
         + ["-profile:v", "77" if h264_enc == "h264_v4l2m2m" else "main"]
-        + ["-preset", "ultrafast", "-force_key_frames", "expr:gte(t,n_forced*2)"]
+        + ["-preset", "fast" if h264_enc == "h264_nvenc" else "ultrafast"]
+        + ["-forced-idr", "1", "-force_key_frames", "expr:gte(t,n_forced*2)"]
     )
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
     if audio and "codec" in audio:
-        audio_in = f"-f {audio['codec']} -ar {audio['rate']} -i /tmp/{uri.lower()}.wav"
+        audio_in = f"-thread_queue_size 64 -f {audio['codec']} -ar {audio['rate']} -i /tmp/{uri.lower()}.wav"
         audio_out = audio["codec_out"] or "copy"
         a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
     rtsp_transport = "udp" if "udp" in env_bool("RTSP_PROTOCOLS") else "tcp"
@@ -889,20 +889,22 @@ def get_ffmpeg_cmd(uri: str, cam_model: str, audio: Optional[dict]) -> list[str]
     cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD")).format(
         cam_name=uri.lower(), CAM_NAME=uri, audio_in=audio_in
     ).split() or (
-        ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "fatal"]
+        ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "error"]
         + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
         .split()
         + ["-thread_queue_size", "64", "-threads", "1"]
-        + ["-analyzeduration", "50", "-probesize", "50", "-f", "h264", "-i", "pipe:"]
+        + ["-analyzeduration", "50", "-probesize", "50", "-f", vcodec, "-i", "pipe:"]
         + audio_in.split()
         + ["-flags", "+global_header", "-c:v"]
         + (["copy"] if not rotate else lib264)
         + (["-c:a", audio_out] if audio_in else [])
         + (a_filter if audio and audio_out != "copy" else [])
         + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
+        + ["-muxdelay", "0", "-muxpreload", "0"]
         + ["-map", "0:v"]
-        + (["-map", "1:a", "-shortest"] if audio_in else [])
+        + (["-map", "1:a", "-max_interleave_delta", "10"] if audio_in else [])
+        # + (["-map", "1:a"] if audio_in else [])
         + ["-f", "tee"]
         + [rtsp_ss + get_record_cmd(uri, audio_out) + livestream]
     )

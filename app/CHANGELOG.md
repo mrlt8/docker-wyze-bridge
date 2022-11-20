@@ -1,3 +1,16 @@
+## What's Changed in v1.9.1
+
+  - Potential Fix: Audio and video lagging #597 Thanks @carldanley!
+  - Changed: CPU and memory optimization. 
+  - Changed: Allow quality lower than 30. #608
+  - Changed: Show video codec.
+  - Changed: Use h264 preset `fast` for `h264_nvenc`.
+  - Updated: iOS and wyze version for web api.
+
+## What's Changed in v1.9.0
+
+  - New: Wyze Cam V3 Pro 2K support! Should also work with the Pan Pro 2k. #595 Huge thanks to @carldanley!
+
 ## What's Changed in v1.8.13
 
   - Fix: "Fatal Python error" on read/ready events.
