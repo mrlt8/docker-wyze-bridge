@@ -384,9 +384,8 @@ class WyzeBridge:
             # os.environ[f"{path}FW_SOURCEONDEMAND"] = "yes"
         for event in {"READ", "READY"}:
             env = f"{path}_RUNON{event}"
-            if alt := env_bool(env):
-                event += " & " + alt
-            os.environ[env] = py_event + event
+            if not env_bool(env):
+                os.environ[env] = py_event + event
             if rtsp_path:
                 os.environ[f"{path}FW_RUNON{event}"] = py_event + event
         if user := env_bool(f"{path}_READUSER", os.getenv("RTSP_PATHS_ALL_READUSER")):
