@@ -33,6 +33,15 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
+## What's Changed in v1.9.1
+
+  - Potential Fix: Audio and video lagging #597 Thanks @carldanley!
+  - Changed: CPU and memory optimization. 
+  - Changed: Allow quality lower than 30. #608
+  - Changed: Show video codec.
+  - Changed: Use h264 preset `fast` for `h264_nvenc`.
+  - Updated: iOS and wyze version for web api.
+
 ## What's Changed in v1.9.0
 
   - New: Wyze Cam V3 Pro 2K support! Should also work with the Pan Pro 2k. #595 Huge thanks to @carldanley!
