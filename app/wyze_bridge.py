@@ -71,24 +71,24 @@ class WyzeBridge:
         self.start_rtsp_server()
         self.start_all_streams()
 
-    def start(self) -> None:
+    def start(self, fresh_data: bool = False) -> None:
         """Start asynchronously."""
         if self.thread:
             self.thread.join()
-        self.thread = threading.Thread(target=self.run)
+        self.thread = threading.Thread(target=self.run, args=(fresh_data,))
         self.thread.start()
 
     def stop_cameras(self) -> None:
         """Stop all cameras."""
+        if self.stop_bridge.is_set():
+            sys.exit()
         log.info("Stopping the cameras...")
         self.stop_bridge.set()
-        for cam, stream in list(self.streams.items()):
+        for stream in self.streams.values():
             if stream.get("stop_flag") != None:
                 stream["stop_flag"].set()
-            if stream.get("process") != None:
-                stream["process"].join()
-            del self.streams[cam]
-        self.cameras = {}
+            if stream.get("process") != None and stream["process"].is_alive():
+                stream["process"].terminate()
 
     def stop_rtsp_server(self) -> None:
         """Stop rtsp-simple-server."""
@@ -139,6 +139,12 @@ class WyzeBridge:
                 if stream.get("queue") and not stream["queue"].empty():
                     stream["camera_info"] = stream["queue"].get()
             time.sleep(1)
+        for cam, stream in list(self.streams.items()):
+            if stream.get("process") != None and stream["process"].is_alive():
+                stream["process"].kill()
+                stream["process"].join()
+            del self.streams[cam]
+        self.stop_bridge.clear()
 
     def start_stream(self, name: str) -> None:
         """Start a single stream by cam name."""
@@ -185,6 +191,8 @@ class WyzeBridge:
         """Stop all streams and clean up before shutdown."""
         self.stop_cameras()
         self.stop_rtsp_server()
+        if self.thread:
+            self.thread.join()
         log.info("👋 goodbye!")
         sys.exit(0)
 
