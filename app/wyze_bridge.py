@@ -71,24 +71,27 @@ class WyzeBridge:
         self.start_rtsp_server()
         self.start_all_streams()
 
-    def start(self) -> None:
+    def start(self, fresh_data: bool = False) -> None:
         """Start asynchronously."""
-        if self.thread:
+        if self.thread and self.thread.is_alive():
             self.thread.join()
-        self.thread = threading.Thread(target=self.run)
+        self.thread = threading.Thread(target=self.run, args=(fresh_data,))
         self.thread.start()
 
     def stop_cameras(self) -> None:
         """Stop all cameras."""
+        if self.stop_bridge.is_set():
+            sys.exit()
         log.info("Stopping the cameras...")
         self.stop_bridge.set()
         for cam, stream in list(self.streams.items()):
             if stream.get("stop_flag") != None:
                 stream["stop_flag"].set()
-            if stream.get("process") != None:
+            if stream.get("process") != None and stream["process"].is_alive():
+                stream["process"].kill()
                 stream["process"].join()
             del self.streams[cam]
-        self.cameras = {}
+        self.stop_bridge.clear()
 
     def stop_rtsp_server(self) -> None:
         """Stop rtsp-simple-server."""
@@ -116,8 +119,10 @@ class WyzeBridge:
                     log.warning(
                         f"⏰ Timed out connecting to {name} ({self.connect_timeout}s)."
                     )
-                    if stream.get("process") and stream["process"].is_alive():
-                        stream["process"].terminate()
+                    if stream.get("stop_flag"):
+                        stream["stop_flag"].set()
+                    if stream.get("process") != None and stream["process"].is_alive():
+                        stream["process"].kill()
                         stream["process"].join()
                     self.streams[name] = {"sleep": int(time.time() + cooldown)}
                 elif process := stream.get("process"):
@@ -150,7 +155,7 @@ class WyzeBridge:
             if self.streams[name].get("on_demand", 0) > time.time():
                 old_stop = False
             if proc.is_alive():
-                proc.terminate()
+                proc.kill()
                 proc.join()
         offline = bool(self.streams[name].get("sleep"))
         stop_flag = multiprocessing.Event()
@@ -185,6 +190,8 @@ class WyzeBridge:
         """Stop all streams and clean up before shutdown."""
         self.stop_cameras()
         self.stop_rtsp_server()
+        if self.thread and self.thread.is_alive():
+            self.thread.join()
         log.info("👋 goodbye!")
         sys.exit(0)
 
@@ -681,7 +688,7 @@ class WyzeBridge:
                     self.rtsp_snap(cam_name, fast=False)
             except TimeoutExpired:
                 if ffmpeg.poll() is None:
-                    ffmpeg.terminate()
+                    ffmpeg.kill()
                     ffmpeg.communicate()
                 return None
             finally:

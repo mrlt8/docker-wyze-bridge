@@ -1,3 +1,8 @@
+
+## What's Changed in v1.9.2
+
+- Fixed an issue introduced in v1.9.1 that could cause the bridge from reconnecting to a camera. #619 #620 Thanks @dmkjr and @mjb83!
+
 ## What's Changed in v1.9.1
 
   - Potential Fix: Audio and video lagging #597 Thanks @carldanley!
