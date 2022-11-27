@@ -475,7 +475,7 @@ class WyzeBridge:
         uri = cam.name_uri.upper()
         exit_code = 1
         audio = env_bool(f"ENABLE_AUDIO_{uri}", env_bool("ENABLE_AUDIO"), style="bool")
-        audio_thread = boa_thread = None
+        audio_thread = control_thread = None
         try:
             with wyzecam.WyzeIOTC() as wyze_iotc, WyzeIOTCSession(
                 wyze_iotc.tutk_platform_lib,
@@ -488,12 +488,13 @@ class WyzeBridge:
             ) as sess:
                 camera_info.put(sess.camera.camera_info)
                 fps, audio = get_cam_params(sess, uri, audio)
-                control_thread = threading.Thread(
-                    target=camera_control,
-                    args=(sess, uri, self.img_path, camera_info, camera_cmd),
-                    name=uri + "_control",
-                )
-                control_thread.start()
+                if not env_bool("disable_control"):
+                    control_thread = threading.Thread(
+                        target=camera_control,
+                        args=(sess, uri, self.img_path, camera_info, camera_cmd),
+                        name=f"{uri}_control",
+                    )
+                    control_thread.start()
                 if audio:
                     audio_thread = threading.Thread(
                         target=sess.recv_audio_frames, args=(uri,), name=f"{uri}_AUDIO"
@@ -526,7 +527,7 @@ class WyzeBridge:
             if audio_thread and audio_thread.is_alive():
                 open(f"/tmp/{uri.lower()}.wav", "r").close()
                 audio_thread.join()
-            if "control_thread" in locals() and control_thread.is_alive():
+            if control_thread and control_thread.is_alive():
                 control_thread.join()
             sys.exit(exit_code)
 
@@ -717,19 +718,25 @@ class WyzeBridge:
 
     def cam_cmd(self, cam_name: str, cmd: str) -> dict[str, Any]:
         """Cam command."""
+        resp = {"status": "error", "command": cmd, "response": ""}
+        if env_bool("disable_control"):
+            return resp | {"response": "Control disabled"}
         if cmd not in CAM_CMDS:
-            return {"error": f"{cmd=} not found"}
-        if not (cam := self.streams.get(cam_name)) or cam.get("camera_info") is None:
-            return {"error": "cam offline"}
+            return resp | {"response": "command not found"}
+        if not (cam := self.streams.get(cam_name)) or not cam.get("camera_info"):
+            return resp | {"response": "cam offline"}
         cam["camera_cmd"].put(cmd)
         cam["camera_cmd"].join()
         try:
             cam["camera_info"] = cam["queue"].get(timeout=5)
-            if res := cam["camera_info"].pop(cmd):
-                return {"success": res}
-            return {"error": "could not get result"}
+            if cmd in cam["camera_info"]:
+                return resp | {
+                    "status": "success",
+                    "response": cam["camera_info"].pop(cmd),
+                }
+            return resp | {"response": "could not get result"}
         except Empty:
-            return {"error": "timeout"}
+            return resp | {"response": "timeout"}
 
 
 mode_type = {0: "P2P", 1: "RELAY", 2: "LAN"}
