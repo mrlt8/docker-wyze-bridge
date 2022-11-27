@@ -1,4 +1,5 @@
 import logging
+import os
 import signal
 import sys
 from pathlib import Path
@@ -15,11 +16,17 @@ from flask import (
     request,
     send_from_directory,
 )
+from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import NotFound
+from werkzeug.security import check_password_hash, generate_password_hash
 from wyze_bridge import WyzeBridge
 
 log = logging.getLogger(__name__)
 wb: WyzeBridge = None
+auth = HTTPBasicAuth()
+auth_enabled = os.getenv("WEB_AUTH", "false").lower() != "false"
+user = os.getenv("WEB_USERNAME", os.getenv("WYZE_EMAIL"))
+pw = generate_password_hash(os.getenv("WEB_PASSWORD", os.getenv("WYZE_PASSWORD")))
 
 
 def clean_up():
@@ -32,6 +39,13 @@ def clean_up():
 signal.signal(signal.SIGTERM, lambda *_: clean_up())
 
 
+@auth.verify_password
+def verify_password(username, password):
+    if not auth_enabled:
+        return True
+    return check_password_hash(pw, password) if username == user else False
+
+
 def create_app():
     wyze_bridge.setup_logging()
     log.info("create_app")
@@ -42,6 +56,7 @@ def create_app():
         wb.start()
 
     @app.route("/")
+    @auth.login_required
     def index():
         if not (columns := request.args.get("columns")):
             columns = request.cookies.get("number_of_columns", "2")
