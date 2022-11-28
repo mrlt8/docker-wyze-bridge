@@ -191,10 +191,9 @@ http://localhost:5000/snapshot/camera-nickname.jpg
 If you're running the WebUI behind a reverse-proxy or need to change the hostname and/or port for each stream, you can do so by passing the needed ENVs:
 
 ```yaml
-environment:
-  - WB_RTSP_URL=rtsp://my-hostname-or-ip:1234/
-  - WB_RTMP_URL=rtmp://my-hostname-or-ip:5678/
-  - WB_HLS_URL=http://my-hostname-or-ip:9090/
+WB_RTSP_URL=rtsp://my-hostname-or-ip:8554/
+WB_RTMP_URL=rtmp://my-hostname-or-ip:1935/
+WB_HLS_URL=http://my-hostname-or-ip:8888/
 ```
 
 Query params to adjust web-ui:
