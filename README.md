@@ -37,6 +37,8 @@ See [basic usage](#basic-usage) for additional information.
 
 - New: Optional basic auth for WebUI with `WEB_AUTH=True` #612 Thanks @yeahme49!
   - Note: this will only protect the WebUI. API and snapshot endpoints are unprotected at this time.
+  - Will use your wyze email/password for auth by default.
+  - Use `WEB_USERNAME` and/or `WEB_PASSWORD` to customize the authentication.
 - New: API endpoints and MQTT topic to send commands to the camera.
   - See the [Camera Control](#camera-control) section for more info.
 - Updated: Wyze app and iOS version for the Web API
@@ -447,8 +449,9 @@ RTSP_FW=force
 
 ### Camera Control
 
-Some basic commands can be sent to the camera over the WebUI's API or MQTT if enabled. 
+**This is a work in progress and feedback would be appreciated**
 
+Some basic commands can be sent to the camera over the WebUI's API or MQTT if enabled. 
 
 - API: Make a GET request to `/api/<camera-name>/<command>`
 - MQTT: Publish a command to the topic `wyzebridge/<camera-name>/cmd`
