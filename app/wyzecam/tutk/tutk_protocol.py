@@ -324,7 +324,9 @@ class K10030GetNetworkLightStatus(TutkWyzeProtocolMessage):
     """
     A message used to check if the Camera Status Light is enabled on the camera.
 
-    :return: returns the current status of the light.
+    :return: returns the current state of the status light:
+        - 1: On
+        - 2: Off
     """
 
     expected_response_code = 10031
@@ -333,7 +335,7 @@ class K10030GetNetworkLightStatus(TutkWyzeProtocolMessage):
         super().__init__(10030)
 
     def parse_response(self, resp_data) -> int:
-        return resp_data[0] == 1
+        return resp_data[0]
 
 
 class K10032SetNetworkLightStatus(TutkWyzeProtocolMessage):
@@ -567,7 +569,9 @@ class K10290GetMotionTagging(TutkWyzeProtocolMessage):
     """
     A message used to check if motion tagging (green box around motion) is enabled.
 
-    :return: returns the current motion tagging status.
+    :return: returns the current motion tagging status:
+        - 1: Enabled
+        - 2: Disabled
     """
 
     expected_response_code = 10291
@@ -576,7 +580,7 @@ class K10290GetMotionTagging(TutkWyzeProtocolMessage):
         super().__init__(10290)
 
     def parse_response(self, resp_data):
-        return resp_data[0] == 1
+        return resp_data[0]
 
 
 class K10292SetMotionTagging(TutkWyzeProtocolMessage):
