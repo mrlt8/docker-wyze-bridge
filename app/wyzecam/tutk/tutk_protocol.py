@@ -564,6 +564,9 @@ class K10092SetCameraTime(TutkWyzeProtocolMessage):
     def encode(self) -> bytes:
         return encode(10092, 4, int(time.time() + 1).to_bytes(4, "little"))
 
+    def parse_response(self, resp_data):
+        return resp_data[0]
+
 
 class K10290GetMotionTagging(TutkWyzeProtocolMessage):
     """

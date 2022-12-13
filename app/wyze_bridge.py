@@ -1245,6 +1245,8 @@ CAM_CMDS = {
     "get_irled_status": ("K10044GetIRLEDStatus", None),
     "set_irled_on": ("K10046SetIRLEDStatus", 1),
     "set_irled_off": ("K10046SetIRLEDStatus", 2),
+    "get_camera_time": ("K10090GetCameraTime", None),
+    "set_camera_time": ("K10092SetCameraTime", None),
     "get_night_switch_condition": ("K10624GetAutoSwitchNightType", None),
     "set_night_switch_dusk": ("K10626SetAutoSwitchNightType", 1),
     "set_night_switch_dark": ("K10626SetAutoSwitchNightType", 2),
