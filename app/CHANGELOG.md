@@ -1,3 +1,11 @@
+## What's Changed in v1.10.0
+
+- New: Optional basic auth for WebUI with `WEB_AUTH=True` #612 Thanks @yeahme49!
+  - Note: this will only protect the WebUI. API and snapshot endpoints are unprotected at this time.
+- New: API endpoints and MQTT topic to send commands to the camera.
+  - See the [Camera Control](#camera-control) section for more info.
+- Updated: Wyze app and iOS version for the Web API
+- Updated: rtsp-simple-server to [v0.20.4](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.20.4)
 
 ## What's Changed in v1.9.2
 

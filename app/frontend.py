@@ -5,11 +5,9 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
-import wyze_bridge
 from flask import (
     Flask,
     Response,
-    abort,
     make_response,
     redirect,
     render_template,
@@ -19,7 +17,7 @@ from flask import (
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import NotFound
 from werkzeug.security import check_password_hash, generate_password_hash
-from wyze_bridge import WyzeBridge
+from wyze_bridge import WyzeBridge, setup_logging
 
 log = logging.getLogger(__name__)
 wb: WyzeBridge = None
@@ -47,8 +45,7 @@ def verify_password(username, password):
 
 
 def create_app():
-    wyze_bridge.setup_logging()
-    log.info("create_app")
+    setup_logging()
     app = Flask(__name__)
     global wb
     if not wb:
@@ -121,6 +118,8 @@ def create_app():
             return {"success": wb.start_on_demand(cam_name)}
         if cam_name and cam_cmd == "stop":
             return {"success": wb.stop_on_demand(cam_name)}
+        if cam_name and cam_cmd:
+            return wb.cam_cmd(cam_name, cam_cmd)
 
         host = urlparse(request.root_url).hostname
         return wb.get_cam_info(cam_name, host) if cam_name else wb.get_cameras(host)

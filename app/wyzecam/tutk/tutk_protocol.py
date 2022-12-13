@@ -1,6 +1,7 @@
 import json
 import logging
 import pathlib
+import time
 import typing
 from ctypes import LittleEndianStructure, c_char, c_uint16, c_uint32
 from typing import Optional
@@ -319,6 +320,126 @@ class K10020CheckCameraParams(TutkWyzeProtocolMessage):
         return json.loads(resp_data)
 
 
+class K10030GetNetworkLightStatus(TutkWyzeProtocolMessage):
+    """
+    A message used to check if the Camera Status Light is enabled on the camera.
+
+    :return: returns the current state of the status light:
+        - 1: On
+        - 2: Off
+    """
+
+    expected_response_code = 10031
+
+    def __init__(self):
+        super().__init__(10030)
+
+    def parse_response(self, resp_data) -> int:
+        return resp_data[0]
+
+
+class K10032SetNetworkLightStatus(TutkWyzeProtocolMessage):
+    """
+    A message used to set the Camera Status Light on the camera.
+
+    :param enabled: boolean to set the camera light on/off.
+    """
+
+    expected_response_code = 10033
+
+    def __init__(self, light_status: bool):
+        super().__init__(10032)
+        self.light_status: int = 1 if light_status else 2
+
+    def encode(self) -> bytes:
+        return encode(self.code, 1, bytearray([self.light_status]))
+
+    def parse_response(self, resp_data) -> int:
+        return resp_data[0]
+
+
+class K10040GetNightVisionStatus(TutkWyzeProtocolMessage):
+    """
+    A message used to get the night vision status.
+
+    :return: returns the current night vision status on the camera:
+        - 1: On.
+        - 2: Off.
+        - 3: Auto.
+    """
+
+    expected_response_code = 10041
+
+    def __init__(self):
+        super().__init__(10040)
+
+    def parse_response(self, resp_data) -> int:
+        return resp_data[0]
+
+
+class K10042SetNightVisionStatus(TutkWyzeProtocolMessage):
+    """
+    A message used to set the night vision status.
+
+    :param status: the night vision status to use:
+        - 1: On.
+        - 2: Off.
+        - 3: Auto.
+    """
+
+    expected_response_code = 10043
+
+    def __init__(self, status: int):
+        super().__init__(10042)
+        self.status: int = status
+
+    def encode(self) -> bytes:
+        return encode(10042, 1, bytes([self.status]))
+
+    def parse_response(self, resp_data) -> int:
+        return resp_data[0]
+
+
+class K10044GetIRLEDStatus(TutkWyzeProtocolMessage):
+    """
+    A message used to get the IR and/or LED status from the camera.
+
+    :return: returns current IR/LED status on the camera:
+        - 1: On. 850nm long range IR or LED.
+        - 2: Off. 940 nmm close range IR.
+    """
+
+    expected_response_code = 10045
+
+    def __init__(self):
+        super().__init__(10044)
+
+    def parse_response(self, resp_data) -> int:
+        return resp_data[0]
+
+
+class K10046SetIRLEDStatus(TutkWyzeProtocolMessage):
+    """
+    A message used to set the IR and/or LED status on the camera.
+
+    :param status: the IR/LED status to use:
+        - 1: On. 850nm long range IR or LED.
+        - 2: Off. 940 nmm close range IR.
+    """
+
+    expected_response_code = 10047
+
+    def __init__(self, status: int):
+        super().__init__(10046)
+        self.status: int = status
+
+    def encode(self) -> bytes:
+        return encode(10046, 1, bytes([self.status]))
+
+    def parse_response(self, resp_data) -> int:
+        return resp_data[0]
+
+
 class K10056SetResolvingBit(TutkWyzeProtocolMessage):
     """
     A message used to set the resolution and bitrate of the camera.
@@ -412,6 +533,79 @@ class K10052DBSetResolvingBit(TutkWyzeProtocolMessage):
         return resp_data == b"\x01"
 
 
+class K10090GetCameraTime(TutkWyzeProtocolMessage):
+    """
+    A message used to get the current time on the camera.
+
+    :return time: The current unix timestamp in seconds.
+    """
+
+    expected_response_code = 10091
+
+    def __init__(self):
+        super().__init__(10090)
+
+    def parse_response(self, resp_data):
+        return int.from_bytes(resp_data, "little")
+
+
+class K10092SetCameraTime(TutkWyzeProtocolMessage):
+    """
+    A message used to set the time on the camera.
+
+    This will use the current time on the bridge +1 to set the time on the camera.
+    """
+
+    expected_response_code = 10093
+
+    def __init__(self):
+        super().__init__(10092)
+
+    def encode(self) -> bytes:
+        return encode(10092, 4, int(time.time() + 1).to_bytes(4, "little"))
+
+    def parse_response(self, resp_data):
+        return resp_data[0]
+
+
+class K10290GetMotionTagging(TutkWyzeProtocolMessage):
+    """
+    A message used to check if motion tagging (green box around motion) is enabled.
+
+    :return: returns the current motion tagging status:
+        - 1: Enabled
+        - 2: Disabled
+    """
+
+    expected_response_code = 10291
+
+    def __init__(self):
+        super().__init__(10290)
+
+    def parse_response(self, resp_data):
+        return resp_data[0]
+
+
+class K10292SetMotionTagging(TutkWyzeProtocolMessage):
+    """
+    A message used to enable/disable motion tagging (green box around motion).
+
+    :param enabled: boolean to turn on/off motion tagging.
+    """
+
+    expected_response_code = 10293
+
+    def __init__(self, enabled: bool):
+        super().__init__(10292)
+        self.enabled = 1 if enabled else 2
+
+    def encode(self) -> bytes:
+        return encode(10292, 1, bytes([self.enabled]))
+
+    def parse_response(self, resp_data):
+        return resp_data[0]
+
+
 class K10620CheckNight(TutkWyzeProtocolMessage):
     """
     A message used to check the night mode settings of the camera.
@@ -423,6 +617,84 @@ class K10620CheckNight(TutkWyzeProtocolMessage):
 
     def __init__(self):
         super().__init__(10620)
+
+
+class K10624GetAutoSwitchNightType(TutkWyzeProtocolMessage):
+    """
+    A message used to geet the night vision conditions settings on the camera.
+
+    :return: returns conditions required for night vision:
+        - 1: Dusk. Switch on night vision when the environment has low light.
+        - 2: Dark. Switch on night vision when the environment has extremely low light.
+    """
+
+    expected_response_code = 10625
+
+    def __init__(self):
+        super().__init__(10624)
+
+    def parse_response(self, resp_data) -> int:
+        return resp_data[0]
+
+
+class K10626SetAutoSwitchNightType(TutkWyzeProtocolMessage):
+    """
+    A message used to set the night vision conditions settings on the camera.
+
+    :param type: the type of condition to use:
+        - 1: Dusk. Switch on night vision when the environment has low light.
+        - 2: Dark. Switch on night vision when the environment has extremely low light.
+    """
+
+    expected_response_code = 10627
+
+    def __init__(self, type: int):
+        super().__init__(10626)
+        self.type: int = type
+
+    def encode(self) -> bytes:
+        return encode(10626, 1, bytes([self.type]))
+
+    def parse_response(self, resp_data) -> int:
+        return resp_data[0]
+
+
+class K10630SetAlarmFlashing(TutkWyzeProtocolMessage):
+    """
+    A message used to control the alarm/siren on the camera.
+
+    :param enabled: boolean to turn on/off alarm/siren.
+    """
+
+    expected_response_code = 10631
+
+    def __init__(self, enabled: bool):
+        super().__init__(10630)
+        self.enabled: int = 2 if enabled else 1
+
+    def encode(self) -> bytes:
+        return encode(10630, 2, bytes([self.enabled, self.enabled]))
+
+    def parse_response(self, resp_data) -> tuple[int, int]:
+        return resp_data[0], resp_data[1]
+
+
+class K10632GetAlarmFlashing(TutkWyzeProtocolMessage):
+    """
+    A message used to get the alarm/siren status on the camera.
+
+    :return enabled: returns a tuple of the current alarm status on the camera:
+        - (1,1): On.
+        - (2,2): Off.
+    """
+
+    expected_response_code = 10633
+
+    def __init__(self):
+        super().__init__(10632)
+
+    def parse_response(self, resp_data) -> tuple[int, int]:
+        return resp_data[0], resp_data[1]
 
 
 class K10640GetSpotlightStatus(TutkWyzeProtocolMessage):

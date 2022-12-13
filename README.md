@@ -33,22 +33,16 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.9.2
+## What's Changed in v1.10.0
 
-- Fixed an issue introduced in v1.9.1 that could cause the bridge from reconnecting to a camera. #619 #620 Thanks @dmkjr and @mjb83!
-
-## What's Changed in v1.9.1
-
-  - Potential Fix: Audio and video lagging #597 Thanks @carldanley!
-  - Changed: CPU and memory optimization. 
-  - Changed: Allow quality lower than 30. #608
-  - Changed: Show video codec.
-  - Changed: Use h264 preset `fast` for `h264_nvenc`.
-  - Updated: iOS and wyze version for web api.
-
-## What's Changed in v1.9.0
-
-  - New: Wyze Cam V3 Pro 2K support! Should also work with the Pan Pro 2k. #595 Huge thanks to @carldanley!
+- New: Optional basic auth for WebUI with `WEB_AUTH=True` #612 Thanks @yeahme49!
+  - Note: this will only protect the WebUI. API and snapshot endpoints are unprotected at this time.
+  - Will use your wyze email/password for auth by default.
+  - Use `WEB_USERNAME` and/or `WEB_PASSWORD` to customize the authentication.
+- New: API endpoints and MQTT topic to send commands to the camera.
+  - See the [Camera Control](#camera-control) section for more info.
+- Updated: Wyze app and iOS version for the Web API
+- Updated: rtsp-simple-server to [v0.20.4](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.20.4)
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -249,8 +243,9 @@ http://localhost:5000/api/<camera-name>/status
 ```
 
 Submit a Two-Factor Authentication (2FA) code:
+
 ```text
-http://localhost:5000/mfa/<123456>
+http://localhost:5000/mfa/123456
 ```
 
 On-demand controls:
@@ -258,6 +253,12 @@ On-demand controls:
 ```text
 http://localhost:5000/api/<camera-name>/start
 http://localhost:5000/api/<camera-name>/stop
+```
+
+Camera controls (see [Camera Control](#camera-control) for commands):
+
+```text
+http://localhost:5000/api/<camera-name>/<command>
 ```
 
 Server Sent Event with status for all cameras:
@@ -445,6 +446,43 @@ RTSP_FW=force
 - `IMG_DIR=/img/` Specify the directory where the snapshots will be saved *within the container*. Use volumes in docker to map to an external directory.
 
 - `IMG_TYPE` Specify the file type of the image, e.g. `IMG_TYPE=png`. Will default to jpg.
+
+### Camera Control
+
+**This is a work in progress and feedback would be appreciated**
+
+Some basic commands can be sent to the camera over the WebUI's API or MQTT if enabled. 
+
+- API: Make a GET request to `/api/<camera-name>/<command>`
+- MQTT: Publish a command to the topic `wyzebridge/<camera-name>/cmd`
+
+
+Can be disabled with `DISABLE_CONTROL=True`.
+
+Available commands:
+
+| Command                    | Description                                  | Response                                                    |
+| -------------------------- | -------------------------------------------- | ----------------------------------------------------------- |
+| take_photo                 | Take a photo on the camera                   | 1 for success                                               |
+| get_status_light           | Get status light config                      | 1 = On, 2 = Off                                             |
+| set_status_light_on        | Turn on status light                         | 1 for success                                               |
+| set_status_light_off       | Turn off status light                        | 1 for success                                               |
+| get_night_vision           | Get night vision                             | 1 = On, 2 = Off, 3 = Auto                                   |
+| set_night_vision_on        | Turn on night vision                         | 1 for success                                               |
+| set_night_vision_off       | Turn off night vision                        | 1 for success                                               |
+| set_night_vision_auto      | Set night vision to auto                     | 1 for success                                               |
+| get_irled_status           | Get IR/LED status                            | 1 = On/850nm long range IR, 2 = Off/940 nmm close range IR. |
+| set_irled_on               | Turn on IR/LED                               | 1 for success                                               |
+| set_irled_off              | Turn off IR/LED                              | 1 for success                                               |
+| get_camera_time            | Get current timestamp on the camera          | unix timestamp                                              |
+| set_camera_time            | Set time on the camera using the bridge time | 1 for success                                               |
+| get_night_switch_condition | Get condition for auto night vision          | 1 = Dusk, 2 = Dark                                          |
+| set_night_switch_dusk      | Set auto night to dusk                       | 1 for success                                               |
+| set_night_switch_dark      | Set auto night to dark                       | 1 for success                                               |
+| set_alarm_on               | Turn on siren                                | 1 for success                                               |
+| set_alarm_off              | Turn off siren                               | 1 for success                                               |
+| get_alarm_status           | Get siren status                             | (1,1) =  On, (2,2) = off                                    |
+
 
 ### Boa HTTP Server
 

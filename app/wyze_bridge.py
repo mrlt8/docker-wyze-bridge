@@ -14,16 +14,14 @@ from datetime import datetime, timedelta
 from multiprocessing.synchronize import Event
 from queue import Empty
 from subprocess import DEVNULL, PIPE, Popen, TimeoutExpired
-from typing import Dict, Generator, List, NoReturn, Optional, Tuple, Union
+from typing import Any, Dict, Generator, List, NoReturn, Optional, Tuple, Union
 
 import mintotp
 import paho.mqtt.client
 import paho.mqtt.publish
 import requests
 import wyzecam
-from wyzecam import WyzeCamera
-from wyzecam import WyzeIOTCSessionState as SessionState
-from wyzecam.api_models import clean_name
+from wyzecam import WyzeCamera, WyzeIOTCSession, WyzeIOTCSessionState
 
 log = logging.getLogger("WyzeBridge")
 
@@ -275,9 +273,7 @@ class WyzeBridge:
 
     def cache_check(
         self, name: str
-    ) -> Optional[
-        Union[wyzecam.WyzeCredential, wyzecam.WyzeAccount, List[wyzecam.WyzeCamera]]
-    ]:
+    ) -> Optional[Union[wyzecam.WyzeCredential, wyzecam.WyzeAccount, List[WyzeCamera]]]:
         """Check if local cache exists."""
         try:
             if "cameras" in name and "api" in env_bool("SNAPSHOT"):
@@ -322,7 +318,7 @@ class WyzeBridge:
 
     def get_wyze_data(
         self, name: str, fresh_data: bool = False
-    ) -> Union[wyzecam.WyzeCredential, wyzecam.WyzeAccount, List[wyzecam.WyzeCamera]]:
+    ) -> Union[wyzecam.WyzeCredential, wyzecam.WyzeAccount, List[WyzeCamera]]:
         """Check for local cache and fetch data from the wyze api if needed."""
         if not fresh_data and (wyze_data := self.cache_check(name)):
             log.info(f"📚 Using '{name}' from local cache...")
@@ -408,14 +404,14 @@ class WyzeBridge:
             return None
         log.info(f"Checking {cam.nickname} for firmware RTSP on v{cam.firmware_ver}")
         try:
-            with wyzecam.WyzeIOTC() as iotc, wyzecam.WyzeIOTCSession(
+            with wyzecam.WyzeIOTC() as iotc, WyzeIOTCSession(
                 iotc.tutk_platform_lib, self.user, cam
             ) as session:
                 if session.session_check().mode != 2:
                     log.warning(f"[{cam.nickname}] Camera is not on same LAN")
                     return None
                 return session.check_native_rtsp(start_rtsp=rtsp_fw.lower() == "force")
-        except wyzecam.tutk.tutk.TutkError:
+        except wyzecam.TutkError:
             return None
 
     def get_filtered_cams(self, fresh_data: bool = False) -> None:
@@ -465,7 +461,7 @@ class WyzeBridge:
 
     def start_tutk_stream(
         self,
-        cam: wyzecam.WyzeCamera,
+        cam: WyzeCamera,
         stop_flag: Event,
         camera_info: multiprocessing.Queue,
         camera_cmd: multiprocessing.JoinableQueue,
@@ -479,9 +475,9 @@ class WyzeBridge:
         uri = cam.name_uri.upper()
         exit_code = 1
         audio = env_bool(f"ENABLE_AUDIO_{uri}", env_bool("ENABLE_AUDIO"), style="bool")
-        audio_thread = boa_thread = None
+        audio_thread = control_thread = None
         try:
-            with wyzecam.WyzeIOTC() as wyze_iotc, wyzecam.WyzeIOTCSession(
+            with wyzecam.WyzeIOTC() as wyze_iotc, WyzeIOTCSession(
                 wyze_iotc.tutk_platform_lib,
                 self.user,
                 cam,
@@ -492,18 +488,13 @@ class WyzeBridge:
             ) as sess:
                 camera_info.put(sess.camera.camera_info)
                 fps, audio = get_cam_params(sess, uri, audio)
-                if (
-                    env_bool("enable_boa")
-                    or env_bool("PULL_PHOTO")
-                    or env_bool("PULL_ALARM")
-                    or env_bool("MOTION_HTTP")
-                ):
-                    boa_thread = threading.Thread(
-                        target=camera_boa,
+                if not env_bool("disable_control"):
+                    control_thread = threading.Thread(
+                        target=camera_control,
                         args=(sess, uri, self.img_path, camera_info, camera_cmd),
-                        name=f"{uri}_BOA",
+                        name=f"{uri}_control",
                     )
-                    boa_thread.start()
+                    control_thread.start()
                 if audio:
                     audio_thread = threading.Thread(
                         target=sess.recv_audio_frames, args=(uri,), name=f"{uri}_AUDIO"
@@ -536,8 +527,8 @@ class WyzeBridge:
             if audio_thread and audio_thread.is_alive():
                 open(f"/tmp/{uri.lower()}.wav", "r").close()
                 audio_thread.join()
-            if boa_thread and boa_thread.is_alive():
-                boa_thread.join()
+            if control_thread and control_thread.is_alive():
+                control_thread.join()
             sys.exit(exit_code)
 
     def get_webrtc(self):
@@ -725,11 +716,30 @@ class WyzeBridge:
             return boa_info.get("last_photo")
         return None
 
+    def cam_cmd(self, cam_name: str, cmd: str) -> dict[str, Any]:
+        """Cam command."""
+        resp = {"status": "error", "command": cmd}
+        if env_bool("disable_control"):
+            return resp | {"response": "Control disabled"}
+        if cmd not in CAM_CMDS:
+            return resp | {"response": "Unknown command"}
+        if not (cam := self.streams.get(cam_name)) or not cam.get("camera_info"):
+            return resp | {"response": "Camera offline"}
+        cam["camera_cmd"].put(cmd)
+        cam["camera_cmd"].join()
+        try:
+            cam["camera_info"] = cam["queue"].get(timeout=5)
+            if cmd in cam["camera_info"]:
+                return cam["camera_info"].pop(cmd)
+            return resp | {"response": "could not get result"}
+        except Empty:
+            return resp | {"response": "timeout"}
+
 
 mode_type = {0: "P2P", 1: "RELAY", 2: "LAN"}
 
 
-def env_bool(env: str, false="", true="", style=""):
+def env_bool(env: str, false="", true="", style="") -> Any:
     """Return env variable or empty string if the variable contains 'false' or is empty."""
     env_value = os.getenv(env.upper().replace("-", "_"), "")
     value = env_value.lower().replace("false", "").strip("'\" \n\t\r")
@@ -796,7 +806,7 @@ def check_net_mode(session_mode: int, uri: str) -> str:
 
 
 def get_cam_params(
-    sess: wyzecam.WyzeIOTCSession, uri: str, audio: bool
+    sess: WyzeIOTCSession, uri: str, audio: bool
 ) -> Tuple[int, Optional[dict]]:
     """Check session and return fps and audio codec from camera."""
     mode = check_net_mode(sess.session_check().mode, uri)
@@ -1060,7 +1070,7 @@ def setup_hass(hass: bool):
 
     if cam_options := conf.pop("CAM_OPTIONS", None):
         for cam in cam_options:
-            if not (cam_name := clean_name(cam.get("CAM_NAME", ""))):
+            if not (cam_name := wyzecam.clean_name(cam.get("CAM_NAME", ""))):
                 continue
             if "AUDIO" in cam:
                 os.environ[f"ENABLE_AUDIO_{cam_name}"] = str(cam["AUDIO"])
@@ -1096,33 +1106,37 @@ def cam_http_alive(ip: str) -> bool:
         return False
 
 
-def pull_last_image(cam: tuple, path: str, last: tuple, as_snap: bool = False) -> tuple:
+def pull_last_image(cam: dict, path: str, as_snap: bool = False):
     """Pull last image from camera SD card."""
-    file_name, modded = last
-    base = f"http://{cam[1]}/cgi-bin/hello.cgi?name=/{path}/"
+    if not cam.get("ip"):
+        return
+    file_name, modded = cam["last_photo"]
+    base = f"http://{cam['uri']}/cgi-bin/hello.cgi?name=/{path}/"
     try:
         with requests.Session() as req:
             resp = req.get(base)  # Get Last Date
             date = sorted(re.findall("<h2>(\d+)<\/h2>", resp.text))[-1]
             resp = req.get(base + date)  # Get Last File
             file_name = sorted(re.findall("<h1>(\w+\.jpg)<\/h1>", resp.text))[-1]
-            if file_name != last[0]:
+            if file_name != cam["last_photo"][0]:
                 log.info(f"Pulling {path} file from camera ({file_name=})")
-                resp = req.get(f"http://{cam[1]}/SDPath/{path}/{date}/{file_name}")
+                resp = req.get(f"http://{cam['uri']}/SDPath/{path}/{date}/{file_name}")
                 _, modded = get_header_dates(resp.headers)
                 # with open(f"{img_dir}{path}_{file_name}", "wb") as img:
                 save_name = "_" + ("alarm.jpg" if path == "alarm" else file_name)
-                if as_snap:
+                if as_snap and env_bool("take_photo"):
                     save_name = ".jpg"
-                with open(f"{cam[2]}{cam[0]}{save_name}", "wb") as img:
+                with open(f"{cam['img_dir']}{cam['uri']}{save_name}", "wb") as img:
                     img.write(resp.content)
     except requests.exceptions.ConnectionError as ex:
         log.error(ex)
     finally:
-        return file_name, modded
+        cam["last_photo"] = file_name, modded
 
 
-def get_header_dates(resp_header: dict) -> datetime:
+def get_header_dates(
+    resp_header: dict,
+) -> tuple[Optional[datetime], Optional[datetime]]:
     """Get dates from boa header."""
     try:
         date = datetime.strptime(resp_header.get("Date"), "%a, %d %b %Y %X %Z")
@@ -1133,8 +1147,8 @@ def get_header_dates(resp_header: dict) -> datetime:
 
 
 def mqtt_sub_topic(
-    m_topics: list, sess: wyzecam.WyzeIOTCSession
-) -> paho.mqtt.client.Client:
+    m_topics: list, sess: WyzeIOTCSession
+) -> Optional[paho.mqtt.client.Client]:
     """Connect to mqtt and return the client."""
     if not env_bool("MQTT_HOST"):
         return None
@@ -1154,23 +1168,15 @@ def mqtt_sub_topic(
 
 
 def _on_message(client, sess, msg):
-    if "takePhoto" in msg.topic:
-        log.info("[MQTT] 📸 Take Photo via MQTT!")
-        with sess.iotctrl_mux() as mux:
-            mux.send_ioctl(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
-        # if msg.payload:
-        #     client.publish(msg.topic, None)
+    if not (cmd := msg.payload.decode()) or cmd not in CAM_CMDS:
+        return
+    if resp := send_tutk_msg(sess, cmd, "mqtt").get(cmd):
+        client.publish(msg.topic, json.dumps(resp))
 
 
-def camera_boa(
-    sess: wyzecam.WyzeIOTCSession,
-    uri: str,
-    img_dir: str,
-    camera_info: multiprocessing.Queue,
-    camera_cmd: multiprocessing.JoinableQueue,
-):
+def check_boa_ip(sess: WyzeIOTCSession):
     """
-    Start the boa server on the camera and pull photos.
+    Check if boa should be enabled.
 
     env options:
         - enable_boa: Requires LAN connection and SD card. required to pull any images.
@@ -1179,9 +1185,16 @@ def camera_boa(
         - pull_photo: Pull the HQ photo from the SD card.
         - pull_alarm: Pull alarm/motion image from the SD card.
         - motion_cooldown: Cooldown between motion alerts.
-
     """
     log.debug(sess.camera.camera_info.get("sdParm"))
+    if not (
+        env_bool("enable_boa")
+        or env_bool("PULL_PHOTO")
+        or env_bool("PULL_ALARM")
+        or env_bool("MOTION_HTTP")
+    ):
+        return None
+
     session = sess.session_check()
     if (
         session.mode != 2  # NOT connected in LAN mode
@@ -1190,77 +1203,160 @@ def camera_boa(
         or sd_parm.get("status") != "1"  # SD card is NOT available
         or "detail" in sd_parm  # Avoid weird SD card issue?
     ):
-        return  # Stop thread if SD card isn't available
-    log.info(f"Local boa HTTP server enabled on http://{ip}")
-    cam = (uri.lower(), ip, img_dir)
-    interval = env_bool("boa_interval", "5", style="int")
-    last_alarm = last_photo = (None, None)
-    cooldown = datetime.now()
-    mqtt = mqtt_sub_topic([f"{uri.lower()}/takePhoto"], sess)
+        return None  # Stop thread if SD card isn't available
 
-    while sess.state == SessionState.AUTHENTICATION_SUCCEEDED:
-        iotctrl_msg = []
-        if env_bool("take_photo"):
-            iotctrl_msg.append(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
-        if not cam_http_alive(ip):
-            log.info("starting boa server")
-            iotctrl_msg.append(wyzecam.tutk.tutk_protocol.K10148StartBoa())
-        if iotctrl_msg:
-            with sess.iotctrl_mux() as mux:
-                for msg in iotctrl_msg:
-                    mux.send_ioctl(msg)
-        if datetime.now() > cooldown and (
-            env_bool("pull_alarm") or env_bool("motion_http")
-        ):
-            last_alarm, cooldown = motion_alarm(cam, last_alarm, cooldown)
-        if env_bool("pull_photo"):
-            as_snap = env_bool("pull_photo") and env_bool("take_photo")
-            last_photo = pull_last_image(cam, "photo", last_photo, as_snap)
-        if camera_info.empty():
-            cam_info = sess.camera.camera_info
-            cam_info["boa_info"] = {
-                "last_alarm": last_alarm,
-                "last_photo": last_photo,
-            }
-            camera_info.put(cam_info)
-        try:
+    log.info(f"Local boa HTTP server enabled on http://{ip}")
+    return ip
+
+
+def boa_control(sess: WyzeIOTCSession, cam: dict):
+    """
+    Boa related controls.
+    """
+    if not cam.get("ip"):
+        return
+    iotctrl_msg = []
+    if env_bool("take_photo"):
+        iotctrl_msg.append(wyzecam.tutk_protocol.K10058TakePhoto())
+    if not cam_http_alive(cam["ip"]):
+        log.info("starting boa server")
+        iotctrl_msg.append(wyzecam.tutk_protocol.K10148StartBoa())
+    if iotctrl_msg:
+        with sess.iotctrl_mux() as mux:
+            for msg in iotctrl_msg:
+                mux.send_ioctl(msg)
+    if datetime.now() > cam["cooldown"] and (
+        env_bool("pull_alarm") or env_bool("motion_http")
+    ):
+        motion_alarm(cam)
+    if env_bool("pull_photo"):
+        pull_last_image(cam, "photo", True)
+
+
+CAM_CMDS = {
+    "take_photo": ("K10058TakePhoto", None),
+    "get_status_light": ("K10030GetNetworkLightStatus", None),
+    "set_status_light_on": ("K10032SetNetworkLightStatus", True),
+    "set_status_light_off": ("K10032SetNetworkLightStatus", False),
+    "get_night_vision": ("K10040GetNightVisionStatus", None),
+    "set_night_vision_on": ("K10042SetNightVisionStatus", 1),
+    "set_night_vision_off": ("K10042SetNightVisionStatus", 2),
+    "set_night_vision_auto": ("K10042SetNightVisionStatus", 3),
+    "get_irled_status": ("K10044GetIRLEDStatus", None),
+    "set_irled_on": ("K10046SetIRLEDStatus", 1),
+    "set_irled_off": ("K10046SetIRLEDStatus", 2),
+    "get_camera_time": ("K10090GetCameraTime", None),
+    "set_camera_time": ("K10092SetCameraTime", None),
+    "get_night_switch_condition": ("K10624GetAutoSwitchNightType", None),
+    "set_night_switch_dusk": ("K10626SetAutoSwitchNightType", 1),
+    "set_night_switch_dark": ("K10626SetAutoSwitchNightType", 2),
+    "set_alarm_on": ("k10630SetAlarmFlashing", True),
+    "set_alarm_off": ("k10630SetAlarmFlashing", False),
+    "get_alarm_status": ("K10632GetAlarmFlashing", None),
+}
+
+
+def camera_control(
+    sess: WyzeIOTCSession,
+    uri: str,
+    img_dir: str,
+    camera_info: multiprocessing.Queue,
+    camera_cmd: multiprocessing.JoinableQueue,
+):
+    """
+    Listen for commands to control the camera.
+
+    :param sess: WyzeIOTCSession used to communicate with the camera.
+    :param uri: URI-safe name of the camera.
+    :param img_dir: Local path to store images from camera.
+    """
+    boa_cam = {
+        "ip": check_boa_ip(sess),
+        "uri": uri.lower(),
+        "img_dir": img_dir,
+        "last_alarm": (None, None),
+        "last_photo": (None, None),
+        "cooldown": datetime.now(),
+    }
+
+    interval = env_bool("boa_interval", "5", style="int")
+    mqtt = mqtt_sub_topic([f"{uri.lower()}/cmd"], sess)
+
+    while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
+        boa_control(sess, boa_cam)
+        resp = {}
+        with contextlib.suppress(Empty):
             cmd = camera_cmd.get(timeout=interval)
-            if cmd == "take_photo":
-                log.info("[MQTT] 📸 Take Photo via WEB-UI!")
-                with sess.iotctrl_mux() as mux:
-                    mux.send_ioctl(wyzecam.tutk.tutk_protocol.K10058TakePhoto())
-                last_photo = pull_last_image(cam, "photo", last_photo)
-                cam_info = sess.camera.camera_info
-                cam_info["boa_info"] = {
-                    "last_alarm": last_alarm,
-                    "last_photo": last_photo,
-                }
-                camera_info.put(cam_info)
-                camera_cmd.task_done()
-        except Empty:
-            pass
+            if resp := send_tutk_msg(sess, cmd, "web-ui"):
+                pull_last_image(boa_cam, "photo")
+            camera_cmd.task_done()
+
+        # Check bitrate
+        # sess.update_frame_size_rate(True)
+
+        if not resp and camera_info.qsize() > 0:
+            continue
+        cam_info = sess.camera.camera_info or {}
+        if boa_cam.get("ip"):
+            cam_info["boa_info"] = {
+                "last_alarm": boa_cam["last_alarm"],
+                "last_photo": boa_cam["last_photo"],
+            }
+        camera_info.put(cam_info | resp)
+
     if mqtt:
         mqtt.loop_stop()
 
 
-def motion_alarm(
-    cam: tuple, last_alarm: tuple, cooldown: datetime
-) -> Tuple[tuple, datetime]:
+def send_tutk_msg(sess: WyzeIOTCSession, cmd: str, source: str) -> dict:
+    """
+    Send tutk protocol message to camera.
+
+    :param sess: WyzeIOTCSession used to communicate with the camera.
+    :param cmd: Command to send to the camera. See CAM_CMDS.
+    :param source: The source of the command for logging.
+
+    """
+    resp = {"cmd": cmd}
+    if proto := CAM_CMDS.get(cmd):
+        log.info(f"[CONTROL] Request: {cmd} via {source.upper()}!")
+        if proto[1] is None:
+            proto_msg = getattr(wyzecam.tutk_protocol, proto[0])()
+        else:
+            proto_msg = getattr(wyzecam.tutk_protocol, proto[0])(proto[1])
+        try:
+            with sess.iotctrl_mux() as mux:
+                if (res := mux.send_ioctl(proto_msg).result(timeout=3)) != None:
+                    resp |= {"status": "success", "response": res}
+                else:
+                    resp |= {"status": "error", "response": "timeout"}
+        except Empty:
+            log.warning(f"[CONTROL] {cmd} timed out")
+            resp |= {"status": "error", "response": "timeout"}
+        except Exception as ex:
+            resp |= {"status": "error", "response": f"{ex}"}
+            log.warning(f"[CONTROL] {ex}")
+        log.info(f"[CONTROL] Response: {resp}")
+    return {cmd: resp}
+
+
+def motion_alarm(cam: dict):
     """Check alam and trigger MQTT/http motion and return cooldown."""
 
     motion = False
-    if (alarm := pull_last_image(cam, "alarm", last_alarm)) != last_alarm:
-        log.info(f"[MOTION] Alarm file detected at {alarm[1]}")
-        cooldown = datetime.now() + timedelta(0, int(env_bool("motion_cooldown", 10)))
+    cooldown = cam["cooldown"]
+    if (alarm := pull_last_image(cam, "alarm")) != cam["last_alarm"]:
+        log.info(f"[MOTION] Alarm file detected at {cam['last_alarm'][1]}")
+        cooldown = datetime.now() + timedelta(0, int(env_bool("motion_cooldown", "10")))
         motion = True
-    send_mqtt([(f"wyzebridge/{cam[0]}/motion", motion)])
+    send_mqtt([(f"wyzebridge/{cam['uri']}/motion", motion)])
     if motion and (http := env_bool("motion_http")):
         try:
-            resp = requests.get(http.format(cam_name=cam[0]))
+            resp = requests.get(http.format(cam_name=cam["uri"]))
             resp.raise_for_status()
         except requests.exceptions.HTTPError as ex:
             log.error(ex)
-    return alarm, cooldown
+    cam["last_alarm"] = alarm, cooldown
 
 
 def setup_llhls(token_path: str = "/tokens/", hass: bool = False):
