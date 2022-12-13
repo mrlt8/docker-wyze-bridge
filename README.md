@@ -33,6 +33,10 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
+## What's Changed in v1.10.1
+
+- Home Assistant: disable WEB_AUTH #638
+
 ## What's Changed in v1.10.0
 
 - New: Optional basic auth for WebUI with `WEB_AUTH=True` #612 Thanks @yeahme49!

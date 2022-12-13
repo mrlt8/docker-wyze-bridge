@@ -23,8 +23,9 @@ log = logging.getLogger(__name__)
 wb: WyzeBridge = None
 auth = HTTPBasicAuth()
 auth_enabled = os.getenv("WEB_AUTH", "false").lower() != "false"
-user = os.getenv("WEB_USERNAME", os.getenv("WYZE_EMAIL"))
-pw = generate_password_hash(os.getenv("WEB_PASSWORD", os.getenv("WYZE_PASSWORD")))
+if auth_enabled:
+    user = os.getenv("WEB_USERNAME", os.getenv("WYZE_EMAIL"))
+    pw = generate_password_hash(os.getenv("WEB_PASSWORD", os.getenv("WYZE_PASSWORD")))
 
 
 def clean_up():
