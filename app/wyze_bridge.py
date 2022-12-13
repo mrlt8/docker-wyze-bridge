@@ -718,22 +718,19 @@ class WyzeBridge:
 
     def cam_cmd(self, cam_name: str, cmd: str) -> dict[str, Any]:
         """Cam command."""
-        resp = {"status": "error", "command": cmd, "response": ""}
+        resp = {"status": "error", "command": cmd}
         if env_bool("disable_control"):
             return resp | {"response": "Control disabled"}
         if cmd not in CAM_CMDS:
-            return resp | {"response": "command not found"}
+            return resp | {"response": "Unknown command"}
         if not (cam := self.streams.get(cam_name)) or not cam.get("camera_info"):
-            return resp | {"response": "cam offline"}
+            return resp | {"response": "Camera offline"}
         cam["camera_cmd"].put(cmd)
         cam["camera_cmd"].join()
         try:
             cam["camera_info"] = cam["queue"].get(timeout=5)
             if cmd in cam["camera_info"]:
-                return resp | {
-                    "status": "success",
-                    "response": cam["camera_info"].pop(cmd),
-                }
+                return cam["camera_info"].pop(cmd)
             return resp | {"response": "could not get result"}
         except Empty:
             return resp | {"response": "timeout"}
@@ -1171,9 +1168,9 @@ def mqtt_sub_topic(
 
 
 def _on_message(client, sess, msg):
-    if not (cmd := msg.payload.decode()):
+    if not (cmd := msg.payload.decode()) or cmd not in CAM_CMDS:
         return
-    if resp := send_tutk_msg(sess, cmd, "mqtt"):
+    if resp := send_tutk_msg(sess, cmd, "mqtt").get(cmd):
         client.publish(msg.topic, json.dumps(resp))
 
 
@@ -1253,7 +1250,7 @@ CAM_CMDS = {
     "set_night_switch_dark": ("K10626SetAutoSwitchNightType", 2),
     "set_alarm_on": ("k10630SetAlarmFlashing", True),
     "set_alarm_off": ("k10630SetAlarmFlashing", False),
-    "get_alarm_status": ("k10632GetAlarmFlashing", None),
+    "get_alarm_status": ("K10632GetAlarmFlashing", None),
 }
 
 
@@ -1318,20 +1315,27 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: str, source: str) -> dict:
     :param source: The source of the command for logging.
 
     """
-    resp = {}
+    resp = {"cmd": cmd}
     if proto := CAM_CMDS.get(cmd):
         log.info(f"[CONTROL] Request: {cmd} via {source.upper()}!")
-        if proto[1]:
-            proto_msg = getattr(wyzecam.tutk_protocol, proto[0])(proto[1])
-        else:
+        if proto[1] is None:
             proto_msg = getattr(wyzecam.tutk_protocol, proto[0])()
+        else:
+            proto_msg = getattr(wyzecam.tutk_protocol, proto[0])(proto[1])
         try:
             with sess.iotctrl_mux() as mux:
-                resp = {cmd: mux.send_ioctl(proto_msg).result()}
+                if (res := mux.send_ioctl(proto_msg).result(timeout=3)) != None:
+                    resp |= {"status": "success", "response": res}
+                else:
+                    resp |= {"status": "error", "response": "timeout"}
+        except Empty:
+            log.warning(f"[CONTROL] {cmd} timed out")
+            resp |= {"status": "error", "response": "timeout"}
         except Exception as ex:
+            resp |= {"status": "error", "response": f"{ex}"}
             log.warning(f"[CONTROL] {ex}")
         log.info(f"[CONTROL] Response: {resp}")
-    return resp
+    return {cmd: resp}
 
 
 def motion_alarm(cam: dict):
