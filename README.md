@@ -1,11 +1,11 @@
-# RTMP/RTSP/HLS Bridge for Wyze Cam
+# WebRTC/RTSP/RTMP/HLS Bridge for Wyze Cam
 
 [![Docker](https://github.com/mrlt8/docker-wyze-bridge/actions/workflows/docker-image.yml/badge.svg)](https://github.com/mrlt8/docker-wyze-bridge/actions/workflows/docker-image.yml)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/mrlt8/docker-wyze-bridge?logo=github)](https://github.com/mrlt8/docker-wyze-bridge/releases/latest)
 [![Docker Image Size (latest semver)](https://img.shields.io/docker/image-size/mrlt8/wyze-bridge?sort=semver&logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 [![Docker Pulls](https://img.shields.io/docker/pulls/mrlt8/wyze-bridge?logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 
-Docker container to expose a local RTMP, RTSP, and HLS or Low-Latency HLS stream for ALL your Wyze cameras including the outdoor, doorbell, and 2K cams. No third-party or special firmware required.
+Docker container to expose a local WebRTC, RTSP, RTMP, and HLS or Low-Latency HLS stream for ALL your Wyze cameras including the outdoor, doorbell, and 2K cams. No third-party or special firmware required.
 
 It just works!
 
@@ -33,27 +33,21 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.10.1
+## What's Changed in v1.11.0
 
-- Home Assistant: disable WEB_AUTH #638
+- NEW: WebRTC - provides lower latency and is natively supported in more browsers. See the [WebRTC](#webrtc) section for configuration.
+- NEW: IPTV compatible m3u8 endpoint - `http://localhost:5000/cams.m3u8` provides a playlist to view all HLS streams. #653
+- CHANGED: URL decode WebRTC signalingUrl. #276 
+- UPDATED: iOS and wyze app version bump. 
+- UPDATED: rtsp-simple-server version bump to [v0.21.1](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.21.1). 
 
-## What's Changed in v1.10.0
-
-- New: Optional basic auth for WebUI with `WEB_AUTH=True` #612 Thanks @yeahme49!
-  - Note: this will only protect the WebUI. API and snapshot endpoints are unprotected at this time.
-  - Will use your wyze email/password for auth by default.
-  - Use `WEB_USERNAME` and/or `WEB_PASSWORD` to customize the authentication.
-- New: API endpoints and MQTT topic to send commands to the camera.
-  - See the [Camera Control](#camera-control) section for more info.
-- Updated: Wyze app and iOS version for the Web API
-- Updated: rtsp-simple-server to [v0.20.4](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.20.4)
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
 ## Features
 
 - Web-UI with **dark mode** to view all Wyze cameras in one place. [details](#web-ui)
-- Access to video and audio for all Wyze-supported cameras via RTSP/RTMP/HLS/Low-Latency HLS. [details](#camera-stream-uris)
+- Access to video and audio for all Wyze-supported cameras via WebRTC/RTSP/RTMP/HLS/Low-Latency HLS. [details](#camera-stream-uris)
 - Access to 2K, HD, *or* SD stream with configurable bitrate. [details](#bitrate-and-resolution)
 - Local and remote access to any of the cams on your account just like the app. [details](#network-connection-modes)
 - Runs on almost any x64 or armv7/arm64 based system like a Raspberry Pi that supports docker. [details](#compatibility)
@@ -99,8 +93,10 @@ See [basic usage](#basic-usage) for additional information.
 | Wyze Cam Doorbell       | WYZEDB3        | ✅                                                           |
 | Wyze Cam Pan v3         | HL_PAN3        | ❓                                                           |
 | Wyze Battery Cam Pro    | AN_RSCW        | ❓                                                           |
-| Wyze Cam Doorbell Pro   | GW_BE1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276) |
 | Wyze Cam Doorbell Pro 2 | AN_RDB1        | ❓                                                           |
+| Wyze Cam Doorbell Pro   | GW_BE1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276) |
+| Wyze Cam OG             | GW_GC1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276) |
+| Wyze Cam OG 3X          | GW_GC2         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276) |
 
 ### Firmware Compatibility
 
@@ -193,6 +189,7 @@ environment:
   - WB_RTSP_URL=rtsp://my-hostname-or-ip:1234/
   - WB_RTMP_URL=rtmp://my-hostname-or-ip:5678/
   - WB_HLS_URL=http://my-hostname-or-ip:9090/
+  - WB_WEBRTC_URL=http://my-hostname-or-ip:9091/
 ```
 
 Query params to adjust web-ui:
@@ -222,6 +219,12 @@ rtsp://localhost:8554/camera-nickname
 http://localhost:8888/camera-nickname/stream.m3u8
   ```
 
+- WebRTC can be viewed in a browser using (see [WebRTC](#webrtc) for setup):
+  ```text
+  http://localhost:8889/camera-nickname/
+  ```
+
+
 - HLS can also be viewed in the browser using:
 
   ```text
@@ -235,6 +238,31 @@ http://localhost:8888/camera-nickname/stream.m3u8
   or
   https://localhost:8888/camera-nickname/stream.m3u8
   ```
+
+- m3u8 playlist with all cameras (useful for viewing on an iptv):
+  
+  ```text
+  http://localhost:5000/cams.m3u8
+  ```
+
+## WebRTC
+
+WebRTC should work automatically in Home Assistant mode, however,some additional configuration is required to get WebRTC working in the standard docker mode.
+
+- WebRTC requires two additional ports to be configured in docker:
+  ```yaml
+    ports:
+      ...
+      - 8889:8889 #WebRTC
+      - 8189:8189/udp # WebRTC/ICE
+    ```
+
+- In addition, the `WB_IP` env needs to be set with the IP address of the server running the bridge.
+  ```yaml
+    environment:
+      - WB_IP=192.168.1.116
+  ```
+- See the [official documentation](https://github.com/aler9/rtsp-simple-server#usage-inside-a-container-or-behind-a-nat) for additional information/options.
 
 ## API Endpoints
 

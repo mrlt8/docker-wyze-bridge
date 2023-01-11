@@ -1,3 +1,11 @@
+## What's Changed in v1.11.0
+
+- NEW: WebRTC - provides lower latency and is natively supported in more browsers. See the [WebRTC](https://github.com/mrlt8/docker-wyze-bridge#webrtc) section for configuration.
+- NEW: IPTV compatible m3u8 endpoint - `http://localhost:5000/cams.m3u8` provides a playlist to view all HLS streams. #653
+- CHANGED: URL decode WebRTC signalingUrl. #276 
+- UPDATED: iOS and wyze app version bump. 
+- UPDATED: rtsp-simple-server version bump to [v0.21.1](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.21.1). 
+
 ## What's Changed in v1.10.1
 
 - Home Assistant: disable WEB_AUTH #638

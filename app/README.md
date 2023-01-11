@@ -1,4 +1,4 @@
-# RTMP/RTSP/HLS Bridge for Wyze Cam
+# WebRTC/RTMP/RTSP/HLS Bridge for Wyze Cam
 
 [![Docker](https://github.com/mrlt8/docker-wyze-bridge/actions/workflows/docker-image.yml/badge.svg)](https://github.com/mrlt8/docker-wyze-bridge/actions/workflows/docker-image.yml)
 [![GitHub release (latest by date)](https://img.shields.io/github/v/release/mrlt8/docker-wyze-bridge?logo=github)](https://github.com/mrlt8/docker-wyze-bridge/releases/latest)
@@ -6,7 +6,7 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/mrlt8/wyze-bridge?logo=docker&logoColor=white)](https://hub.docker.com/r/mrlt8/wyze-bridge)
 ![GitHub Repo stars](https://img.shields.io/github/stars/mrlt8/docker-wyze-bridge?style=social)
 
-Docker container to expose a local RTMP, RTSP, and HLS or Low-Latency HLS stream for ALL your Wyze cameras including the outdoor, doorbell, and 2K cams. No third-party or special firmware required.
+Docker container to expose a local WebRTC, RTMP, RTSP, and HLS or Low-Latency HLS stream for ALL your Wyze cameras including the outdoor, doorbell, and 2K cams. No third-party or special firmware required.
 
 It just works!
 
