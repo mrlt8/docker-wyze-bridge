@@ -7,6 +7,15 @@ configuration:
     name: On-Demand Streams
   ENABLE_AUDIO:
     name: Enable Audio For All Cameras
+  FILTER_NAMES:
+    name: Filter cameras by name
+  FILTER_MODELS:
+    name: Filter cameras by camera model
+  FILTER_MACS:
+    name: Filter cameras by MAC address
+  FILTER_BLOCK:
+    name: Invert Filter
+    description: Block cameras in filter list
   AUDIO_CODEC:
     name: Audio Codec
     description: Cams with PCM audio will be re-encoded to AAC by default for RTSP compatibility.
@@ -58,6 +67,17 @@ configuration:
     name: Custom RTMP url
   WB_RTSP_URL:
     name: Custom RTSP url
+  WB_WEBRTC_URL:
+    name: Custom WebRTC url
   RTSP_FW:
     name: Firmware RTSP
     description: Proxy additional RTSP stream from official RTSP firmware.
+  DISABLE_CONTROL:
+    name: Disable Control
+    description: Disable camera control from the API/mqtt.
+  WB_IP:
+    name: Bridge IP
+    description: Home Assistant IP for WebRTC ICE traffic.
+  TOTP_KEY:
+    name: TOTP Key
+    description: Used to auto generate a TOTP code when needed.

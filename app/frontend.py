@@ -5,15 +5,8 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import (
-    Flask,
-    Response,
-    make_response,
-    redirect,
-    render_template,
-    request,
-    send_from_directory,
-)
+from flask import (Flask, Response, make_response, redirect, render_template,
+                   request, send_from_directory)
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import NotFound
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -79,6 +72,7 @@ def create_app():
                 refresh_period=refresh_period,
                 hass=wb.hass,
                 version=wb.version,
+                webrtc=bool(wb.bridge_ip),
                 show_video=show_video,
                 autoplay=autoplay,
             )
