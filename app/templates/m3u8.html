@@ -1,0 +1,5 @@
+#EXTM3U
+{% for name,camera in cameras.items() %}{% if camera.enabled %}
+#EXTINF:-1 channel-id="{{name}}" tvc-guide-genres="{{camera.product_model}}", {{name}}
+{{ camera.hls_url }}stream.m3u8
+{% endif %}{% endfor %}

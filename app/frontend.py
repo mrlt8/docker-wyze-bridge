@@ -5,8 +5,15 @@ import sys
 from pathlib import Path
 from urllib.parse import urlparse
 
-from flask import (Flask, Response, make_response, redirect, render_template,
-                   request, send_from_directory)
+from flask import (
+    Flask,
+    Response,
+    make_response,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+)
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import NotFound
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -165,6 +172,17 @@ def create_app():
         else:
             return {"result": "error"}
         return {"result": "ok", "restart": restart_cmd.split(",")}
+
+    @app.route("/cams.m3u8")
+    def iptv_playlist():
+        """
+        Generate an m3u8 playlist with all enabled cameras.
+        """
+        hostname = urlparse(request.root_url).hostname
+        cameras = wb.get_cameras(hostname)["cameras"]
+        resp = make_response(render_template("m3u8.html", cameras=cameras))
+        resp.headers.set("content-type", "application/x-mpegURL")
+        return resp
 
     return app
 
