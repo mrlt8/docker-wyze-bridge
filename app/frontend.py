@@ -79,6 +79,7 @@ def create_app():
                 refresh_period=refresh_period,
                 hass=wb.hass,
                 version=wb.version,
+                webrtc=bool(wb.bridge_ip),
                 show_video=show_video,
                 autoplay=autoplay,
             )
@@ -171,6 +172,17 @@ def create_app():
         else:
             return {"result": "error"}
         return {"result": "ok", "restart": restart_cmd.split(",")}
+
+    @app.route("/cams.m3u8")
+    def iptv_playlist():
+        """
+        Generate an m3u8 playlist with all enabled cameras.
+        """
+        hostname = urlparse(request.root_url).hostname
+        cameras = wb.get_cameras(hostname)["cameras"]
+        resp = make_response(render_template("m3u8.html", cameras=cameras))
+        resp.headers.set("content-type", "application/x-mpegURL")
+        return resp
 
     return app
 

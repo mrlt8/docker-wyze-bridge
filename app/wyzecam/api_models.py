@@ -11,9 +11,12 @@ model_names = {
     "HL_CAM3P": "V3 Pro",
     "WYZECP1_JEF": "Pan",
     "HL_PAN2": "Pan V2",
+    "HL_PAN3": "Pan V3",
     "HL_PANP": "Pan Pro",
     "WYZEDB3": "Doorbell",
     "GW_BE1": "Doorbell Pro",
+    "GW_GC1": "OG",
+    "GW_GC2": "OG 3X",
     "WVOD1": "Outdoor",
     "HL_WCO2": "Outdoor V2",
 }

@@ -9,6 +9,7 @@ import signal
 import sys
 import threading
 import time
+import urllib.parse
 import warnings
 from datetime import datetime, timedelta
 from multiprocessing.synchronize import Event
@@ -50,9 +51,11 @@ class WyzeBridge:
         self.thread: Optional[threading.Thread] = None
         self.stop_bridge = multiprocessing.Event()
         self.hostname = env_bool("DOMAIN")
+        self.bridge_ip = env_bool("WB_IP")
         self.hls_url = env_bool("WB_HLS_URL")
         self.rtmp_url = env_bool("WB_RTMP_URL")
         self.rtsp_url = env_bool("WB_RTSP_URL")
+        self.webrtc_url = env_bool("WB_WEBRTC_URL")
         self.rtsp_snapshot_processes: Dict[str:Popen] = {}
         os.makedirs(self.token_path, exist_ok=True)
         os.makedirs(self.img_path, exist_ok=True)
@@ -66,6 +69,7 @@ class WyzeBridge:
         self.get_filtered_cams(fresh_data)
         if env_bool("WEBRTC"):
             self.get_webrtc()
+        setup_webrtc(self.bridge_ip)
         self.start_rtsp_server()
         self.start_all_streams()
 
@@ -541,7 +545,8 @@ class WyzeBridge:
                 creds = json.dumps(wss, separators=("\n\n", ":\n"))[1:-1].replace(
                     '"', ""
                 )
-                log.info(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n\n{creds}\n---")
+                url = urllib.parse.unquote(creds)
+                log.info(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n\n{url}\n---")
             except requests.exceptions.HTTPError as ex:
                 if ex.response.status_code == 404:
                     ex = "Camera does not support WebRTC"
@@ -607,6 +612,7 @@ class WyzeBridge:
             "firmware_ver": cam.firmware_ver,
             "thumbnail_url": cam.thumbnail,
             "hls_url": (self.hls_url or f"http://{hostname}:8888/") + name_uri + "/",
+            "webrtc_url": (self.webrtc_url or f"http://{hostname}:8889/") + name_uri,
             "rtmp_url": (self.rtmp_url or f"rtmp://{hostname}:1935/") + name_uri,
             "rtsp_url": (self.rtsp_url or f"rtsp://{hostname}:8554/") + name_uri,
             "stream_auth": bool(os.getenv(f"RTSP_PATHS_{name_uri.upper()}_READUSER")),
@@ -1057,8 +1063,22 @@ def setup_hass(hass: bool):
     #     "http://supervisor/info",
     #     headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
     # ).json()
+    # print(host_info)
     # if "ok" in host_info.get("result") and (data := host_info.get("data")):
     #     os.environ["DOMAIN"] = data.get("hostname")
+    if not env_bool("WB_IP"):
+        try:
+            net_info = requests.get(
+                "http://supervisor/network/info",
+                headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
+            ).json()
+            if "ok" in net_info.get("result") and (data := net_info.get("data")):
+                for i in data["interfaces"]:
+                    if i["primary"]:
+                        os.environ["WB_IP"] = i["ipv4"]["address"][0].split("/")[0]
+                        continue
+        except Exception as e:
+            log.error(f"WEBRTC SETUP: {e}")
 
     mqtt_conf = requests.get(
         "http://supervisor/services/mqtt",
@@ -1357,6 +1377,14 @@ def motion_alarm(cam: dict):
         except requests.exceptions.HTTPError as ex:
             log.error(ex)
     cam["last_alarm"] = alarm, cooldown
+
+
+def setup_webrtc(bridge_ip: str):
+    """Config bridge to allow WebRTC connections."""
+    if not bridge_ip:
+        log.warning("SET WB_IP to allow WEBRTC connections.")
+        return
+    os.environ["RTSP_WEBRTCICEHOSTNAT1TO1IPS"] = bridge_ip
 
 
 def setup_llhls(token_path: str = "/tokens/", hass: bool = False):

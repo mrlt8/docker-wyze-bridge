@@ -8,7 +8,10 @@ services:
             - 1935:1935 # RTMP
             - 8554:8554 # RTSP
             - 8888:8888 # HLS
+            - 8889:8889 #WebRTC
+            - 8189:8189/udp # WebRTC/ICE
             - 5000:5000 # WEB-UI
         environment:
             - WYZE_EMAIL=${WYZE_EMAIL} # Replace with wyze email 
             - WYZE_PASSWORD=${WYZE_PASSWORD} # Replace with wyze password
+            # - WB_IP= # IP Address of the host required for WebRTC 

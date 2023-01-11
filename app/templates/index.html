@@ -213,6 +213,12 @@
                         </table>
                     </div>
                     <footer class="card-footer fs-display-none">
+                        {% if webrtc %}
+                        <a href="{{camera.webrtc_url}}" class="card-footer-item">{% if camera.stream_auth %}<span
+                                class="icon">
+                                <i class="fas fa-lock"></i>
+                            </span> {% endif %}WebRTC</a>
+                        {% endif %}
                         <a href="{{camera.hls_url}}" class="card-footer-item">{% if camera.stream_auth %}<span
                                 class="icon">
                                 <i class="fas fa-lock"></i>
