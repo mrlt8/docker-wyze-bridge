@@ -9,6 +9,7 @@ import signal
 import sys
 import threading
 import time
+import urllib.parse
 import warnings
 from datetime import datetime, timedelta
 from multiprocessing.synchronize import Event
@@ -544,7 +545,8 @@ class WyzeBridge:
                 creds = json.dumps(wss, separators=("\n\n", ":\n"))[1:-1].replace(
                     '"', ""
                 )
-                log.info(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n\n{creds}\n---")
+                url = urllib.parse.unquote(creds)
+                log.info(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n\n{url}\n---")
             except requests.exceptions.HTTPError as ex:
                 if ex.response.status_code == 404:
                     ex = "Camera does not support WebRTC"
