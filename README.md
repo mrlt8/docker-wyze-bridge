@@ -33,6 +33,10 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
+## What's Changed in v1.11.1
+
+- HomeAssistant: potential fix to auto config WebRTC.
+
 ## What's Changed in v1.11.0
 
 - NEW: WebRTC - provides lower latency and is natively supported in more browsers. See the [WebRTC](#webrtc) section for configuration.

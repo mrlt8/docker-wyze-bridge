@@ -1,3 +1,7 @@
+## What's Changed in v1.11.1
+
+- HomeAssistant: potential fix to auto config WebRTC.
+
 ## What's Changed in v1.11.0
 
 - NEW: WebRTC - provides lower latency and is natively supported in more browsers. See the [WebRTC](https://github.com/mrlt8/docker-wyze-bridge#webrtc) section for configuration.

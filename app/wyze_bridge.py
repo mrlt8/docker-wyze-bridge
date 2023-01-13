@@ -1059,31 +1059,18 @@ def setup_hass(hass: bool):
     log.info("🏠 Home Assistant Mode")
     with open("/data/options.json") as f:
         conf = json.load(f)
-    # host_info = requests.get(
-    #     "http://supervisor/info",
-    #     headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
-    # ).json()
-    # print(host_info)
-    # if "ok" in host_info.get("result") and (data := host_info.get("data")):
-    #     os.environ["DOMAIN"] = data.get("hostname")
-    if not env_bool("WB_IP"):
-        try:
-            net_info = requests.get(
-                "http://supervisor/network/info",
-                headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
-            ).json()
-            if "ok" in net_info.get("result") and (data := net_info.get("data")):
-                for i in data["interfaces"]:
-                    if i["primary"]:
-                        os.environ["WB_IP"] = i["ipv4"]["address"][0].split("/")[0]
-                        continue
-        except Exception as e:
-            log.error(f"WEBRTC SETUP: {e}")
+    auth = {"Authorization": f"Bearer {os.getenv('SUPERVISOR_TOKEN')}"}
+    try:
+        assert "WB_IP" not in conf, f"Using WB_IP={conf['WB_IP']} from config"
+        net_info = requests.get("http://supervisor/network/info", headers=auth).json()
+        for i in net_info["data"]["interfaces"]:
+            if not i["primary"]:
+                continue
+            os.environ["WB_IP"] = i["ipv4"]["address"][0].split("/")[0]
+    except Exception as e:
+        log.error(f"WEBRTC SETUP: {e}")
 
-    mqtt_conf = requests.get(
-        "http://supervisor/services/mqtt",
-        headers={"Authorization": "Bearer " + os.getenv("SUPERVISOR_TOKEN")},
-    ).json()
+    mqtt_conf = requests.get("http://supervisor/services/mqtt", headers=auth).json()
     if "ok" in mqtt_conf.get("result") and (data := mqtt_conf.get("data")):
         os.environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
         os.environ["MQTT_AUTH"] = f'{data["username"]}:{data["password"]}'
