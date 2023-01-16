@@ -1,4 +1,4 @@
-version: '2.4'
+version: "2.4"
 services:
     wyze-bridge:
         container_name: wyze-bridge
@@ -12,8 +12,6 @@ services:
             - 8189:8189/udp # WebRTC/ICE
             - 5000:5000 # WEB-UI
         environment:
-            # [REQUIRED] Fill the following two lines:
-            - WYZE_EMAIL=
-            - WYZE_PASSWORD= 
-            # [OPTIONAL] IP Address of the host to enable WebRTC e.g.,:
-            # - WB_IP=192.168.1.122
+            - WYZE_EMAIL=${WYZE_EMAIL}
+            - WYZE_PASSWORD=${WYZE_PASSWORD}
+            - WB_IP=${WB_IP}
