@@ -24,7 +24,7 @@
     <video id="video" muted controls autoplay playsinline></video>
     <script>
         const restartPause = 2000;
-        const signalJson = {{ wss| tojson | safe }}
+        const signalJson = {{ webrtc| tojson | safe }}
         class Receiver {
             constructor() {
                 this.terminated = false;
