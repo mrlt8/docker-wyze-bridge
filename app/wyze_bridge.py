@@ -556,8 +556,10 @@ class WyzeBridge:
             return
         if not self.auth:
             self.get_wyze_data("auth")
+        # Use mars api if gwell camera
+        mars = cam.product_model.startswith("GW_")
         try:
-            return wyzecam.api.get_cam_webrtc(self.auth, cam.mac)
+            return wyzecam.api.get_cam_webrtc(self.auth, cam.mac, mars)
         except requests.exceptions.HTTPError as ex:
             if ex.response.status_code == 404:
                 ex = "Camera does not support WebRTC"
