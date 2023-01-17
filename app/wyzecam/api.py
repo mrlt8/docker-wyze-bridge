@@ -1,4 +1,5 @@
 import time
+import urllib.parse
 import uuid
 from hashlib import md5
 from typing import Any, Dict, List, Optional
@@ -238,10 +239,14 @@ def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
     resp.raise_for_status()
     resp_json = resp.json()
     assert resp_json["code"] == 1
+    for s in resp_json["results"]["servers"]:
+        if "url" in s:
+            s["urls"] = s.pop("url")
+
     return {
-        "signalingUrl": resp_json["results"]["signalingUrl"],
         "ClientId": auth_info.phone_id,
-        "signalToken": resp_json["results"]["signalToken"],
+        "signalingUrl": urllib.parse.unquote(resp_json["results"]["signalingUrl"]),
+        "servers": resp_json["results"]["servers"],
     }
 
 

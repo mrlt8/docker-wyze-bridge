@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <style>
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        #video {
+            width: 100%;
+            height: 100%;
+            background: black;
+        }
+    </style>
+</head>
+
+<body>
+    <video id="video" muted controls autoplay playsinline></video>
+    <script>
+        const restartPause = 2000;
+        const signalJson = {{ wss| tojson | safe }}
+        class Receiver {
+            constructor() {
+                this.terminated = false;
+                this.ws = null;
+                this.pc = null;
+                this.restartTimeout = null;
+                this.start();
+            }
+            start() {
+                this.ws = new WebSocket(decodeURI(signalJson.signalingUrl));
+                this.ws.onopen = () => this.onOpen();
+                this.ws.onerror = () => {
+                    console.log("ws error");
+                    if (this.ws === null) {
+                        return;
+                    }
+                    this.ws.close();
+                    this.ws = null;
+                };
+
+                this.ws.onclose = () => {
+                    console.log("ws closed");
+                    this.ws = null;
+                    this.scheduleRestart();
+                };
+
+                this.ws.onmessage = (msg) => this.onRemoteDescription(msg);
+            }
+
+            onOpen() {
+                this.pc = new RTCPeerConnection({
+                    "iceServers": signalJson.servers
+                });
+                this.pc.onicecandidate = (evt) => this.onIceCandidate(evt);
+                this.pc.oniceconnectionstatechange = () => {
+                    if (this.pc === null) {
+                        return;
+                    }
+                    console.log("peer connection state:", this.pc.iceConnectionState);
+                    switch (this.pc.iceConnectionState) {
+                        case "disconnected":
+                            this.scheduleRestart();
+                        // case "failed":
+                        //     this.scheduleRestart();
+                    }
+                };
+
+                this.pc.ontrack = (evt) => {
+                    console.log("new track: " + evt.track.kind);
+                    document.getElementById("video").srcObject = evt.streams[0];
+                };
+                // this.pc.onaddstream = (evt) => {
+                //     console.log("new stream: " + evt.track.kind);
+                // document.getElementById("video").srcObject = evt.streams;
+                // };
+                this.pc.addTransceiver("video", { "direction": "recvonly" });
+                this.pc.addTransceiver("audio", { "direction": "recvonly" });
+                this.pc.createOffer()
+                    .then((desc) => {
+                        this.pc.setLocalDescription(desc);
+                        this.ws.send(JSON.stringify({ "action": "SDP_OFFER", "messagePayload": btoa(JSON.stringify(desc)), "recipientClientId": signalJson.ClientId }));
+                    });
+
+            };
+
+            onRemoteDescription(msg) {
+                if (this.pc === null || this.ws === null || msg.data === "") { return };
+                let eventData = JSON.parse(msg.data);
+                let payload = JSON.parse(atob(eventData.messagePayload));
+
+                switch (eventData.messageType) {
+                    case "SDP_OFFER":
+                    case "SDP_ANSWER":
+                        this.pc.setRemoteDescription(new RTCSessionDescription(payload));
+                    case "ICE_CANDIDATE":
+                        if ("candiate" in payload) {
+                            console.log(payload.candidate)
+                            this.pc.addIceCandidate(new RTCIceCandidate(payload));
+
+                        }
+                }
+            }
+
+            onIceCandidate(evt) {
+                if (event.candidate) {
+                    console.log("Handling ICE candidate!")
+                    console.dir(evt.candidate)
+                    this.ws.send(JSON.stringify({ "action": "ICE_CANDIDATE", "messagePayload": btoa(JSON.stringify(evt.candidate)), "recipientClientId": signalJson.ClientId }));
+                }
+            }
+
+            onRemoteCandidate(payload) {
+                if (this.pc === null) {
+                    return;
+                }
+                var candidate = new RTCIceCandidate(payload);
+                this.pc.addIceCandidate(candidate);
+            }
+
+            scheduleRestart() {
+                if (this.terminated) {
+                    return;
+                }
+
+                if (this.ws !== null) {
+                    this.ws.close();
+                    this.ws = null;
+                }
+
+                if (this.pc !== null) {
+                    this.pc.close();
+                    this.pc = null;
+                }
+
+                this.restartTimeout = window.setTimeout(() => {
+                    this.restartTimeout = null;
+                    this.start();
+                }, restartPause);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', new Receiver());
+
+    </script>
+
+</body>
+
+</html>

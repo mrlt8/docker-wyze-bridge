@@ -9,7 +9,6 @@ import signal
 import sys
 import threading
 import time
-import urllib.parse
 import warnings
 from datetime import datetime, timedelta
 from multiprocessing.synchronize import Event
@@ -545,12 +544,24 @@ class WyzeBridge:
                 creds = json.dumps(wss, separators=("\n\n", ":\n"))[1:-1].replace(
                     '"', ""
                 )
-                url = urllib.parse.unquote(creds)
-                log.info(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n\n{url}\n---")
+                log.info(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n\n{creds}\n---")
             except requests.exceptions.HTTPError as ex:
                 if ex.response.status_code == 404:
                     ex = "Camera does not support WebRTC"
                 log.warning(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n{ex}\n---")
+
+    def get_webrtc_signal(self, cam_name: str) -> Optional[dict]:
+        """Get signal data for WebRTC."""
+        if not (cam := self.cameras.get(cam_name)):
+            return
+        if not self.auth:
+            self.get_wyze_data("auth")
+        try:
+            return wyzecam.api.get_cam_webrtc(self.auth, cam.mac)
+        except requests.exceptions.HTTPError as ex:
+            if ex.response.status_code == 404:
+                ex = "Camera does not support WebRTC"
+            log.warning(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n{ex}\n---")
 
     def sse_status(self) -> Generator[str, str, str]:
         """Generator to return the status for enabled cameras."""

@@ -126,6 +126,17 @@ def create_app():
         host = urlparse(request.root_url).hostname
         return wb.get_cam_info(cam_name, host) if cam_name else wb.get_cameras(host)
 
+    @app.route("/webrtc/<path:cam_name>")
+    def webrtc(cam_name):
+        """View WebRTC direct from camera."""
+
+        if not (webrtc := wb.get_webrtc_signal(cam_name)):
+            return {"Exception": "WebRTC not available for this camera"}
+        resp = make_response(
+            render_template("webrtc.html", webrtc=webrtc, name=cam_name)
+        )
+        return resp
+
     @app.route("/snapshot/<path:img_file>")
     def rtsp_snapshot(img_file: str):
         """Use ffmpeg to take a snapshot from the rtsp stream."""
