@@ -1,4 +1,5 @@
 import time
+import urllib.parse
 import uuid
 from hashlib import md5
 from typing import Any, Dict, List, Optional
@@ -226,22 +227,27 @@ def get_camera_list(auth_info: WyzeCredential) -> List[WyzeCamera]:
     return result
 
 
-def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
+def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str, mars: bool = False) -> dict:
     """Get webrtc for camera."""
     ui_headers = get_headers(auth_info.phone_id, SCALE_USER_AGENT)
     ui_headers["content-type"] = "application/json"
     ui_headers["authorization"] = auth_info.access_token
+    api = "wyze-mars-service" if mars else "webrtc.api"
     resp = requests.get(
-        f"https://webrtc.api.wyze.com/signaling/device/{mac_id}?use_trickle=true",
+        f"https://{api}.wyze.com/signaling/device/{mac_id}?use_trickle=true",
         headers=ui_headers,
     )
     resp.raise_for_status()
     resp_json = resp.json()
     assert resp_json["code"] == 1
+    for s in resp_json["results"]["servers"]:
+        if "url" in s:
+            s["urls"] = s.pop("url")
+
     return {
-        "signalingUrl": resp_json["results"]["signalingUrl"],
         "ClientId": auth_info.phone_id,
-        "signalToken": resp_json["results"]["signalToken"],
+        "signalingUrl": urllib.parse.unquote(resp_json["results"]["signalingUrl"]),
+        "servers": resp_json["results"]["servers"],
     }
 
 

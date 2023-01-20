@@ -74,7 +74,7 @@ def create_app():
         resp = make_response(
             render_template(
                 "index.html",
-                cameras=wb.get_cameras(urlparse(request.root_url).hostname),
+                cam_data=wb.get_cameras(urlparse(request.root_url).hostname),
                 number_of_columns=number_of_columns,
                 refresh_period=refresh_period,
                 hass=wb.hass,
@@ -97,7 +97,7 @@ def create_app():
 
         return resp
 
-    @app.route("/mfa/<path:mfa_code>")
+    @app.route("/mfa/<string:mfa_code>")
     def set_mfa_code(mfa_code):
         """Set mfa code."""
         if len(mfa_code) != 6:
@@ -110,8 +110,8 @@ def create_app():
         return Response(wb.sse_status(), mimetype="text/event-stream")
 
     @app.route("/api")
-    @app.route("/api/<path:cam_name>")
-    @app.route("/api/<path:cam_name>/<path:cam_cmd>")
+    @app.route("/api/<string:cam_name>")
+    @app.route("/api/<string:cam_name>/<string:cam_cmd>")
     def api(cam_name=None, cam_cmd=None):
         """JSON api endpoints."""
         if cam_name and cam_cmd == "status":
@@ -126,14 +126,27 @@ def create_app():
         host = urlparse(request.root_url).hostname
         return wb.get_cam_info(cam_name, host) if cam_name else wb.get_cameras(host)
 
-    @app.route("/snapshot/<path:img_file>")
+    @app.route("/signaling/<string:name>")
+    def webrtc_signaling(name):
+        if "kvs" in request.args:
+            return wb.get_kvs_signal(name)
+        return wb.get_webrtc_signal(name)
+
+    @app.route("/webrtc/<string:name>")
+    def webrtc(name):
+        """View WebRTC direct from camera."""
+        if (webrtc := wb.get_kvs_signal(name)).get("result") == "ok":
+            return make_response(render_template("webrtc.html", webrtc=webrtc))
+        return webrtc
+
+    @app.route("/snapshot/<string:img_file>")
     def rtsp_snapshot(img_file: str):
         """Use ffmpeg to take a snapshot from the rtsp stream."""
         if wb.rtsp_snap(Path(img_file).stem, wait=True):
             return send_from_directory(wb.img_path, img_file)
         return redirect("/static/notavailable.svg", code=307)
 
-    @app.route("/photo/<path:img_file>")
+    @app.route("/photo/<string:img_file>")
     def boa_photo(img_file: str):
         """Take a photo on the camera and grab it over the boa http server."""
         uri = Path(img_file).stem
@@ -141,7 +154,7 @@ def create_app():
             return send_from_directory(wb.img_path, f"{uri}_{photo[0]}")
         return redirect(f"/img/{img_file}", code=307)
 
-    @app.route("/img/<path:img_file>")
+    @app.route("/img/<string:img_file>")
     def img(img_file: str):
         """Serve static image if image exists else take a new snapshot from the rtsp stream."""
         try:

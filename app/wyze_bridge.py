@@ -9,7 +9,6 @@ import signal
 import sys
 import threading
 import time
-import urllib.parse
 import warnings
 from datetime import datetime, timedelta
 from multiprocessing.synchronize import Event
@@ -52,10 +51,10 @@ class WyzeBridge:
         self.stop_bridge = multiprocessing.Event()
         self.hostname = env_bool("DOMAIN")
         self.bridge_ip = env_bool("WB_IP")
-        self.hls_url = env_bool("WB_HLS_URL")
-        self.rtmp_url = env_bool("WB_RTMP_URL")
-        self.rtsp_url = env_bool("WB_RTSP_URL")
-        self.webrtc_url = env_bool("WB_WEBRTC_URL")
+        self.hls_url = env_bool("WB_HLS_URL").strip("/")
+        self.rtmp_url = env_bool("WB_RTMP_URL").strip("/")
+        self.rtsp_url = env_bool("WB_RTSP_URL").strip("/")
+        self.webrtc_url = env_bool("WB_WEBRTC_URL").strip("/")
         self.rtsp_snapshot_processes: Dict[str:Popen] = {}
         os.makedirs(self.token_path, exist_ok=True)
         os.makedirs(self.img_path, exist_ok=True)
@@ -545,12 +544,45 @@ class WyzeBridge:
                 creds = json.dumps(wss, separators=("\n\n", ":\n"))[1:-1].replace(
                     '"', ""
                 )
-                url = urllib.parse.unquote(creds)
-                log.info(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n\n{url}\n---")
+                log.info(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n\n{creds}\n---")
             except requests.exceptions.HTTPError as ex:
                 if ex.response.status_code == 404:
                     ex = "Camera does not support WebRTC"
                 log.warning(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n{ex}\n---")
+
+    def get_kvs_signal(self, cam_name: str) -> dict:
+        """Get signaling for kvs webrtc."""
+        if not (cam := self.cameras.get(cam_name)):
+            return {"result": "cam not found", "cam": cam_name}
+        if not self.auth:
+            self.get_wyze_data("auth")
+        # Use mars api if gwell camera
+        mars = cam.product_model.startswith("GW_")
+        try:
+            wss = wyzecam.api.get_cam_webrtc(self.auth, cam.mac, mars)
+            return wss | {"result": "ok", "cam": cam_name}
+        except requests.exceptions.HTTPError as ex:
+            if ex.response.status_code == 404:
+                ex = "Camera does not support WebRTC"
+            log.warning(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n{ex}\n---")
+            return {"result": ex, "cam": cam_name}
+
+    def get_webrtc_signal(
+        self, cam_name: str, hostname: Optional[str] = "localhost"
+    ) -> dict:
+        """Generate signaling for rtsp-simple-server webrtc."""
+        wss = "s" if env_bool("RTSP_WEBRTCENCRYPTION") else ""
+        socket = self.webrtc_url.lstrip("http") or f"{wss}://{hostname}:8889"
+        ice_server = env_bool("RTSP_WEBRTCICESERVERS") or [
+            {"credentialType": "password", "urls": ["stun:stun.l.google.com:19302"]}
+        ]
+        return {
+            "result": "ok",
+            "cam": cam_name,
+            "signalingUrl": f"ws{socket}/{cam_name}/ws",
+            "servers": ice_server,
+            "rss": True,
+        }
 
     def sse_status(self) -> Generator[str, str, str]:
         """Generator to return the status for enabled cameras."""
@@ -611,10 +643,11 @@ class WyzeBridge:
             "model_name": cam.model_name,
             "firmware_ver": cam.firmware_ver,
             "thumbnail_url": cam.thumbnail,
-            "hls_url": (self.hls_url or f"http://{hostname}:8888/") + name_uri + "/",
-            "webrtc_url": (self.webrtc_url or f"http://{hostname}:8889/") + name_uri,
-            "rtmp_url": (self.rtmp_url or f"rtmp://{hostname}:1935/") + name_uri,
-            "rtsp_url": (self.rtsp_url or f"rtsp://{hostname}:8554/") + name_uri,
+            "hls_url": (self.hls_url or f"http://{hostname}:8888") + f"/{name_uri}/",
+            "webrtc_url": (self.webrtc_url or f"http://{hostname}:8889")
+            + f"/{name_uri}",
+            "rtmp_url": (self.rtmp_url or f"rtmp://{hostname}:1935") + f"/{name_uri}",
+            "rtsp_url": (self.rtsp_url or f"rtsp://{hostname}:8554") + f"/{name_uri}",
             "stream_auth": bool(os.getenv(f"RTSP_PATHS_{name_uri.upper()}_READUSER")),
             "name_uri": name_uri,
             "fw_rtsp": name_uri in self.fw_rtsp,
@@ -625,6 +658,7 @@ class WyzeBridge:
             "img_time": img_time,
             "snapshot_url": f"snapshot/{img}",
             "photo_url": None,
+            "webrtc": cam.webrtc_support and self.bridge_ip,
         }
         if env_bool("LLHLS"):
             data["hls_url"] = data["hls_url"].replace("http:", "https:")

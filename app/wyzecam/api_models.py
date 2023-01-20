@@ -21,6 +21,19 @@ model_names = {
     "HL_WCO2": "Outdoor V2",
 }
 
+# These cameras don't seem to support WebRTC
+NO_WEBRTC = {
+    "WYZEC1",
+    "HL_PANP",
+    "WVOD1",
+    "HL_WCO2",
+    "AN_RSCW",
+    "WYZEDB3",
+    "HL_DB2",
+    "GW_BE1",
+    "AN_RDB1",
+}
+
 
 class WyzeCredential(BaseModel):
     """Authenticated credentials; see [wyzecam.api.login][].
@@ -114,6 +127,10 @@ class WyzeCamera(BaseModel):
     @property
     def model_name(self) -> str:
         return model_names.get(self.product_model, self.product_model)
+
+    @property
+    def webrtc_support(self) -> bool:
+        return self.product_model not in NO_WEBRTC
 
 
 def clean_name(name: str) -> str:

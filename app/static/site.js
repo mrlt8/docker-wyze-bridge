@@ -576,9 +576,20 @@ document.addEventListener("DOMContentLoaded", () => {
   function autoplay(action) {
     let videos = document.querySelectorAll('video');
     if (action == "stop") {
-      videos.forEach(video => { videojs(video).pause(); });
-    } else if (getCookie("autoplay")) {
-      videos.forEach(video => { videojs(video).play(); });
+      videos.forEach(video => {
+        if (video.classList.contains("vjs-tech")) { videojs(video).pause() } else {
+          video.load();
+          video.controls = false;
+        }
+      });
+    } else {
+      let autoPlay = getCookie("autoplay");
+      videos.forEach(video => {
+        if (video.classList.contains("vjs-tech")) { video = videojs(video); } else {
+          video.controls = true;
+        }
+        if (autoPlay) { video.play(); }
+      });
     }
   }
   document.querySelector("#enable-autoplay").addEventListener("change", box => {
