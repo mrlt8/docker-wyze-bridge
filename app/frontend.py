@@ -62,15 +62,19 @@ def create_app():
             refresh = request.cookies.get("refresh_period", "30")
         number_of_columns = int(columns) if columns.isdigit() else 0
         refresh_period = int(refresh) if refresh.isdigit() else 0
-        show_video = bool(request.cookies.get("show_video"))
+        show_video = request.cookies.get("show_video")
         autoplay = bool(request.cookies.get("autoplay"))
         if "autoplay" in request.args:
             autoplay = True
-
         if "video" in request.args:
             show_video = True
         elif "snapshot" in request.args:
             show_video = False
+
+        video_format = request.cookies.get("video", "webrtc")
+        if req_video := ({"webrtc", "hls", "kvs"} & set(request.args)):
+            video_format = req_video.pop()
+
         resp = make_response(
             render_template(
                 "index.html",
@@ -79,8 +83,9 @@ def create_app():
                 refresh_period=refresh_period,
                 hass=wb.hass,
                 version=wb.version,
-                webrtc=bool(wb.bridge_ip),
+                webrtc=bool(wb.bridge_ip) and video_format.lower() == "webrtc",
                 show_video=show_video,
+                video_format=video_format.lower(),
                 autoplay=autoplay,
             )
         )
@@ -88,6 +93,7 @@ def create_app():
         resp.set_cookie("number_of_columns", str(number_of_columns))
         resp.set_cookie("refresh_period", str(refresh_period))
         resp.set_cookie("show_video", "1" if show_video else "")
+        resp.set_cookie("video", video_format)
         fullscreen = "fullscreen" in request.args or bool(
             request.cookies.get("fullscreen")
         )
