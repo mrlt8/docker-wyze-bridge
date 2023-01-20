@@ -1,3 +1,11 @@
+## What's Changed in v1.11.2
+
+- CHANGED: Use WebRTC as default video source if available in WebUI.
+  - switch between sources by using the query `?webrtc` or `?hls`
+- New: basic support for kvs. Thanks @carTloyal123!
+- FIXED: Trim spaces from email/password.
+- UPDATED: wyze app version bump. 
+
 ## What's Changed in v1.11.1
 
 - HomeAssistant: potential fix to auto config WebRTC.

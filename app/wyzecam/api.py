@@ -8,7 +8,7 @@ import requests
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
 IOS_VERSION = "16.2"
-APP_VERSION = "2.38.3.3"
+APP_VERSION = "2.38.4.3"
 
 SV_VALUE = "e1fe392906d54888a9b99b88de4162d7"
 SC_VALUE = "9f275790cab94a72bd206c8876429f3c"
@@ -43,7 +43,7 @@ def login(
               for passing to [get_user_info()][wyzecam.api.get_user_info], or
               [get_camera_list()][wyzecam.api.get_camera_list].
     """
-    payload = {"email": email, "password": triplemd5(password)}
+    payload = {"email": email.strip(), "password": triplemd5(password.strip())}
     if mfa:
         payload["mfa_type"] = mfa["type"]
         payload["verification_id"] = mfa["id"]

@@ -33,6 +33,14 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
+## What's Changed in v1.11.2
+
+- CHANGED: Use WebRTC as default video source if available in WebUI.
+  - switch between sources by using the query `?webrtc` or `?hls`
+- New: basic support for kvs. Thanks @carTloyal123!
+- FIXED: Trim spaces from email/password.
+- UPDATED: wyze app version bump. 
+- 
 ## What's Changed in v1.11.1
 
 - HomeAssistant: potential fix to auto config WebRTC.
@@ -82,6 +90,8 @@ See [basic usage](#basic-usage) for additional information.
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
 
 ![Wyze Cam Doorbell Pro](https://img.shields.io/badge/wyze_doorbell_pro-no-inactive.svg)
+![Wyze Cam OG](https://img.shields.io/badge/wyze_og-no-inactive.svg)
+![Wyze Cam OG 3x](https://img.shields.io/badge/wyze_3x-no-inactive.svg)
 
 | Camera                   | Model          | Supported                                                   |
 | ------------------------ | -------------- | ----------------------------------------------------------- |
@@ -100,8 +110,8 @@ See [basic usage](#basic-usage) for additional information.
 | Wyze Battery Cam Pro     | AN_RSCW        | ❓                                                           |
 | Wyze Cam Doorbell Pro 2  | AN_RDB1        | ❓                                                           |
 | Wyze Cam Doorbell Pro    | GW_BE1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276) |
-| Wyze Cam OG              | GW_GC1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276) |
-| Wyze Cam OG Telephoto 3x | GW_GC2         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276) |
+| Wyze Cam OG              | GW_GC1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/677) |
+| Wyze Cam OG Telephoto 3x | GW_GC2         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/677) |
 
 ### Firmware Compatibility
 
@@ -204,6 +214,8 @@ Query params to adjust web-ui:
   - Preview refresh interval `http://localhost:5000/?refresh=60`
   - Camera order `http://localhost:5000/?order=front-cam,back-cam,garage,other`
   - autoplay `http://localhost:5000/?autoplay`
+  - Use WebRTC for WebUI (will fall back to HLS if `WB_IP` is not set) `http://localhost:5000/?webrtc`
+  - Use HLS for WebUI `http://localhost:5000/?hls`
 
 NOTE: You can combine multiple queries into a single request:
 ```text
