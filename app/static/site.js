@@ -227,9 +227,9 @@ async function update_img(oldUrl, useImg = false) {
     button.disabled = false;
     button.getElementsByClassName("fas")[0].classList.remove("fa-spin");
     button.style.display = null;
-  }
-  if (!imgDate.url.endsWith(".svg")) {
-    button.parentElement.querySelector(".age").dataset.age = new Date(imgDate.headers.get("Last-Modified")).getTime();
+    if (!imgDate.url.endsWith(".svg")) {
+      button.parentElement.querySelector(".age").dataset.age = new Date(imgDate.headers.get("Last-Modified")).getTime();
+    }
   }
   return newUrl;
 }
@@ -345,7 +345,7 @@ document.addEventListener("DOMContentLoaded", () => {
       }, 30000);
     }
   }
-  document.querySelectorAll(".loading-preview").forEach((img) => { loadPreview(img) });
+  document.querySelectorAll(".loading-preview").forEach(loadPreview);
 
   // click to update preview
   document.querySelectorAll(".update-preview[data-cam]").forEach((button) => {
