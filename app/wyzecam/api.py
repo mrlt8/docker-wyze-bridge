@@ -42,7 +42,7 @@ def login(
               for passing to [get_user_info()][wyzecam.api.get_user_info], or
               [get_camera_list()][wyzecam.api.get_camera_list].
     """
-    payload = {"email": email, "password": triplemd5(password)}
+    payload = {"email": email.strip(), "password": triplemd5(password.strip())}
     if mfa:
         payload["mfa_type"] = mfa["type"]
         payload["verification_id"] = mfa["id"]
