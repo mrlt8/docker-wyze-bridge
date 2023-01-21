@@ -891,8 +891,8 @@ def get_cam_params(
     if audio:
         codec, rate = sess.get_audio_codec()
         codec_str = codec.replace("s16le", "PCM")
-        if codec_out := env_bool("AUDIO_CODEC", "AAC" if "s16le" in codec else ""):
-            codec_str += " > " + codec_out
+        if codec_out := env_bool("AUDIO_CODEC", "libopus" if "s16le" in codec else ""):
+            codec_str += f" > {codec_out}"
         audio: dict = {"codec": codec, "rate": rate, "codec_out": codec_out.lower()}
     log.info(f"📡 Getting {bit_frame} via {mode} (WiFi: {wifi}%) FW: {firmware} (2/3)")
     if audio:
