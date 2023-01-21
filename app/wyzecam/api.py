@@ -202,8 +202,9 @@ def get_camera_list(auth_info: WyzeCredential) -> List[WyzeCamera]:
             continue
         if not ip:
             continue
-        if not enr:
-            continue
+        # Ignore missing ENR for gwell cameras
+        # if not enr:
+        #     continue
         if not mac:
             continue
         if not product_model:

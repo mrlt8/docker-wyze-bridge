@@ -427,6 +427,10 @@ class WyzeBridge:
             print("\nRemoving old camera data..\n=======\n\n")
             os.remove(self.token_path + "cameras.pickle")
             cams: List[WyzeCamera] = self.get_wyze_data("cameras", fresh_data=True)
+        for cam in cams:
+            if not cam.enr:
+                log.warning(f"💔 {cam.nickname} is not supported [NO ENR]")
+                cams.remove(cam)
         total = len(cams)
         if env_bool("FILTER_BLOCK"):
             if filtered := list(filter(lambda cam: not env_filter(cam), cams)):
