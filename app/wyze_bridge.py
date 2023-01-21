@@ -1468,18 +1468,6 @@ def setup_logging():
     logging.captureWarnings(True)
 
 
-if not os.getenv("SDK_KEY"):
-    print("Missing SDK_KEY")
-    sys.exit(1)
-if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
-    print(
-        "Missing credentials:",
-        ("" if os.getenv("WYZE_EMAIL") else "WYZE_EMAIL ")
-        + ("" if os.getenv("WYZE_PASSWORD") else "WYZE_PASSWORD"),
-    )
-
-    sys.exit(1)
-
 if __name__ == "__main__":
     setup_logging()
     wb = WyzeBridge()

@@ -33,6 +33,10 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
+## What's Changed in v1.11.3
+
+- Home Assistant: fix missing credential bug. #682 #683
+
 ## What's Changed in v1.11.2
 
 - CHANGED: Use WebRTC as default video source if available in WebUI.
@@ -40,7 +44,7 @@ See [basic usage](#basic-usage) for additional information.
 - New: basic support for kvs. Thanks @carTloyal123!
 - FIXED: Trim spaces from email/password.
 - UPDATED: wyze app version bump. 
-- 
+  
 ## What's Changed in v1.11.1
 
 - HomeAssistant: potential fix to auto config WebRTC.

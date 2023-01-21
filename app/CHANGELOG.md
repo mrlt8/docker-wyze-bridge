@@ -1,3 +1,7 @@
+## What's Changed in v1.11.3
+
+- Home Assistant: fix missing credential bug. #682 #683
+
 ## What's Changed in v1.11.2
 
 - CHANGED: Use WebRTC as default video source if available in WebUI.

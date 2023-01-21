@@ -43,6 +43,9 @@ def login(
               for passing to [get_user_info()][wyzecam.api.get_user_info], or
               [get_camera_list()][wyzecam.api.get_camera_list].
     """
+    if not email or not password:
+        missing = ("" if email else "EMAIL ") + ("" if password else "PASSWORD")
+        raise ValueError(f"Missing credentials: {missing}")
     payload = {"email": email.strip(), "password": triplemd5(password.strip())}
     if mfa:
         payload["mfa_type"] = mfa["type"]
