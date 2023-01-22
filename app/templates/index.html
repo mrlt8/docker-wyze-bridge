@@ -149,7 +149,7 @@
                             {% if show_video and (camera.connected or (camera.on_demand and camera.enabled)) %}
                             {% if webrtc or (camera.webrtc and video_format == "kvs") %}
                             <video data-cam="{{cam_uri}}" class="webrtc loading-preview refresh_img" muted controls
-                                autoplay playsinline
+                                playsinline {{ "autoplay" if autoplay }}
                                 poster="{{camera.img_url or url_for('static',filename='loading.svg')}}"></video>
                             {% else %}
                             <video-js id="video-{{cam_uri}}" class="video-js vjs-live vjs-big-play-centered" controls
