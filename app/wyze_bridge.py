@@ -428,7 +428,7 @@ class WyzeBridge:
             os.remove(self.token_path + "cameras.pickle")
             cams: List[WyzeCamera] = self.get_wyze_data("cameras", fresh_data=True)
         for cam in cams:
-            if not cam.enr:
+            if not cam.enr or not cam.p2p_id:
                 log.warning(f"💔 {cam.nickname} is not supported [NO ENR]")
                 cams.remove(cam)
         total = len(cams)

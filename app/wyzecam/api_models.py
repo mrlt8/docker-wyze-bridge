@@ -91,8 +91,8 @@ class WyzeCamera(BaseModel):
 
     """
 
-    p2p_id: str
-    p2p_type: int
+    p2p_id: Optional[str]
+    p2p_type: Optional[int]
     ip: str
     enr: Optional[str]
     mac: str

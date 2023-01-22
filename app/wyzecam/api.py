@@ -196,15 +196,8 @@ def get_camera_list(auth_info: WyzeCredential) -> List[WyzeCamera]:
             "thumbnails_url"
         )
 
-        if not p2p_id:
-            continue
-        if not p2p_type:
-            continue
         if not ip:
             continue
-        # Ignore missing ENR for gwell cameras
-        # if not enr:
-        #     continue
         if not mac:
             continue
         if not product_model:
