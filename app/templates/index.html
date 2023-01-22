@@ -147,9 +147,9 @@
                     <div class="card-image has-text-centered">
                         <figure class="image">
                             {% if show_video and (camera.connected or (camera.on_demand and camera.enabled)) %}
-                            {% if camera.webrtc %}
-                            <video data-cam="{{cam_uri}}" class="webrtc loading-preview" muted controls autoplay
-                                playsinline
+                            {% if webrtc or (camera.webrtc and video_format == "kvs") %}
+                            <video data-cam="{{cam_uri}}" class="webrtc loading-preview refresh_img" muted controls
+                                playsinline {{ "autoplay" if autoplay }}
                                 poster="{{camera.img_url or url_for('static',filename='loading.svg')}}"></video>
                             {% else %}
                             <video-js id="video-{{cam_uri}}" class="video-js vjs-live vjs-big-play-centered" controls
@@ -216,7 +216,7 @@
                         </table>
                     </div>
                     <footer class="card-footer fs-display-none">
-                        {% if webrtc %}
+                        {% if camera.webrtc_url %}
                         <a href="{{camera.webrtc_url}}" class="card-footer-item">{% if camera.stream_auth %}<span
                                 class="icon">
                                 <i class="fas fa-lock"></i>
@@ -289,11 +289,11 @@
         </div>
     </footer>
     {% if show_video %}
-    {% if webrtc %}
+    {% if webrtc or video_format =="kvs" %}
     <script src="{{ 'static/webrtc.js' if hass else url_for('static', filename='webrtc.js') }}"></script>
     <script>
         document.querySelectorAll("video.webrtc").forEach((v) => {
-            fetch(`signaling/${v.dataset.cam}`).then((resp) => resp.json()).then((data) => new Receiver(data))
+            fetch(`signaling/${v.dataset.cam}?{{ video_format }}`).then((resp) => resp.json()).then((data) => new Receiver(data))
         })
     </script>
     {% endif %}

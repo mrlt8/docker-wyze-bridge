@@ -33,6 +33,14 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
+## What's Changed in v1.11.4
+
+- FIX: Switching between streams was broken (v1.11.2)
+- FIX: Other minor js bugs in thee webUI.
+- FIX: Missing audio in WebRTC - switch from AAC to libopus as default. #676
+- FIX: Disable WebRTC autoplay if selected.
+- NEW: `FORCE_ENCODE` option to force the bridge to re-encode the video.
+
 ## What's Changed in v1.11.3
 
 - Home Assistant: fix missing credential bug. #682 #683

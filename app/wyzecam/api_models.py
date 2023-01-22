@@ -91,10 +91,10 @@ class WyzeCamera(BaseModel):
 
     """
 
-    p2p_id: str
-    p2p_type: int
+    p2p_id: Optional[str]
+    p2p_type: Optional[int]
     ip: str
-    enr: str
+    enr: Optional[str]
     mac: str
     product_model: str
     camera_info: Optional[Dict[str, Any]]
@@ -130,6 +130,7 @@ class WyzeCamera(BaseModel):
 
     @property
     def webrtc_support(self) -> bool:
+        """Check if camera model is known to support WebRTC."""
         return self.product_model not in NO_WEBRTC
 
 
