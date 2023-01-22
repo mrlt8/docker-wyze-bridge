@@ -628,12 +628,13 @@ class WyzeBridge:
             return {"error": "Could not find camera"}
         if self.hostname:
             hostname = self.hostname
-
         img = f"{name_uri}.{env_bool('IMG_TYPE','jpg')}"
         try:
             img_time = int(os.path.getmtime(self.img_path + img) * 1000)
         except FileNotFoundError:
             img_time = None
+
+        webrtc_url = (self.webrtc_url or f"http://{hostname}:8889") + f"/{name_uri}"
 
         data = {
             "nickname": cam.nickname,
@@ -648,8 +649,7 @@ class WyzeBridge:
             "firmware_ver": cam.firmware_ver,
             "thumbnail_url": cam.thumbnail,
             "hls_url": (self.hls_url or f"http://{hostname}:8888") + f"/{name_uri}/",
-            "webrtc_url": (self.webrtc_url or f"http://{hostname}:8889")
-            + f"/{name_uri}",
+            "webrtc_url": webrtc_url if self.bridge_ip else None,
             "rtmp_url": (self.rtmp_url or f"rtmp://{hostname}:1935") + f"/{name_uri}",
             "rtsp_url": (self.rtsp_url or f"rtsp://{hostname}:8554") + f"/{name_uri}",
             "stream_auth": bool(os.getenv(f"RTSP_PATHS_{name_uri.upper()}_READUSER")),
@@ -662,7 +662,7 @@ class WyzeBridge:
             "img_time": img_time,
             "snapshot_url": f"snapshot/{img}",
             "photo_url": None,
-            "webrtc": cam.webrtc_support and self.bridge_ip,
+            "webrtc": cam.webrtc_support,
         }
         if env_bool("LLHLS"):
             data["hls_url"] = data["hls_url"].replace("http:", "https:")
