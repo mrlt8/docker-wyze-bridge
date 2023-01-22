@@ -1,3 +1,11 @@
+## What's Changed in v1.11.4
+
+- FIX: Switching between webrtc/hls was broken in the WebUI (`?webrtc`/`?hls`)
+- FIX: Other minor js bugs in the webUI.
+- FIX: Missing audio in WebRTC - switch from AAC to libopus as default. #676
+- FIX: Disable WebRTC autoplay if disabled.
+- NEW: `FORCE_ENCODE` option to force the bridge to re-encode the video.
+
 ## What's Changed in v1.11.3
 
 - Home Assistant: fix missing credential bug. #682 #683
