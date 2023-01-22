@@ -427,6 +427,10 @@ class WyzeBridge:
             print("\nRemoving old camera data..\n=======\n\n")
             os.remove(self.token_path + "cameras.pickle")
             cams: List[WyzeCamera] = self.get_wyze_data("cameras", fresh_data=True)
+        for cam in cams:
+            if not cam.enr or not cam.p2p_id:
+                log.warning(f"💔 {cam.nickname} is not supported [NO ENR]")
+                cams.remove(cam)
         total = len(cams)
         if env_bool("FILTER_BLOCK"):
             if filtered := list(filter(lambda cam: not env_filter(cam), cams)):
@@ -891,8 +895,8 @@ def get_cam_params(
     if audio:
         codec, rate = sess.get_audio_codec()
         codec_str = codec.replace("s16le", "PCM")
-        if codec_out := env_bool("AUDIO_CODEC", "AAC" if "s16le" in codec else ""):
-            codec_str += " > " + codec_out
+        if codec_out := env_bool("AUDIO_CODEC", "libopus" if "s16le" in codec else ""):
+            codec_str += f" > {codec_out}"
         audio: dict = {"codec": codec, "rate": rate, "codec_out": codec_out.lower()}
     log.info(f"📡 Getting {bit_frame} via {mode} (WiFi: {wifi}%) FW: {firmware} (2/3)")
     if audio:
@@ -1469,18 +1473,6 @@ def setup_logging():
 
 
 if __name__ == "__main__":
-    if not os.getenv("SDK_KEY"):
-        print("Missing SDK_KEY")
-        sys.exit(1)
-    if not os.getenv("WYZE_EMAIL") or not os.getenv("WYZE_PASSWORD"):
-        print(
-            "Missing credentials:",
-            ("" if os.getenv("WYZE_EMAIL") else "WYZE_EMAIL ")
-            + ("" if os.getenv("WYZE_PASSWORD") else "WYZE_PASSWORD"),
-        )
-
-        sys.exit(1)
-
     setup_logging()
     wb = WyzeBridge()
     signal.signal(signal.SIGTERM, lambda n, f: wb.clean_up())
