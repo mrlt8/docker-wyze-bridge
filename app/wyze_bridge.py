@@ -507,7 +507,7 @@ class WyzeBridge:
                         target=sess.recv_audio_frames, args=(uri,), name=f"{uri}_AUDIO"
                     )
                     audio_thread.start()
-                with Popen(get_ffmpeg_cmd(uri, cam, audio), stdin=PIPE) as ffmpeg:
+                with Popen(get_ffmpeg_cmd(cam, audio), stdin=PIPE) as ffmpeg:
                     for frame in sess.recv_bridge_frame(
                         self.keep_bad_frames, self.timeout, fps
                     ):
@@ -911,54 +911,37 @@ def get_cam_params(
     return fps, audio
 
 
-def get_ffmpeg_cmd(uri: str, cam: WyzeCamera, audio: Optional[dict]) -> list[str]:
+def get_ffmpeg_cmd(cam: WyzeCamera, audio: Optional[dict]) -> list[str]:
     """Return the ffmpeg cmd with options from the env."""
     vcodec = "h264"
-    if vid_param := cam.camera_info.get("videoParm"):
-        vcodec = vid_param.get("type", vcodec)
+    if cam.camera_info and cam.camera_info.get("videoParm"):
+        vcodec = cam.camera_info["videoParm"].get("type", vcodec)
     flags = "-fflags +genpts+flush_packets+nobuffer+bitexact -flags +low_delay"
-    rotate = cam.product_model == "WYZEDB3" and env_bool("ROTATE_DOOR")
-    transpose = "clock"
-    if env_bool(f"ROTATE_CAM_{uri}"):
-        rotate = True
-        if os.getenv(f"ROTATE_CAM_{uri}") in {"0", "1", "2", "3"}:
-            # Numerical values are deprecated, and should be dropped in favor of symbolic constants.
-            transpose = os.environ[f"ROTATE_CAM_{uri}"]
-    h264_enc = env_bool("h264_enc", "libx264").lower()
-    if rotate:
-        log.info(f"Re-encoding stream using {h264_enc} [{transpose=}]")
-    lib264 = (
-        [h264_enc, "-filter:v", f"transpose={transpose}", "-b:v", "3000k"]
-        + ["-coder", "1", "-bufsize", "1000k"]
-        + ["-profile:v", "77" if h264_enc == "h264_v4l2m2m" else "main"]
-        + ["-preset", "fast" if h264_enc == "h264_nvenc" else "ultrafast"]
-        + ["-forced-idr", "1", "-force_key_frames", "expr:gte(t,n_forced*2)"]
-    )
-    livestream = get_livestream_cmd(uri)
+    livestream = get_livestream_cmd(cam.name_uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
     if audio and "codec" in audio:
-        audio_in = f"-thread_queue_size 64 -f {audio['codec']} -ar {audio['rate']} -i /tmp/{uri.lower()}.wav"
+        audio_in = f"-thread_queue_size 128 -f {audio['codec']} -ar {audio['rate']} -i /tmp/{cam.name_uri}.wav"
         audio_out = audio["codec_out"] or "copy"
         a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
     rtsp_transport = "udp" if "udp" in env_bool("RTSP_PROTOCOLS") else "tcp"
-    rss_cmd = f"[{{}}f=rtsp:{rtsp_transport=:}:bsfs/v=dump_extra=freq=keyframe]rtsp://0.0.0.0:8554/{uri.lower()}"
+    rss_cmd = f"[{{}}f=rtsp:{rtsp_transport=:}:bsfs/v=dump_extra=freq=keyframe]rtsp://0.0.0.0:8554/{cam.name_uri}"
     rtsp_ss = rss_cmd.format("")
-    if env_bool(f"AUDIO_STREAM_{uri}", env_bool("AUDIO_STREAM")) and audio:
+    if env_bool(f"AUDIO_STREAM_{cam.name_uri}", env_bool("AUDIO_STREAM")) and audio:
         rtsp_ss += "|" + rss_cmd.format("select=a:") + "_audio"
 
-    cmd = env_bool(f"FFMPEG_CMD_{uri}", env_bool("FFMPEG_CMD")).format(
-        cam_name=uri.lower(), CAM_NAME=uri, audio_in=audio_in
+    cmd = env_bool(f"FFMPEG_CMD_{cam.name_uri}", env_bool("FFMPEG_CMD")).format(
+        cam_name=cam.name_uri, CAM_NAME=cam.name_uri.upper(), audio_in=audio_in
     ).split() or (
         ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "error"]
-        + env_bool(f"FFMPEG_FLAGS_{uri}", env_bool("FFMPEG_FLAGS", flags))
+        + env_bool(f"FFMPEG_FLAGS_{cam.name_uri}", env_bool("FFMPEG_FLAGS", flags))
         .strip("'\"\n ")
         .split()
         + ["-thread_queue_size", "64", "-threads", "1"]
         + ["-analyzeduration", "50", "-probesize", "50", "-f", vcodec, "-i", "pipe:"]
         + audio_in.split()
         + ["-flags", "+global_header", "-c:v"]
-        + (["copy"] if not rotate else lib264)
+        + re_encode_video(cam)
         + (["-c:a", audio_out] if audio_in else [])
         + (a_filter if audio and audio_out != "copy" else [])
         + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
@@ -967,13 +950,50 @@ def get_ffmpeg_cmd(uri: str, cam: WyzeCamera, audio: Optional[dict]) -> list[str
         + (["-map", "1:a", "-max_interleave_delta", "10"] if audio_in else [])
         # + (["-map", "1:a"] if audio_in else [])
         + ["-f", "tee"]
-        + [rtsp_ss + get_record_cmd(uri, audio_out) + livestream]
+        + [rtsp_ss + get_record_cmd(cam.name_uri, audio_out) + livestream]
     )
     if "ffmpeg" not in cmd[0].lower():
         cmd.insert(0, "ffmpeg")
     if env_bool("DEBUG_FFMPEG"):
         log.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
     return cmd
+
+
+def re_encode_video(cam: WyzeCamera) -> list[str]:
+    """
+    Check if stream needs to be re-encoded.
+
+    :ENV ROTATE_DOOR: Rotate and re-encode WYZEDB3 cameras.
+    :ENV ROTATE_CAM_<NAME>: Rotate and re-encode cameras that match.
+    :ENV FORCE_ENCODE: Force all cameras to be re-encoded.
+
+    :ENV H264_ENC: Change default codec used for re-encode.
+
+
+    :returns: ffmpeg compatible [list] to be used for -c:v
+    """
+    h264_enc: str = env_bool("h264_enc", "libx264").lower()
+    rotation = []
+    transpose = "clock"
+    if (env_bool("ROTATE_DOOR") and cam.product_model == "WYZEDB3") or env_bool(
+        f"ROTATE_CAM_{cam.name_uri}"
+    ):
+        if os.getenv(f"ROTATE_CAM_{cam.name_uri}") in {"0", "1", "2", "3"}:
+            # Numerical values are deprecated, and should be dropped in favor of symbolic constants.
+            transpose = os.environ[f"ROTATE_CAM_{cam.name_uri}"]
+        rotation = ["-filter:v", f"transpose={transpose}"]
+
+    if not env_bool("FORCE_ENCODE") and not rotation:
+        return ["copy"]
+    log.info(f"Re-encoding using {h264_enc}{f' [{transpose=}]' if rotation else '' }")
+    return (
+        [h264_enc]
+        + rotation
+        + ["-b:v", "3000k", "-coder", "1", "-bufsize", "1000k"]
+        + ["-profile:v", "77" if h264_enc == "h264_v4l2m2m" else "main"]
+        + ["-preset", "fast" if h264_enc == "h264_nvenc" else "ultrafast"]
+        + ["-forced-idr", "1", "-force_key_frames", "expr:gte(t,n_forced*2)"]
+    )
 
 
 def get_record_cmd(uri: str, audio_codec: str) -> str:
@@ -991,6 +1011,7 @@ def get_record_cmd(uri: str, audio_codec: str) -> str:
     log.info(f"📹 Will record {seg_time}s {container} clips to {path}")
     return (
         f"|[onfail=ignore:f=segment"
+        ":bsfs/v=dump_extra=freq=keyframe"
         f":segment_time={seg_time}"
         ":segment_atclocktime=1"
         f":segment_format={container}"
