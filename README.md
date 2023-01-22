@@ -35,10 +35,10 @@ See [basic usage](#basic-usage) for additional information.
 
 ## What's Changed in v1.11.4
 
-- FIX: Switching between streams was broken (v1.11.2)
-- FIX: Other minor js bugs in thee webUI.
+- FIX: Switching between webrtc/hls was broken in the WebUI (`?webrtc`/`?hls`)
+- FIX: Other minor js bugs in the webUI.
 - FIX: Missing audio in WebRTC - switch from AAC to libopus as default. #676
-- FIX: Disable WebRTC autoplay if selected.
+- FIX: Disable WebRTC autoplay if disabled.
 - NEW: `FORCE_ENCODE` option to force the bridge to re-encode the video.
 
 ## What's Changed in v1.11.3
