@@ -136,7 +136,7 @@ def create_app():
     def webrtc_signaling(name):
         if "kvs" in request.args:
             return wb.get_kvs_signal(name)
-        return wb.get_webrtc_signal(name)
+        return wb.get_webrtc_signal(name, urlparse(request.root_url).hostname)
 
     @app.route("/webrtc/<string:name>")
     def webrtc(name):
