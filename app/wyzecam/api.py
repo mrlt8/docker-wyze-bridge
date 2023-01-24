@@ -196,8 +196,6 @@ def get_camera_list(auth_info: WyzeCredential) -> List[WyzeCamera]:
             "thumbnails_url"
         )
 
-        if not ip:
-            continue
         if not mac:
             continue
         if not product_model:

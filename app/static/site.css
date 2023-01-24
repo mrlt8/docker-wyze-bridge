@@ -12,11 +12,9 @@ section {
   flex: 1;
 }
 
-.tabs a,
+.preview-toggle .button,
 .card,
 .navbar-menu,
-.dropdown-content,
-.dropdown-item,
 .footer {
   background-color: #363636;
   color: #fff;
@@ -26,12 +24,14 @@ section {
   margin-bottom: 0;
 }
 
+.dropdown-content,
+.dropdown-item,
 .content table {
   color: #fff;
   background-color: #292929;
 }
 
-.tabs.is-toggle a {
+.preview-toggle .button {
   border-color: #363636;
 }
 
@@ -55,20 +55,20 @@ a:hover {
   color: #1dd2af;
 }
 
-.tabs.is-toggle a:hover,
+.preview-toggle .button:not(.is-active):hover,
 .card-footer a:hover {
   background-color: #292929;
   border-color: #292929;
   color: #009670;
 }
 
-.tabs.is-toggle li.is-active a {
+.preview-toggle .button.is-active {
   background-color: #00bc8c;
   border-color: #00bc8c
 }
 
-.tabs.is-toggle li.is-active a:hover {
-  background-color: #00a077
+.preview-toggle .button.is-active:hover {
+  background-color: #00a077;
 }
 
 code {
@@ -127,11 +127,47 @@ video {
   top: 0;
 }
 
+video.webrtc.placeholder,
+video.webrtc.placeholder+span,
 .status .fa-circle-play,
 .status .fa-circle-pause,
 .status .fa-satellite-dish,
 .fa-arrows-rotate {
   cursor: pointer;
+}
+
+video,
+video.webrtc+.fas {
+  display: block;
+}
+
+figure.image:hover>video.webrtc.placeholder {
+  transition: .3s ease;
+  background-color: transparent;
+  opacity: 0.8;
+}
+
+video.webrtc+i::before {
+  color: white;
+  font-size: 4rem;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-shadow: 2px 2px #444;
+}
+
+video.webrtc.placeholder+i::before {
+  content: "\f144";
+}
+
+video.webrtc.lost+i::before {
+  content: "\e560";
+}
+
+video.webrtc.lost,
+video.webrtc.lost+i {
+  cursor: default;
 }
 
 .card-image:has([src$=".svg"]) {

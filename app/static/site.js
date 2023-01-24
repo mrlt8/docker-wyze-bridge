@@ -71,6 +71,7 @@ function applyPreferences() {
     sortOrder = sortOrder.replace(/\\054/g, ",").replace(/["]+/g, '')
     setCookie("camera_order", sortOrder)
   }
+  if (!sortOrder) { return; }
   console.debug("applyPreferences camera_order", sortOrder);
   const ids = sortOrder.split(",");
   var cameras = [...document.querySelectorAll(".camera")];
@@ -439,15 +440,15 @@ document.addEventListener("DOMContentLoaded", () => {
   sse.addEventListener("message", (e) => {
     Object.entries(JSON.parse(e.data)).forEach(([cam, status]) => {
       const statusIcon = document.querySelector(`#${cam} .status i.fas`);
-      const preview = document.querySelector(`#${cam} img.refresh_img`);
+      const preview = document.querySelector(`#${cam} img.refresh_img,video[data-cam='${cam}']`);
       statusIcon.setAttribute("class", "fas")
       statusIcon.parentElement.title = ""
       if (preview) { preview.classList.remove("connected") }
       if (status == "connected") {
         statusIcon.classList.add("fa-circle-play", "has-text-success");
         statusIcon.parentElement.title = "Click/tap to pause";
-        autoplay();
         if (preview) { preview.classList.add("connected") }
+        autoplay();
         let noPreview = document.querySelector(`#${cam} .no-preview`)
         if (noPreview) {
           let fig = noPreview.parentElement
@@ -572,29 +573,67 @@ document.addEventListener("DOMContentLoaded", () => {
   })
   toggleFullscreen()
 
+  // Load WS for WebRTC on demand
+  function loadWebRTC(video) {
+    if (!video.classList.contains("placeholder") || !video.classList.contains("connected")) { return }
+    let videoFormat = getCookie("video");
+    video.classList.remove("placeholder");
+    video.controls = true;
+    fetch(`signaling/${video.dataset.cam}?${videoFormat}`).then((resp) => resp.json()).then((data) => new Receiver(data));
+  }
+  // Click to load WebRTC
+  document.querySelectorAll("video.webrtc.placeholder").forEach((v) => {
+    v.parentElement.addEventListener("click", () => loadWebRTC(v), { once: true });
+  });
   // Auto-play video
   function autoplay(action) {
     let videos = document.querySelectorAll('video');
-    if (action == "stop") {
+    if (action === "stop") {
       videos.forEach(video => {
         if (video.classList.contains("vjs-tech")) { videojs(video).pause() } else {
-          video.load();
-          video.controls = false;
+          video.classList.add("lost");
+          // show poster on lost connection
         }
       });
-    } else {
-      let autoPlay = getCookie("autoplay");
-      videos.forEach(video => {
-        if (video.classList.contains("vjs-tech")) { video = videojs(video); } else {
-          video.controls = true;
-        }
-        if (autoPlay) { video.play(); }
-      });
+      return;
     }
+    let autoPlay = getCookie("autoplay");
+    videos.forEach(video => {
+      if (video.classList.contains("vjs-tech")) { video = videojs(video); } else {
+        video.classList.remove("lost");
+      }
+      if (autoPlay) {
+        if (video.classList.contains("webrtc")) {
+          loadWebRTC(video);
+        }
+        video.play();
+      }
+    });
   }
-  document.querySelector("#enable-autoplay").addEventListener("change", box => {
-    setCookie("autoplay", box.target.checked);
-    autoplay();
+  // Change default video format for WebUI
+  document.querySelectorAll(".preview-toggle [data-action]").forEach((e) => {
+    e.addEventListener("click", () => {
+      let videoCookie = getCookie("show_video")
+      setCookie("show_video", "1");
+      switch (e.dataset.action) {
+        case "snapshot":
+          setCookie("show_video", "");
+          break;
+        case "autoplay":
+          let icon = e.querySelector("i.fas").classList;
+          let playCookie = !!getCookie("autoplay");
+          setCookie("autoplay", !playCookie);
+          if (playCookie) { icon.replace("fa-square-check", "fa-square"); return; }
+          icon.replace("fa-square", "fa-square-check")
+          if (videoCookie) { autoplay(); return; }
+          break;
+        case "webrtc":
+        case "hls":
+        case "kvs":
+          setCookie("video", e.dataset.action);
+          break;
+      }
+      window.location = window.location.pathname;
+    })
   })
-
-});
+}); 

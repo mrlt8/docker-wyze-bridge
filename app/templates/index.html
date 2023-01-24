@@ -12,7 +12,6 @@
     {% if show_video %}
     <link href="https://vjs.zencdn.net/7.19.2/video-js.css" rel="stylesheet" />
     {% endif %}
-    <script src="{{ 'static/site.js' if hass else url_for('static', filename='site.js') }}"></script>
 </head>
 
 <body>
@@ -146,14 +145,16 @@
                     </header>
                     <div class="card-image has-text-centered">
                         <figure class="image">
-                            {% if show_video and (camera.connected or (camera.on_demand and camera.enabled)) %}
+                            {% if show_video and (camera.on_demand or camera.enabled) %}
                             {% if webrtc or (camera.webrtc and video_format == "kvs") %}
-                            <video data-cam="{{cam_uri}}" class="webrtc loading-preview refresh_img" muted controls
-                                playsinline {{ "autoplay" if autoplay }}
-                                poster="{{camera.img_url or url_for('static',filename='loading.svg')}}"></video>
+                            <video data-cam="{{cam_uri}}"
+                                class="webrtc loading-preview refresh_img placeholder {{'connected' if camera.connected}}"
+                                muted playsinline {{ "autoplay" if autoplay and camera.connected else 'preload=none' }}
+                                poster="{{camera.img_url or url_for('static',filename='loading.svg' )}}"></video>
+                            <i class="fas"></i>
                             {% else %}
                             <video-js id="video-{{cam_uri}}" class="video-js vjs-live vjs-big-play-centered" controls
-                                muted playsinline preload={{"true" if autoplay and camera.connected else "false" }}
+                                muted playsinline preload={{"auto" if autoplay and camera.connected else "none" }}
                                 poster="{{camera.img_url or url_for('static',filename='loading.svg')}}"
                                 data-cam="{{cam_uri}}"
                                 data-setup='{"liveui": true, "fluid": true, "muted": true, "autoplay": {{'"muted"' if autoplay and camera.connected
@@ -245,27 +246,40 @@
             </div>
             {% endfor %}
         </div>
-        <div class="tabs is-toggle is-toggle is-centered fs-display-none">
-            <ul>
-                <li {% if not show_video %}class="is-active" {% endif %}>
-                    <a href="?snapshot">
-                        <span class="icon is-small"><i class="fas fa-image"></i></span>
-                        <span>Snapshot</span>
-                    </a>
-                </li>
-                <li {% if show_video %}class="is-active" {% endif %}>
-                    <a href="?video">
+        <div class="preview-toggle buttons is-centered fs-display-none">
+            <button data-action="snapshot" class="button {% if not show_video %} is-active{% endif %}">
+                <span class="icon is-small"><i class="fas fa-image"></i></span>
+                <span>Snapshot</span>
+            </button>
+            <div class="dropdown is-hoverable">
+                <div class="dropdown-trigger">
+                    <button data-action="video" data-action="" class="button{% if show_video %} is-active{% endif %}"
+                        aria-haspopup="true" aria-controls="video-menu">
                         <span class="icon is-small"><i class="fas fa-film"></i></span>
                         <span>Video</span>
-                    </a>
-                </li>
-            </ul>
-        </div>
-        <div class="has-text-centered has-text-grey-light fs-display-none">
-            <label class="checkbox">
-                <input type="checkbox" id="enable-autoplay" {{"checked" if autoplay}}>
-                Autoplay
-            </label>
+                        <span class="icon is-small">
+                            <i class="fas fa-angle-down" aria-hidden="true"></i>
+                        </span>
+                    </button>
+                </div>
+                <div class="dropdown-menu" id="video-menu" role="menu">
+                    <div class="dropdown-content">
+                        <a data-action="webrtc" class="dropdown-item" id="webrtc-toggle">
+                            <span class="icon is-small"><i class="fas"></i></span>
+                            WebRTC
+                        </a>
+                        <a data-action="hls" class="dropdown-item" id="hls-toggle">
+                            <span class="icon is-small"><i class="fas"></i></span>
+                            HLS
+                        </a>
+                        <hr class="dropdown-divider">
+                        <a data-action="autoplay" class="dropdown-item" id="toggle-autoplay">
+                            <span class="icon is-small"><i class="fas fa-square{{ '-check' if autoplay}}"></i></span>
+                            auto-play
+                        </a>
+                    </div>
+                </div>
+            </div>
         </div>
         <div class="fullscreen">
             <button class="button is-small">
@@ -288,14 +302,10 @@
             </p>
         </div>
     </footer>
+    <script src="{{ 'static/site.js' if hass else url_for('static', filename='site.js') }}"></script>
     {% if show_video %}
     {% if webrtc or video_format =="kvs" %}
     <script src="{{ 'static/webrtc.js' if hass else url_for('static', filename='webrtc.js') }}"></script>
-    <script>
-        document.querySelectorAll("video.webrtc").forEach((v) => {
-            fetch(`signaling/${v.dataset.cam}?{{ video_format }}`).then((resp) => resp.json()).then((data) => new Receiver(data))
-        })
-    </script>
     {% endif %}
     <script src="https://vjs.zencdn.net/7.21.1/video.min.js"></script>
     {% endif %}
