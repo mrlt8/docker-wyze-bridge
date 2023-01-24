@@ -52,7 +52,10 @@ class Receiver {
 
         this.pc.ontrack = (evt) => {
             console.log("new track: " + evt.track.kind);
-            document.querySelector(`video[data-cam='${this.signalJson.cam}']`).srcObject = evt.streams[0];
+            let vid = document.querySelector(`video[data-cam='${this.signalJson.cam}']`);
+            vid.srcObject = evt.streams[0];
+            vid.oncanplay = () => { vid.play() };
+
         };
         const direction = ("rss" in this.signalJson) ? "sendrecv" : "recvonly";
         this.pc.addTransceiver("video", { "direction": direction });
