@@ -1,4 +1,4 @@
-## What's Changed in v1.11.5
+## What's Changed in v1.11.5/6
 
 - FIX: WebRTC - signaling URL to match request host. #684 Thanks @JA16122000!
 - FIX: WebUI - don't start socket connection until play/don't autoplay if on-demand cam is NOT connected. #690

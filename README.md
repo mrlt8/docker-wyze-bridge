@@ -33,12 +33,12 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.11.5
+## What's Changed in v1.11.5/6
 
 - FIX: WebRTC - signaling URL to match request host. #684 Thanks @JA16122000!
 - FIX: WebUI - don't start socket connection until play/don't autoplay if on-demand cam is NOT connected. #690
-- NEW: WebUI - add toggle to switch between HLS/WebRTC. 
-
+- NEW: WebUI - add toggle to switch between HLS/WebRTC.
+  
 ## What's Changed in v1.11.4
 
 - FIX: Switching between webrtc/hls was broken in the WebUI (`?webrtc`/`?hls`)
