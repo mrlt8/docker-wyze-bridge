@@ -563,10 +563,8 @@ class WyzeBridge:
             return {"result": "cam not found", "cam": cam_name}
         if not self.auth:
             self.get_wyze_data("auth")
-        # Use mars api if gwell camera
-        mars = cam.product_model.startswith("GW_")
         try:
-            wss = wyzecam.api.get_cam_webrtc(self.auth, cam.mac, mars)
+            wss = wyzecam.api.get_cam_webrtc(self.auth, cam.mac)
             return wss | {"result": "ok", "cam": cam_name}
         except requests.exceptions.HTTPError as ex:
             if ex.response.status_code == 404:

@@ -222,7 +222,7 @@ def get_camera_list(auth_info: WyzeCredential) -> List[WyzeCamera]:
     return result
 
 
-def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str, mars: bool = False) -> dict:
+def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
     """Get webrtc for camera."""
     ui_headers = get_headers(auth_info.phone_id, SCALE_USER_AGENT)
     ui_headers["content-type"] = "application/json"
@@ -231,10 +231,8 @@ def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str, mars: bool = False) -
     if "_" in mac_id:
         mac_id = mac_id.rsplit("_", 1)[1]
         # mars = True if mac_id.lower().startswith("gw") else mars
-    api = "wyze-mars-service" if mars else "webrtc.api"
-
     resp = requests.get(
-        f"https://{api}.wyze.com/signaling/device/{mac_id}?use_trickle=true",
+        f"https://webrtc.api.wyze.com/signaling/device/{mac_id}?use_trickle=true",
         headers=ui_headers,
     )
     resp.raise_for_status()
