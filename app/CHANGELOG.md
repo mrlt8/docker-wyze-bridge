@@ -1,3 +1,9 @@
+## What's Changed in v1.11.7
+
+- FIX: WebUI - play to connect to on-demand cameras. #684
+- FIX: ignore gwell cams on `IOTC_ER_UNLICENSE`. #677
+- UPDATED: ios version bump for web api.
+
 ## What's Changed in v1.11.5/6
 
 - FIX: WebRTC - signaling URL to match request host. #684 Thanks @JA16122000!

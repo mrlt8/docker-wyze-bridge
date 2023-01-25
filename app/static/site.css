@@ -127,8 +127,8 @@ video {
   top: 0;
 }
 
-video.webrtc.placeholder,
-video.webrtc.placeholder+span,
+[data-enabled=True] video.webrtc.placeholder,
+[data-enabled=True] video.webrtc.placeholder+i,
 .status .fa-circle-play,
 .status .fa-circle-pause,
 .status .fa-satellite-dish,
@@ -157,8 +157,9 @@ video.webrtc+i::before {
   text-shadow: 2px 2px #444;
 }
 
-video.webrtc.placeholder+i::before {
+[data-enabled=True] video.webrtc.placeholder+i::before {
   content: "\f144";
+  cursor: pointer;
 }
 
 video.webrtc.lost+i::before {

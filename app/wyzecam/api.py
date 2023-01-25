@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional
 import requests
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
-IOS_VERSION = "16.2"
+IOS_VERSION = "16.3"
 APP_VERSION = "2.38.4.3"
 
 SV_VALUE = "e1fe392906d54888a9b99b88de4162d7"
@@ -222,14 +222,15 @@ def get_camera_list(auth_info: WyzeCredential) -> List[WyzeCamera]:
     return result
 
 
-def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str, mars: bool = False) -> dict:
+def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
     """Get webrtc for camera."""
     ui_headers = get_headers(auth_info.phone_id, SCALE_USER_AGENT)
     ui_headers["content-type"] = "application/json"
     ui_headers["authorization"] = auth_info.access_token
-    api = "wyze-mars-service" if mars else "webrtc.api"
+    # if "_" in mac_id:
+    #     mac_id = mac_id.rsplit("_", 1)[1]
     resp = requests.get(
-        f"https://{api}.wyze.com/signaling/device/{mac_id}?use_trickle=true",
+        f"https://webrtc.api.wyze.com/signaling/device/{mac_id}?use_trickle=true",
         headers=ui_headers,
     )
     resp.raise_for_status()

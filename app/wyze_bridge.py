@@ -133,6 +133,9 @@ class WyzeBridge:
                         self.get_wyze_data("cameras", fresh_data=True)
                     if process.exitcode in {1, 13, 19, 68}:
                         self.start_stream(name)
+                    elif process.exitcode == 10:
+                        log.info("Removing camera")
+                        del self.streams[name]
                     elif process.exitcode == 90:
                         if env_bool("IGNORE_OFFLINE"):
                             log.info(f"🪦 {name} is offline. Will NOT try again.")
@@ -428,8 +431,8 @@ class WyzeBridge:
             os.remove(self.token_path + "cameras.pickle")
             cams: List[WyzeCamera] = self.get_wyze_data("cameras", fresh_data=True)
         for cam in cams:
-            if not cam.enr or not cam.p2p_id:
-                log.warning(f"💔 {cam.nickname} is not supported [NO ENR]")
+            if not cam.enr or not cam.p2p_id or not cam.ip:
+                log.warning(f"💔 {cam.nickname} [{cam.product_model}] is not supported")
                 cams.remove(cam)
         total = len(cams)
         if env_bool("FILTER_BLOCK"):
@@ -515,7 +518,7 @@ class WyzeBridge:
         except wyzecam.TutkError as ex:
             log.warning(ex)
             set_cam_offline(uri, ex, offline)
-            if ex.code in {-13, -19, -68, -90}:
+            if ex.code in {-10, -13, -19, -68, -90}:
                 exit_code = abs(ex.code)
             else:
                 time.sleep(5)
@@ -560,15 +563,13 @@ class WyzeBridge:
             return {"result": "cam not found", "cam": cam_name}
         if not self.auth:
             self.get_wyze_data("auth")
-        # Use mars api if gwell camera
-        mars = cam.product_model.startswith("GW_")
         try:
-            wss = wyzecam.api.get_cam_webrtc(self.auth, cam.mac, mars)
+            wss = wyzecam.api.get_cam_webrtc(self.auth, cam.mac)
             return wss | {"result": "ok", "cam": cam_name}
         except requests.exceptions.HTTPError as ex:
             if ex.response.status_code == 404:
                 ex = "Camera does not support WebRTC"
-            log.warning(f"\n[{i}/{len(self.cameras)}] {cam.nickname}:\n{ex}\n---")
+            log.warning(ex)
             return {"result": ex, "cam": cam_name}
 
     def get_webrtc_signal(

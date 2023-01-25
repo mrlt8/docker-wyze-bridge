@@ -10,7 +10,7 @@ class Receiver {
         if (signalJson.result === "ok") {
             this.start();
         } else {
-            console.error("signaling json not ok")
+            console.error("signaling json not ok");
         }
     }
     start() {
@@ -45,6 +45,7 @@ class Receiver {
             switch (this.pc.iceConnectionState) {
                 case "disconnected":
                     this.scheduleRestart();
+                    break;
                 case "failed":
                     this.scheduleRestart();
             }
@@ -54,7 +55,10 @@ class Receiver {
             console.log("new track: " + evt.track.kind);
             let vid = document.querySelector(`video[data-cam='${this.signalJson.cam}']`);
             vid.srcObject = evt.streams[0];
-            vid.oncanplay = () => { vid.play() };
+            vid.oncanplay = () => {
+                vid.autoplay = true;
+                vid.play();
+            };
 
         };
         const direction = ("rss" in this.signalJson) ? "sendrecv" : "recvonly";
@@ -65,10 +69,10 @@ class Receiver {
         this.pc.createOffer()
             .then((desc) => {
                 this.pc.setLocalDescription(desc);
-                this.sendToServer("SDP_OFFER", desc)
+                this.sendToServer("SDP_OFFER", desc);
             });
 
-    };
+    }
     sendToServer(action, payload) {
         if ("rss" in this.signalJson === false) {
             payload = { "action": action, "messagePayload": btoa(JSON.stringify(payload)), "recipientClientId": this.signalJson.ClientId };
@@ -77,13 +81,13 @@ class Receiver {
     }
 
     onRemoteDescription(msg) {
-        if (this.pc === null || this.ws === null || msg.data === "") { return };
+        if (this.pc === null || this.ws === null || msg.data === "") { return; }
         let eventData = JSON.parse(msg.data);
         if ("rss" in this.signalJson) {
             if ("sdp" in eventData) {
                 this.pc.setRemoteDescription(new RTCSessionDescription(eventData));
             } else if ("candidate" in eventData) {
-                this.pc.addIceCandidate(eventData)
+                this.pc.addIceCandidate(eventData);
             }
         } else {
             let payload = JSON.parse(atob(eventData.messagePayload));
@@ -91,9 +95,10 @@ class Receiver {
                 case "SDP_OFFER":
                 case "SDP_ANSWER":
                     this.pc.setRemoteDescription(new RTCSessionDescription(payload));
+                    break;
                 case "ICE_CANDIDATE":
                     if ("candidate" in payload) {
-                        this.pc.addIceCandidate(new RTCIceCandidate(payload));
+                        this.pc.addIceCandidate(payload);
                     }
             }
         }

@@ -33,6 +33,12 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
+## What's Changed in v1.11.7
+
+- FIX: WebUI - play to connect to on-demand cameras. #684
+- FIX: ignore gwell cams on `IOTC_ER_UNLICENSE`. #677
+- UPDATED: ios version bump for web api.
+
 ## What's Changed in v1.11.5/6
 
 - FIX: WebRTC - signaling URL to match request host. #684 Thanks @JA16122000!
@@ -111,25 +117,26 @@ See [basic usage](#basic-usage) for additional information.
 ![Wyze Cam OG](https://img.shields.io/badge/wyze_og-no-inactive.svg)
 ![Wyze Cam OG 3x](https://img.shields.io/badge/wyze_3x-no-inactive.svg)
 
-| Camera                   | Model          | Supported                                                   |
-| ------------------------ | -------------- | ----------------------------------------------------------- |
-| Wyze Cam v1 [HD only]    | WYZEC1         | ✅                                                           |
-| Wyze Cam V2              | WYZEC1-JZ      | ✅                                                           |
-| Wyze Cam V3              | WYZE_CAKP2JFUS | ✅                                                           |
-| Wyze Cam V3 Pro [2K]     | HL_CAM3P       | ✅                                                           |
-| Wyze Cam Floodlight      | WYZE_CAKP2JFUS | ✅                                                           |
-| Wyze Cam Pan             | WYZECP1_JEF    | ✅                                                           |
-| Wyze Cam Pan v2          | HL_PAN2        | ✅                                                           |
-| Wyze Cam Pan v3          | HL_PAN3        | ✅                                                           |
-| Wyze Cam Pan Pro [2K]    | HL_PANP        | ✅                                                           |
-| Wyze Cam Outdoor         | WVOD1          | ✅                                                           |
-| Wyze Cam Outdoor v2      | HL_WCO2        | ✅                                                           |
-| Wyze Cam Doorbell        | WYZEDB3        | ✅                                                           |
-| Wyze Battery Cam Pro     | AN_RSCW        | ❓                                                           |
-| Wyze Cam Doorbell Pro 2  | AN_RDB1        | ❓                                                           |
-| Wyze Cam Doorbell Pro    | GW_BE1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276) |
-| Wyze Cam OG              | GW_GC1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/677) |
-| Wyze Cam OG Telephoto 3x | GW_GC2         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/677) |
+| Camera                        | Model          | Supported                                                   |
+| ----------------------------- | -------------- | ----------------------------------------------------------- |
+| Wyze Cam v1 [HD only]         | WYZEC1         | ✅                                                           |
+| Wyze Cam V2                   | WYZEC1-JZ      | ✅                                                           |
+| Wyze Cam V3                   | WYZE_CAKP2JFUS | ✅                                                           |
+| Wyze Cam V3 Pro [2K]          | HL_CAM3P       | ✅                                                           |
+| Wyze Cam Floodlight           | WYZE_CAKP2JFUS | ✅                                                           |
+| Wyze Cam Pan                  | WYZECP1_JEF    | ✅                                                           |
+| Wyze Cam Pan v2               | HL_PAN2        | ✅                                                           |
+| Wyze Cam Pan v3               | HL_PAN3        | ✅                                                           |
+| Wyze Cam Pan Pro [2K]         | HL_PANP        | ✅                                                           |
+| Wyze Cam Outdoor              | WVOD1          | ✅                                                           |
+| Wyze Cam Outdoor v2           | HL_WCO2        | ✅                                                           |
+| Wyze Cam Doorbell             | WYZEDB3        | ✅                                                           |
+| Wyze Battery Cam Pro          | AN_RSCW        | ❓                                                           |
+| Wyze Cam Doorbell Pro 2       | AN_RDB1        | ❓                                                           |
+| Wyze Cam Flood Light Pro [2K] | LD_CFP         | ❓                                                           |
+| Wyze Cam Doorbell Pro         | GW_BE1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276) |
+| Wyze Cam OG                   | GW_GC1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/677) |
+| Wyze Cam OG Telephoto 3x      | GW_GC2         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/677) |
 
 ### Firmware Compatibility
 
