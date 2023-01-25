@@ -71,17 +71,18 @@ function applyPreferences() {
     sortOrder = sortOrder.replace(/\\054/g, ",").replace(/["]+/g, '')
     setCookie("camera_order", sortOrder)
   }
-  if (!sortOrder) { return; }
-  console.debug("applyPreferences camera_order", sortOrder);
-  const ids = sortOrder.split(",");
-  var cameras = [...document.querySelectorAll(".camera")];
-  for (var i = 0; i < Math.min(ids.length, cameras.length); i++) {
-    var a = document.getElementById(ids[i]);
-    var b = cameras[i];
-    if (a && b)
-      // only swap if they both exist
-      swap(a, b);
-    cameras = [...document.querySelectorAll(".camera")];
+  if (sortOrder) {
+    console.debug("applyPreferences camera_order", sortOrder);
+    const ids = sortOrder.split(",");
+    var cameras = [...document.querySelectorAll(".camera")];
+    for (var i = 0; i < Math.min(ids.length, cameras.length); i++) {
+      var a = document.getElementById(ids[i]);
+      var b = cameras[i];
+      if (a && b)
+        // only swap if they both exist
+        swap(a, b);
+      cameras = [...document.querySelectorAll(".camera")];
+    }
   }
 
   const new_period = getCookie("refresh_period", 30);
@@ -574,16 +575,17 @@ document.addEventListener("DOMContentLoaded", () => {
   toggleFullscreen()
 
   // Load WS for WebRTC on demand
-  function loadWebRTC(video) {
-    if (!video.classList.contains("placeholder") || !video.classList.contains("connected")) { return }
+  function loadWebRTC(video, force = false) {
+    if (!force && (!video.classList.contains("placeholder") || !video.classList.contains("connected"))) { return }
     let videoFormat = getCookie("video");
     video.classList.remove("placeholder");
     video.controls = true;
     fetch(`signaling/${video.dataset.cam}?${videoFormat}`).then((resp) => resp.json()).then((data) => new Receiver(data));
   }
   // Click to load WebRTC
-  document.querySelectorAll("video.webrtc.placeholder").forEach((v) => {
-    v.parentElement.addEventListener("click", () => loadWebRTC(v), { once: true });
+
+  document.querySelectorAll('[data-enabled=True] video.webrtc.placeholder').forEach((v) => {
+    v.parentElement.addEventListener("click", () => loadWebRTC(v, true), { "once": true });
   });
   // Auto-play video
   function autoplay(action) {
@@ -605,8 +607,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (autoPlay) {
         if (video.classList.contains("webrtc")) {
           loadWebRTC(video);
+        } else {
+          video.play();
         }
-        video.play();
       }
     });
   }
