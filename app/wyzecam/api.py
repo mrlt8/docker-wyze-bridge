@@ -227,7 +227,12 @@ def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str, mars: bool = False) -
     ui_headers = get_headers(auth_info.phone_id, SCALE_USER_AGENT)
     ui_headers["content-type"] = "application/json"
     ui_headers["authorization"] = auth_info.access_token
+
+    if "_" in mac_id:
+        mac_id = mac_id.rsplit("_", 1)[1]
+        # mars = True if mac_id.lower().startswith("gw") else mars
     api = "wyze-mars-service" if mars else "webrtc.api"
+
     resp = requests.get(
         f"https://{api}.wyze.com/signaling/device/{mac_id}?use_trickle=true",
         headers=ui_headers,
