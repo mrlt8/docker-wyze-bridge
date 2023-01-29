@@ -15,9 +15,12 @@ View all your cameras in one place with the Web-UI!
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
 
+
 Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) this project if you found it useful, or use our [affiliate link](https://amzn.to/3NLnbvt) if shopping on amazon!
 
 ## Quick Start
+
+**NOTE: There seems to be a networking issue with some versions of Docker Desktop. You may need to [downgrade to v4.12.0](https://docs.docker.com/desktop/release-notes/#4120) if your container is crashing.**
 
 Install [docker](https://docs.docker.com/get-docker/) and use your Wyze credentials to run:
 
