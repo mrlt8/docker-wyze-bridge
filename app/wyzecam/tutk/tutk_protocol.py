@@ -4,6 +4,7 @@ import pathlib
 import time
 import typing
 from ctypes import LittleEndianStructure, c_char, c_uint16, c_uint32
+from functools import partial
 from typing import Optional
 
 import xxtea
@@ -761,6 +762,99 @@ class K10604GetRtspParam(TutkWyzeProtocolMessage):
 
     def __init__(self):
         super().__init__(10604)
+
+
+class K11000SetRotaryByDegree(TutkWyzeProtocolMessage):
+    """
+    Rotate by horizontal and vertical degree?
+
+    Speed seems to be a constant 5.
+
+    Parameters:
+    - horizontal (int): horizontal position in degrees?
+    - vertical (int): vertical position in degrees?
+    - speed (int, optional): rotation speed. seems to default to 5.
+
+    """
+
+    expected_response_code = 11001
+
+    def __init__(self, horizontal: int, vertical: int, speed: int = 5):
+        super().__init__(11000)
+        self.horizontal = horizontal
+        self.vertical = vertical
+        self.speed = speed if 1 <= speed <= 9 else 5
+
+    def encode(self) -> bytes:
+        encoded_msg = bytearray(5)
+        encoded_msg[0:1] = int.to_bytes(self.horizontal, 1, "little")
+        encoded_msg[2:3] = int.to_bytes(self.vertical, 1, "little")
+        encoded_msg[4] = self.speed
+        return encode(11000, 5, bytes(encoded_msg))
+
+    def parse_response(self, resp_data) -> int:
+        return resp_data[0]
+
+
+class K11002SetRotaryByAction(TutkWyzeProtocolMessage):
+    """
+    Rotate by action.
+
+    Speed seems to be a constant 5.
+
+    Parameters:
+    - horizontal (int): 1 for left; 2 for right
+    - vertical (int): 1 for up; 2 for down
+    - speed (int, optional): rotation speed. seems to default to 5.
+
+    Example:
+    - Rotate left: K11002SetRotaryByAction(1,0)
+    - Rotate right: K11002SetRotaryByAction(2,0)
+    - Rotate up: K11002SetRotaryByAction(0,1)
+    - Rotate down: K11002SetRotaryByAction(0,2)
+
+    """
+
+    expected_response_code = 11003
+
+    def __init__(self, horizontal: int, vertical: int, speed: int = 5):
+        super().__init__(11002)
+        self.horizontal = horizontal if 0 <= horizontal <= 2 else 0
+        self.vertical = vertical if 0 <= vertical <= 2 else 0
+        self.speed = speed if 1 <= speed <= 9 else 5
+
+    def encode(self) -> bytes:
+        return encode(11002, 3, bytes([self.horizontal, self.vertical, self.speed]))
+
+    def parse_response(self, resp_data) -> int:
+        return resp_data[0]
+
+
+K11002SetRotaryLeft = partial(K11002SetRotaryByAction, 1, 0)
+K11002SetRotaryRight = partial(K11002SetRotaryByAction, 2, 0)
+K11002SetRotaryUp = partial(K11002SetRotaryByAction, 0, 1)
+K11002SetRotaryDown = partial(K11002SetRotaryByAction, 0, 2)
+
+
+class K11004ResetRotatePosition(TutkWyzeProtocolMessage):
+    """
+    Reset Rotation.
+
+    Parameters:
+    - position (int,optional): Reset position? Defaults to 3
+    """
+
+    expected_response_code = 11005
+
+    def __init__(self, position: int = 3):
+        super().__init__(11004)
+        self.position = position
+
+    def encode(self) -> bytes:
+        return encode(11004, 1, bytes([self.position]))
+
+    def parse_response(self, resp_data) -> int:
+        return resp_data[0]
 
 
 def encode(code: int, data_len: int, data: Optional[bytes]) -> bytes:

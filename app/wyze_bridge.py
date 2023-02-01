@@ -1320,6 +1320,11 @@ CAM_CMDS = {
     "set_alarm_on": ("k10630SetAlarmFlashing", True),
     "set_alarm_off": ("k10630SetAlarmFlashing", False),
     "get_alarm_status": ("K10632GetAlarmFlashing", None),
+    "rotate_left": ("K11002SetRotaryLeft", None),
+    "rotate_right": ("K11002SetRotaryRight", None),
+    "rotate_up": ("K11002SetRotaryUp", None),
+    "rotate_down": ("K11002SetRotaryDown", None),
+    "rotate_reset": ("K11004ResetRotatePosition", None),
 }
 
 
