@@ -1324,6 +1324,7 @@ CAM_CMDS = {
     "rotate_right": ("K11002SetRotaryRight", None),
     "rotate_up": ("K11002SetRotaryUp", None),
     "rotate_down": ("K11002SetRotaryDown", None),
+    "rotate_stop": ("K11002SetRotaryStop", None),
     "rotate_reset": ("K11004ResetRotatePosition", None),
 }
 
