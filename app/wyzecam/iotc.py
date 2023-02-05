@@ -8,7 +8,6 @@ import pathlib
 import time
 import warnings
 from ctypes import CDLL, c_int
-from multiprocessing.synchronize import Event
 from typing import Any, Dict, Iterator, Optional, Tuple, Union
 
 from wyzecam.api_models import WyzeAccount, WyzeCamera
@@ -151,6 +150,19 @@ class WyzeIOTC:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.deinitialize()
 
+    def session(self, stream) -> "WyzeIOTCSession":
+        if stream.options.substream:
+            stream.user.phone_id = stream.user.phone_id[2:]
+        return WyzeIOTCSession(
+            self.tutk_platform_lib,
+            stream.user,
+            stream.camera,
+            frame_size=stream.options.frame_size,
+            bitrate=stream.options.bitrate,
+            enable_audio=stream.options.audio,
+            stream_state=stream.state,
+        )
+
     def connect_and_auth(
         self, account: WyzeAccount, camera: WyzeCamera
     ) -> "WyzeIOTCSession":
@@ -253,7 +265,7 @@ class WyzeIOTCSession:
         bitrate: int = tutk.BITRATE_HD,
         enable_audio: bool = True,
         connect_timeout: int = 20,
-        stop_flag: Optional[Event] = None,
+        stream_state: c_int = c_int(0),
     ) -> None:
         """Construct a wyze iotc session.
 
@@ -279,7 +291,7 @@ class WyzeIOTCSession:
         self.preferred_bitrate: int = bitrate
         self.connect_timeout: int = connect_timeout
         self.enable_audio: bool = enable_audio
-        self.stop_flag: Optional[Event] = stop_flag
+        self.stream_state: c_int = stream_state
 
     @property
     def resolution(self) -> str:
@@ -457,23 +469,21 @@ class WyzeIOTCSession:
             first_run = False
 
     def recv_bridge_frame(
-        self, keep_bad_frames: bool = False, timeout: int = 15, fps: int = 15
+        self, timeout: int = 15, fps: int = 15
     ) -> Iterator[Optional[bytes]]:
         """A generator for returning raw video frames for the bridge.
 
         Note that the format of this data is either raw h264 or HVEC H265 video. You will
         have to introspect the frame_info object to determine the format!
-
-        :param keep_bad_frames: Don't drop frames that are missing a keyframe.
-        :param timeout: Number of seconds since the last yield before raising an exception.
         """
         assert self.av_chan_id is not None, "Please call _connect() first!"
         # Doorbell returns frame_size 3 or 4; 2K returns frame_size=4
         alt = self.preferred_frame_size + (1 if self.preferred_frame_size == 3 else 3)
         ignore_res = {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
         last = {"key_frame": 0, "key_time": 0, "frame": 0, "time": time.time()}
-        while self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED and (
-            not self.stop_flag or not self.stop_flag.is_set()
+        while (
+            self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
+            and self.stream_state.value > 1
         ):
             if (delta := time.time() - last["time"]) >= timeout:
                 if last["key_time"] == 0:
@@ -511,16 +521,11 @@ class WyzeIOTCSession:
                 self.update_frame_size_rate()
                 last |= {"key_frame": 0, "key_time": 0, "time": time.time()}
                 continue
-            # if frame_index and frame_index % 1000 == 0:
-            #     fps = max(
-            #         self.update_frame_size_rate(True, frame_info.framerate), fps, 10
-            #     )
             if frame_info.is_keyframe:
                 last |= {"key_frame": frame_info.frame_no, "key_time": time.time()}
             elif (
                 frame_info.frame_no - last["key_frame"] > fps * 3
-                and frame_info.frame_no - last["frame"] > 8
-                and not keep_bad_frames
+                and frame_info.frame_no - last["frame"] > fps
             ):
                 warnings.warn("Waiting for keyframe")
                 time.sleep((1 / (fps)) - 0.02)
@@ -586,8 +591,9 @@ class WyzeIOTCSession:
         sleep_interval = 1 / 5
         try:
             with open(FIFO, "wb") as audio_pipe:
-                while self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED and (
-                    not self.stop_flag or not self.stop_flag.is_set()
+                while (
+                    self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
+                    and self.stream_state.value > 1
                 ):
                     if (buf := tutk.av_check_audio_buf(*tutav)) < 1:
                         if buf < 0:

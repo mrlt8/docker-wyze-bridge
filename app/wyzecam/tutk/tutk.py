@@ -14,6 +14,7 @@ from ctypes import (
     c_uint16,
     c_uint32,
     cdll,
+    create_string_buffer,
     sizeof,
 )
 from typing import Optional, Union
@@ -556,24 +557,23 @@ def av_recv_frame_data(
     :param av_chan_id: The channel ID of the AV channel to recv data on.
     :return: a 4-tuple of errno, frame_data, frame_info, and frame_index
     """
-    frame_data_max_len = 800000
-    frame_data_actual_len = c_int()
-    frame_data_expected_len = c_int()
-    frame_data = (c_char * frame_data_max_len)()
-    frame_info_actual_len = c_int()
+    frame_data_max_len = 800_000
+    frame_data_actual_len = c_int32()
+    frame_data_expected_len = c_int32()
+    frame_data = create_string_buffer(frame_data_max_len)
+    frame_info_actual_len = c_int32()
     frame_index = c_uint()
-
-    frame_info_max_len = max(sizeof(FrameInfo3Struct), sizeof(FrameInfoStruct))
-    frame_info = (c_char * frame_info_max_len)()
+    frame_info_max_len = max(sizeof(FrameInfo3Struct), sizeof(FrameInfoStruct))  # 4096
+    frame_info = create_string_buffer(frame_info_max_len)
 
     errno = tutk_platform_lib.avRecvFrameData2(
         av_chan_id,
-        byref(frame_data),
-        c_int(frame_data_max_len),
+        frame_data,
+        c_int32(frame_data_max_len),
         byref(frame_data_actual_len),
         byref(frame_data_expected_len),
-        byref(frame_info),
-        c_int(frame_info_max_len),
+        frame_info,
+        c_int32(frame_info_max_len),
         byref(frame_info_actual_len),
         byref(frame_index),
     )

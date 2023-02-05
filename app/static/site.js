@@ -463,7 +463,7 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (status == "connecting") {
         statusIcon.classList.add("fa-satellite-dish", "has-text-warning");
         statusIcon.parentElement.title = "Click/tap to pause";
-      } else if (status == "standby") {
+      } else if (status == "stopped") {
         statusIcon.classList.add("fa-circle-pause");
         statusIcon.parentElement.title = "Click/tap to play";
       } else if (status == "offline") {

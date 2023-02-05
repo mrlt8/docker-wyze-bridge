@@ -123,9 +123,9 @@ def create_app():
         if cam_name and cam_cmd == "status":
             return {"status": wb.get_cam_status(cam_name)}
         if cam_name and cam_cmd == "start":
-            return {"success": wb.start_on_demand(cam_name)}
+            return {"success": wb.streams.start(cam_name)}
         if cam_name and cam_cmd == "stop":
-            return {"success": wb.stop_on_demand(cam_name)}
+            return {"success": wb.streams.stop(cam_name)}
         if cam_name and cam_cmd:
             return wb.cam_cmd(cam_name, cam_cmd)
 
@@ -178,14 +178,14 @@ def create_app():
         /restart/all:           Stop and start all enabled cameras and rtsp-simple-server.
         """
         if restart_cmd == "cameras":
-            wb.stop_cameras()
+            wb.streams.stop_all()
             wb.run()
         elif restart_cmd == "rtsp_server":
-            wb.stop_rtsp_server()
-            wb.start_rtsp_server()
+            wb.rtsp.stop()
+            wb.rtsp.start()
         elif restart_cmd == "all":
-            wb.stop_cameras()
-            wb.stop_rtsp_server()
+            wb.streams.stop_all()
+            wb.rtsp.stop()
             wb.run(fresh_data=True)
             restart_cmd = "cameras,rtsp_server"
         else:
