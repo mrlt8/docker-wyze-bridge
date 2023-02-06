@@ -1324,8 +1324,15 @@ CAM_CMDS = {
     "rotate_right": ("K11002SetRotaryRight", None),
     "rotate_up": ("K11002SetRotaryUp", None),
     "rotate_down": ("K11002SetRotaryDown", None),
-    "rotate_stop": ("K11002SetRotaryStop", None),
     "rotate_reset": ("K11004ResetRotatePosition", None),
+    "set_rotary_10": ("K11000SetRotaryBy10", None),
+    "set_rotary_40": ("K11000SetRotaryBy40", None),
+    "set_rotary_90": ("K11000SetRotaryBy90", None),
+    "set_rotary_180": ("K11000SetRotaryBy180", None),
+    "set_rotary_0": ("K11000SetRotaryBy0", None),
+    "set_rotary_m10": ("K11000SetRotaryBy_10", None),
+    "set_rotary_m40": ("K11000SetRotaryBy_40", None),
+    "set_rotary_m90": ("K11000SetRotaryBy_90", None),
 }
 
 
