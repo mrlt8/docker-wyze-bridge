@@ -251,12 +251,17 @@ http://localhost:5000/?fullscreen&autoplay&columns=2&refresh=0&order=front,side
 ```
 
 You can add basic HTTP authentication to the web-ui:
+
 ```text
 environment:
   - WEB_AUTH=True
   - WEB_USERNAME=HereIsYourUsername
   - WEB_PASSWORD=HereIsYourPassword
 ```
+
+NOTE: This will only protect the WebUI. API and snapshot endpoints are unprotected at this time. Additional security is recommended if your bridge is publicly accessible.
+`WEB_AUTH` will use your wyze email/password for auth if `WEB_USERNAME` or `WEB_PASSWORD`.
+
 
 #### Camera Stream URIs
 
