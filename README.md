@@ -250,6 +250,19 @@ NOTE: You can combine multiple queries into a single request:
 http://localhost:5000/?fullscreen&autoplay&columns=2&refresh=0&order=front,side
 ```
 
+You can add basic HTTP authentication to the web-ui:
+
+```text
+environment:
+  - WEB_AUTH=True
+  - WEB_USERNAME=HereIsYourUsername
+  - WEB_PASSWORD=HereIsYourPassword
+```
+
+NOTE: This will only protect the WebUI. API and snapshot endpoints are unprotected at this time. Additional security is recommended if your bridge is publicly accessible.
+`WEB_AUTH` will use your wyze email/password for auth if `WEB_USERNAME` or `WEB_PASSWORD` are not supplied.
+
+
 #### Camera Stream URIs
 
 By default, the bridge will create three streams for each of your cameras which can be accessed at the following URIs, where `camera-nickname` is the name of the camera set in the Wyze app and converted to lower case with hyphens in place of spaces. e.g. 'Front Door' would be `/front-door`
