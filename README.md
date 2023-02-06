@@ -260,7 +260,7 @@ environment:
 ```
 
 NOTE: This will only protect the WebUI. API and snapshot endpoints are unprotected at this time. Additional security is recommended if your bridge is publicly accessible.
-`WEB_AUTH` will use your wyze email/password for auth if `WEB_USERNAME` or `WEB_PASSWORD`.
+`WEB_AUTH` will use your wyze email/password for auth if `WEB_USERNAME` or `WEB_PASSWORD` are not supplied.
 
 
 #### Camera Stream URIs
