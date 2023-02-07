@@ -5,6 +5,7 @@ import time
 import typing
 from ctypes import LittleEndianStructure, c_char, c_uint16, c_uint32
 from functools import partial
+from struct import pack
 from typing import Optional
 
 import xxtea
@@ -800,6 +801,41 @@ K11000SetRotaryRight = partial(K11000SetRotaryByDegree, 180, 0)
 K11000SetRotaryLeft = partial(K11000SetRotaryByDegree, -180, 0)
 K11000SetRotaryUp = partial(K11000SetRotaryByDegree, 0, 90)
 K11000SetRotaryDown = partial(K11000SetRotaryByDegree, 0, -90)
+
+
+class K11000SetRotaryByPack(TutkWyzeProtocolMessage):
+    """
+    Rotate by horizontal and vertical degree?
+
+    Speed seems to be a constant 5.
+
+    Parameters:
+    - horizontal (int): horizontal position in degrees?
+    - vertical (int): vertical position in degrees?
+    - speed (int, optional): rotation speed. seems to default to 5.
+
+    """
+
+    expected_response_code = 11001
+
+    def __init__(self, horizontal: int, vertical: int, speed: int = 5):
+        super().__init__(11000)
+        self.horizontal = horizontal
+        self.vertical = vertical
+        self.speed = speed if 1 <= speed <= 9 else 5
+
+    def encode(self) -> bytes:
+        msg = pack("<hhB", self.horizontal, self.vertical, self.speed)
+        return encode(11000, 5, msg)
+
+    def parse_response(self, resp_data) -> int:
+        return resp_data[0]
+
+
+PackRight = partial(K11000SetRotaryByPack, 180, 0)
+PackLeft = partial(K11000SetRotaryByPack, -180, 0)
+PackUp = partial(K11000SetRotaryByPack, 0, 90)
+PackDown = partial(K11000SetRotaryByPack, 0, -90)
 
 
 class K11002SetRotaryByAction(TutkWyzeProtocolMessage):

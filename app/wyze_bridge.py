@@ -1329,6 +1329,10 @@ CAM_CMDS = {
     "set_rotary_down": ("K11000SetRotaryDown", None),
     "set_rotary_right": ("K11000SetRotaryRight", None),
     "set_rotary_left": ("K11000SetRotaryLeft", None),
+    "pack_rotary_up": ("PackUp", None),
+    "pack_rotary_down": ("PackDown", None),
+    "pack_rotary_right": ("PackRight", None),
+    "pack_rotary_left": ("PackLeft", None),
 }
 
 
@@ -1407,8 +1411,8 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: str, source: str) -> dict:
                 else:
                     resp |= {"status": "error", "response": "timeout"}
         except Empty:
-            log.warning(f"[CONTROL] {cmd} timed out")
-            resp |= {"status": "error", "response": "timeout"}
+            log.warning(f"[CONTROL] {cmd} empty response")
+            resp |= {"status": "success", "response": None}
         except Exception as ex:
             resp |= {"status": "error", "response": f"{ex}"}
             log.warning(f"[CONTROL] {ex}")
