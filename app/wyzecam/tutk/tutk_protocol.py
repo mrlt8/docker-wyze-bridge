@@ -787,9 +787,9 @@ class K11000SetRotaryByDegree(TutkWyzeProtocolMessage):
 
     def encode(self) -> bytes:
         encoded_msg = bytearray(5)
-        encoded_msg[0:1] = int.to_bytes(self.horizontal, 1, "little", signed=True)
-        encoded_msg[2:3] = int.to_bytes(self.vertical, 1, "little", signed=True)
-        encoded_msg[4] = self.speed
+        encoded_msg[:1] = int.to_bytes(self.horizontal, 2, "little", signed=True)
+        encoded_msg[2:3] = int.to_bytes(self.vertical, 2, "little", signed=True)
+        encoded_msg[4:] = int.to_bytes(self.speed, 1, "little")
         return encode(11000, 5, bytes(encoded_msg))
 
     def parse_response(self, resp_data) -> int:
@@ -798,8 +798,8 @@ class K11000SetRotaryByDegree(TutkWyzeProtocolMessage):
 
 K11000SetRotaryRight = partial(K11000SetRotaryByDegree, 180, 0)
 K11000SetRotaryLeft = partial(K11000SetRotaryByDegree, -180, 0)
-K11000SetRotaryUp = partial(K11000SetRotaryByDegree, 90, 0)
-K11000SetRotaryDown = partial(K11000SetRotaryByDegree, -90, 0)
+K11000SetRotaryUp = partial(K11000SetRotaryByDegree, 0, 90)
+K11000SetRotaryDown = partial(K11000SetRotaryByDegree, 0, -90)
 
 
 class K11002SetRotaryByAction(TutkWyzeProtocolMessage):
