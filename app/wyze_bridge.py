@@ -1329,10 +1329,8 @@ CAM_CMDS = {
     "set_rotary_down": ("K11000SetRotaryDown", None),
     "set_rotary_right": ("K11000SetRotaryRight", None),
     "set_rotary_left": ("K11000SetRotaryLeft", None),
-    "pack_rotary_up": ("PackUp", None),
-    "pack_rotary_down": ("PackDown", None),
-    "pack_rotary_right": ("PackRight", None),
-    "pack_rotary_left": ("PackLeft", None),
+    "set_rotary_up_40": ("K11000SetRotaryUp40", None),
+    "set_rotary_right_40": ("K11000SetRotaryRight40", None),
 }
 
 

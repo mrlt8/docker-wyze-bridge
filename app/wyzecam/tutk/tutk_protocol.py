@@ -784,45 +784,7 @@ class K11000SetRotaryByDegree(TutkWyzeProtocolMessage):
         super().__init__(11000)
         self.horizontal = horizontal
         self.vertical = vertical
-        self.speed = speed if 1 <= speed <= 9 else 5
-
-    def encode(self) -> bytes:
-        encoded_msg = bytearray(5)
-        encoded_msg[:1] = int.to_bytes(self.horizontal, 2, "little", signed=True)
-        encoded_msg[2:3] = int.to_bytes(self.vertical, 2, "little", signed=True)
-        encoded_msg[4:] = int.to_bytes(self.speed, 1, "little")
-        return encode(11000, 5, bytes(encoded_msg))
-
-    def parse_response(self, resp_data) -> int:
-        return resp_data[0]
-
-
-K11000SetRotaryRight = partial(K11000SetRotaryByDegree, 180, 0)
-K11000SetRotaryLeft = partial(K11000SetRotaryByDegree, -180, 0)
-K11000SetRotaryUp = partial(K11000SetRotaryByDegree, 0, 90)
-K11000SetRotaryDown = partial(K11000SetRotaryByDegree, 0, -90)
-
-
-class K11000SetRotaryByPack(TutkWyzeProtocolMessage):
-    """
-    Rotate by horizontal and vertical degree?
-
-    Speed seems to be a constant 5.
-
-    Parameters:
-    - horizontal (int): horizontal position in degrees?
-    - vertical (int): vertical position in degrees?
-    - speed (int, optional): rotation speed. seems to default to 5.
-
-    """
-
-    expected_response_code = 11001
-
-    def __init__(self, horizontal: int, vertical: int, speed: int = 5):
-        super().__init__(11000)
-        self.horizontal = horizontal
-        self.vertical = vertical
-        self.speed = speed if 1 <= speed <= 9 else 5
+        self.speed = speed if 1 < speed < 9 else 5
 
     def encode(self) -> bytes:
         msg = pack("<hhB", self.horizontal, self.vertical, self.speed)
@@ -832,10 +794,12 @@ class K11000SetRotaryByPack(TutkWyzeProtocolMessage):
         return resp_data[0]
 
 
-PackRight = partial(K11000SetRotaryByPack, 180, 0)
-PackLeft = partial(K11000SetRotaryByPack, -180, 0)
-PackUp = partial(K11000SetRotaryByPack, 0, 90)
-PackDown = partial(K11000SetRotaryByPack, 0, -90)
+K11000SetRotaryRight = partial(K11000SetRotaryByDegree, 90, 0)
+K11000SetRotaryRight40 = partial(K11000SetRotaryByDegree, 40, 0)
+K11000SetRotaryLeft = partial(K11000SetRotaryByDegree, -90, 0)
+K11000SetRotaryUp = partial(K11000SetRotaryByDegree, 0, 90)
+K11000SetRotaryUp40 = partial(K11000SetRotaryByDegree, 0, 40)
+K11000SetRotaryDown = partial(K11000SetRotaryByDegree, 0, -90)
 
 
 class K11002SetRotaryByAction(TutkWyzeProtocolMessage):
