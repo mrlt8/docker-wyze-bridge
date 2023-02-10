@@ -1,4 +1,3 @@
-mintotp
 paho-mqtt
 requests
 pydantic

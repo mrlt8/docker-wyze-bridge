@@ -3,7 +3,6 @@ import json
 import logging
 import multiprocessing
 import os
-import pickle
 import signal
 import sys
 import threading
@@ -11,14 +10,15 @@ import time
 import warnings
 from dataclasses import replace
 from subprocess import Popen, TimeoutExpired
-from typing import Any, Generator, NoReturn, Optional, Union
+from typing import Any, Generator, NoReturn, Optional
 
-import mintotp
 import requests
 import wyzecam
 from wyzebridge.bridge_utils import env_bool, env_cam, env_filter
+from wyzebridge.hass import setup_hass
 from wyzebridge.rtsp_server import RtspServer
 from wyzebridge.stream import StreamManager
+from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_control import CAM_CMDS
 from wyzebridge.wyze_stream import WyzeStream, WyzeStreamOptions
 from wyzecam import WyzeCamera, WyzeIOTCSession
@@ -33,20 +33,16 @@ class WyzeBridge:
         self.version = config.get("version", "DEV")
         log.info(f"🚀 STARTING DOCKER-WYZE-BRIDGE v{self.version}\n")
         self.hass: bool = bool(os.getenv("HASS"))
-        setup_hass(self.hass)
+        setup_hass()
         self.timeout: int = env_bool("RTSP_READTIMEOUT", 15, style="int")
         self.connect_timeout: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
         self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
         self.img_path: str = f'/{env_bool("IMG_DIR", "img").strip("/")}/'
-        self.cameras: dict[str, WyzeCamera] = {}
-        self.streams: StreamManager
+        self.api: WyzeApi = WyzeApi(self.token_path)
+        self.streams: StreamManager = StreamManager()
         self.fw_rtsp: set[str] = set()
-        self.mfa_req: Optional[str] = None
-        self.auth: Optional[wyzecam.WyzeCredential] = None
-        self.user: wyzecam.WyzeAccount
         self.thread: Optional[threading.Thread] = None
         self.stop_bridge = multiprocessing.Event()
-        self.hostname = env_bool("DOMAIN")
         self.bridge_ip = env_bool("WB_IP")
         self.hls_url = env_bool("WB_HLS_URL").strip("/")
         self.rtmp_url = env_bool("WB_RTMP_URL").strip("/")
@@ -66,17 +62,16 @@ class WyzeBridge:
     def run(self, fresh_data: bool = False) -> None:
         """Start synchronously"""
         self.stop_bridge.clear()
-        self.get_wyze_data("user")
         self.setup_streams(fresh_data)
         self.rtsp.start()
         self.streams.monitor_all()
 
     def setup_streams(self, fresh_data=False):
-        """Gather and create the streams for each camera."""
-        self.streams = StreamManager()
+        """Gather and setup streams for each camera."""
+        self.api.login(fresh_data=fresh_data)
 
-        WyzeStream.user = self.user
-        for cam in filter_cams(self.get_wyze_data("cameras", fresh_data)):
+        WyzeStream.user = self.api.get_user()
+        for cam in filter_cams(self.api.get_cameras()):
             options = WyzeStreamOptions(
                 quality=env_cam("quality", cam.name_uri),
                 audio=bool(env_cam("enable_audio", cam.name_uri)),
@@ -111,71 +106,6 @@ class WyzeBridge:
         log.info("👋 goodbye!")
         sys.exit(0)
 
-    def auth_wyze(self) -> wyzecam.WyzeCredential:
-        """Authenticate and complete MFA if required."""
-        if len(app_key := env_bool("WYZE_APP_API_KEY", style="original")) == 40:
-            wyzecam.api.WYZE_APP_API_KEY = app_key
-            log.info(f"Using custom WYZE_APP_API_KEY={app_key}")
-        if env_bool("WYZE_BETA_API"):
-            wyzecam.api.AUTH_URL = "https://auth-beta.api.wyze.com/user/login"
-            log.info(f"Using BETA AUTH_URL={wyzecam.api.AUTH_URL}")
-        auth = wyzecam.login(os.getenv("WYZE_EMAIL"), os.getenv("WYZE_PASSWORD"))
-        if not auth.mfa_options:
-            return auth
-        mfa_token = f"{self.token_path}mfa_token.txt"
-        totp_key = f"{self.token_path}totp"
-        log.warning("🔐 MFA Token Required")
-        while True:
-            verification = {}
-            if "PrimaryPhone" in auth.mfa_options:
-                verification["type"] = "PrimaryPhone"
-                verification["id"] = wyzecam.send_sms_code(auth)
-                log.info("💬 SMS code requested")
-            else:
-                verification["type"] = "TotpVerificationCode"
-                verification["id"] = auth.mfa_details["totp_apps"][0]["app_id"]
-            if "TotpVerificationCode" in auth.mfa_options:
-                if env_key := env_bool("totp_key", style="original"):
-                    verification["code"] = mintotp.totp(
-                        "".join(c for c in env_key if c.isalnum())
-                    )
-                    log.info("🔏 Using TOTP_KEY to generate TOTP")
-                elif os.path.exists(totp_key) and os.path.getsize(totp_key) > 1:
-                    with open(totp_key, "r") as totp_f:
-                        verification["code"] = mintotp.totp(
-                            "".join(c for c in totp_f.read() if c.isalnum())
-                        )
-                    log.info(f"🔏 Using {totp_key} to generate TOTP")
-            if not verification.get("code"):
-                self.mfa_req = verification["type"]
-                log.warning(
-                    f"📝 Enter verification code in the WebUI or add it to {mfa_token}"
-                )
-                while not os.path.exists(mfa_token) or os.path.getsize(mfa_token) == 0:
-                    time.sleep(1)
-                with open(mfa_token, "r+") as mfa_f:
-                    verification["code"] = "".join(
-                        c for c in mfa_f.read() if c.isdigit()
-                    )
-                    mfa_f.truncate(0)
-            log.info(f'🔑 Using {verification["code"]} for authentication')
-            try:
-                mfa_auth = wyzecam.login(
-                    os.environ["WYZE_EMAIL"],
-                    os.environ["WYZE_PASSWORD"],
-                    auth.phone_id,
-                    verification,
-                )
-                if mfa_auth.access_token:
-                    self.mfa_req = None
-                    log.info("✅ Verification code accepted!")
-                    return mfa_auth
-            except Exception as ex:
-                if "400 Client Error" in str(ex):
-                    log.warning("🚷 Wrong Code?")
-                log.warning(f"Error: {ex}\n\nPlease try again!\n")
-                time.sleep(3)
-
     def set_mfa(self, mfa_code: str):
         """Set MFA code from WebUI."""
         mfa_file = f"{self.token_path}mfa_token.txt"
@@ -188,87 +118,6 @@ class WyzeBridge:
         except Exception as ex:
             log.error(ex)
             return False
-
-    def cache_check(
-        self, name: str
-    ) -> Optional[Union[wyzecam.WyzeCredential, wyzecam.WyzeAccount, list[WyzeCamera]]]:
-        """Check if local cache exists."""
-        try:
-            if "cameras" in name and "api" in env_bool("SNAPSHOT"):
-                raise Exception("♻️ Refreshing camera data for thumbnails")
-            with open(self.token_path + name + ".pickle", "rb") as pkl_f:
-                pickle_data = pickle.load(pkl_f)
-            if env_bool("FRESH_DATA"):
-                raise Exception(f"♻️ FORCED REFRESH - Ignoring local '{name}' data")
-            if name == "user" and pickle_data.email.lower() != env_bool("WYZE_EMAIL"):
-                for f_name in os.listdir(self.token_path):
-                    if f_name.endswith("pickle"):
-                        os.remove(self.token_path + f_name)
-                raise Exception("🕵️ Cached email doesn't match 'WYZE_EMAIL'")
-            return pickle_data
-        except OSError:
-            log.info(f"🔍 Could not find local cache for '{name}'")
-        except Exception as ex:
-            log.warning(ex)
-
-    def refresh_token(self) -> wyzecam.WyzeCredential:
-        """Refresh auth token."""
-        try:
-            log.info("♻️ Refreshing tokens")
-            wyze_data = wyzecam.refresh_token(self.auth)
-            self.set_wyze_data("auth", wyze_data)
-        except AssertionError:
-            log.warning("⏰ Expired refresh token?")
-            self.get_wyze_data("auth", fresh_data=True)
-
-    def set_wyze_data(self, name: str, wyze_data: object, cache: bool = True) -> None:
-        """Set and pickle wyze data for future use."""
-        if not wyze_data:
-            raise Exception(f"Missing data for {name}")
-        if name == "cameras":
-            setattr(self, name, {cam.name_uri: cam for cam in wyze_data})
-        else:
-            setattr(self, name, wyze_data)
-        if cache:
-            with open(self.token_path + name + ".pickle", "wb") as f:
-                log.info(f"💾 Saving '{name}' to local cache...")
-                pickle.dump(wyze_data, f)
-
-    def get_wyze_data(
-        self, name: str, fresh_data: bool = False
-    ) -> Union[wyzecam.WyzeCredential, wyzecam.WyzeAccount, list[WyzeCamera]]:
-        """Check for local cache and fetch data from the wyze api if needed."""
-        if not fresh_data and (wyze_data := self.cache_check(name)):
-            log.info(f"📚 Using '{name}' from local cache...")
-            self.set_wyze_data(name, wyze_data, cache=False)
-            return wyze_data
-        if not self.auth and name != "auth":
-            self.get_wyze_data("auth")
-        wyze_data = False
-        while not wyze_data:
-            log.info(f"☁️ Fetching '{name}' from the Wyze API...")
-            try:
-                if name == "auth":
-                    wyze_data = self.auth_wyze()
-                elif name == "user":
-                    wyze_data = wyzecam.get_user_info(self.auth)
-                elif name == "cameras":
-                    wyze_data = wyzecam.get_camera_list(self.auth)
-            except AssertionError:
-                log.warning(f"⚠️ Error getting {name} - Expired token?")
-                self.refresh_token()
-            except requests.exceptions.HTTPError as ex:
-                if "400 Client Error" in str(ex):
-                    log.warning("🚷 Invalid credentials?")
-                log.warning(ex)
-                time.sleep(60)
-            except Exception as ex:
-                log.warning(ex)
-                time.sleep(10)
-            if not wyze_data:
-                time.sleep(15)
-        self.set_wyze_data(name, wyze_data)
-        return wyze_data
 
     def save_api_thumb(self, camera: WyzeCamera) -> None:
         """Grab a thumbnail for the camera from the wyze api."""
@@ -293,7 +142,7 @@ class WyzeBridge:
         log.info(f"Checking {cam.nickname} for firmware RTSP on v{cam.firmware_ver}")
         try:
             with wyzecam.WyzeIOTC() as iotc, WyzeIOTCSession(
-                iotc.tutk_platform_lib, self.user, cam
+                iotc.tutk_platform_lib, self.api.get_user(), cam
             ) as session:
                 if session.session_check().mode != 2:
                     log.warning(f"[{cam.nickname}] Camera is not on same LAN")
@@ -304,18 +153,12 @@ class WyzeBridge:
 
     def get_kvs_signal(self, cam_name: str) -> dict:
         """Get signaling for kvs webrtc."""
-        if not (cam := self.cameras.get(cam_name)):
-            return {"result": "cam not found", "cam": cam_name}
-        if not self.auth:
-            self.get_wyze_data("auth")
-        try:
-            wss = wyzecam.api.get_cam_webrtc(self.auth, cam.mac)
-            return wss | {"result": "ok", "cam": cam_name}
-        except requests.exceptions.HTTPError as ex:
-            if ex.response.status_code == 404:
-                ex = "Camera does not support WebRTC"
-            log.warning(ex)
-            return {"result": ex, "cam": cam_name}
+        res = {"result": "cam not found"}
+        if self.api.mfa_req:
+            return res
+        if mac := self.streams.get_mac(cam_name):
+            res = self.api.get_kvs_signal(mac)
+        return res | {"cam": cam_name}
 
     def get_webrtc_signal(
         self, cam_name: str, hostname: Optional[str] = "localhost"
@@ -336,9 +179,9 @@ class WyzeBridge:
 
     def sse_status(self) -> Generator[str, str, str]:
         """Generator to return the status for enabled cameras."""
-        if self.mfa_req:
-            yield f"event: mfa\ndata: {self.mfa_req}\n\n"
-            while self.mfa_req:
+        if self.api.mfa_req:
+            yield f"event: mfa\ndata: {self.api.mfa_req}\n\n"
+            while self.api.mfa_req:
                 time.sleep(1)
             yield "event: mfa\ndata: clear\n\n"
         cameras = {}
@@ -361,8 +204,7 @@ class WyzeBridge:
         """Camera info for webui."""
         if not (cam := self.streams.get_info(name_uri)):
             return {"error": "Could not find camera"}
-        if self.hostname:
-            hostname = self.hostname
+        hostname = env_bool("DOMAIN", hostname)
         img = f"{name_uri}.{env_bool('IMG_TYPE','jpg')}"
         try:
             img_time = int(os.path.getmtime(self.img_path + img) * 1000)
@@ -391,7 +233,7 @@ class WyzeBridge:
             uri: self.get_cam_info(uri, hostname) for uri in self.streams.get_uris()
         }
         return {
-            "total": len(self.cameras),
+            "total": 0 if self.api.mfa_req else len(self.api.get_cameras()),
             "enabled": self.streams.total,
             "cameras": camera_data,
         }
@@ -405,8 +247,8 @@ class WyzeBridge:
         @param wait: wait for rtsp snapshot to complete
         @return: img path
         """
-        if self.get_cam_status(cam_name) in {"unavailable", "offline", "stopping"}:
-            return None
+        if self.streams.get_status(cam_name) in {"unavailable", "offline", "stopping"}:
+            return
 
         if auth := os.getenv(f"RTSP_PATHS_{cam_name.upper()}_READUSER", ""):
             auth += f':{os.getenv(f"RTSP_PATHS_{cam_name.upper()}_READPASS","")}@'
@@ -443,14 +285,11 @@ class WyzeBridge:
 
     def boa_photo(self, cam_name: str) -> Optional[str]:
         """Take photo."""
-        if not (cam := self.streams.get(cam_name)) or cam.get("camera_info") is None:
+        if not (cam := self.streams.get(cam_name)):
             return None
-        cam["camera_cmd"].put("take_photo")
-        cam["camera_cmd"].join()
-        if cam.get("queue") and not cam["queue"].empty():
-            cam["camera_info"] = cam["queue"].get()
-        if boa_info := cam["camera_info"].get("boa_info"):
-            return boa_info.get("last_photo")
+        cam.send_cmd("take_photo")
+        # if boa_info := cam["camera_info"].get("boa_info"):
+        #     return boa_info.get("last_photo")
         return None
 
     def cam_cmd(self, cam_name: str, cmd: str) -> dict[str, Any]:
@@ -461,12 +300,10 @@ class WyzeBridge:
         if cmd not in CAM_CMDS:
             return resp | {"response": "Unknown command"}
         cam_resp = self.streams.send_cmd(cam_name, cmd)
-        if "status" not in cam_resp:
-            return resp | cam_resp
-        return cam_resp
+        return cam_resp if "status" in cam_resp else resp | cam_resp
 
 
-def filter_cams(cams: list) -> list[WyzeCamera]:
+def filter_cams(cams: list[WyzeCamera]) -> list[WyzeCamera]:
     if not cams:
         log.error("\n\n ❌ COULD NOT FIND ANY CAMERAS!")
         time.sleep(30)
@@ -480,59 +317,6 @@ def filter_cams(cams: list) -> list[WyzeCamera]:
             log.info(f"🪄 WHITELIST MODE ON [{len(filtered)}/{len(cams)}]")
             return filtered
     return cams
-
-
-def setup_hass(hass: bool):
-    """Home Assistant related config."""
-    if not hass:
-        return
-    log.info("🏠 Home Assistant Mode")
-    with open("/data/options.json") as f:
-        conf = json.load(f)
-    auth = {"Authorization": f"Bearer {os.getenv('SUPERVISOR_TOKEN')}"}
-    try:
-        assert "WB_IP" not in conf, f"Using WB_IP={conf['WB_IP']} from config"
-        net_info = requests.get("http://supervisor/network/info", headers=auth).json()
-        for i in net_info["data"]["interfaces"]:
-            if not i["primary"]:
-                continue
-            os.environ["WB_IP"] = i["ipv4"]["address"][0].split("/")[0]
-    except Exception as e:
-        log.error(f"WEBRTC SETUP: {e}")
-
-    mqtt_conf = requests.get("http://supervisor/services/mqtt", headers=auth).json()
-    if "ok" in mqtt_conf.get("result") and (data := mqtt_conf.get("data")):
-        os.environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
-        os.environ["MQTT_AUTH"] = f'{data["username"]}:{data["password"]}'
-
-    if cam_options := conf.pop("CAM_OPTIONS", None):
-        for cam in cam_options:
-            if not (cam_name := wyzecam.clean_name(cam.get("CAM_NAME", ""))):
-                continue
-            if "AUDIO" in cam:
-                os.environ[f"ENABLE_AUDIO_{cam_name}"] = str(cam["AUDIO"])
-            if "FFMPEG" in cam:
-                os.environ[f"FFMPEG_CMD_{cam_name}"] = str(cam["FFMPEG"])
-            if "NET_MODE" in cam:
-                os.environ[f"NET_MODE_{cam_name}"] = str(cam["NET_MODE"])
-            if "ROTATE" in cam:
-                os.environ[f"ROTATE_CAM_{cam_name}"] = str(cam["ROTATE"])
-            if "QUALITY" in cam:
-                os.environ[f"QUALITY_{cam_name}"] = str(cam["QUALITY"])
-            if "LIVESTREAM" in cam:
-                os.environ[f"LIVESTREAM_{cam_name}"] = str(cam["LIVESTREAM"])
-            if "RECORD" in cam:
-                os.environ[f"RECORD_{cam_name}"] = str(cam["RECORD"])
-            if "SUBSTREAM" in cam:
-                os.environ[f"SUBSTREAM_{cam_name}"] = str(cam["SUBSTREAM"])
-
-    if rtsp_options := conf.pop("RTSP_SIMPLE_SERVER", None):
-        for opt in rtsp_options:
-            if (split_opt := opt.split("=", 1)) and len(split_opt) == 2:
-                key = split_opt[0].strip().upper()
-                key = key if key.startswith("RTSP_") else f"RTSP_{key}"
-                os.environ[key] = split_opt[1].strip()
-    [os.environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf.items()]
 
 
 def setup_logging():

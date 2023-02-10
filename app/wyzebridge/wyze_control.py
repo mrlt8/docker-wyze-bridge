@@ -34,12 +34,15 @@ CAM_CMDS = {
     "set_alarm_on": ("k10630SetAlarmFlashing", True),
     "set_alarm_off": ("k10630SetAlarmFlashing", False),
     "get_alarm_status": ("K10632GetAlarmFlashing", None),
-    "rotate_left": ("K11002SetRotaryLeft", None),
-    "rotate_right": ("K11002SetRotaryRight", None),
-    "rotate_up": ("K11002SetRotaryUp", None),
-    "rotate_down": ("K11002SetRotaryDown", None),
-    "rotate_stop": ("K11002SetRotaryStop", None),
-    "rotate_reset": ("K11004ResetRotatePosition", None),
+    "set_action_left": ("K11002SetRotaryByActionLeft", None),
+    "set_action_right": ("K11002SetRotaryByActionRight", None),
+    "set_action_up": ("K11002SetRotaryByActionUp", None),
+    "set_action_down": ("K11002SetRotaryByActionDown", None),
+    "reset_rotation": ("K11004ResetRotatePosition", None),
+    "set_rotary_up": ("K11000SetRotaryUp", None),
+    "set_rotary_down": ("K11000SetRotaryDown", None),
+    "set_rotary_right": ("K11000SetRotaryRight", None),
+    "set_rotary_left": ("K11000SetRotaryLeft", None),
 }
 
 
@@ -225,8 +228,8 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: str, source: str) -> dict:
                 else:
                     resp |= {"status": "error", "response": "timeout"}
         except Empty:
-            logger.warning(f"[CONTROL] {cmd} timed out")
-            resp |= {"status": "error", "response": "timeout"}
+            logger.warning(f"[CONTROL] {cmd} empty response")
+            resp |= {"status": "success", "response": None}
         except Exception as ex:
             resp |= {"status": "error", "response": f"{ex}"}
             logger.warning(f"[CONTROL] {ex}")

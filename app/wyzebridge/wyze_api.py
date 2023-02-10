@@ -1,0 +1,226 @@
+import contextlib
+import hmac
+import pickle
+import struct
+from base64 import b32decode
+from functools import wraps
+from logging import getLogger
+from os import getenv, listdir, remove
+from os.path import exists, getsize
+from time import sleep, time
+from typing import Any, Callable, Optional
+
+import wyzecam
+from requests.exceptions import HTTPError
+from wyzebridge.bridge_utils import env_bool
+from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
+
+logger = getLogger("WyzeBridge")
+
+
+def cached(func: Callable[..., Any]) -> Callable[..., Any]:
+    def wrapper(self, *args: Any, **kwargs: Any):
+        name = func.__name__.split("_", 1)[-1]
+        if func.__name__ == "login":
+            name = "auth"
+        if not kwargs.get("fresh_data") or not env_bool("FRESH_DATA"):
+            if getattr(self, name, None):
+                return func(self, *args, **kwargs)
+            try:
+                with open(self.token_path + name + ".pickle", "rb") as pkl_f:
+                    if not (data := pickle.load(pkl_f)):
+                        raise OSError
+                if name == "user" and data.email.lower() != self.email.strip().lower():
+                    raise ValueError("🕵️ Cached email doesn't match 'WYZE_EMAIL'")
+                logger.info(f"📚 Using '{name}' from local cache...")
+                setattr(self, name, data)
+                return data
+            except OSError:
+                logger.info(f"🔍 Could not find local cache for '{name}'")
+            except ValueError as ex:
+                logger.warning(ex)
+                self.auth = None
+                self.cameras = None
+                self.cameras = None
+                clear_cache(self.token_path)
+        logger.info(f"☁️ Fetching '{name}' from the Wyze API...")
+        result = func(self, *args, **kwargs)
+        if data := getattr(self, name, None):
+            with open(self.token_path + name + ".pickle", "wb") as f:
+                logger.info(f"💾 Saving '{name}' to local cache...")
+                pickle.dump(data, f)
+        return result
+
+    return wrapper
+
+
+def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
+    @wraps(func)
+    def wrapper(self, *args: Any, **kwargs: Any):
+        if self.mfa_req:
+            return
+        if not self.auth:
+            self.login()
+        try:
+            return func(self, *args, **kwargs)
+        except AssertionError:
+            logger.warning("⚠️ Expired token?")
+            if func.__name__ != "refresh_token":
+                self.refresh_token()
+            return func(self, *args, **kwargs)
+
+    return wrapper
+
+
+class WyzeApi:
+    def __init__(self, token_path: str = "") -> None:
+        self.token_path = token_path
+        self.auth: Optional[WyzeCredential] = None
+        self.user: Optional[WyzeAccount] = None
+        self.cameras: Optional[list[WyzeCamera]] = None
+        self.email: str = getenv("WYZE_EMAIL", "")
+        self.password: str = getenv("WYZE_PASSWORD", "")
+        self.mfa_req: Optional[str] = None
+        if env_bool("FRESH_DATA"):
+            clear_cache(token_path)
+
+    @cached
+    def login(self, email: str = "", password: str = "", fresh_data: bool = False):
+        if fresh_data:
+            self.auth = None
+            self.cameras = None
+            self.cameras = None
+        if self.auth:
+            logger.info("already authenticated")
+            return
+        self.email = email if email else self.email
+        self.password = password if password else self.password
+        try:
+            self.auth = wyzecam.login(self.email, self.password)
+        except HTTPError as ex:
+            logger.error(ex)
+            if ex.response.status_code == 400:
+                logger.warning("🚷 Invalid credentials?")
+            return
+        except ValueError as ex:
+            logger.error(ex)
+            return
+
+        if self.auth.mfa_options:
+            logger.warning("🔐 MFA code Required")
+            self._mfa_auth()
+
+    @cached
+    @authenticated
+    def get_user(self) -> Optional[WyzeAccount]:
+        if self.user:
+            return self.user
+        self.user = wyzecam.get_user_info(self.auth)
+        return self.user
+
+    @cached
+    @authenticated
+    def get_cameras(self) -> list[WyzeCamera]:
+        if self.cameras:
+            return self.cameras
+        self.cameras = wyzecam.get_camera_list(self.auth)
+        return self.cameras
+
+    @authenticated
+    def get_kvs_signal(self, mac: str) -> dict:
+        try:
+            logger.info("☁️ Fetching signaling data from the Wyze API...")
+            wss = wyzecam.api.get_cam_webrtc(self.auth, mac)
+            return wss | {"result": "ok"}
+        except HTTPError as ex:
+            if ex.response.status_code == 404:
+                ex = "Camera does not support WebRTC"
+            logger.warning(ex)
+            return {"result": ex}
+
+    def _mfa_auth(self):
+        if not self.auth:
+            return
+        while not self.auth.access_token:
+            resp = mfa_response(self.auth, self.token_path)
+            if not resp.get("code"):
+                self.mfa_req = resp["type"]
+                code = get_mfa_code(f"{self.token_path}mfa_token.txt")
+                resp.update({"code": code})
+            logger.info(f'🔑 Using {resp["code"]} for authentication')
+            try:
+                self.auth = wyzecam.login(
+                    self.email, self.password, self.auth.phone_id, resp
+                )
+                if self.auth.access_token:
+                    logger.info("✅ Verification code accepted!")
+            except HTTPError as ex:
+                logger.error(ex)
+                if ex.response.status_code == 400:
+                    logger.warning("🚷 Wrong Code?")
+                sleep(5)
+        self.mfa_req = None
+
+    @authenticated
+    def refresh_token(self):
+        logger.info("♻️ Refreshing tokens")
+        try:
+            self.auth = wyzecam.refresh_token(self.auth)
+        except AssertionError:
+            logger.warning("⏰ Expired refresh token?")
+            self.login(fresh_data=True)
+
+
+def get_mfa_code(code_file: str) -> str:
+    logger.warning(f"📝 Enter verification code in the WebUI or add it to {code_file}")
+    while not exists(code_file) or getsize(code_file) == 0:
+        sleep(1)
+    with open(code_file, "r+") as f:
+        code = "".join(c for c in f.read() if c.isdigit())
+        f.truncate(0)
+    return code
+
+
+def mfa_response(creds: WyzeCredential, totp_path: str) -> dict:
+    if not creds.mfa_options or not creds.mfa_details:
+        return {}
+    if "PrimaryPhone" in creds.mfa_options:
+        logger.info("💬 SMS code requested")
+        return {
+            "type": "PrimaryPhone",
+            "id": wyzecam.send_sms_code(creds),
+        }
+    resp = {
+        "type": "TotpVerificationCode",
+        "id": creds.mfa_details["totp_apps"][0]["app_id"],
+    }
+    if env_key := env_bool("totp_key", style="original"):
+        logger.info("🔏 Using TOTP_KEY to generate TOTP")
+        return resp | {"code": get_totp(env_key)}
+
+    with contextlib.suppress(FileNotFoundError):
+        with open(f"{totp_path}totp") as f:
+            key = f.read()
+        if len(key) > 15:
+            resp["code"] = get_totp(key)
+            logger.info(f"🔏 Using {totp_path}totp to generate TOTP")
+    return resp
+
+
+def get_totp(secret: str) -> str:
+    key = "".join(c for c in secret if c.isalnum()).upper()
+    if len(key) != 16:
+        return ""
+    message = struct.pack(">Q", int(time() / 30))
+    hmac_hash = hmac.new(b32decode(key), message, "sha1").digest()
+    offset = hmac_hash[-1] & 0xF
+    code = struct.unpack(">I", hmac_hash[offset : offset + 4])[0] & 0x7FFFFFFF
+
+    return str(code % 10**6).zfill(6)
+
+
+def clear_cache(token_path: str):
+    logger.info("♻️ Clearing local cache...")
+    for f_name in listdir(token_path):
+        if f_name.endswith("pickle"):
+            remove(token_path + f_name)

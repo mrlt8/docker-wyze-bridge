@@ -128,14 +128,9 @@ class WyzeCamera(BaseModel):
     def name_uri(self) -> str:
         """Return a URI friendly name by removing special characters and spaces."""
         uri_sep = "-"
-        if os.getenv("URI_SEPARATOR") in ("-", "_", "#"):
-            uri_sep = os.getenv("URI_SEPARATOR")
-        clean = (
-            re.sub(r"[^\-\w+]", "", self.nickname.strip().replace(" ", uri_sep))
-            .encode("ascii", "ignore")
-            .decode()
-        )
-        return clean.lower()
+        if os.getenv("URI_SEPARATOR") in {"-", "_", "#"}:
+            uri_sep = os.getenv("URI_SEPARATOR", uri_sep)
+        return clean_name(self.nickname or self.mac, uri_sep).lower()
 
     @property
     def model_name(self) -> str:
@@ -168,15 +163,13 @@ class WyzeCamera(BaseModel):
         return is_min_version(self.firmware_ver, min_ver)
 
 
-def clean_name(name: str) -> str:
+def clean_name(name: str, uri_sep: str = "_") -> str:
     """Return a URI friendly name by removing special characters and spaces."""
-    uri_sep = "_"
-    clean = (
+    return (
         re.sub(r"[^\-\w+]", "", name.strip().replace(" ", uri_sep))
         .encode("ascii", "ignore")
         .decode()
-    )
-    return clean.upper()
+    ).upper()
 
 
 def is_min_version(version: Optional[str], min_version: Optional[str]) -> bool:

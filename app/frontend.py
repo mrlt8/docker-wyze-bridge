@@ -121,7 +121,7 @@ def create_app():
     def api(cam_name=None, cam_cmd=None):
         """JSON api endpoints."""
         if cam_name and cam_cmd == "status":
-            return {"status": wb.get_cam_status(cam_name)}
+            return {"status": wb.streams.get_status(cam_name)}
         if cam_name and cam_cmd == "start":
             return {"success": wb.streams.start(cam_name)}
         if cam_name and cam_cmd == "stop":
