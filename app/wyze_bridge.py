@@ -976,12 +976,12 @@ def re_encode_video(cam: WyzeCamera) -> list[str]:
     h264_enc: str = env_bool("h264_enc", "libx264").lower()
     rotation = []
     transpose = "clock"
-    if (env_bool("set_action_DOOR") and cam.product_model == "WYZEDB3") or env_bool(
-        f"set_action_CAM_{cam.name_uri}"
+    if (env_bool("ROTATE_DOOR") and cam.product_model == "WYZEDB3") or env_bool(
+        f"ROTATE_CAM_{cam.name_uri}"
     ):
-        if os.getenv(f"set_action_CAM_{cam.name_uri}") in {"0", "1", "2", "3"}:
+        if os.getenv(f"ROTATE_CAM_{cam.name_uri}") in {"0", "1", "2", "3"}:
             # Numerical values are deprecated, and should be dropped in favor of symbolic constants.
-            transpose = os.environ[f"set_action_CAM_{cam.name_uri}"]
+            transpose = os.environ[f"ROTATE_CAM_{cam.name_uri}"]
         rotation = ["-filter:v", f"transpose={transpose}"]
 
     if not env_bool("FORCE_ENCODE") and not rotation:
@@ -1324,7 +1324,7 @@ CAM_CMDS = {
     "set_action_right": ("K11002SetRotaryByActionRight", None),
     "set_action_up": ("K11002SetRotaryByActionUp", None),
     "set_action_down": ("K11002SetRotaryByActionDown", None),
-    "set_action_reset": ("K11004ResetRotatePosition", None),
+    "reset_rotation": ("K11004ResetRotatePosition", None),
     "set_rotary_up": ("K11000SetRotaryUp", None),
     "set_rotary_down": ("K11000SetRotaryDown", None),
     "set_rotary_right": ("K11000SetRotaryRight", None),
