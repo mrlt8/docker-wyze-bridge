@@ -1,3 +1,13 @@
+## What's Changed in v1.11.8
+
+- NEW: Rotation commands for pan cameras. (see [Camera Control](https://github.com/mrlt8/docker-wyze-bridge#camera-control)) Thanks @zimmra!
+- FIX: Add LIBOPUS audio to HA for WebRTC audio. #704
+- FIX: Return int instead of byte when sending `take_photo` command #712
+- UPDATED: unraid template #673 #678
+- UPDATED: rtsp-simple-server version bump to [v0.21.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.21.1).
+
+
+
 ## What's Changed in v1.11.7
 
 - FIX: WebUI - play to connect to on-demand cameras. #684

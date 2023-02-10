@@ -798,10 +798,8 @@ class K11000SetRotaryByDegree(TutkWyzeProtocolMessage):
 
 
 K11000SetRotaryRight = partial(K11000SetRotaryByDegree, 90, 0)
-K11000SetRotaryRight40 = partial(K11000SetRotaryByDegree, 40, 0)
 K11000SetRotaryLeft = partial(K11000SetRotaryByDegree, -90, 0)
 K11000SetRotaryUp = partial(K11000SetRotaryByDegree, 0, 90)
-K11000SetRotaryUp40 = partial(K11000SetRotaryByDegree, 0, 40)
 K11000SetRotaryDown = partial(K11000SetRotaryByDegree, 0, -90)
 
 
@@ -839,10 +837,10 @@ class K11002SetRotaryByAction(TutkWyzeProtocolMessage):
         return resp_data[0]
 
 
-K11002SetRotaryLeft = partial(K11002SetRotaryByAction, 1, 0)
-K11002SetRotaryRight = partial(K11002SetRotaryByAction, 2, 0)
-K11002SetRotaryUp = partial(K11002SetRotaryByAction, 0, 1)
-K11002SetRotaryDown = partial(K11002SetRotaryByAction, 0, 2)
+K11002SetRotaryByActionLeft = partial(K11002SetRotaryByAction, 1, 0)
+K11002SetRotaryByActionRight = partial(K11002SetRotaryByAction, 2, 0)
+K11002SetRotaryByActionUp = partial(K11002SetRotaryByAction, 0, 1)
+K11002SetRotaryByActionDown = partial(K11002SetRotaryByAction, 0, 2)
 
 
 class K11004ResetRotatePosition(TutkWyzeProtocolMessage):
