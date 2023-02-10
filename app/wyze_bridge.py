@@ -41,7 +41,6 @@ class WyzeBridge:
         self.streams: StreamManager = StreamManager()
         self.fw_rtsp: set[str] = set()
         self.thread: Optional[threading.Thread] = None
-        self.stop_bridge = multiprocessing.Event()
         self.bridge_ip = env_bool("WB_IP")
         self.hls_url = env_bool("WB_HLS_URL").strip("/")
         self.rtmp_url = env_bool("WB_RTMP_URL").strip("/")
@@ -60,7 +59,6 @@ class WyzeBridge:
 
     def run(self, fresh_data: bool = False) -> None:
         """Start synchronously"""
-        self.stop_bridge.clear()
         self.setup_streams(fresh_data)
         self.rtsp.start()
         self.streams.monitor_all()
@@ -105,7 +103,7 @@ class WyzeBridge:
         log.info("👋 goodbye!")
         sys.exit(0)
 
-    def set_mfa(self, mfa_code: str):
+    def set_mfa(self, mfa_code: str) -> bool:
         """Set MFA code from WebUI."""
         mfa_file = f"{self.token_path}mfa_token.txt"
         try:
@@ -153,9 +151,7 @@ class WyzeBridge:
     def get_kvs_signal(self, cam_name: str) -> dict:
         """Get signaling for kvs webrtc."""
         res = {"result": "cam not found"}
-        if self.api.mfa_req:
-            return res
-        if mac := self.streams.get_mac(cam_name):
+        if not self.api.mfa_req and (mac := self.streams.get_mac(cam_name)):
             res = self.api.get_kvs_signal(mac)
         return res | {"cam": cam_name}
 
@@ -188,12 +184,6 @@ class WyzeBridge:
             if cameras != (cameras := self.streams.get_sse_status()):
                 yield f"data: {json.dumps(cameras)}\n\n"
             time.sleep(1)
-
-    def get_cam_status(self, name_uri: str) -> str:
-        """Camera connection status."""
-        if self.stop_bridge.is_set():
-            return "stopping"
-        return self.streams.get_status(name_uri)
 
     def get_cam_info(
         self,

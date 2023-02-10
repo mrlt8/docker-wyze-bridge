@@ -23,7 +23,7 @@ def cached(func: Callable[..., Any]) -> Callable[..., Any]:
         name = func.__name__.split("_", 1)[-1]
         if func.__name__ == "login":
             name = "auth"
-        if not kwargs.get("fresh_data") or not env_bool("FRESH_DATA"):
+        if not kwargs.get("fresh_data") and not env_bool("FRESH_DATA"):
             if getattr(self, name, None):
                 return func(self, *args, **kwargs)
             try:
@@ -39,10 +39,7 @@ def cached(func: Callable[..., Any]) -> Callable[..., Any]:
                 logger.info(f"🔍 Could not find local cache for '{name}'")
             except ValueError as ex:
                 logger.warning(ex)
-                self.auth = None
-                self.cameras = None
-                self.cameras = None
-                clear_cache(self.token_path)
+                self.clear_cache()
         logger.info(f"☁️ Fetching '{name}' from the Wyze API...")
         result = func(self, *args, **kwargs)
         if data := getattr(self, name, None):
@@ -82,14 +79,12 @@ class WyzeApi:
         self.password: str = getenv("WYZE_PASSWORD", "")
         self.mfa_req: Optional[str] = None
         if env_bool("FRESH_DATA"):
-            clear_cache(token_path)
+            self.clear_cache()
 
     @cached
     def login(self, email: str = "", password: str = "", fresh_data: bool = False):
         if fresh_data:
-            self.auth = None
-            self.cameras = None
-            self.cameras = None
+            self.clear_cache()
         if self.auth:
             logger.info("already authenticated")
             return
@@ -170,6 +165,15 @@ class WyzeApi:
             logger.warning("⏰ Expired refresh token?")
             self.login(fresh_data=True)
 
+    def clear_cache(self):
+        logger.info("♻️ Clearing local cache...")
+        self.auth = None
+        self.user = None
+        self.cameras = None
+        for name in listdir(self.token_path):
+            if name.endswith("pickle"):
+                remove(self.token_path + name)
+
 
 def get_mfa_code(code_file: str) -> str:
     logger.warning(f"📝 Enter verification code in the WebUI or add it to {code_file}")
@@ -217,10 +221,3 @@ def get_totp(secret: str) -> str:
     code = struct.unpack(">I", hmac_hash[offset : offset + 4])[0] & 0x7FFFFFFF
 
     return str(code % 10**6).zfill(6)
-
-
-def clear_cache(token_path: str):
-    logger.info("♻️ Clearing local cache...")
-    for f_name in listdir(token_path):
-        if f_name.endswith("pickle"):
-            remove(token_path + f_name)

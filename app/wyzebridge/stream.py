@@ -82,6 +82,7 @@ class StreamManager:
             stream.stop()
 
     def monitor_all(self) -> None:
+        self.stop_flag = False
         logger.info(f"🎬 Starting {self.total} stream{'s'[:self.total^1]}")
         cooldown = 0
         while not self.stop_flag:

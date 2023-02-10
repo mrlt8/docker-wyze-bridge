@@ -179,10 +179,9 @@ def create_app():
         """
         if restart_cmd == "cameras":
             wb.streams.stop_all()
-            wb.run()
+            wb.streams.monitor_all()
         elif restart_cmd == "rtsp_server":
-            wb.rtsp.stop()
-            wb.rtsp.start()
+            wb.rtsp.restart()
         elif restart_cmd == "all":
             wb.streams.stop_all()
             wb.rtsp.stop()
