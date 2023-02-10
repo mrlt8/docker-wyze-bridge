@@ -36,6 +36,15 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
+## What's Changed in v1.11.8
+
+- NEW: Rotation commands for pan cameras. (see [Camera Control](https://github.com/mrlt8/docker-wyze-bridge#camera-control)) Thanks @zimmra!
+- FIX: Add LIBOPUS audio to HA for WebRTC audio. #704
+- FIX: Return int instead of byte when sending `take_photo` command #712
+- UPDATED: unraid template #673 #678
+- UPDATED: rtsp-simple-server version bump to [v0.21.2](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.21.1).
+
+
 ## What's Changed in v1.11.7
 
 - FIX: WebUI - play to connect to on-demand cameras. #684
@@ -551,27 +560,29 @@ Can be disabled with `DISABLE_CONTROL=True`.
 
 Available commands:
 
-| Command                    | Description                                  | Response                                                    |
-| -------------------------- | -------------------------------------------- | ----------------------------------------------------------- |
-| take_photo                 | Take a photo on the camera                   | 1 for success                                               |
-| get_status_light           | Get status light config                      | 1 = On, 2 = Off                                             |
-| set_status_light_on        | Turn on status light                         | 1 for success                                               |
-| set_status_light_off       | Turn off status light                        | 1 for success                                               |
-| get_night_vision           | Get night vision                             | 1 = On, 2 = Off, 3 = Auto                                   |
-| set_night_vision_on        | Turn on night vision                         | 1 for success                                               |
-| set_night_vision_off       | Turn off night vision                        | 1 for success                                               |
-| set_night_vision_auto      | Set night vision to auto                     | 1 for success                                               |
-| get_irled_status           | Get IR/LED status                            | 1 = On/850nm long range IR, 2 = Off/940 nmm close range IR. |
-| set_irled_on               | Turn on IR/LED                               | 1 for success                                               |
-| set_irled_off              | Turn off IR/LED                              | 1 for success                                               |
-| get_camera_time            | Get current timestamp on the camera          | unix timestamp                                              |
-| set_camera_time            | Set time on the camera using the bridge time | 1 for success                                               |
-| get_night_switch_condition | Get condition for auto night vision          | 1 = Dusk, 2 = Dark                                          |
-| set_night_switch_dusk      | Set auto night to dusk                       | 1 for success                                               |
-| set_night_switch_dark      | Set auto night to dark                       | 1 for success                                               |
-| set_alarm_on               | Turn on siren                                | 1 for success                                               |
-| set_alarm_off              | Turn off siren                               | 1 for success                                               |
-| get_alarm_status           | Get siren status                             | (1,1) =  On, (2,2) = off                                    |
+| Command                                                           | Description                                  | Response                                                    |
+| ----------------------------------------------------------------- | -------------------------------------------- | ----------------------------------------------------------- |
+| take_photo                                                        | Take a photo on the camera                   | 1 for success                                               |
+| get_status_light                                                  | Get status light config                      | 1 = On, 2 = Off                                             |
+| set_status_light_on                                               | Turn on status light                         | 1 for success                                               |
+| set_status_light_off                                              | Turn off status light                        | 1 for success                                               |
+| get_night_vision                                                  | Get night vision                             | 1 = On, 2 = Off, 3 = Auto                                   |
+| set_night_vision_on                                               | Turn on night vision                         | 1 for success                                               |
+| set_night_vision_off                                              | Turn off night vision                        | 1 for success                                               |
+| set_night_vision_auto                                             | Set night vision to auto                     | 1 for success                                               |
+| get_irled_status                                                  | Get IR/LED status                            | 1 = On/850nm long range IR, 2 = Off/940 nmm close range IR. |
+| set_irled_on                                                      | Turn on IR/LED                               | 1 for success                                               |
+| set_irled_off                                                     | Turn off IR/LED                              | 1 for success                                               |
+| get_camera_time                                                   | Get current timestamp on the camera          | unix timestamp                                              |
+| set_camera_time                                                   | Set time on the camera using the bridge time | 1 for success                                               |
+| get_night_switch_condition                                        | Get condition for auto night vision          | 1 = Dusk, 2 = Dark                                          |
+| set_night_switch_dusk                                             | Set auto night to dusk                       | 1 for success                                               |
+| set_night_switch_dark                                             | Set auto night to dark                       | 1 for success                                               |
+| set_alarm_on                                                      | Turn on siren                                | 1 for success                                               |
+| set_alarm_off                                                     | Turn off siren                               | 1 for success                                               |
+| get_alarm_status                                                  | Get siren status                             | (1,1) =  On, (2,2) = off                                    |
+| set_action_up, set_action_down, set_action_left, set_action_right | Move camera                                  | 1 for success                                               |
+| set_rotary_up, set_rotary_down, set_rotary_left, set_rotary_right | Move camera                                  | empty response                                              |
 
 
 ### Boa HTTP Server

@@ -4,7 +4,7 @@
     "slug": "docker-wyze-bridge",
     "url": "https://github.com/mrlt8/docker-wyze-bridge",
     "image": "mrlt8/wyze-bridge",
-    "version": "1.11.7",
+    "version": "1.11.8",
     "arch": [
         "armv7",
         "aarch64",
@@ -67,7 +67,7 @@
         "IMG_DIR": "str?",
         "ON_DEMAND": "bool?",
         "ENABLE_AUDIO": "bool?",
-        "AUDIO_CODEC": "list(COPY|AAC|MP3)?",
+        "AUDIO_CODEC": "list(COPY|AAC|MP3|LIBOPUS)?",
         "AUDIO_FILTER": "str?",
         "LLHLS": "bool?",
         "DISABLE_CONTROL": "bool?",

@@ -976,12 +976,12 @@ def re_encode_video(cam: WyzeCamera) -> list[str]:
     h264_enc: str = env_bool("h264_enc", "libx264").lower()
     rotation = []
     transpose = "clock"
-    if (env_bool("ROTATE_DOOR") and cam.product_model == "WYZEDB3") or env_bool(
-        f"ROTATE_CAM_{cam.name_uri}"
+    if (env_bool("set_action_DOOR") and cam.product_model == "WYZEDB3") or env_bool(
+        f"set_action_CAM_{cam.name_uri}"
     ):
-        if os.getenv(f"ROTATE_CAM_{cam.name_uri}") in {"0", "1", "2", "3"}:
+        if os.getenv(f"set_action_CAM_{cam.name_uri}") in {"0", "1", "2", "3"}:
             # Numerical values are deprecated, and should be dropped in favor of symbolic constants.
-            transpose = os.environ[f"ROTATE_CAM_{cam.name_uri}"]
+            transpose = os.environ[f"set_action_CAM_{cam.name_uri}"]
         rotation = ["-filter:v", f"transpose={transpose}"]
 
     if not env_bool("FORCE_ENCODE") and not rotation:
@@ -1146,7 +1146,7 @@ def setup_hass(hass: bool):
             if "NET_MODE" in cam:
                 os.environ[f"NET_MODE_{cam_name}"] = str(cam["NET_MODE"])
             if "ROTATE" in cam:
-                os.environ[f"ROTATE_CAM_{cam_name}"] = str(cam["ROTATE"])
+                os.environ[f"set_action_CAM_{cam_name}"] = str(cam["ROTATE"])
             if "QUALITY" in cam:
                 os.environ[f"QUALITY_{cam_name}"] = str(cam["QUALITY"])
             if "LIVESTREAM" in cam:
@@ -1320,6 +1320,15 @@ CAM_CMDS = {
     "set_alarm_on": ("k10630SetAlarmFlashing", True),
     "set_alarm_off": ("k10630SetAlarmFlashing", False),
     "get_alarm_status": ("K10632GetAlarmFlashing", None),
+    "set_action_left": ("K11002SetRotaryByActionLeft", None),
+    "set_action_right": ("K11002SetRotaryByActionRight", None),
+    "set_action_up": ("K11002SetRotaryByActionUp", None),
+    "set_action_down": ("K11002SetRotaryByActionDown", None),
+    "set_action_reset": ("K11004ResetRotatePosition", None),
+    "set_rotary_up": ("K11000SetRotaryUp", None),
+    "set_rotary_down": ("K11000SetRotaryDown", None),
+    "set_rotary_right": ("K11000SetRotaryRight", None),
+    "set_rotary_left": ("K11000SetRotaryLeft", None),
 }
 
 
@@ -1398,8 +1407,8 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: str, source: str) -> dict:
                 else:
                     resp |= {"status": "error", "response": "timeout"}
         except Empty:
-            log.warning(f"[CONTROL] {cmd} timed out")
-            resp |= {"status": "error", "response": "timeout"}
+            log.warning(f"[CONTROL] {cmd} empty response")
+            resp |= {"status": "success", "response": None}
         except Exception as ex:
             resp |= {"status": "error", "response": f"{ex}"}
             log.warning(f"[CONTROL] {ex}")
