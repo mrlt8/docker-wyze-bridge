@@ -32,8 +32,7 @@ class WyzeBridge:
             config = json.load(f)
         self.version = config.get("version", "DEV")
         log.info(f"🚀 STARTING DOCKER-WYZE-BRIDGE v{self.version}\n")
-        self.hass: bool = bool(os.getenv("HASS"))
-        setup_hass()
+        self.hass: bool = setup_hass()
         self.timeout: int = env_bool("RTSP_READTIMEOUT", 15, style="int")
         self.connect_timeout: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
         self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"

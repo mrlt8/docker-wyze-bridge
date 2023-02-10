@@ -10,10 +10,10 @@ logger = getLogger("WyzeBridge")
 SUPERVISOR_TOKEN = getenv("SUPERVISOR_TOKEN")
 
 
-def setup_hass():
+def setup_hass() -> bool:
     """Home Assistant related config."""
     if not SUPERVISOR_TOKEN:
-        return
+        return False
 
     logger.info("🏠 Home Assistant Mode")
 
@@ -57,11 +57,13 @@ def setup_hass():
             if "SUBSTREAM" in cam:
                 environ[f"SUBSTREAM_{cam_name}"] = str(cam["SUBSTREAM"])
 
-    if rtsp_options := conf.pop("RTSP_SIMPLE_SERVER"):
+    if rtsp_options := conf.pop("RTSP_SIMPLE_SERVER", None):
         for opt in rtsp_options:
             if (split_opt := opt.split("=", 1)) and len(split_opt) == 2:
                 key = split_opt[0].strip().upper()
                 key = key if key.startswith("RTSP_") else f"RTSP_{key}"
                 environ[key] = split_opt[1].strip()
 
-    (environ.update({k.replace(" ", "_").upper(): str(v)}) for k, v in conf.items())
+    for k, v in conf.items():
+        environ.update({k.replace(" ", "_").upper(): str(v)})
+    return True

@@ -31,7 +31,6 @@
         "5000/tcp": "Web-UI/Snapshots"
     },
     "environment": {
-        "HASS": "true",
         "IMG_DIR": "config/www",
         "SKIP_RTSP_LOG": "true",
         "RECORD_PATH": "media/wyze/{CAM_NAME}"
@@ -105,7 +104,7 @@
                 "ROTATE": "bool?",
                 "QUALITY": "str?",
                 "RECORD": "bool?",
-                "SUB": "bool?"
+                "SUBSTREAM": "bool?"
             }
         ],
         "RTSP_SIMPLE_SERVER": [
