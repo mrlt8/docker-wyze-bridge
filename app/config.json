@@ -4,7 +4,7 @@
     "slug": "docker-wyze-bridge",
     "url": "https://github.com/mrlt8/docker-wyze-bridge",
     "image": "mrlt8/wyze-bridge",
-    "version": "1.11.8",
+    "version": "1.11.9",
     "arch": [
         "armv7",
         "aarch64",

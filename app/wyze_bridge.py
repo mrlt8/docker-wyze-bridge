@@ -1146,7 +1146,7 @@ def setup_hass(hass: bool):
             if "NET_MODE" in cam:
                 os.environ[f"NET_MODE_{cam_name}"] = str(cam["NET_MODE"])
             if "ROTATE" in cam:
-                os.environ[f"set_action_CAM_{cam_name}"] = str(cam["ROTATE"])
+                os.environ[f"ROTATE_CAM_{cam_name}"] = str(cam["ROTATE"])
             if "QUALITY" in cam:
                 os.environ[f"QUALITY_{cam_name}"] = str(cam["QUALITY"])
             if "LIVESTREAM" in cam:

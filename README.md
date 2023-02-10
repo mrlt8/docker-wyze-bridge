@@ -36,7 +36,7 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v1.11.8
+## What's Changed in v1.11.8/9
 
 - NEW: Rotation commands for pan cameras. (see [Camera Control](https://github.com/mrlt8/docker-wyze-bridge#camera-control)) Thanks @zimmra!
 - FIX: Add LIBOPUS audio to HA for WebRTC audio. #704
