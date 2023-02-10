@@ -65,7 +65,6 @@
         "SNAPSHOT": "list(API|RTSP|RTSP5|RTSP15|RTSP30|RTSP60|Disable)?",
         "IMG_TYPE": "list(jpg|png)?",
         "IMG_DIR": "str?",
-        "ON_DEMAND": "bool?",
         "ENABLE_AUDIO": "bool?",
         "AUDIO_CODEC": "list(COPY|AAC|MP3|LIBOPUS)?",
         "AUDIO_FILTER": "str?",
@@ -96,16 +95,6 @@
         "DEBUG_FRAMES": "bool?",
         "DEBUG_FFMPEG": "bool?",
         "IGNORE_RES": "int?",
-        "KEEP_BAD_FRAMES": "bool?",
-        "FPS_FIX": "bool?",
-        "WEBRTC": "bool?",
-        "ENABLE_BOA": "bool?",
-        "BOA_INTERVAL": "int?",
-        "TAKE_PHOTO": "bool?",
-        "PULL_PHOTO": "bool?",
-        "PULL_ALARM": "bool?",
-        "MOTION_HTTP": "str?",
-        "MOTION_COOLDOWN": "int?",
         "CAM_OPTIONS": [
             {
                 "CAM_NAME": "str?",
@@ -115,7 +104,8 @@
                 "NET_MODE": "str?",
                 "ROTATE": "bool?",
                 "QUALITY": "str?",
-                "RECORD": "bool?"
+                "RECORD": "bool?",
+                "SUB": "bool?"
             }
         ],
         "RTSP_SIMPLE_SERVER": [

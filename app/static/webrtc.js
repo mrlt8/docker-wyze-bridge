@@ -64,8 +64,7 @@ class Receiver {
         const direction = ("rss" in this.signalJson) ? "sendrecv" : "recvonly";
         this.pc.addTransceiver("video", { "direction": direction });
         this.pc.addTransceiver("audio", { "direction": direction });
-        {
-        }
+
         this.pc.createOffer()
             .then((desc) => {
                 this.pc.setLocalDescription(desc);

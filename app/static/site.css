@@ -45,6 +45,8 @@ section {
 .table thead th,
 .dropdown-item {
   color: #fff;
+  display: block;
+  flex-grow: 0;
 }
 
 a {
