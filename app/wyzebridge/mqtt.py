@@ -54,9 +54,13 @@ def mqtt_sub_topic(
     client.on_connect = lambda mq_client, *_: [
         mq_client.subscribe(f"wyzebridge/{m_topic}") for m_topic in m_topics
     ]
-    client.connect(m_host[0], int(m_host[1] if len(m_host) > 1 else 1883), 60)
-    client.loop_start()
-    return client
+    try:
+        client.connect(m_host[0], int(m_host[1] if len(m_host) > 1 else 1883), 60)
+        client.loop_start()
+        return client
+    except TimeoutError:
+        logger.warning("[MQTT] timed out connecting to server")
+        return None
 
 
 def send_mqtt(messages: list) -> None:
