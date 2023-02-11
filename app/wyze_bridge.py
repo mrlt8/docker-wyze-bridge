@@ -12,9 +12,8 @@ from dataclasses import replace
 from subprocess import Popen, TimeoutExpired
 from typing import Any, Generator, NoReturn, Optional
 
-import requests
 import wyzecam
-from wyzebridge.bridge_utils import env_bool, env_cam, env_filter
+from wyzebridge.bridge_utils import env_bool, env_cam
 from wyzebridge.hass import setup_hass
 from wyzebridge.rtsp_server import RtspServer
 from wyzebridge.stream import StreamManager
@@ -68,7 +67,8 @@ class WyzeBridge:
         self.api.login(fresh_data=fresh_data)
 
         WyzeStream.user = self.api.get_user()
-        for cam in filter_cams(self.api.get_cameras()):
+        for cam in self.api.filtered_cams():
+            # self.api.save_thumbnail(cam.name_uri, self.img_path)
             options = WyzeStreamOptions(
                 quality=env_cam("quality", cam.name_uri),
                 audio=bool(env_cam("enable_audio", cam.name_uri)),
@@ -115,20 +115,6 @@ class WyzeBridge:
         except Exception as ex:
             log.error(ex)
             return False
-
-    def save_api_thumb(self, camera: WyzeCamera) -> None:
-        """Grab a thumbnail for the camera from the wyze api."""
-        if env_bool("SNAPSHOT") != "api" or not getattr(camera, "thumbnail", False):
-            return
-        try:
-            with requests.get(camera.thumbnail) as thumb:
-                thumb.raise_for_status()
-                log.info(f'☁️ Pulling "{camera.nickname}" thumbnail')
-            img = self.img_path + camera.name_uri + ".jpg"
-            with open(img, "wb") as img_f:
-                img_f.write(thumb.content)
-        except Exception as ex:
-            log.warning(ex)
 
     def check_rtsp_fw(self, cam: WyzeCamera) -> Optional[str]:
         """Check and add rtsp."""
@@ -290,22 +276,6 @@ class WyzeBridge:
             return resp | {"response": "Unknown command"}
         cam_resp = self.streams.send_cmd(cam_name, cmd)
         return cam_resp if "status" in cam_resp else resp | cam_resp
-
-
-def filter_cams(cams: list[WyzeCamera]) -> list[WyzeCamera]:
-    if not cams:
-        log.error("\n\n ❌ COULD NOT FIND ANY CAMERAS!")
-        time.sleep(30)
-        sys.exit(2)
-    if env_bool("FILTER_BLOCK"):
-        if filtered := list(filter(lambda cam: not env_filter(cam), cams)):
-            log.info(f"🪄 BLACKLIST MODE ON [{len(filtered)}/{len(cams)}]")
-            return filtered
-    elif any(key.startswith("FILTER_") for key in os.environ):
-        if filtered := list(filter(env_filter, cams)):
-            log.info(f"🪄 WHITELIST MODE ON [{len(filtered)}/{len(cams)}]")
-            return filtered
-    return cams
 
 
 def setup_logging():

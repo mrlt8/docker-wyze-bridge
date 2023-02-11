@@ -5,14 +5,16 @@ import struct
 from base64 import b32decode
 from functools import wraps
 from logging import getLogger
-from os import getenv, listdir, remove
+from os import environ, getenv, listdir, remove
 from os.path import exists, getsize
+from pathlib import Path
 from time import sleep, time
 from typing import Any, Callable, Optional
 
 import wyzecam
+from requests import get
 from requests.exceptions import HTTPError
-from wyzebridge.bridge_utils import env_bool
+from wyzebridge.bridge_utils import env_bool, env_filter
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
 logger = getLogger("WyzeBridge")
@@ -78,6 +80,7 @@ class WyzeApi:
         self.email: str = getenv("WYZE_EMAIL", "")
         self.password: str = getenv("WYZE_PASSWORD", "")
         self.mfa_req: Optional[str] = None
+        self._last_pull: float = 0
         if env_bool("FRESH_DATA"):
             self.clear_cache()
 
@@ -88,8 +91,8 @@ class WyzeApi:
         if self.auth:
             logger.info("already authenticated")
             return
-        self.email = email if email else self.email
-        self.password = password if password else self.password
+        self.email = email or self.email
+        self.password = password or self.password
         try:
             self.auth = wyzecam.login(self.email, self.password)
         except HTTPError as ex:
@@ -115,11 +118,36 @@ class WyzeApi:
 
     @cached
     @authenticated
-    def get_cameras(self) -> list[WyzeCamera]:
-        if self.cameras:
+    def get_cameras(self, fresh_data: bool = False) -> list[WyzeCamera]:
+        if self.cameras and not fresh_data:
             return self.cameras
         self.cameras = wyzecam.get_camera_list(self.auth)
+        self._last_pull = time()
         return self.cameras
+
+    def filtered_cams(self) -> list[WyzeCamera]:
+        return filter_cams(self.get_cameras())
+
+    def get_camera(self, uri: str) -> Optional[WyzeCamera]:
+        too_old = time() - self._last_pull > 120
+        for cam in self.get_cameras(fresh_data=too_old):
+            if cam.name_uri == uri:
+                return cam
+
+    def get_thumbnail(self, uri: str) -> Optional[str]:
+        if cam := self.get_camera(uri):
+            return cam.thumbnail
+
+    def save_thumbnail(self, uri: str, path: str = "") -> bool:
+        if not (thumb := self.get_thumbnail(uri)):
+            return False
+        save_to = path + uri + ".jpg"
+        logger.info(f'☁️ Pulling "{uri}" thumbnail to {save_to}')
+        if not (img := get(thumb)).ok:
+            return False
+        with open(save_to, "wb") as f:
+            f.write(img.content)
+        return True
 
     @authenticated
     def get_kvs_signal(self, mac: str) -> dict:
@@ -203,8 +231,7 @@ def mfa_response(creds: WyzeCredential, totp_path: str) -> dict:
         return resp | {"code": get_totp(env_key)}
 
     with contextlib.suppress(FileNotFoundError):
-        with open(f"{totp_path}totp") as f:
-            key = f.read()
+        key = Path(f"{totp_path}totp").read_text()
         if len(key) > 15:
             resp["code"] = get_totp(key)
             logger.info(f"🔏 Using {totp_path}totp to generate TOTP")
@@ -221,3 +248,15 @@ def get_totp(secret: str) -> str:
     code = struct.unpack(">I", hmac_hash[offset : offset + 4])[0] & 0x7FFFFFFF
 
     return str(code % 10**6).zfill(6)
+
+
+def filter_cams(cams: list[WyzeCamera]) -> list[WyzeCamera]:
+    if env_bool("FILTER_BLOCK"):
+        if filtered := list(filter(lambda cam: not env_filter(cam), cams)):
+            logger.info(f"🪄 BLACKLIST MODE ON [{len(filtered)}/{len(cams)}]")
+            return filtered
+    elif any(key.startswith("FILTER_") for key in environ):
+        if filtered := list(filter(env_filter, cams)):
+            logger.info(f"🪄 WHITELIST MODE ON [{len(filtered)}/{len(cams)}]")
+            return filtered
+    return cams

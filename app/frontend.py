@@ -2,6 +2,7 @@ import logging
 import os
 import signal
 import sys
+import time
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -162,11 +163,24 @@ def create_app():
 
     @app.route("/img/<string:img_file>")
     def img(img_file: str):
-        """Serve static image if image exists else take a new snapshot from the rtsp stream."""
+        """
+        Serve an existing local image or take a new snapshot from the rtsp stream.
+
+        Use the exp parameter to fetch a new snapshot if the existing one is too old.
+        """
         try:
+            if exp := request.args.get("exp"):
+                created_at = os.path.getmtime(wb.img_path + img_file)
+                if time.time() - created_at > int(exp):
+                    raise NotFound
             return send_from_directory(wb.img_path, img_file)
-        except NotFound:
+        except (NotFound, FileNotFoundError, ValueError):
             return rtsp_snapshot(img_file)
+
+    @app.route("/thumb/<string:img_file>")
+    def thumbnail(img_file: str):
+        wb.api.save_thumbnail(Path(img_file).stem, wb.img_path)
+        return send_from_directory(wb.img_path, img_file)
 
     @app.route("/restart/<string:restart_cmd>")
     def restart_bridge(restart_cmd: str):
