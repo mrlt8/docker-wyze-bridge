@@ -150,10 +150,12 @@ class WyzeApi:
         return True
 
     @authenticated
-    def get_kvs_signal(self, mac: str) -> dict:
+    def get_kvs_signal(self, cam_name: str) -> Optional[dict]:
+        if not (cam := self.get_camera(cam_name)):
+            return {"result": "cam not found"}
         try:
             logger.info("☁️ Fetching signaling data from the Wyze API...")
-            wss = wyzecam.api.get_cam_webrtc(self.auth, mac)
+            wss = wyzecam.api.get_cam_webrtc(self.auth, cam.mac)
             return wss | {"result": "ok"}
         except HTTPError as ex:
             if ex.response.status_code == 404:

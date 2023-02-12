@@ -136,13 +136,13 @@ def create_app():
     @app.route("/signaling/<string:name>")
     def webrtc_signaling(name):
         if "kvs" in request.args:
-            return wb.get_kvs_signal(name)
+            return wb.api.get_kvs_signal(name)
         return wb.get_webrtc_signal(name, urlparse(request.root_url).hostname)
 
     @app.route("/webrtc/<string:name>")
     def webrtc(name):
         """View WebRTC direct from camera."""
-        if (webrtc := wb.get_kvs_signal(name)).get("result") == "ok":
+        if (webrtc := wb.api.get_kvs_signal(name)).get("result") == "ok":
             return make_response(render_template("webrtc.html", webrtc=webrtc))
         return webrtc
 
