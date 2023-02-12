@@ -130,7 +130,7 @@ def get_record_cmd(uri: str, audio_codec: str, record: bool = False) -> str:
     seg_time = env_bool("RECORD_LENGTH", "60")
     file_name = "{CAM_NAME}_%Y-%m-%d_%H-%M-%S_%Z"
     file_name = env_bool("RECORD_FILE_NAME", file_name, style="original").rstrip(".mp4")
-    container = "mp4" if audio_codec.lower() == "aac" else "mov"
+    container = "mp4" if audio_codec.lower() in {"aac", "libopus"} else "mov"
     path = "/%s/" % env_bool(
         f"RECORD_PATH_{uri}", env_bool("RECORD_PATH", "record/{CAM_NAME}")
     ).format(cam_name=uri.lower(), CAM_NAME=uri).strip("/")
