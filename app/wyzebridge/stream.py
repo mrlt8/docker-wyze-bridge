@@ -104,7 +104,20 @@ class StreamManager:
     def get_sse_status(self) -> dict:
         return {uri: cam.get_status() for uri, cam in self.streams.items()}
 
-    def send_cmd(self, uri: str, cmd: str) -> dict:
-        if not (stream := self.get(uri)):
-            return {"response": "Camera not found"}
-        return stream.send_cmd(cmd)
+    def send_cmd(self, cam_name: str, cmd: str) -> dict:
+        """
+        Send a command directly to the camera and wait for a response.
+
+        Parameters:
+        - cam_name (str): uri-friendly camera name to send command.
+        - cmd (str): The command to send. See wyzebridge.wyze_control.CAM_CMDS
+          for available commands.
+
+        Returns:
+        - dictionary: Results that can be converted to JSON.
+        """
+        resp = {"status": "error", "command": cmd}
+        if not (stream := self.get(cam_name)):
+            return resp | {"response": "Camera not found"}
+        cam_resp = stream.send_cmd(cmd)
+        return cam_resp if "status" in cam_resp else resp | cam_resp

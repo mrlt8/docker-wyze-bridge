@@ -15,34 +15,34 @@ from wyzecam import WyzeIOTCSession, WyzeIOTCSessionState, tutk_protocol
 logger = getLogger("WyzeBridge")
 
 CAM_CMDS = {
-    "take_photo": ("K10058TakePhoto", None),
-    "get_status_light": ("K10030GetNetworkLightStatus", None),
+    "take_photo": ("K10058TakePhoto",),
+    "get_status_light": ("K10030GetNetworkLightStatus",),
     "set_status_light_on": ("K10032SetNetworkLightStatus", True),
     "set_status_light_off": ("K10032SetNetworkLightStatus", False),
-    "get_night_vision": ("K10040GetNightVisionStatus", None),
+    "get_night_vision": ("K10040GetNightVisionStatus",),
     "set_night_vision_on": ("K10042SetNightVisionStatus", 1),
     "set_night_vision_off": ("K10042SetNightVisionStatus", 2),
     "set_night_vision_auto": ("K10042SetNightVisionStatus", 3),
-    "get_irled_status": ("K10044GetIRLEDStatus", None),
+    "get_irled_status": ("K10044GetIRLEDStatus",),
     "set_irled_on": ("K10046SetIRLEDStatus", 1),
     "set_irled_off": ("K10046SetIRLEDStatus", 2),
-    "get_camera_time": ("K10090GetCameraTime", None),
-    "set_camera_time": ("K10092SetCameraTime", None),
-    "get_night_switch_condition": ("K10624GetAutoSwitchNightType", None),
+    "get_camera_time": ("K10090GetCameraTime",),
+    "set_camera_time": ("K10092SetCameraTime",),
+    "get_night_switch_condition": ("K10624GetAutoSwitchNightType",),
     "set_night_switch_dusk": ("K10626SetAutoSwitchNightType", 1),
     "set_night_switch_dark": ("K10626SetAutoSwitchNightType", 2),
-    "set_alarm_on": ("k10630SetAlarmFlashing", True),
-    "set_alarm_off": ("k10630SetAlarmFlashing", False),
-    "get_alarm_status": ("K10632GetAlarmFlashing", None),
-    "set_action_left": ("K11002SetRotaryByActionLeft", None),
-    "set_action_right": ("K11002SetRotaryByActionRight", None),
-    "set_action_up": ("K11002SetRotaryByActionUp", None),
-    "set_action_down": ("K11002SetRotaryByActionDown", None),
-    "reset_rotation": ("K11004ResetRotatePosition", None),
-    "set_rotary_up": ("K11000SetRotaryUp", None),
-    "set_rotary_down": ("K11000SetRotaryDown", None),
-    "set_rotary_right": ("K11000SetRotaryRight", None),
-    "set_rotary_left": ("K11000SetRotaryLeft", None),
+    "set_alarm_on": ("K10630SetAlarmFlashing", True),
+    "set_alarm_off": ("K10630SetAlarmFlashing", False),
+    "get_alarm_status": ("K10632GetAlarmFlashing",),
+    "set_action_left": ("K11002SetRotaryByAction", 1, 0),
+    "set_action_right": ("K11002SetRotaryByAction", 2, 0),
+    "set_action_up": ("K11002SetRotaryByAction", 0, 1),
+    "set_action_down": ("K11002SetRotaryByAction", 0, 2),
+    "reset_rotation": ("K11004ResetRotatePosition",),
+    "set_rotary_up": ("K11000SetRotaryByDegree", 0, 90),
+    "set_rotary_down": ("K11000SetRotaryByDegree", 0, -90),
+    "set_rotary_right": ("K11000SetRotaryByDegree", 90, 0),
+    "set_rotary_left": ("K11000SetRotaryByDegree", -90, 0),
 }
 
 
@@ -209,31 +209,31 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: str, source: str) -> dict:
     """
     Send tutk protocol message to camera.
 
-    :param sess: WyzeIOTCSession used to communicate with the camera.
-    :param cmd: Command to send to the camera. See CAM_CMDS.
-    :param source: The source of the command for logging.
+    Parameters:
+    - sess (WyzeIOTCSession): used to communicate with the camera.
+    - cmd (str): Command to send to the camera. See CAM_CMDS.
+    - source (str): The source of the command for logging.
+
+    Rreturns:
+    - dictionary: tutk response from camera.
 
     """
-    resp = {"cmd": cmd}
-    if proto := CAM_CMDS.get(cmd):
-        logger.info(f"[CONTROL] Request: {cmd} via {source.upper()}!")
-        if proto[1] is None:
-            proto_msg = getattr(tutk_protocol, proto[0])()
-        else:
-            proto_msg = getattr(tutk_protocol, proto[0])(proto[1])
-        try:
-            with sess.iotctrl_mux() as mux:
-                if res := mux.send_ioctl(proto_msg).result(timeout=3):
-                    resp |= {"status": "success", "response": res}
-                else:
-                    resp |= {"status": "error", "response": "timeout"}
-        except Empty:
-            logger.warning(f"[CONTROL] {cmd} empty response")
-            resp |= {"status": "success", "response": None}
-        except Exception as ex:
-            resp |= {"status": "error", "response": f"{ex}"}
-            logger.warning(f"[CONTROL] {ex}")
-        logger.info(f"[CONTROL] Response: {resp}")
+    resp = {"cmd": cmd, "status": "error", "response": "timeout"}
+    if not (proto := CAM_CMDS.get(cmd)):
+        return resp | {"response": "Unknown command"}
+    logger.info(f"[CONTROL] Request: {cmd} via {source.upper()}!")
+    proto_msg = getattr(tutk_protocol, proto[0])(*proto[1:])
+    try:
+        with sess.iotctrl_mux() as mux:
+            if res := mux.send_ioctl(proto_msg).result(timeout=3):
+                resp |= {"status": "success", "response": res}
+    except Empty:
+        logger.warning(f"[CONTROL] {cmd} empty response")
+        resp |= {"status": "success", "response": None}
+    except Exception as ex:
+        resp |= {"response": ex}
+        logger.warning(f"[CONTROL] {ex}")
+    logger.info(f"[CONTROL] Response: {resp}")
     return {cmd: resp}
 
 

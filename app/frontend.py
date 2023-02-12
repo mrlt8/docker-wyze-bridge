@@ -128,7 +128,7 @@ def create_app():
         if cam_name and cam_cmd == "stop":
             return {"success": wb.streams.stop(cam_name)}
         if cam_name and cam_cmd:
-            return wb.cam_cmd(cam_name, cam_cmd)
+            return wb.streams.send_cmd(cam_name, cam_cmd)
 
         host = urlparse(request.root_url).hostname
         return wb.get_cam_info(cam_name, host) if cam_name else wb.get_cameras(host)

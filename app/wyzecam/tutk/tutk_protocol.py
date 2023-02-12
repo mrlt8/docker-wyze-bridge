@@ -4,7 +4,6 @@ import pathlib
 import time
 import typing
 from ctypes import LittleEndianStructure, c_char, c_uint16, c_uint32
-from functools import partial
 from struct import pack
 from typing import Optional
 
@@ -797,12 +796,6 @@ class K11000SetRotaryByDegree(TutkWyzeProtocolMessage):
         return resp_data[0]
 
 
-K11000SetRotaryRight = partial(K11000SetRotaryByDegree, 90, 0)
-K11000SetRotaryLeft = partial(K11000SetRotaryByDegree, -90, 0)
-K11000SetRotaryUp = partial(K11000SetRotaryByDegree, 0, 90)
-K11000SetRotaryDown = partial(K11000SetRotaryByDegree, 0, -90)
-
-
 class K11002SetRotaryByAction(TutkWyzeProtocolMessage):
     """
     Rotate by action.
@@ -835,12 +828,6 @@ class K11002SetRotaryByAction(TutkWyzeProtocolMessage):
 
     def parse_response(self, resp_data) -> int:
         return resp_data[0]
-
-
-K11002SetRotaryByActionLeft = partial(K11002SetRotaryByAction, 1, 0)
-K11002SetRotaryByActionRight = partial(K11002SetRotaryByAction, 2, 0)
-K11002SetRotaryByActionUp = partial(K11002SetRotaryByAction, 0, 1)
-K11002SetRotaryByActionDown = partial(K11002SetRotaryByAction, 0, 2)
 
 
 class K11004ResetRotatePosition(TutkWyzeProtocolMessage):

@@ -18,7 +18,6 @@ from wyzebridge.hass import setup_hass
 from wyzebridge.rtsp_server import RtspServer
 from wyzebridge.stream import StreamManager
 from wyzebridge.wyze_api import WyzeApi
-from wyzebridge.wyze_control import CAM_CMDS
 from wyzebridge.wyze_stream import WyzeStream, WyzeStreamOptions
 from wyzecam import WyzeCamera, WyzeIOTCSession
 
@@ -266,16 +265,6 @@ class WyzeBridge:
         # if boa_info := cam["camera_info"].get("boa_info"):
         #     return boa_info.get("last_photo")
         return None
-
-    def cam_cmd(self, cam_name: str, cmd: str) -> dict[str, Any]:
-        """Cam command."""
-        resp = {"status": "error", "command": cmd}
-        if env_bool("disable_control"):
-            return resp | {"response": "Control disabled"}
-        if cmd not in CAM_CMDS:
-            return resp | {"response": "Unknown command"}
-        cam_resp = self.streams.send_cmd(cam_name, cmd)
-        return cam_resp if "status" in cam_resp else resp | cam_resp
 
 
 def setup_logging():

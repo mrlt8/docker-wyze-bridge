@@ -159,7 +159,7 @@ class WyzeStream:
             self.camera.set_camera_info(resp)
 
     def send_cmd(self, cmd: str) -> dict:
-        if not self.connected or not self.cam_cmd:
+        if env_bool("disable_control") or not self.connected or not self.cam_cmd:
             return {}
         self.cam_cmd.put(cmd)
         self.cam_cmd.join()
