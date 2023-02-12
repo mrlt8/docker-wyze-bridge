@@ -8,7 +8,7 @@ from queue import Empty
 from subprocess import PIPE, Popen
 from threading import Thread
 from time import time
-from typing import Any, Optional
+from typing import Optional
 
 from wyzebridge.bridge_utils import env_bool, env_cam
 from wyzebridge.ffmpeg import get_ffmpeg_cmd
@@ -20,6 +20,8 @@ from wyzecam import TutkError, WyzeAccount, WyzeCamera, WyzeIOTC, WyzeIOTCSessio
 logger = getLogger("WyzeBridge")
 
 NET_MODE = {0: "P2P", 1: "RELAY", 2: "LAN"}
+
+COOLDOWN = env_bool("OFFLINE_TIME", "10", style="int")
 
 
 class StreamStatus(IntEnum):
@@ -56,7 +58,7 @@ class WyzeStream:
     def __init__(self, camera: WyzeCamera, options: WyzeStreamOptions) -> None:
         self.camera = camera
         self.options: WyzeStreamOptions = options
-        self.started: float = 0
+        self.start_time: float = 0
         self.state: c_int = mp.Value("i", StreamStatus.STOPPED, lock=False)
         self.uri = camera.name_uri + ("-2" if options.substream else "")
         self.cam_resp: Optional[mp.Queue] = None
@@ -86,14 +88,15 @@ class WyzeStream:
         return self.state.value != StreamStatus.DISABLED
 
     def start(self) -> bool:
-        if self.state.value == StreamStatus.DISABLED:
+        if self.health_check(False) != 1:
+            logger.info("invalid health")
             return False
-        if self.health_check() > 0:
-            return True
+        if self.start_time > time():
+            return False
         logger.info(
             f"🎉 Connecting to WyzeCam {self.camera.model_name} - {self.camera.nickname} on {self.camera.ip}"
         )
-        self.started = time()
+        self.start_time = time()
 
         self.process = mp.Process(
             target=start_tutk_stream,
@@ -104,7 +107,7 @@ class WyzeStream:
         return True
 
     def stop(self) -> bool:
-        self.started = 0
+        self.start_time = 0
         if self.process and self.process.is_alive():
             self.process.kill()
             self.process.join()
@@ -112,18 +115,33 @@ class WyzeStream:
         self.state.value = StreamStatus.STOPPED
         return True
 
-    def health_check(self) -> int:
-        if not self.process:
-            return 0
-        if not self.process.is_alive():
-            self.started = 0
-            return self.state.value
-
-        if not self.connected and is_timedout(self.started, 20):
-            logger.warning(f"⏰ Timedout connecting to {self.camera.nickname}.")
+    def health_check(self, should_start: bool = True) -> int:
+        if self.state.value == StreamStatus.OFFLINE:
+            if env_bool("IGNORE_OFFLINE"):
+                logger.info(f"🪦 {self.uri} is offline. WILL ignore.")
+                self.state.value = StreamStatus.DISABLED
+            else:
+                logger.info(f"👻 Camera is offline. Will cooldown for {COOLDOWN}s.")
+                self.start_time = time() + COOLDOWN
+                self.state.value = StreamStatus.STOPPED
+        elif self.state.value < StreamStatus.DISABLED:
+            error_no = self.state.value
             self.stop()
-            return 0
-        return 1
+            self.start_time = time() + COOLDOWN
+            if error_no in {-13, -19, -68} and should_start:
+                return error_no
+        elif (
+            self.state.value == StreamStatus.STOPPED
+            and self.options.record
+            and should_start
+        ):
+            self.start()
+        elif self.state.value == StreamStatus.CONNECTING and is_timedout(
+            self.start_time, 20
+        ):
+            logger.warning(f"⏰ Timed out connecting to {self.camera.nickname}.")
+            self.stop()
+        return self.state.value
 
     def get_status(self) -> str:
         try:
@@ -135,8 +153,8 @@ class WyzeStream:
         data = {
             "name_uri": self.uri,
             "status": self.state.value,
-            "connected": self.state.value == StreamStatus.CONNECTED,
-            "enabled": self.state.value != StreamStatus.DISABLED,
+            "connected": self.connected,
+            "enabled": self.enabled,
             "on_demand": not self.options.record,
             "audio": self.options.audio,
             "record": self.options.record,
@@ -146,7 +164,7 @@ class WyzeStream:
             "rtsp_wf": self.camera.rtsp_fw,
             "is_battery": self.camera.is_battery,
             "webrtc": self.camera.webrtc_support,
-            "started": self.started,
+            "started": self.start_time,
             "req_frame_size": self.options.frame_size,
             "req_bitrate": self.options.bitrate,
         }

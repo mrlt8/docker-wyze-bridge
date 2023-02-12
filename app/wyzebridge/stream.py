@@ -1,5 +1,5 @@
 from logging import getLogger
-from time import sleep, time
+from time import sleep
 from typing import Any, Optional, Protocol
 
 logger = getLogger("WyzeBridge")
@@ -84,16 +84,10 @@ class StreamManager:
     def monitor_all(self) -> None:
         self.stop_flag = False
         logger.info(f"🎬 Starting {self.total} stream{'s'[:self.total^1]}")
-        cooldown = 0
         while not self.stop_flag:
             for stream in self.streams.values():
-                health = stream.health_check()
-
-                if health in {-13, -19, -68} and cooldown <= time():
-                    cooldown = time() + 60 * 2
-                    logger.info("♻️ Refresh list of cameras")
-                if health <= 1 and stream.options.record:
-                    stream.start()
+                if stream.health_check() in {-13, -19, -68}:
+                    logger.info("TODO: Refresh cameras")
             sleep(1)
 
     def get_status(self, uri: str) -> str:
