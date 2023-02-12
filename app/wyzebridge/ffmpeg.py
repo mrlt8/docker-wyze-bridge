@@ -46,7 +46,7 @@ def get_ffmpeg_cmd(
     cmd = env_cam("FFMPEG_CMD", uri).format(
         cam_name=uri, CAM_NAME=uri.upper(), audio_in=audio_in
     ).split() or (
-        ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "error"]
+        ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "fatal"]
         + env_cam("FFMPEG_FLAGS", uri, flags).strip("'\"\n ").split()
         + ["-thread_queue_size", "64", "-threads", "1"]
         + ["-analyzeduration", "50", "-probesize", "50", "-f", vcodec, "-i", "pipe:"]
