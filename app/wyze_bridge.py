@@ -10,16 +10,14 @@ import time
 import warnings
 from dataclasses import replace
 from subprocess import Popen, TimeoutExpired
-from typing import Any, Generator, NoReturn, Optional
+from typing import Generator, NoReturn, Optional
 
-import wyzecam
 from wyzebridge.bridge_utils import env_bool, env_cam
 from wyzebridge.hass import setup_hass
 from wyzebridge.rtsp_server import RtspServer
 from wyzebridge.stream import StreamManager
 from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_stream import WyzeStream, WyzeStreamOptions
-from wyzecam import WyzeCamera, WyzeIOTCSession
 
 log = logging.getLogger("WyzeBridge")
 
@@ -82,6 +80,11 @@ class WyzeBridge:
                 options.quality = "sd30"
 
             stream = WyzeStream(cam, options)
+            if rtsp_fw := env_bool("rtsp_fw").lower():
+                if rtsp_path := stream.check_rtsp_fw(rtsp_fw == "force"):
+                    rtsp_uri = f"{cam.name_uri}fw"
+                    log.info(f"Addingg /{rtsp_uri} as a source")
+                    self.rtsp.add_source(rtsp_uri, rtsp_path)
             self.rtsp.add_path(stream.uri, not bool(options.record))
             self.streams.add(stream)
 
@@ -114,31 +117,6 @@ class WyzeBridge:
         except Exception as ex:
             log.error(ex)
             return False
-
-    def check_rtsp_fw(self, cam: WyzeCamera) -> Optional[str]:
-        """Check and add rtsp."""
-        if not (rtsp_fw := env_bool("rtsp_fw")):
-            return None
-        if cam.firmware_ver[:5] not in wyzecam.tutk.tutk.RTSP_FW:
-            return None
-        log.info(f"Checking {cam.nickname} for firmware RTSP on v{cam.firmware_ver}")
-        try:
-            with wyzecam.WyzeIOTC() as iotc, WyzeIOTCSession(
-                iotc.tutk_platform_lib, self.api.get_user(), cam
-            ) as session:
-                if session.session_check().mode != 2:
-                    log.warning(f"[{cam.nickname}] Camera is not on same LAN")
-                    return None
-                return session.check_native_rtsp(start_rtsp=rtsp_fw.lower() == "force")
-        except wyzecam.TutkError:
-            return None
-
-    def get_kvs_signal(self, cam_name: str) -> dict:
-        """Get signaling for kvs webrtc."""
-        res = {"result": "cam not found"}
-        if not self.api.mfa_req and (mac := self.streams.get_mac(cam_name)):
-            res = self.api.get_kvs_signal(mac)
-        return res | {"cam": cam_name}
 
     def get_webrtc_signal(
         self, cam_name: str, hostname: Optional[str] = "localhost"

@@ -47,6 +47,8 @@ VERTICAL_CAMS = {"WYZEDB3", "GW_BE1", "AN_RDB1"}
 # Minimum known firmware version that supports multiple streams
 SUBSTREAM_FW = {"WYZEC1-JZ": "4.9.9", "WYZE_CAKP2JFUS": "4.36.10", "HL_CAM3P": "4.58.0"}
 
+RTSP_FW = {"4.19.", "4.20.", "4.28.", "4.29.", "4.61."}
+
 
 class WyzeCredential(BaseModel):
     """Authenticated credentials; see [wyzecam.api.login][].
@@ -161,6 +163,10 @@ class WyzeCamera(BaseModel):
     def can_substream(self) -> bool:
         min_ver = SUBSTREAM_FW.get(self.product_model)
         return is_min_version(self.firmware_ver, min_ver)
+
+    @property
+    def rtsp_fw(self) -> bool:
+        return bool(self.firmware_ver and self.firmware_ver[:5] in RTSP_FW)
 
 
 def clean_name(name: str, uri_sep: str = "_") -> str:

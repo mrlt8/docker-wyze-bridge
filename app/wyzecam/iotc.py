@@ -356,10 +356,7 @@ class WyzeIOTCSession:
         :returns: A string with the rtsp url or None.
         """
 
-        if (
-            not self.camera.firmware_ver
-            or self.camera.firmware_ver[:5] not in tutk.RTSP_FW
-        ):
+        if not self.camera.rtsp_fw:
             return None
 
         with self.iotctrl_mux() as mux:

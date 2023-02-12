@@ -143,6 +143,7 @@ class WyzeStream:
             "substream": self.options.substream,
             "model_name": self.camera.model_name,
             "is_2k": self.camera.is_2k,
+            "rtsp_wf": self.camera.rtsp_fw,
             "is_battery": self.camera.is_battery,
             "webrtc": self.camera.webrtc_support,
             "started": self.started,
@@ -167,8 +168,23 @@ class WyzeStream:
             cam_resp = self.cam_resp.get(timeout=5)
         except Empty:
             return {"response": "timed out"}
-
         return cam_resp.pop(cmd, None) or {"response": "could not get result"}
+
+    def check_rtsp_fw(self, force: bool = False) -> Optional[str]:
+        """Check and add rtsp."""
+        if not self.camera.rtsp_fw:
+            return
+        logger.info(f"Checking {self.camera.nickname} for firmware RTSP")
+        try:
+            with WyzeIOTC() as iotc, WyzeIOTCSession(
+                iotc.tutk_platform_lib, self.user, self.camera
+            ) as session:
+                if session.session_check().mode != 2:
+                    logger.warning(f"[{cam.nickname}] Camera is not on same LAN")
+                    return None
+                return session.check_native_rtsp(start_rtsp=force)
+        except wyzecam.TutkError:
+            return
 
 
 def start_tutk_stream(stream: WyzeStream) -> None:

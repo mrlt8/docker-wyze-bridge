@@ -81,11 +81,7 @@ class RtspServer:
     def start(self):
         if self.sub_process:
             return
-        try:
-            with open("/RTSP_TAG", "r") as tag:
-                logger.info(f"Starting rtsp-simple-server {tag.read().strip()}")
-        except FileNotFoundError:
-            logger.info("starting rtsp-simple-server")
+        logger.info(f"starting rtsp-simple-server{rtsp_version()}")
         self.sub_process = Popen(
             ["/app/rtsp-simple-server", "/app/rtsp-simple-server.yml"]
         )
@@ -111,7 +107,7 @@ class RtspServer:
         if self.sub_process:
             self.restart()
 
-    def setup_llhls(self, token_path: str = "/tokens/", hass: bool = False):
+    def setup_llhls(self, token_path: str = "/tokens/", hass: bool = True):
         logger.info("Configuring LL-HLS")
         self.rtsp.set_opt("hlsEncryption", "yes")
         if self.rtsp.get_opt("hlsServerKey"):
@@ -129,6 +125,14 @@ class RtspServer:
         generate_certificates(cert_path)
         self.rtsp.set_opt("hlsServerKey", f"{cert_path}.key")
         self.rtsp.set_opt("hlsServerCert", f"{cert_path}.crt")
+
+
+def rtsp_version() -> str:
+    try:
+        with open("/RTSP_TAG", "r") as tag:
+            return tag.read().strip()
+    except FileNotFoundError:
+        return ""
 
 
 def generate_certificates(cert_path):
