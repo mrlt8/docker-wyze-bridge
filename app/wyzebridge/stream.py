@@ -26,6 +26,12 @@ class Stream(Protocol):
     def stop(self) -> bool:
         ...
 
+    def enable(self) -> bool:
+        ...
+
+    def disable(self) -> bool:
+        ...
+
     def health_check(self) -> int:
         ...
 
@@ -74,6 +80,12 @@ class StreamManager:
 
     def stop(self, uri: str) -> bool:
         return stream.stop() if (stream := self.get(uri)) else False
+
+    def enable(self, uri: str) -> bool:
+        return stream.enable() if (stream := self.get(uri)) else False
+
+    def disable(self, uri: str) -> bool:
+        return stream.disable() if (stream := self.get(uri)) else False
 
     def stop_all(self) -> None:
         logger.info(f"Stopping {self.total} stream{'s'[:self.total^1]}")

@@ -88,10 +88,7 @@ class WyzeStream:
         return self.state.value != StreamStatus.DISABLED
 
     def start(self) -> bool:
-        if self.health_check(False) != 1:
-            logger.info("invalid health")
-            return False
-        if self.start_time > time():
+        if self.health_check(False) != 1 or self.start_time > time():
             return False
         logger.info(
             f"🎉 Connecting to WyzeCam {self.camera.model_name} - {self.camera.nickname} on {self.camera.ip}"
@@ -113,6 +110,23 @@ class WyzeStream:
             self.process.join()
         self.process = None
         self.state.value = StreamStatus.STOPPED
+        return True
+
+    def enable(self) -> bool:
+        if self.state.value == StreamStatus.DISABLED:
+            logger.info(f"Enabling {self.uri}")
+            self.state.value = StreamStatus.STOPPED
+        if self.state.value > StreamStatus.DISABLED:
+            return True
+        return False
+
+    def disable(self) -> bool:
+        if self.state.value == StreamStatus.DISABLED:
+            return True
+        logger.info(f"Disabling {self.uri}")
+        if self.state.value != StreamStatus.STOPPED:
+            self.stop()
+        self.state.value = StreamStatus.DISABLED
         return True
 
     def health_check(self, should_start: bool = True) -> int:
@@ -199,7 +213,7 @@ class WyzeStream:
             ) as session:
                 if session.session_check().mode != 2:
                     logger.warning(f"[{cam.nickname}] Camera is not on same LAN")
-                    return None
+                    return
                 return session.check_native_rtsp(start_rtsp=force)
         except wyzecam.TutkError:
             return
@@ -258,7 +272,7 @@ def start_tutk_stream(stream: WyzeStream) -> None:
 
 def setup_audio(sess: WyzeIOTCSession, uri: str, audio: bool) -> Optional[Thread]:
     if not audio:
-        return None
+        return
     audio_thread = Thread(
         target=sess.recv_audio_frames,
         args=(uri,),
@@ -270,7 +284,7 @@ def setup_audio(sess: WyzeIOTCSession, uri: str, audio: bool) -> Optional[Thread
 
 def setup_control(sess: WyzeIOTCSession, stream: WyzeStream) -> Optional[Thread]:
     if stream.options.substream:
-        return None
+        return
     control_thread = Thread(
         target=camera_control,
         args=(sess, stream.uri, stream.cam_resp, stream.cam_cmd),

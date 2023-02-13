@@ -127,6 +127,10 @@ def create_app():
             return {"success": wb.streams.start(cam_name)}
         if cam_name and cam_cmd == "stop":
             return {"success": wb.streams.stop(cam_name)}
+        if cam_name and cam_cmd == "disable":
+            return {"success": wb.streams.disable(cam_name)}
+        if cam_name and cam_cmd == "enable":
+            return {"success": wb.streams.enable(cam_name)}
         if cam_name and cam_cmd:
             return wb.streams.send_cmd(cam_name, cam_cmd)
 
