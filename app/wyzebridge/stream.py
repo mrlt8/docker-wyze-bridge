@@ -8,7 +8,7 @@ logger = getLogger("WyzeBridge")
 class Stream(Protocol):
     camera: Any
     options: Any
-    started: float
+    start_time: float
     state: Any
     uri: str
 
@@ -66,9 +66,6 @@ class StreamManager:
     def get(self, uri: str) -> Optional[Stream]:
         return self.streams.get(uri)
 
-    def get_mac(self, uri: str) -> Optional[str]:
-        return stream.camera.mac if (stream := self.get(uri)) else None
-
     def get_uris(self) -> list[str]:
         return list(self.streams.keys())
 
@@ -93,13 +90,12 @@ class StreamManager:
         for stream in self.streams.values():
             stream.stop()
 
-    def monitor_all(self) -> None:
+    def monitor_streams(self) -> None:
         self.stop_flag = False
         logger.info(f"🎬 Starting {self.total} stream{'s'[:self.total^1]}")
         while not self.stop_flag:
             for stream in self.streams.values():
-                if stream.health_check() in {-13, -19, -68}:
-                    logger.info("TODO: Refresh cameras")
+                stream.health_check()
             sleep(1)
 
     def get_status(self, uri: str) -> str:

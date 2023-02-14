@@ -13,7 +13,7 @@ from typing import Any, Callable, Optional
 
 import wyzecam
 from requests import get
-from requests.exceptions import HTTPError
+from requests.exceptions import ConnectionError, HTTPError
 from wyzebridge.bridge_utils import env_bool, env_filter
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
@@ -44,7 +44,7 @@ def cached(func: Callable[..., Any]) -> Callable[..., Any]:
                 self.clear_cache()
         logger.info(f"☁️ Fetching '{name}' from the Wyze API...")
         result = func(self, *args, **kwargs)
-        if data := getattr(self, name, None):
+        if result and (data := getattr(self, name, None)):
             with open(self.token_path + name + ".pickle", "wb") as f:
                 logger.info(f"💾 Saving '{name}' to local cache...")
                 pickle.dump(data, f)
@@ -67,6 +67,8 @@ def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
             if func.__name__ != "refresh_token":
                 self.refresh_token()
             return func(self, *args, **kwargs)
+        except ConnectionError as ex:
+            logger.warning(f"{ex}")
 
     return wrapper
 
@@ -130,9 +132,10 @@ class WyzeApi:
 
     def get_camera(self, uri: str) -> Optional[WyzeCamera]:
         too_old = time() - self._last_pull > 120
-        for cam in self.get_cameras(fresh_data=too_old):
-            if cam.name_uri == uri:
-                return cam
+        with contextlib.suppress(TypeError):
+            for cam in self.get_cameras(fresh_data=too_old):
+                if cam.name_uri == uri:
+                    return cam
 
     def get_thumbnail(self, uri: str) -> Optional[str]:
         if cam := self.get_camera(uri):

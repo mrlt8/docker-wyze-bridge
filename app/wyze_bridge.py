@@ -57,13 +57,14 @@ class WyzeBridge:
         """Start synchronously"""
         self.setup_streams(fresh_data)
         self.rtsp.start()
-        self.streams.monitor_all()
+        self.streams.monitor_streams()
 
     def setup_streams(self, fresh_data=False):
         """Gather and setup streams for each camera."""
         self.api.login(fresh_data=fresh_data)
 
         WyzeStream.user = self.api.get_user()
+        WyzeStream.api = self.api
         for cam in self.api.filtered_cams():
             # self.api.save_thumbnail(cam.name_uri, self.img_path)
             options = WyzeStreamOptions(

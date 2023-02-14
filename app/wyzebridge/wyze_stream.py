@@ -14,6 +14,7 @@ from wyzebridge.bridge_utils import env_bool, env_cam
 from wyzebridge.ffmpeg import get_ffmpeg_cmd
 from wyzebridge.mqtt import send_mqtt
 from wyzebridge.webhooks import ifttt_webhook
+from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_control import camera_control
 from wyzecam import TutkError, WyzeAccount, WyzeCamera, WyzeIOTC, WyzeIOTCSession
 
@@ -54,6 +55,7 @@ class WyzeStreamOptions:
 
 class WyzeStream:
     user: WyzeAccount
+    api: WyzeApi
 
     def __init__(self, camera: WyzeCamera, options: WyzeStreamOptions) -> None:
         self.camera = camera
@@ -133,17 +135,14 @@ class WyzeStream:
         if self.state.value == StreamStatus.OFFLINE:
             if env_bool("IGNORE_OFFLINE"):
                 logger.info(f"🪦 {self.uri} is offline. WILL ignore.")
-                self.state.value = StreamStatus.DISABLED
-            else:
-                logger.info(f"👻 Camera is offline. Will cooldown for {COOLDOWN}s.")
-                self.start_time = time() + COOLDOWN
-                self.state.value = StreamStatus.STOPPED
+                self.disable()
+                return self.state.value
+            logger.info(f"👻 Camera is offline. Will cooldown for {COOLDOWN}s.")
+        if self.state.value in {-13, -19, -68}:
+            self.refresh_camera()
         elif self.state.value < StreamStatus.DISABLED:
-            error_no = self.state.value
             self.stop()
             self.start_time = time() + COOLDOWN
-            if error_no in {-13, -19, -68} and should_start:
-                return error_no
         elif (
             self.state.value == StreamStatus.STOPPED
             and self.options.record
@@ -156,6 +155,13 @@ class WyzeStream:
             logger.warning(f"⏰ Timed out connecting to {self.camera.nickname}.")
             self.stop()
         return self.state.value
+
+    def refresh_camera(self):
+        self.stop()
+        if not (cam := self.api.get_camera(self.camera.name_uri)):
+            return False
+        self.camera = cam
+        return True
 
     def get_status(self) -> str:
         try:
@@ -178,7 +184,7 @@ class WyzeStream:
             "rtsp_wf": self.camera.rtsp_fw,
             "is_battery": self.camera.is_battery,
             "webrtc": self.camera.webrtc_support,
-            "started": self.start_time,
+            "start_time": self.start_time,
             "req_frame_size": self.options.frame_size,
             "req_bitrate": self.options.bitrate,
         }
@@ -246,7 +252,7 @@ def start_tutk_stream(stream: WyzeStream) -> None:
                         ffmpeg.stdin.write(frame)
 
     except TutkError as ex:
-        logger.warning(ex)
+        logger.warning(f"{[ex.code]} {ex}")
         set_cam_offline(stream.uri, ex, was_offline)
         if ex.code in {-10, -13, -19, -68, -90}:
             exit_code = ex.code
