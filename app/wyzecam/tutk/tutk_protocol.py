@@ -851,6 +851,34 @@ class K11004ResetRotatePosition(TutkWyzeProtocolMessage):
         return resp_data[0]
 
 
+class K11018SetPTZPosition(TutkWyzeProtocolMessage):
+    """
+    Set PTZ Position.
+
+    Parameters:
+    - ver_angle (int): vertical angle.
+    - hor_angle (int): horizontal angle.
+    """
+
+    expected_response_code = 11019
+
+    def __init__(
+        self,
+        ver_angle: int,
+        hor_angle: int,
+    ):
+        super().__init__(11018)
+        self.ver_angle = ver_angle
+        self.hor_angle = hor_angle
+
+    def encode(self) -> bytes:
+        time_val = int(time.time() * 1000) % 1_000_000_000
+        return encode(11018, 7, pack("<IBH", time_val, self.ver_angle, self.hor_angle))
+
+    def parse_response(self, resp_data) -> int:
+        return resp_data[0]
+
+
 def encode(code: int, data_len: int, data: Optional[bytes]) -> bytes:
     assert (data is None and data_len == 0) or (
         data is not None and data_len == len(data)
