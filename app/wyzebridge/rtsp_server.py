@@ -58,12 +58,14 @@ class RtspServer:
         if bridge_ip:
             self.setup_webrtc(bridge_ip)
 
-    def add_path(self, uri: str, on_demand: bool = False):
+    def add_path(self, uri: str, on_demand: bool = True):
         for event in {"Read", "Ready"}:
-            cmd = f"python3 /app/rtsp_event.py $RTSP_PATH {event.upper()}"
-            self.rtsp.set(uri, f"RunOn{event}", cmd)
+            stop_cmd = f"echo $RTSP_PATH,{event},0 > /tmp/rtsp_event;exit;"
+            start_cmd = f"echo $RTSP_PATH,{event},1 > /tmp/rtsp_event;"
+            bash_cmd = f'trap "{stop_cmd}" INT;{start_cmd} tail -f /dev/null & wait'
+            self.rtsp.set(uri, f"RunOn{event}", f"bash -c '{bash_cmd}'")
         if on_demand or self.on_demand:
-            cmd = f"bash -c 'echo GET /api/{uri}/start >/dev/tcp/127.0.0.1/5000'"
+            cmd = "bash -c 'echo $RTSP_PATH,start,1 > /tmp/rtsp_event'"
             self.rtsp.set(uri, "runOnDemand", cmd)
             self.rtsp.set(uri, "runOnDemandStartTimeout", "30s")
         if read_user := self.rtsp.get(uri, "readUser"):

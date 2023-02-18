@@ -1,6 +1,7 @@
 from logging import getLogger
-from time import sleep
 from typing import Any, Optional, Protocol
+
+from wyzebridge.rtsp_event import RtspEvent
 
 logger = getLogger("WyzeBridge")
 
@@ -93,10 +94,12 @@ class StreamManager:
     def monitor_streams(self) -> None:
         self.stop_flag = False
         logger.info(f"🎬 Starting {self.total} stream{'s'[:self.total^1]}")
+        event = RtspEvent(self)
         while not self.stop_flag:
             for stream in self.streams.values():
                 stream.health_check()
-            sleep(1)
+            event.read(timeout=1)
+        event.close_pipe()
 
     def get_status(self, uri: str) -> str:
         if self.stop_flag:
