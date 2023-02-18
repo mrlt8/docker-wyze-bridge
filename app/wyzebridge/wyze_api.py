@@ -87,7 +87,9 @@ class WyzeApi:
             self.clear_cache()
 
     @cached
-    def login(self, email: str = "", password: str = "", fresh_data: bool = False):
+    def login(
+        self, email: str = "", password: str = "", fresh_data: bool = False
+    ) -> Optional[WyzeCredential]:
         if fresh_data:
             self.clear_cache()
         if self.auth:
@@ -109,6 +111,7 @@ class WyzeApi:
         if self.auth.mfa_options:
             logger.warning("🔐 MFA code Required")
             self._mfa_auth()
+        return self.auth
 
     @cached
     @authenticated
