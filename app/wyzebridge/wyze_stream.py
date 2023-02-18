@@ -12,7 +12,7 @@ from typing import Optional
 
 from wyzebridge.bridge_utils import env_bool, env_cam
 from wyzebridge.ffmpeg import get_ffmpeg_cmd
-from wyzebridge.mqtt import send_mqtt
+from wyzebridge.mqtt import send_mqtt, update_mqtt_state, wyze_discovery
 from wyzebridge.webhooks import ifttt_webhook
 from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_control import camera_control
@@ -66,7 +66,9 @@ class WyzeStream:
         self.cam_resp: Optional[mp.Queue] = None
         self.cam_cmd: Optional[mp.JoinableQueue] = None
         self.process: Optional[mp.Process] = None
+        self.setup()
 
+    def setup(self):
         if not self.options.substream:
             self.cam_resp = mp.Queue(1)
             self.cam_cmd = mp.JoinableQueue(1)
@@ -80,6 +82,7 @@ class WyzeStream:
             logger.error(f"{self.camera.nickname} may not support multiple streams!!")
             # self.state.value = StreamStatus.DISABLED
         self.options.update_quality(self.camera.is_2k)
+        wyze_discovery(self.camera, self.uri)
 
     @property
     def connected(self) -> bool:
@@ -90,11 +93,12 @@ class WyzeStream:
         return self.state.value != StreamStatus.DISABLED
 
     def start(self) -> bool:
-        if self.health_check(False) != 1 or self.start_time > time():
+        if self.health_check(False) != StreamStatus.STOPPED or self.start_time > time():
             return False
         logger.info(
             f"🎉 Connecting to WyzeCam {self.camera.model_name} - {self.camera.nickname} on {self.camera.ip}"
         )
+        update_mqtt_state(self.uri, "starting")
         self.start_time = time()
 
         self.process = mp.Process(
@@ -106,21 +110,22 @@ class WyzeStream:
         return True
 
     def stop(self) -> bool:
+        update_mqtt_state(self.uri, "stopping")
         self.start_time = 0
         if self.process and self.process.is_alive():
             self.process.kill()
             self.process.join()
         self.process = None
         self.state.value = StreamStatus.STOPPED
+        update_mqtt_state(self.uri, "stopped")
         return True
 
     def enable(self) -> bool:
         if self.state.value == StreamStatus.DISABLED:
             logger.info(f"Enabling {self.uri}")
             self.state.value = StreamStatus.STOPPED
-        if self.state.value > StreamStatus.DISABLED:
-            return True
-        return False
+            update_mqtt_state(self.uri, "stopped")
+        return self.state.value > StreamStatus.DISABLED
 
     def disable(self) -> bool:
         if self.state.value == StreamStatus.DISABLED:
@@ -129,6 +134,7 @@ class WyzeStream:
         if self.state.value != StreamStatus.STOPPED:
             self.stop()
         self.state.value = StreamStatus.DISABLED
+        update_mqtt_state(self.uri, "disabled")
         return True
 
     def health_check(self, should_start: bool = True) -> int:
@@ -366,8 +372,7 @@ def check_net_mode(session_mode: int, uri: str) -> str:
 def set_cam_offline(uri: str, error: TutkError, was_offline: bool) -> None:
     """Do something when camera goes offline."""
     state = "offline" if error.code == -90 else error.name
-    mqtt_status = [(f"wyzebridge/{uri.lower()}/state", state)]
-    send_mqtt(mqtt_status)
+    update_mqtt_state(uri.lower(), state)
 
     if str(error.code) not in env_bool("OFFLINE_ERRNO", "-90"):
         return

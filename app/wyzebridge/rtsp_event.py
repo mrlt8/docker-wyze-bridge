@@ -5,12 +5,16 @@ import os
 import select
 from logging import getLogger
 
-from wyzebridge.mqtt import update_state
+from wyzebridge.mqtt import update_mqtt_state
 
 logger = getLogger("WyzeBridge")
 
 
 class RtspEvent:
+    """
+    Reads from the `/tmp/rtsp_event` named pipe and logs events.
+    """
+
     FIFO = "/tmp/rtsp_event"
 
     def __init__(self, streams):
@@ -78,5 +82,5 @@ def ready_event(camera: str, status: str):
         msg = f"✅ '/{camera} stream is UP! (3/3)"
         state = "online"
 
-    update_state(camera, state)
+    update_mqtt_state(camera, state)
     logger.info(msg)
