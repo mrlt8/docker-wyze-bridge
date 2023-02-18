@@ -207,6 +207,9 @@ class WyzeApi:
             if name.endswith("pickle"):
                 remove(self.token_path + name)
 
+    def get_mfa(self):
+        return self.mfa_req
+
 
 def get_mfa_code(code_file: str) -> str:
     logger.warning(f"📝 Enter verification code in the WebUI or add it to {code_file}")

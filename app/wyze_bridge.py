@@ -6,11 +6,10 @@ import os
 import signal
 import sys
 import threading
-import time
 import warnings
 from dataclasses import replace
 from subprocess import Popen, TimeoutExpired
-from typing import Generator, NoReturn, Optional
+from typing import NoReturn, Optional
 
 from wyzebridge.bridge_utils import env_bool, env_cam
 from wyzebridge.hass import setup_hass
@@ -106,19 +105,6 @@ class WyzeBridge:
         log.info("👋 goodbye!")
         sys.exit(0)
 
-    def set_mfa(self, mfa_code: str) -> bool:
-        """Set MFA code from WebUI."""
-        mfa_file = f"{self.token_path}mfa_token.txt"
-        try:
-            with open(mfa_file, "w") as f:
-                f.write(mfa_code)
-            while os.path.getsize(mfa_file) != 0:
-                time.sleep(1)
-            return True
-        except Exception as ex:
-            log.error(ex)
-            return False
-
     def get_webrtc_signal(
         self, cam_name: str, hostname: Optional[str] = "localhost"
     ) -> dict:
@@ -135,19 +121,6 @@ class WyzeBridge:
             "servers": ice_server,
             "rss": True,
         }
-
-    def sse_status(self) -> Generator[str, str, str]:
-        """Generator to return the status for enabled cameras."""
-        if self.api.mfa_req:
-            yield f"event: mfa\ndata: {self.api.mfa_req}\n\n"
-            while self.api.mfa_req:
-                time.sleep(1)
-            yield "event: mfa\ndata: clear\n\n"
-        cameras = {}
-        while True:
-            if cameras != (cameras := self.streams.get_sse_status()):
-                yield f"data: {json.dumps(cameras)}\n\n"
-            time.sleep(1)
 
     def get_cam_info(
         self,
@@ -224,12 +197,12 @@ class WyzeBridge:
                     if fast:
                         self.rtsp_snap(cam_name, fast=False)
                     else:
-                        return None
+                        return
             except TimeoutExpired:
                 if ffmpeg.poll() is None:
                     ffmpeg.kill()
                     ffmpeg.communicate()
-                return None
+                return
             finally:
                 if cam_name in self.rtsp_snapshot_processes and ffmpeg.poll():
                     with contextlib.suppress(KeyError):
@@ -239,11 +212,11 @@ class WyzeBridge:
     def boa_photo(self, cam_name: str) -> Optional[str]:
         """Take photo."""
         if not (cam := self.streams.get(cam_name)):
-            return None
+            return
         cam.send_cmd("take_photo")
         # if boa_info := cam["camera_info"].get("boa_info"):
         #     return boa_info.get("last_photo")
-        return None
+        return
 
 
 def setup_logging():

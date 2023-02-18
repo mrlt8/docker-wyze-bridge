@@ -19,6 +19,7 @@ from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import NotFound
 from werkzeug.security import check_password_hash, generate_password_hash
 from wyze_bridge import WyzeBridge, setup_logging
+from wyzebridge.web_ui import mfa_generator, set_mfa, sse_generator
 
 log = logging.getLogger(__name__)
 wb: WyzeBridge = None
@@ -104,17 +105,23 @@ def create_app():
 
         return resp
 
-    @app.route("/mfa/<string:mfa_code>")
-    def set_mfa_code(mfa_code):
+    @app.route("/mfa/<string:code>")
+    def set_mfa_code(code):
         """Set mfa code."""
-        if len(mfa_code) != 6:
-            return {"error": f"Wrong length: {len(mfa_code)}"}
-        return {"success" if wb.set_mfa(mfa_code) else "error": f"Using: {mfa_code}"}
+        if len(code) != 6:
+            return {"error": f"Wrong length: {len(code)}"}
+        return {
+            "success" if set_mfa(wb.token_path, code) else "error": f"Using: {code}"
+        }
 
     @app.route("/api/sse_status")
     def sse_status():
         """Server sent event for camera status."""
-        return Response(wb.sse_status(), mimetype="text/event-stream")
+        if wb.api.mfa_req:
+            return Response(mfa_generator(wb.api.get_mfa), mimetype="text/event-stream")
+        return Response(
+            sse_generator(wb.streams.get_sse_status), mimetype="text/event-stream"
+        )
 
     @app.route("/api")
     @app.route("/api/<string:cam_name>")
