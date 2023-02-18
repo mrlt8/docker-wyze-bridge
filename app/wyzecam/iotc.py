@@ -357,34 +357,34 @@ class WyzeIOTCSession:
         """
 
         if not self.camera.rtsp_fw:
-            return None
+            return
 
         with self.iotctrl_mux() as mux:
             try:
                 resp = mux.send_ioctl(tutk_protocol.K10604GetRtspParam()).result(
                     timeout=5
                 )
-            except:
+            except Exception:
                 logger.warning("RTSP Check Failed.")
-                return None
+                return
         if not resp:
             logger.info("Could not determine if RTSP is supported.")
-            return None
+            return
         logger.debug(f"RTSP={resp}")
         if not resp[0]:
             logger.info("RTSP disabled in the app.")
             if not start_rtsp:
-                return None
+                return
             try:
                 with self.iotctrl_mux() as mux:
                     mux.send_ioctl(tutk_protocol.K10600SetRtspSwitch()).result(
                         timeout=5
                     )
-            except:
+            except Exception:
                 logger.warning("Can't start RTSP server on camera.")
-                return None
-        decoded_url = resp.decode().split("rtsp://")
-        return f"rtsp://{decoded_url[1]}" if len(decoded_url) > 1 else None
+                return
+        if len(decoded_url := resp.decode().split("rtsp://")) > 1:
+            return f"rtsp://{decoded_url[1]}"
 
     def recv_video_data(
         self,

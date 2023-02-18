@@ -1,11 +1,10 @@
-from typing import Any, DefaultDict, Dict, List, Optional, Tuple, Union
-
 import logging
 import threading
 import time
 from collections import defaultdict
 from ctypes import CDLL, c_int
 from queue import Empty, Queue
+from typing import Any, DefaultDict, Dict, List, Optional, Tuple, Union
 
 from . import tutk, tutk_protocol
 from .tutk_protocol import TutkWyzeProtocolMessage
@@ -61,7 +60,7 @@ class TutkIOCtrlFuture:
             raise tutk.TutkError(self.errcode)
         if self.expected_response_code is None:
             logger.warning("no response code!")
-            return None
+            return
         assert self.queue is not None, "Future created without error nor queue!"
 
         msg = self.queue.get(block=block, timeout=timeout)

@@ -862,11 +862,7 @@ class K11018SetPTZPosition(TutkWyzeProtocolMessage):
 
     expected_response_code = 11019
 
-    def __init__(
-        self,
-        ver_angle: int,
-        hor_angle: int,
-    ):
+    def __init__(self, ver_angle: int, hor_angle: int):
         super().__init__(11018)
         self.ver_angle = ver_angle
         self.hor_angle = hor_angle
@@ -932,18 +928,18 @@ def respond_to_ioctrl_10001(
     camera_status = data[0]
     if camera_status == 2:
         logger.warning("Camera is updating, can't auth.")
-        return None
+        return
     elif camera_status == 4:
         logger.warning("Camera is checking enr, can't auth.")
-        return None
+        return
     elif camera_status == 5:
         logger.warning("Camera is off, can't auth.")
-        return None
+        return
     elif camera_status not in {1, 3, 6}:
         logger.warning(
             f"Unexpected mode for connect challenge response (10001): {camera_status}"
         )
-        return None
+        return
 
     camera_enr_b = data[1:17]
     camera_secret_key = b"FFFFFFFFFFFFFFFF"
