@@ -1,8 +1,14 @@
+import contextlib
+import time
 from logging import getLogger
+from subprocess import Popen, TimeoutExpired
 from typing import Any, Optional, Protocol
 
+from wyzebridge.config import SNAPSHOT_INT, SNAPSHOT_TYPE
+from wyzebridge.ffmpeg import rtsp_snap_cmd
 from wyzebridge.rtsp_event import RtspEvent
 
+# from wyzebridge.mqtt import publish_message
 logger = getLogger("WyzeBridge")
 
 
@@ -50,6 +56,8 @@ class StreamManager:
     def __init__(self):
         self.stop_flag: bool = False
         self.streams: dict[str, Stream] = {}
+        self.rtsp_snapshots: dict[str, Popen] = {}
+        self.last_snap: float = 0
 
     @property
     def total(self):
@@ -96,10 +104,37 @@ class StreamManager:
         logger.info(f"🎬 Starting {self.total} stream{'s'[:self.total^1]}")
         event = RtspEvent(self)
         while not self.stop_flag:
-            for stream in self.streams.values():
-                stream.health_check()
             event.read(timeout=1)
+            cams = self.health_check_all()
+            if SNAPSHOT_TYPE == "rtsp":
+                self.snap_all(cams)
         event.close_pipe()
+
+    def health_check_all(self) -> list[str]:
+        """
+        Health check on all streams and return a list of enabled streams.
+
+        Returns:
+        - list(str): uri-friendly name of streams that are enabled.
+        """
+        return [cam for cam, s in self.streams.items() if s.health_check() > 0]
+
+    def snap_all(self, cams: list[str]):
+        """
+        Take an rtsp snapshot of the streams in the list.
+
+        Parameters:
+        - cams (list[str]): names of the streams to take a snapshot of.
+        """
+        if time.time() - self.last_snap < SNAPSHOT_INT:
+            return
+        self.last_snap = time.time()
+        for cam in cams:
+            if (snap := self.rtsp_snapshots.get(cam)) and snap.poll() is None:
+                snap.kill()
+                snap.communicate()
+
+            self.rtsp_snapshots[cam] = self.rtsp_snap_popen(cam)
 
     def get_status(self, uri: str) -> str:
         if self.stop_flag:
@@ -126,3 +161,23 @@ class StreamManager:
             return resp | {"response": "Camera not found"}
         cam_resp = stream.send_cmd(cmd)
         return cam_resp if "status" in cam_resp else resp | cam_resp
+
+    def rtsp_snap_popen(self, cam_name: str) -> Popen:
+        self.start(cam_name)
+        ffmpeg = self.rtsp_snapshots.get(cam_name)
+        if not ffmpeg or ffmpeg.poll() is not None:
+            ffmpeg = Popen(rtsp_snap_cmd(cam_name))
+        return ffmpeg
+
+    def get_rtsp_snap(self, cam_name: str) -> bool:
+        if not (stream := self.get(cam_name)) or stream.health_check() < 1:
+            return False
+        ffmpeg = self.rtsp_snap_popen(cam_name)
+        try:
+            ffmpeg.wait(timeout=20)
+            return True
+        except TimeoutExpired:
+            if ffmpeg.poll() is None:
+                ffmpeg.kill()
+                ffmpeg.communicate()
+        return False
