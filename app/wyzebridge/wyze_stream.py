@@ -62,7 +62,7 @@ class WyzeStream:
         self.options: WyzeStreamOptions = options
         self.start_time: float = 0
         self.state: c_int = mp.Value("i", StreamStatus.STOPPED, lock=False)
-        self.uri = camera.name_uri + ("-2" if options.substream else "")
+        self.uri = camera.name_uri + ("-sub" if options.substream else "")
         self.cam_resp: Optional[mp.Queue] = None
         self.cam_cmd: Optional[mp.JoinableQueue] = None
         self.process: Optional[mp.Process] = None
