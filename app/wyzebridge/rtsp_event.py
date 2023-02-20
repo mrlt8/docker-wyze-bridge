@@ -52,6 +52,8 @@ class RtspEvent:
             os.remove(self.FIFO)
 
     def log_event(self, event_data: str):
+        if not event_data:
+            return
         try:
             camera_uri, event, status = event_data.split(",")
         except ValueError:
