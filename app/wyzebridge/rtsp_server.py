@@ -49,11 +49,9 @@ class RtspServer:
     def __init__(
         self,
         bridge_ip: Optional[str] = None,
-        on_demand: bool = False,
         rtsp_interface: RtspInterface = RtspEnv(),
     ) -> None:
         self.rtsp: RtspInterface = rtsp_interface
-        self.on_demand: bool = on_demand
         self.sub_process: Optional[Popen] = None
         if bridge_ip:
             self.setup_webrtc(bridge_ip)
@@ -64,7 +62,7 @@ class RtspServer:
             start_cmd = f"echo $RTSP_PATH,{event},1 > /tmp/rtsp_event;"
             bash_cmd = f'trap "{stop_cmd}" INT;{start_cmd} tail -f /dev/null & wait'
             self.rtsp.set(uri, f"RunOn{event}", f"bash -c '{bash_cmd}'")
-        if on_demand or self.on_demand:
+        if on_demand:
             cmd = "bash -c 'echo $RTSP_PATH,start,1 > /tmp/rtsp_event'"
             self.rtsp.set(uri, "runOnDemand", cmd)
             self.rtsp.set(uri, "runOnDemandStartTimeout", "30s")
@@ -109,7 +107,7 @@ class RtspServer:
         if self.sub_process:
             self.restart()
 
-    def setup_llhls(self, token_path: str = "/tokens/", hass: bool = True):
+    def setup_llhls(self, token_path: str = "/tokens/", hass: bool = False):
         logger.info("Configuring LL-HLS")
         self.rtsp.set_opt("hlsEncryption", "yes")
         if self.rtsp.get_opt("hlsServerKey"):
