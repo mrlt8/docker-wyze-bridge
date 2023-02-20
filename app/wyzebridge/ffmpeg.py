@@ -1,6 +1,7 @@
 import os
 from logging import getLogger
 
+from wyzebridge import config
 from wyzebridge.bridge_utils import env_bool, env_cam
 
 logger = getLogger("WyzeBridge")
@@ -171,3 +172,16 @@ def get_livestream_cmd(uri: str) -> str:
         logger.info(f"📺 Custom ({key}) livestream enabled")
         cmd += f"{flv}{key}"
     return cmd
+
+
+def rtsp_snap_cmd(cam_name: str):
+    if auth := os.getenv(f"RTSP_PATHS_{cam_name.upper()}_READUSER", ""):
+        auth += f':{os.getenv(f"RTSP_PATHS_{cam_name.upper()}_READPASS","")}@'
+    img = f"{config.IMG_PATH}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
+    return (
+        ["ffmpeg", "-loglevel", "error", "-threads", "1"]
+        + ["-analyzeduration", "10000000", "-probesize", "10000000"]
+        + ["-f", "rtsp", "-rtsp_transport", "tcp", "-thread_queue_size", "500"]
+        + ["-i", f"rtsp://{auth}0.0.0.0:8554/{cam_name}", "-an"]
+        + ["-f", "image2", "-frames:v", "1", "-y", img]
+    )

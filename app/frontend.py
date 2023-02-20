@@ -19,7 +19,8 @@ from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import NotFound
 from werkzeug.security import check_password_hash, generate_password_hash
 from wyze_bridge import WyzeBridge, setup_logging
-from wyzebridge.web_ui import mfa_generator, set_mfa, sse_generator
+from wyzebridge import config
+from wyzebridge.web_ui import get_webrtc_signal, mfa_generator, set_mfa, sse_generator
 
 log = logging.getLogger(__name__)
 wb: WyzeBridge = None
@@ -83,9 +84,9 @@ def create_app():
                 cam_data=wb.get_cameras(urlparse(request.root_url).hostname),
                 number_of_columns=number_of_columns,
                 refresh_period=refresh_period,
-                hass=wb.hass,
-                version=wb.version,
-                webrtc=bool(wb.bridge_ip) and video_format.lower() == "webrtc",
+                hass=bool(config.HASS_TOKEN),
+                version=config.VERSION,
+                webrtc=bool(config.BRIDGE_IP) and video_format.lower() == "webrtc",
                 show_video=show_video,
                 video_format=video_format.lower(),
                 autoplay=autoplay,
@@ -110,9 +111,7 @@ def create_app():
         """Set mfa code."""
         if len(code) != 6:
             return {"error": f"Wrong length: {len(code)}"}
-        return {
-            "success" if set_mfa(wb.token_path, code) else "error": f"Using: {code}"
-        }
+        return {"success" if set_mfa(code) else "error": f"Using: {code}"}
 
     @app.route("/api/sse_status")
     def sse_status():
@@ -148,7 +147,7 @@ def create_app():
     def webrtc_signaling(name):
         if "kvs" in request.args:
             return wb.api.get_kvs_signal(name)
-        return wb.get_webrtc_signal(name, urlparse(request.root_url).hostname)
+        return get_webrtc_signal(name, urlparse(request.root_url).hostname)
 
     @app.route("/webrtc/<string:name>")
     def webrtc(name):
@@ -160,8 +159,8 @@ def create_app():
     @app.route("/snapshot/<string:img_file>")
     def rtsp_snapshot(img_file: str):
         """Use ffmpeg to take a snapshot from the rtsp stream."""
-        if wb.rtsp_snap(Path(img_file).stem, wait=True):
-            return send_from_directory(wb.img_path, img_file)
+        if wb.streams.get_rtsp_snap(Path(img_file).stem):
+            return send_from_directory(config.IMG_PATH, img_file)
         return redirect("/static/notavailable.svg", code=307)
 
     @app.route("/photo/<string:img_file>")
@@ -169,7 +168,7 @@ def create_app():
         """Take a photo on the camera and grab it over the boa http server."""
         uri = Path(img_file).stem
         if photo := wb.boa_photo(uri):
-            return send_from_directory(wb.img_path, f"{uri}_{photo[0]}")
+            return send_from_directory(config.IMG_PATH, f"{uri}_{photo[0]}")
         return redirect(f"/img/{img_file}", code=307)
 
     @app.route("/img/<string:img_file>")
@@ -181,26 +180,26 @@ def create_app():
         """
         try:
             if exp := request.args.get("exp"):
-                created_at = os.path.getmtime(wb.img_path + img_file)
+                created_at = os.path.getmtime(config.IMG_PATH + img_file)
                 if time.time() - created_at > int(exp):
                     raise NotFound
-            return send_from_directory(wb.img_path, img_file)
+            return send_from_directory(config.IMG_PATH, img_file)
         except (NotFound, FileNotFoundError, ValueError):
             return rtsp_snapshot(img_file)
 
     @app.route("/thumb/<string:img_file>")
     def thumbnail(img_file: str):
-        wb.api.save_thumbnail(Path(img_file).stem, wb.img_path)
-        return send_from_directory(wb.img_path, img_file)
+        wb.api.save_thumbnail(Path(img_file).stem)
+        return send_from_directory(config.IMG_PATH, img_file)
 
     @app.route("/restart/<string:restart_cmd>")
     def restart_bridge(restart_cmd: str):
         """
         Restart parts of the wyze-bridge.
 
-        /restart/cameras:       Stop and start all enabled cameras.
-        /restart/rtsp_server:   Stop and start rtsp-simple-server.
-        /restart/all:           Stop and start all enabled cameras and rtsp-simple-server.
+        /restart/cameras:       Restart camera connections.
+        /restart/rtsp_server:   Restart rtsp-simple-server.
+        /restart/all:           Restart camera connections and rtsp-simple-server.
         """
         if restart_cmd == "cameras":
             wb.streams.stop_all()

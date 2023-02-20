@@ -1,5 +1,3 @@
-import contextlib
-import json
 import logging
 import multiprocessing
 import os
@@ -8,9 +6,9 @@ import sys
 import threading
 import warnings
 from dataclasses import replace
-from subprocess import Popen, TimeoutExpired
 from typing import NoReturn, Optional
 
+from wyzebridge import config
 from wyzebridge.bridge_utils import env_bool, env_cam
 from wyzebridge.hass import setup_hass
 from wyzebridge.rtsp_server import RtspServer
@@ -23,34 +21,19 @@ log = logging.getLogger("WyzeBridge")
 
 class WyzeBridge:
     def __init__(self) -> None:
-        with open("config.json") as f:
-            config = json.load(f)
-        self.version = config.get("version", "DEV")
-        log.info(f"🚀 STARTING DOCKER-WYZE-BRIDGE v{self.version}\n")
-        self.hass: bool = setup_hass()
-        self.timeout: int = env_bool("RTSP_READTIMEOUT", 15, style="int")
-        self.connect_timeout: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
-        self.token_path: str = "/config/wyze-bridge/" if self.hass else "/tokens/"
-        self.img_path: str = f'/{env_bool("IMG_DIR", "img").strip("/")}/'
-        self.api: WyzeApi = WyzeApi(self.token_path)
+        log.info(f"🚀 STARTING DOCKER-WYZE-BRIDGE v{config.VERSION}\n")
+        setup_hass()
+        self.api: WyzeApi = WyzeApi()
         self.streams: StreamManager = StreamManager()
         self.fw_rtsp: set[str] = set()
         self.thread: Optional[threading.Thread] = None
-        self.bridge_ip = env_bool("WB_IP")
-        self.hls_url = env_bool("WB_HLS_URL").strip("/")
-        self.rtmp_url = env_bool("WB_RTMP_URL").strip("/")
-        self.rtsp_url = env_bool("WB_RTSP_URL").strip("/")
-        self.webrtc_url = env_bool("WB_WEBRTC_URL").strip("/")
+        self.rtsp: RtspServer = RtspServer(config.BRIDGE_IP)
 
-        on_demand = env_bool("ON_DEMAND", style="bool")
-        self.rtsp: RtspServer = RtspServer(self.bridge_ip, on_demand)
+        os.makedirs(config.TOKEN_PATH, exist_ok=True)
+        os.makedirs(config.IMG_PATH, exist_ok=True)
 
-        self.rtsp_snapshot_processes: dict[str:Popen] = {}
-        os.makedirs(self.token_path, exist_ok=True)
-        os.makedirs(self.img_path, exist_ok=True)
-        open(f"{self.token_path}mfa_token.txt", "w").close()
-        if env_bool("LLHLS"):
-            self.rtsp.setup_llhls(self.token_path, hass=self.hass)
+        if config.LLHLS:
+            self.rtsp.setup_llhls(config.TOKEN_PATH, bool(config.HASS_TOKEN))
 
     def run(self, fresh_data: bool = False) -> None:
         """Start synchronously"""
@@ -65,7 +48,8 @@ class WyzeBridge:
         WyzeStream.user = self.api.get_user()
         WyzeStream.api = self.api
         for cam in self.api.filtered_cams():
-            # self.api.save_thumbnail(cam.name_uri, self.img_path)
+            if config.SNAPSHOT_TYPE == "API":
+                self.api.save_thumbnail(cam.name_uri)
             options = WyzeStreamOptions(
                 quality=env_cam("quality", cam.name_uri),
                 audio=bool(env_cam("enable_audio", cam.name_uri)),
@@ -105,23 +89,6 @@ class WyzeBridge:
         log.info("👋 goodbye!")
         sys.exit(0)
 
-    def get_webrtc_signal(
-        self, cam_name: str, hostname: Optional[str] = "localhost"
-    ) -> dict:
-        """Generate signaling for rtsp-simple-server webrtc."""
-        wss = "s" if env_bool("RTSP_WEBRTCENCRYPTION") else ""
-        socket = self.webrtc_url.lstrip("http") or f"{wss}://{hostname}:8889"
-        ice_server = env_bool("RTSP_WEBRTCICESERVERS") or [
-            {"credentialType": "password", "urls": ["stun:stun.l.google.com:19302"]}
-        ]
-        return {
-            "result": "ok",
-            "cam": cam_name,
-            "signalingUrl": f"ws{socket}/{cam_name}/ws",
-            "servers": ice_server,
-            "rss": True,
-        }
-
     def get_cam_info(
         self,
         name_uri: str,
@@ -133,24 +100,24 @@ class WyzeBridge:
         hostname = env_bool("DOMAIN", hostname)
         img = f"{name_uri}.{env_bool('IMG_TYPE','jpg')}"
         try:
-            img_time = int(os.path.getmtime(self.img_path + img) * 1000)
+            img_time = int(os.path.getmtime(config.IMG_PATH + img) * 1000)
         except FileNotFoundError:
             img_time = None
 
-        webrtc_url = (self.webrtc_url or f"http://{hostname}:8889") + f"/{name_uri}"
+        webrtc_url = (config.WEBRTC_URL or f"http://{hostname}:8889") + f"/{name_uri}"
 
         data = {
-            "hls_url": (self.hls_url or f"http://{hostname}:8888") + f"/{name_uri}/",
-            "webrtc_url": webrtc_url if self.bridge_ip else None,
-            "rtmp_url": (self.rtmp_url or f"rtmp://{hostname}:1935") + f"/{name_uri}",
-            "rtsp_url": (self.rtsp_url or f"rtsp://{hostname}:8554") + f"/{name_uri}",
+            "hls_url": (config.HLS_URL or f"http://{hostname}:8888") + f"/{name_uri}/",
+            "webrtc_url": webrtc_url if config.BRIDGE_IP else None,
+            "rtmp_url": (config.RTMP_URL or f"rtmp://{hostname}:1935") + f"/{name_uri}",
+            "rtsp_url": (config.RTSP_URL or f"rtsp://{hostname}:8554") + f"/{name_uri}",
             "stream_auth": bool(os.getenv(f"RTSP_PATHS_{name_uri.upper()}_READUSER")),
             "fw_rtsp": name_uri in self.fw_rtsp,
             "img_url": f"img/{img}" if img_time else None,
             "img_time": img_time,
             "snapshot_url": f"snapshot/{img}",
         }
-        if env_bool("LLHLS"):
+        if config.LLHLS:
             data["hls_url"] = data["hls_url"].replace("http:", "https:")
         return data | cam
 
@@ -163,51 +130,6 @@ class WyzeBridge:
             "enabled": self.streams.total,
             "cameras": camera_data,
         }
-
-    def rtsp_snap(
-        self, cam_name: str, wait: bool = True, fast: bool = True
-    ) -> Optional[str]:
-        """
-        Take an rtsp snapshot with ffmpeg.
-        @param cam_name: uri name of camera
-        @param wait: wait for rtsp snapshot to complete
-        @return: img path
-        """
-        if self.streams.get_status(cam_name) in {"unavailable", "offline", "stopping"}:
-            return
-
-        if auth := os.getenv(f"RTSP_PATHS_{cam_name.upper()}_READUSER", ""):
-            auth += f':{os.getenv(f"RTSP_PATHS_{cam_name.upper()}_READPASS","")}@'
-
-        img = f"{self.img_path}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
-        ffmpeg_cmd = (
-            ["ffmpeg", "-loglevel", "fatal", "-threads", "1"]
-            + ["-analyzeduration", "50", "-probesize", "500" if fast else "1000"]
-            + ["-f", "rtsp", "-rtsp_transport", "tcp", "-thread_queue_size", "100"]
-            + ["-i", f"rtsp://{auth}0.0.0.0:8554/{cam_name}", "-an"]
-            + ["-f", "image2", "-frames:v", "1", "-y", img]
-        )
-        ffmpeg = self.rtsp_snapshot_processes.get(cam_name, None)
-
-        if not ffmpeg or ffmpeg.poll() is not None:
-            ffmpeg = self.rtsp_snapshot_processes[cam_name] = Popen(ffmpeg_cmd)
-        if wait:
-            try:
-                if ffmpeg.wait(timeout=30) != 0:
-                    if fast:
-                        self.rtsp_snap(cam_name, fast=False)
-                    else:
-                        return
-            except TimeoutExpired:
-                if ffmpeg.poll() is None:
-                    ffmpeg.kill()
-                    ffmpeg.communicate()
-                return
-            finally:
-                if cam_name in self.rtsp_snapshot_processes and ffmpeg.poll():
-                    with contextlib.suppress(KeyError):
-                        del self.rtsp_snapshot_processes[cam_name]
-        return img
 
     def boa_photo(self, cam_name: str) -> Optional[str]:
         """Take photo."""

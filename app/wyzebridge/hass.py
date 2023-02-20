@@ -1,18 +1,17 @@
 import json
 from logging import getLogger
-from os import environ, getenv
+from os import environ
 
 import requests
 import wyzecam
+from wyzebridge.config import HASS_TOKEN
 
 logger = getLogger("WyzeBridge")
-
-SUPERVISOR_TOKEN = getenv("SUPERVISOR_TOKEN")
 
 
 def setup_hass() -> bool:
     """Home Assistant related config."""
-    if not SUPERVISOR_TOKEN:
+    if not HASS_TOKEN:
         return False
 
     logger.info("🏠 Home Assistant Mode")
@@ -20,7 +19,7 @@ def setup_hass() -> bool:
     with open("/data/options.json") as f:
         conf = json.load(f)
 
-    auth = {"Authorization": f"Bearer {SUPERVISOR_TOKEN}"}
+    auth = {"Authorization": f"Bearer {HASS_TOKEN}"}
     try:
         assert "WB_IP" not in conf, f"Using WB_IP={conf['WB_IP']} from config"
         net_info = requests.get("http://supervisor/network/info", headers=auth).json()

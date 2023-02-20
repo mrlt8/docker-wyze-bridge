@@ -15,6 +15,7 @@ import wyzecam
 from requests import get
 from requests.exceptions import ConnectionError, HTTPError
 from wyzebridge.bridge_utils import env_bool, env_filter
+from wyzebridge.config import IMG_PATH, TOKEN_PATH
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
 logger = getLogger("WyzeBridge")
@@ -29,7 +30,7 @@ def cached(func: Callable[..., Any]) -> Callable[..., Any]:
             if getattr(self, name, None):
                 return func(self, *args, **kwargs)
             try:
-                with open(self.token_path + name + ".pickle", "rb") as pkl_f:
+                with open(TOKEN_PATH + name + ".pickle", "rb") as pkl_f:
                     if not (data := pickle.load(pkl_f)):
                         raise OSError
                 if name == "user" and data.email.lower() != self.email.strip().lower():
@@ -45,7 +46,7 @@ def cached(func: Callable[..., Any]) -> Callable[..., Any]:
         logger.info(f"☁️ Fetching '{name}' from the Wyze API...")
         result = func(self, *args, **kwargs)
         if result and (data := getattr(self, name, None)):
-            with open(self.token_path + name + ".pickle", "wb") as f:
+            with open(TOKEN_PATH + name + ".pickle", "wb") as f:
                 logger.info(f"💾 Saving '{name}' to local cache...")
                 pickle.dump(data, f)
         return result
@@ -74,8 +75,7 @@ def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
 
 
 class WyzeApi:
-    def __init__(self, token_path: str = "") -> None:
-        self.token_path = token_path
+    def __init__(self) -> None:
         self.auth: Optional[WyzeCredential] = None
         self.user: Optional[WyzeAccount] = None
         self.cameras: Optional[list[WyzeCamera]] = None
@@ -144,10 +144,10 @@ class WyzeApi:
         if cam := self.get_camera(uri):
             return cam.thumbnail
 
-    def save_thumbnail(self, uri: str, path: str = "") -> bool:
+    def save_thumbnail(self, uri: str) -> bool:
         if not (thumb := self.get_thumbnail(uri)):
             return False
-        save_to = path + uri + ".jpg"
+        save_to = IMG_PATH + uri + ".jpg"
         logger.info(f'☁️ Pulling "{uri}" thumbnail to {save_to}')
         if not (img := get(thumb)).ok:
             return False
@@ -172,11 +172,12 @@ class WyzeApi:
     def _mfa_auth(self):
         if not self.auth:
             return
+        open(f"{TOKEN_PATH}mfa_token.txt", "w").close()
         while not self.auth.access_token:
-            resp = mfa_response(self.auth, self.token_path)
+            resp = mfa_response(self.auth, TOKEN_PATH)
             if not resp.get("code"):
                 self.mfa_req = resp["type"]
-                code = get_mfa_code(f"{self.token_path}mfa_token.txt")
+                code = get_mfa_code(f"{TOKEN_PATH}mfa_token.txt")
                 resp.update({"code": code})
             logger.info(f'🔑 Using {resp["code"]} for authentication')
             try:
@@ -206,9 +207,9 @@ class WyzeApi:
         self.auth = None
         self.user = None
         self.cameras = None
-        for name in listdir(self.token_path):
+        for name in listdir(TOKEN_PATH):
             if name.endswith("pickle"):
-                remove(self.token_path + name)
+                remove(TOKEN_PATH + name)
 
     def get_mfa(self):
         return self.mfa_req

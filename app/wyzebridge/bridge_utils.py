@@ -43,3 +43,9 @@ def env_filter(cam: WyzeCamera) -> bool:
         or cam.product_model in env_list("FILTER_MODELS")
         or cam.model_name.upper() in env_list("FILTER_MODELS")
     )
+
+
+def split_int_str(env_value: str, min_int: int = 0) -> tuple[str, int]:
+    string_value = "".join(filter(str.isalpha, env_value))
+    int_value = int("".join(filter(str.isnumeric, env_value)) or 0)
+    return string_value, max(int_value, min_int)
