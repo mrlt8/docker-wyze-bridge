@@ -187,7 +187,7 @@ class WyzeStream:
             "substream": self.options.substream,
             "model_name": self.camera.model_name,
             "is_2k": self.camera.is_2k,
-            "rtsp_wf": self.camera.rtsp_fw,
+            "rtsp_fw": self.camera.rtsp_fw,
             "is_battery": self.camera.is_battery,
             "webrtc": self.camera.webrtc_support,
             "start_time": self.start_time,
