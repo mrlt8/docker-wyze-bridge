@@ -270,11 +270,12 @@
                 <div class="dropdown-menu" id="video-menu" role="menu">
                     <div class="dropdown-content">
                         <a data-action="webrtc" class="dropdown-item" id="webrtc-toggle">
-                            <span class="icon is-small"><i class="fas"></i></span>
+                            <span class="icon is-small"><i class="fas{{" fa-play" if video_format=='webrtc'
+                                    }}"></i></span>
                             WebRTC
                         </a>
                         <a data-action="hls" class="dropdown-item" id="hls-toggle">
-                            <span class="icon is-small"><i class="fas"></i></span>
+                            <span class="icon is-small"><i class="fas{{" fa-play" if video_format=='hls' }}"></i></span>
                             HLS
                         </a>
                         <hr class="dropdown-divider">
