@@ -106,7 +106,7 @@ class StreamManager:
         while not self.stop_flag:
             event.read(timeout=1)
             cams = self.health_check_all()
-            if SNAPSHOT_TYPE == "rtsp":
+            if cams and SNAPSHOT_TYPE == "rtsp":
                 self.snap_all(cams)
         event.close_pipe()
 
