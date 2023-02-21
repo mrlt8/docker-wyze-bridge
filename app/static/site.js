@@ -601,16 +601,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     let autoPlay = getCookie("autoplay");
     videos.forEach(video => {
-      if (video.classList.contains("vjs-tech")) { video = videojs(video); } else {
-        video.classList.remove("lost");
+      video.classList.remove("lost");
+      if (!autoPlay) { return }
+      if (video.classList.contains("webrtc")) {
+        loadWebRTC(video);
+      } else if (video.classList.contains("vjs-tech")) {
+        video = videojs(video);
       }
-      if (autoPlay) {
-        if (video.classList.contains("webrtc")) {
-          loadWebRTC(video);
-        } else {
-          video.play();
-        }
-      }
+      video.play();
     });
   }
   // Change default video format for WebUI
