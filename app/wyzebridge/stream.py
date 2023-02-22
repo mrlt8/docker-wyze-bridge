@@ -174,8 +174,8 @@ class StreamManager:
             return False
         ffmpeg = self.rtsp_snap_popen(cam_name)
         try:
-            ffmpeg.wait(timeout=20)
-            return True
+            if ffmpeg.wait(timeout=10) == 0:
+                return True
         except TimeoutExpired:
             if ffmpeg.poll() is None:
                 ffmpeg.kill()
