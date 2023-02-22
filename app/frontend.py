@@ -161,15 +161,7 @@ def create_app():
         """Use ffmpeg to take a snapshot from the rtsp stream."""
         if wb.streams.get_rtsp_snap(Path(img_file).stem):
             return send_from_directory(config.IMG_PATH, img_file)
-        return redirect("/static/notavailable.svg", code=307)
-
-    @app.route("/photo/<string:img_file>")
-    def boa_photo(img_file: str):
-        """Take a photo on the camera and grab it over the boa http server."""
-        uri = Path(img_file).stem
-        if photo := wb.boa_photo(uri):
-            return send_from_directory(config.IMG_PATH, f"{uri}_{photo[0]}")
-        return redirect(f"/img/{img_file}", code=307)
+        return thumbnail(img_file)
 
     @app.route("/img/<string:img_file>")
     def img(img_file: str):
@@ -189,8 +181,17 @@ def create_app():
 
     @app.route("/thumb/<string:img_file>")
     def thumbnail(img_file: str):
-        wb.api.save_thumbnail(Path(img_file).stem)
-        return send_from_directory(config.IMG_PATH, img_file)
+        if wb.api.save_thumbnail(Path(img_file).stem):
+            return send_from_directory(config.IMG_PATH, img_file)
+        return redirect("/static/notavailable.svg", code=307)
+
+    @app.route("/photo/<string:img_file>")
+    def boa_photo(img_file: str):
+        """Take a photo on the camera and grab it over the boa http server."""
+        uri = Path(img_file).stem
+        if photo := wb.boa_photo(uri):
+            return send_from_directory(config.IMG_PATH, f"{uri}_{photo[0]}")
+        return redirect(f"/img/{img_file}", code=307)
 
     @app.route("/restart/<string:restart_cmd>")
     def restart_bridge(restart_cmd: str):

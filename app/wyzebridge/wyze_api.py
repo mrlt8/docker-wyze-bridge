@@ -46,9 +46,7 @@ def cached(func: Callable[..., Any]) -> Callable[..., Any]:
         logger.info(f"☁️ Fetching '{name}' from the Wyze API...")
         result = func(self, *args, **kwargs)
         if result and (data := getattr(self, name, None)):
-            with open(TOKEN_PATH + name + ".pickle", "wb") as f:
-                logger.info(f"💾 Saving '{name}' to local cache...")
-                pickle.dump(data, f)
+            pickle_dump(name, data)
         return result
 
     return wrapper
@@ -198,6 +196,7 @@ class WyzeApi:
         logger.info("♻️ Refreshing tokens")
         try:
             self.auth = wyzecam.refresh_token(self.auth)
+            pickle_dump("auth", self.auth)
         except AssertionError:
             logger.warning("⏰ Expired refresh token?")
             self.login(fresh_data=True)
@@ -272,3 +271,9 @@ def filter_cams(cams: list[WyzeCamera]) -> list[WyzeCamera]:
             logger.info(f"🪄 WHITELIST MODE ON [{len(filtered)}/{len(cams)}]")
             return filtered
     return cams
+
+
+def pickle_dump(name: str, data: object):
+    with open(TOKEN_PATH + name + ".pickle", "wb") as f:
+        logger.info(f"💾 Saving '{name}' to local cache...")
+        pickle.dump(data, f)
