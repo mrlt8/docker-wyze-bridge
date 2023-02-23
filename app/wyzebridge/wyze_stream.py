@@ -66,6 +66,7 @@ class WyzeStream:
         self.cam_resp: Optional[mp.Queue] = None
         self.cam_cmd: Optional[mp.JoinableQueue] = None
         self.process: Optional[mp.Process] = None
+        self.rtsp_fw_enabled: bool = False
         self.setup()
 
     def setup(self):
@@ -93,7 +94,7 @@ class WyzeStream:
         return self.state.value != StreamStatus.DISABLED
 
     def start(self) -> bool:
-        if self.health_check(False) != StreamStatus.STOPPED or self.start_time > time():
+        if self.health_check(False) != StreamStatus.STOPPED:
             return False
         logger.info(
             f"🎉 Connecting to WyzeCam {self.camera.model_name} - {self.camera.nickname} on {self.camera.ip}"
@@ -160,7 +161,7 @@ class WyzeStream:
         ):
             logger.warning(f"⏰ Timed out connecting to {self.camera.nickname}.")
             self.stop()
-        return self.state.value
+        return self.state.value if self.start_time < time() else 0
 
     def refresh_camera(self):
         self.stop()
@@ -188,6 +189,7 @@ class WyzeStream:
             "model_name": self.camera.model_name,
             "is_2k": self.camera.is_2k,
             "rtsp_fw": self.camera.rtsp_fw,
+            "rtsp_fw_enabled": self.rtsp_fw_enabled,
             "is_battery": self.camera.is_battery,
             "webrtc": self.camera.webrtc_support,
             "start_time": self.start_time,

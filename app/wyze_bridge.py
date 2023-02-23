@@ -61,7 +61,6 @@ class WyzeBridge:
                 sub = WyzeStream(cam, sub_opt)
                 self.rtsp.add_path(sub.uri, on_demand=True)
                 self.streams.add(sub)
-                options.quality = "sd30"
 
             stream = WyzeStream(cam, options)
             if rtsp_fw := env_bool("rtsp_fw").lower():
@@ -69,6 +68,7 @@ class WyzeBridge:
                     rtsp_uri = f"{cam.name_uri}fw"
                     log.info(f"Addingg /{rtsp_uri} as a source")
                     self.rtsp.add_source(rtsp_uri, rtsp_path)
+                    stream.rtsp_fw_enabled = True
             self.rtsp.add_path(stream.uri, not bool(options.record))
             self.streams.add(stream)
 
