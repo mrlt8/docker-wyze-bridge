@@ -145,10 +145,12 @@ def generate_certificates(cert_path):
         ).wait()
     if not Path(f"{cert_path}.crt").is_file():
         logger.info("🔏 Generating certificate for LL-HLS")
+        dns = getenv("SUBJECT_ALT_NAME")
         Popen(
             ["openssl", "req", "-new", "-x509", "-sha256"]
             + ["-key", f"{cert_path}.key"]
             + ["-subj", "/C=US/ST=WA/L=Kirkland/O=WYZE BRIDGE/CN=wyze-bridge"]
+            + (["-addext", f"subjectAltName = DNS:{dns}"] if dns else [])
             + ["-out", f"{cert_path}.crt"]
             + ["-days", "3650"],
             stdout=DEVNULL,
