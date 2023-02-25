@@ -89,48 +89,6 @@ class WyzeBridge:
         log.info("👋 goodbye!")
         sys.exit(0)
 
-    def get_cam_info(
-        self,
-        name_uri: str,
-        hostname: Optional[str] = "localhost",
-    ) -> dict:
-        """Camera info for webui."""
-        if not (cam := self.streams.get_info(name_uri)):
-            return {"error": "Could not find camera"}
-        hostname = env_bool("DOMAIN", hostname)
-        img = f"{name_uri}.{env_bool('IMG_TYPE','jpg')}"
-        try:
-            img_time = int(os.path.getmtime(config.IMG_PATH + img) * 1000)
-        except FileNotFoundError:
-            img_time = None
-
-        webrtc_url = (config.WEBRTC_URL or f"http://{hostname}:8889") + f"/{name_uri}"
-
-        data = {
-            "hls_url": (config.HLS_URL or f"http://{hostname}:8888") + f"/{name_uri}/",
-            "webrtc_url": webrtc_url if config.BRIDGE_IP else None,
-            "rtmp_url": (config.RTMP_URL or f"rtmp://{hostname}:1935") + f"/{name_uri}",
-            "rtsp_url": (config.RTSP_URL or f"rtsp://{hostname}:8554") + f"/{name_uri}",
-            "stream_auth": bool(os.getenv(f"RTSP_PATHS_{name_uri.upper()}_READUSER")),
-            "fw_rtsp": name_uri in self.fw_rtsp,
-            "img_url": f"img/{img}" if img_time else None,
-            "img_time": img_time,
-            "snapshot_url": f"snapshot/{img}",
-        }
-        if config.LLHLS:
-            data["hls_url"] = data["hls_url"].replace("http:", "https:")
-        return data | cam
-
-    def get_cameras(self, hostname: Optional[str] = "localhost") -> dict:
-        camera_data = {
-            uri: self.get_cam_info(uri, hostname) for uri in self.streams.get_uris()
-        }
-        return {
-            "total": 0 if self.api.mfa_req else len(self.api.get_cameras()),
-            "enabled": self.streams.total,
-            "cameras": camera_data,
-        }
-
     def boa_photo(self, cam_name: str) -> Optional[str]:
         """Take photo."""
         if not (cam := self.streams.get(cam_name)):

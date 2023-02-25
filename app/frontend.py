@@ -19,8 +19,7 @@ from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import NotFound
 from werkzeug.security import check_password_hash, generate_password_hash
 from wyze_bridge import WyzeBridge, setup_logging
-from wyzebridge import config
-from wyzebridge.web_ui import get_webrtc_signal, mfa_generator, set_mfa, sse_generator
+from wyzebridge import config, web_ui
 
 log = logging.getLogger(__name__)
 wb: WyzeBridge = None
@@ -77,11 +76,11 @@ def create_app():
         video_format = request.cookies.get("video", "webrtc")
         if req_video := ({"webrtc", "hls", "kvs"} & set(request.args)):
             video_format = req_video.pop()
-
+        host = urlparse(request.root_url).hostname
         resp = make_response(
             render_template(
                 "index.html",
-                cam_data=wb.get_cameras(urlparse(request.root_url).hostname),
+                cam_data=web_ui.all_cams(wb.streams, wb.api.total_cams, host),
                 number_of_columns=number_of_columns,
                 refresh_period=refresh_period,
                 hass=bool(config.HASS_TOKEN),
@@ -111,15 +110,19 @@ def create_app():
         """Set mfa code."""
         if len(code) != 6:
             return {"error": f"Wrong length: {len(code)}"}
-        return {"success" if set_mfa(code) else "error": f"Using: {code}"}
+        return {"success" if web_ui.set_mfa(code) else "error": f"Using: {code}"}
 
     @app.route("/api/sse_status")
     def sse_status():
         """Server sent event for camera status."""
         if wb.api.mfa_req:
-            return Response(mfa_generator(wb.api.get_mfa), mimetype="text/event-stream")
+            return Response(
+                web_ui.mfa_generator(wb.api.get_mfa),
+                mimetype="text/event-stream",
+            )
         return Response(
-            sse_generator(wb.streams.get_sse_status), mimetype="text/event-stream"
+            web_ui.sse_generator(wb.streams.get_sse_status),
+            mimetype="text/event-stream",
         )
 
     @app.route("/api")
@@ -141,13 +144,17 @@ def create_app():
             return wb.streams.send_cmd(cam_name, cam_cmd)
 
         host = urlparse(request.root_url).hostname
-        return wb.get_cam_info(cam_name, host) if cam_name else wb.get_cameras(host)
+        if not cam_name:
+            return web_ui.all_cams(wb.streams, wb.api.total_cams, host)
+        if cam := wb.streams.get_info(cam_name):
+            return cam | web_ui.format_stream(cam_name, host)
+        return {"error": f"Could not find camera [{cam_name}]"}
 
     @app.route("/signaling/<string:name>")
     def webrtc_signaling(name):
         if "kvs" in request.args:
             return wb.api.get_kvs_signal(name)
-        return get_webrtc_signal(name, urlparse(request.root_url).hostname)
+        return web_ui.get_webrtc_signal(name, urlparse(request.root_url).hostname)
 
     @app.route("/webrtc/<string:name>")
     def webrtc(name):
@@ -221,8 +228,8 @@ def create_app():
         """
         Generate an m3u8 playlist with all enabled cameras.
         """
-        hostname = urlparse(request.root_url).hostname
-        cameras = wb.get_cameras(hostname)["cameras"]
+        host = urlparse(request.root_url).hostname
+        cameras = web_ui.format_streams(wb.streams.get_all_cam_info(), host)
         resp = make_response(render_template("m3u8.html", cameras=cameras))
         resp.headers.set("content-type", "application/x-mpegURL")
         return resp

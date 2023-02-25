@@ -84,6 +84,10 @@ class WyzeApi:
         if env_bool("FRESH_DATA"):
             self.clear_cache()
 
+    @property
+    def total_cams(self) -> int:
+        return 0 if self.mfa_req else len(self.get_cameras())
+
     @cached
     def login(
         self, email: str = "", password: str = "", fresh_data: bool = False

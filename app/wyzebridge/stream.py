@@ -75,11 +75,11 @@ class StreamManager:
     def get(self, uri: str) -> Optional[Stream]:
         return self.streams.get(uri)
 
-    def get_uris(self) -> list[str]:
-        return list(self.streams.keys())
-
     def get_info(self, uri: str) -> dict:
         return stream.get_info() if (stream := self.get(uri)) else {}
+
+    def get_all_cam_info(self) -> dict:
+        return {uri: s.get_info() for uri, s in self.streams.items()}
 
     def start(self, uri: str) -> bool:
         return stream.start() if (stream := self.get(uri)) else False
