@@ -177,7 +177,7 @@ def rtsp_snap_cmd(cam_name: str):
         auth += f':{os.getenv(f"RTSP_PATHS_{cam_name.upper()}_READPASS","")}@'
     img = f"{config.IMG_PATH}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
     return (
-        ["ffmpeg", "-loglevel", "error", "-threads", "1"]
+        ["ffmpeg", "-loglevel", "fatal", "-threads", "1"]
         + ["-analyzeduration", "10000000", "-probesize", "10000000"]
         + ["-f", "rtsp", "-rtsp_transport", "tcp", "-thread_queue_size", "500"]
         + ["-i", f"rtsp://{auth}0.0.0.0:8554/{cam_name}", "-an"]
