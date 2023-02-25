@@ -82,7 +82,7 @@ def pull_last_image(cam: dict, path: str, as_snap: bool = False):
                 _, modded = get_header_dates(resp.headers)
                 # with open(f"{img_dir}{path}_{file_name}", "wb") as img:
                 save_name = "_" + ("alarm.jpg" if path == "alarm" else file_name)
-                if as_snap and env_bool("take_photo"):
+                if as_snap:
                     save_name = ".jpg"
                 with open(f"{cam['img_dir']}{cam['uri']}{save_name}", "wb") as img:
                     img.write(resp.content)
@@ -202,6 +202,8 @@ def camera_control(
                 resp = {cmd: cam_info}
             else:
                 resp = send_tutk_msg(sess, cmd, "web-ui")
+                if boa and cmd == "take_photo":
+                    pull_last_image(boa, "photo")
 
         # Check bitrate
         # sess.update_frame_size_rate(True)

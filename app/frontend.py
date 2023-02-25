@@ -196,7 +196,9 @@ def create_app():
     def boa_photo(img_file: str):
         """Take a photo on the camera and grab it over the boa http server."""
         uri = Path(img_file).stem
-        if photo := wb.boa_photo(uri):
+        if not (cam := wb.streams.get(uri)):
+            return redirect("/static/notavailable.svg", code=307)
+        if photo := web_ui.boa_snapshot(cam):
             return send_from_directory(config.IMG_PATH, f"{uri}_{photo[0]}")
         return redirect(f"/img/{img_file}", code=307)
 

@@ -176,7 +176,9 @@ class WyzeStream:
         except ValueError:
             return "error"
 
-    def get_info(self) -> dict:
+    def get_info(self, item: Optional[str] = None) -> dict:
+        if item == "boa_info":
+            return self.boa_info()
         data = {
             "name_uri": self.uri,
             "status": self.state.value,
@@ -204,6 +206,12 @@ class WyzeStream:
         resp = self.send_cmd("camera_info")
         if resp or ("response" not in resp):
             self.camera.set_camera_info(resp)
+
+    def boa_info(self) -> dict:
+        self.update_cam_info()
+        if not self.camera.camera_info:
+            return {}
+        return self.camera.camera_info.get("boa_info", {})
 
     def send_cmd(self, cmd: str) -> dict:
         if env_bool("disable_control") or not self.connected or not self.cam_cmd:

@@ -6,7 +6,7 @@ from typing import Callable, Generator, Optional
 
 from wyzebridge import config
 from wyzebridge.bridge_utils import env_bool
-from wyzebridge.stream import StreamManager
+from wyzebridge.stream import Stream, StreamManager
 
 logger = getLogger("WyzeBridge")
 
@@ -115,3 +115,10 @@ def all_cams(streams: StreamManager, total: int, host: Optional[str]) -> dict:
         "enabled": streams.total,
         "cameras": format_streams(streams.get_all_cam_info(), host),
     }
+
+
+def boa_snapshot(stream: Stream) -> Optional[dict]:
+    """Take photo."""
+    stream.send_cmd("take_photo")
+    if boa_info := stream.get_info("boa_info"):
+        return boa_info.get("last_photo")

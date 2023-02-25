@@ -89,15 +89,6 @@ class WyzeBridge:
         log.info("👋 goodbye!")
         sys.exit(0)
 
-    def boa_photo(self, cam_name: str) -> Optional[str]:
-        """Take photo."""
-        if not (cam := self.streams.get(cam_name)):
-            return
-        cam.send_cmd("take_photo")
-        # if boa_info := cam["camera_info"].get("boa_info"):
-        #     return boa_info.get("last_photo")
-        return
-
 
 def setup_logging():
     multiprocessing.current_process().name = "WyzeBridge"

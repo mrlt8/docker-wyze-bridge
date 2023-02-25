@@ -42,7 +42,7 @@ class Stream(Protocol):
     def health_check(self) -> int:
         ...
 
-    def get_info(self) -> dict:
+    def get_info(self, item: Optional[str] = None) -> dict:
         ...
 
     def get_status(self) -> str:
