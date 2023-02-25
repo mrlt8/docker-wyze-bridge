@@ -738,6 +738,9 @@ class K10148StartBoa(TutkWyzeProtocolMessage):
     def encode(self) -> bytes:
         return encode(10148, 5, bytes([0, 1, 0, 0, 0]))
 
+    def parse_response(self, resp_data) -> int:
+        return resp_data[0]
+
 
 class K10600SetRtspSwitch(TutkWyzeProtocolMessage):
     """
