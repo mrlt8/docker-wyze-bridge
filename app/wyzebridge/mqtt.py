@@ -1,14 +1,12 @@
 import json
-from logging import getLogger
 from os import getenv
 from typing import Optional
 
 import paho.mqtt.client
 import paho.mqtt.publish
 from wyzebridge.bridge_utils import env_bool
+from wyzebridge.logging import logger
 from wyzecam import WyzeCamera, WyzeIOTCSession
-
-logger = getLogger("WyzeBridge")
 
 MQTT_ENABLED = bool(env_bool("MQTT_HOST"))
 MQTT_USER, _, MQTT_PASS = getenv("MQTT_AUTH", ":").partition(":")

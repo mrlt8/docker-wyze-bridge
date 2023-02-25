@@ -3,11 +3,9 @@ This module handles stream and client events from rtsp-simple-server.
 """
 import os
 import select
-from logging import getLogger
 
+from wyzebridge.logging import logger
 from wyzebridge.mqtt import update_mqtt_state
-
-logger = getLogger("WyzeBridge")
 
 
 class RtspEvent:
@@ -47,7 +45,11 @@ class RtspEvent:
 
     def close_pipe(self):
         if self.pipe_fd:
-            os.close(self.pipe_fd)
+            try:
+                os.close(self.pipe_fd)
+            except OSError as ex:
+                if ex.errno != 9:
+                    logger.warning(ex)
             self.pipe_fd = 0
             os.remove(self.FIFO)
 

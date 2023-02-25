@@ -1,14 +1,12 @@
 import json
 import os
-from logging import getLogger
 from time import sleep
 from typing import Callable, Generator, Optional
 
 from wyzebridge import config
 from wyzebridge.bridge_utils import env_bool
+from wyzebridge.logging import logger
 from wyzebridge.stream import Stream, StreamManager
-
-logger = getLogger("WyzeBridge")
 
 
 def sse_generator(sse_status: Callable) -> Generator[str, str, str]:

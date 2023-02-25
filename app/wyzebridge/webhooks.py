@@ -1,10 +1,7 @@
-from logging import getLogger
-
 import requests
 from wyzebridge.bridge_utils import env_bool
+from wyzebridge.logging import logger
 from wyzecam import TutkError
-
-logger = getLogger("WyzeBridge")
 
 
 def ifttt_webhook(uri: str, error: TutkError):

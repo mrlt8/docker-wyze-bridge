@@ -4,7 +4,6 @@ import pickle
 import struct
 from base64 import b32decode
 from functools import wraps
-from logging import getLogger
 from os import environ, getenv, listdir, remove
 from os.path import exists, getsize
 from pathlib import Path
@@ -16,9 +15,8 @@ from requests import get
 from requests.exceptions import ConnectionError, HTTPError
 from wyzebridge.bridge_utils import env_bool, env_filter
 from wyzebridge.config import IMG_PATH, TOKEN_PATH
+from wyzebridge.logging import logger
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
-
-logger = getLogger("WyzeBridge")
 
 
 def cached(func: Callable[..., Any]) -> Callable[..., Any]:

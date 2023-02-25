@@ -1,10 +1,8 @@
 import os
-from logging import getLogger
 
 from wyzebridge import config
 from wyzebridge.bridge_utils import env_bool, env_cam
-
-logger = getLogger("WyzeBridge")
+from wyzebridge.logging import logger
 
 
 def get_ffmpeg_cmd(

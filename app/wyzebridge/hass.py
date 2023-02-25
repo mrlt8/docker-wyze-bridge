@@ -1,12 +1,10 @@
 import json
-from logging import getLogger
 from os import environ
 
 import requests
 import wyzecam
 from wyzebridge.config import HASS_TOKEN
-
-logger = getLogger("WyzeBridge")
+from wyzebridge.logging import logger
 
 
 def setup_hass() -> bool:

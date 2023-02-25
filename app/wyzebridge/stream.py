@@ -1,15 +1,11 @@
-import contextlib
 import time
-from logging import getLogger
 from subprocess import Popen, TimeoutExpired
 from typing import Any, Optional, Protocol
 
 from wyzebridge.config import SNAPSHOT_INT, SNAPSHOT_TYPE
 from wyzebridge.ffmpeg import rtsp_snap_cmd
+from wyzebridge.logging import logger
 from wyzebridge.rtsp_event import RtspEvent
-
-# from wyzebridge.mqtt import publish_message
-logger = getLogger("WyzeBridge")
 
 
 class Stream(Protocol):

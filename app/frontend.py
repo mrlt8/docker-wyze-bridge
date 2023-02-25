@@ -1,7 +1,5 @@
 import logging
 import os
-import signal
-import sys
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -18,26 +16,15 @@ from flask import (
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import NotFound
 from werkzeug.security import check_password_hash, generate_password_hash
-from wyze_bridge import WyzeBridge, setup_logging
+from wyze_bridge import WyzeBridge
 from wyzebridge import config, web_ui
 
-log = logging.getLogger(__name__)
 wb: WyzeBridge = None
 auth = HTTPBasicAuth()
 auth_enabled = os.getenv("WEB_AUTH", "false").lower() != "false"
 if auth_enabled:
     user = os.getenv("WEB_USERNAME", os.getenv("WYZE_EMAIL"))
     pw = generate_password_hash(os.getenv("WEB_PASSWORD", os.getenv("WYZE_PASSWORD")))
-
-
-def clean_up():
-    """Run cleanup before exit."""
-    if not wb:
-        sys.exit(0)
-    wb.clean_up()
-
-
-signal.signal(signal.SIGTERM, lambda *_: clean_up())
 
 
 @auth.verify_password
@@ -48,7 +35,6 @@ def verify_password(username, password):
 
 
 def create_app():
-    setup_logging()
     app = Flask(__name__)
     global wb
     if not wb:
@@ -240,6 +226,5 @@ def create_app():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
     app = create_app()
     app.run(debug=False, host="0.0.0.0", port=5000)

@@ -3,7 +3,6 @@ import multiprocessing as mp
 from ctypes import c_int
 from dataclasses import dataclass
 from enum import IntEnum
-from logging import getLogger
 from queue import Empty
 from subprocess import PIPE, Popen
 from threading import Thread
@@ -12,13 +11,12 @@ from typing import Optional
 
 from wyzebridge.bridge_utils import env_bool, env_cam
 from wyzebridge.ffmpeg import get_ffmpeg_cmd
+from wyzebridge.logging import logger
 from wyzebridge.mqtt import send_mqtt, update_mqtt_state, wyze_discovery
 from wyzebridge.webhooks import ifttt_webhook
 from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_control import camera_control
 from wyzecam import TutkError, WyzeAccount, WyzeCamera, WyzeIOTC, WyzeIOTCSession
-
-logger = getLogger("WyzeBridge")
 
 NET_MODE = {0: "P2P", 1: "RELAY", 2: "LAN"}
 

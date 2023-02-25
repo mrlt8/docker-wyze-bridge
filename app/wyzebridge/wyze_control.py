@@ -2,7 +2,6 @@ import contextlib
 import json
 import socket
 from datetime import datetime, timedelta
-from logging import getLogger
 from multiprocessing import JoinableQueue, Queue
 from queue import Empty
 from re import findall
@@ -11,10 +10,9 @@ from typing import Optional
 import requests
 from wyzebridge.bridge_utils import env_bool
 from wyzebridge.config import BOA_COOLDOWN, BOA_INTERVAL, IMG_PATH
+from wyzebridge.logging import logger
 from wyzebridge.mqtt import mqtt_sub_topic, send_mqtt
 from wyzecam import WyzeIOTCSession, WyzeIOTCSessionState, tutk_protocol
-
-logger = getLogger("WyzeBridge")
 
 CAM_CMDS = {
     "take_photo": ("K10058TakePhoto",),

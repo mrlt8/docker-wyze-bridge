@@ -1,11 +1,10 @@
-from logging import getLogger
 from os import environ, getenv
 from pathlib import Path
 from signal import SIGINT
 from subprocess import DEVNULL, Popen
 from typing import Optional, Protocol
 
-logger = getLogger("WyzeBridge")
+from wyzebridge.logging import logger
 
 
 class RtspInterface(Protocol):
