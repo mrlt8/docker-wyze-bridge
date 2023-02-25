@@ -23,3 +23,7 @@ RTMP_URL = env_bool("WB_RTMP_URL").strip("/")
 RTSP_URL = env_bool("WB_RTSP_URL").strip("/")
 WEBRTC_URL = env_bool("WB_WEBRTC_URL").strip("/")
 LLHLS: bool = env_bool("LLHLS", style="bool")
+
+
+BOA_INTERVAL: int = env_bool("boa_interval", "5", style="int")
+BOA_COOLDOWN: int = env_bool("boa_cooldown", "20", style="int")

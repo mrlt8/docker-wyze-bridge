@@ -1,5 +1,6 @@
 import contextlib
 import json
+import socket
 from datetime import datetime, timedelta
 from logging import getLogger
 from multiprocessing import JoinableQueue, Queue
@@ -9,6 +10,7 @@ from typing import Optional
 
 import requests
 from wyzebridge.bridge_utils import env_bool
+from wyzebridge.config import BOA_COOLDOWN, BOA_INTERVAL, IMG_PATH
 from wyzebridge.mqtt import mqtt_sub_topic, send_mqtt
 from wyzecam import WyzeIOTCSession, WyzeIOTCSessionState, tutk_protocol
 
@@ -49,34 +51,34 @@ CAM_CMDS = {
     "set_ptz_60v": ("K11018SetPTZPosition", 60, 0),
     "set_ptz_60h": ("K11018SetPTZPosition", 0, 60),
     "set_ptz_90": ("K11018SetPTZPosition", 90, 90),
+    "start_boa": ("K10148StartBoa",),
 }
 
 
 def cam_http_alive(ip: str) -> bool:
     """Test if camera http server is up."""
-    try:
-        resp = requests.get(f"http://{ip}")
-        resp.raise_for_status()
-        return True
-    except requests.exceptions.ConnectionError:
-        return False
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.settimeout(1)
+        return s.connect_ex((ip, 80)) == 0
 
 
 def pull_last_image(cam: dict, path: str, as_snap: bool = False):
     """Pull last image from camera SD card."""
-    if not cam.get("ip"):
+    if not (ip := cam.get("ip")):
         return
     file_name, modded = cam["last_photo"]
-    base = f"http://{cam['uri']}/cgi-bin/hello.cgi?name=/{path}/"
+    base = f"http://{ip}/cgi-bin/hello.cgi?name=/{path}/"
     try:
         with requests.Session() as req:
             resp = req.get(base)  # Get Last Date
-            date = sorted(findall("<h2>(\d+)<\/h2>", resp.text))[-1]
+            if not (last := findall("<h2>(\d+)<\/h2>", resp.text)):
+                return
+            date = sorted(last)[-1]
             resp = req.get(base + date)  # Get Last File
             file_name = sorted(findall("<h1>(\w+\.jpg)<\/h1>", resp.text))[-1]
             if file_name != cam["last_photo"][0]:
                 logger.info(f"Pulling {path} file from camera ({file_name=})")
-                resp = req.get(f"http://{cam['uri']}/SDPath/{path}/{date}/{file_name}")
+                resp = req.get(f"http://{ip}/SDPath/{path}/{date}/{file_name}")
                 _, modded = get_header_dates(resp.headers)
                 # with open(f"{img_dir}{path}_{file_name}", "wb") as img:
                 save_name = "_" + ("alarm.jpg" if path == "alarm" else file_name)
@@ -94,34 +96,33 @@ def get_header_dates(
     resp_header: dict,
 ) -> tuple[Optional[datetime], Optional[datetime]]:
     """Get dates from boa header."""
+    boa_date = "%a, %d %b %Y %X %Z"
     try:
-        date = datetime.strptime(resp_header.get("Date"), "%a, %d %b %Y %X %Z")
-        last = datetime.strptime(resp_header.get("Last-Modified"), "%a, %d %b %Y %X %Z")
+        date = datetime.strptime(resp_header.get("Date", ""), boa_date)
+        last = datetime.strptime(resp_header.get("Last-Modified", ""), boa_date)
         return date, last
     except ValueError:
         return None, None
 
 
-def check_boa_ip(sess: WyzeIOTCSession):
+def check_boa_enabled(sess: WyzeIOTCSession, uri: str) -> Optional[dict]:
     """
     Check if boa should be enabled.
 
     env options:
-        - enable_boa: Requires LAN connection and SD card. required to pull any images.
+        - boa_enabled: Requires LAN connection and SD card. required to pull any images.
         - boa_interval: the number of seconds between photos/keep alive.
-        - take_photo: Take a high res photo directly on the camera SD card.
-        - pull_photo: Pull the HQ photo from the SD card.
-        - pull_alarm: Pull alarm/motion image from the SD card.
-        - motion_cooldown: Cooldown between motion alerts.
+        - boa_take_photo: Take a high res photo directly on the camera SD card.
+        - boa_alarm: Pull alarm/motion image from the SD card.
+        - boa_cooldown: Cooldown between motion alerts.
     """
-    logger.debug(sess.camera.camera_info.get("sdParm"))
     if not (
-        env_bool("enable_boa")
-        or env_bool("PULL_PHOTO")
-        or env_bool("PULL_ALARM")
-        or env_bool("MOTION_HTTP")
+        env_bool("boa_enabled")
+        or env_bool("boa_photo")
+        or env_bool("boa_ALARM")
+        or env_bool("boa_MOTION")
     ):
-        return None
+        return
 
     session = sess.session_check()
     if (
@@ -131,34 +132,41 @@ def check_boa_ip(sess: WyzeIOTCSession):
         or sd_parm.get("status") != "1"  # SD card is NOT available
         or "detail" in sd_parm  # Avoid weird SD card issue?
     ):
-        return None  # Stop thread if SD card isn't available
+        return
 
     logger.info(f"Local boa HTTP server enabled on http://{ip}")
-    return ip
+    return {
+        "ip": ip,
+        "uri": uri,
+        "img_dir": IMG_PATH,
+        "last_alarm": (None, None),
+        "last_photo": (None, None),
+        "cooldown": datetime.now(),
+    }
 
 
-def boa_control(sess: WyzeIOTCSession, cam: dict):
+def boa_control(sess: WyzeIOTCSession, boa_cam: Optional[dict]):
     """
     Boa related controls.
     """
-    if not cam.get("ip"):
+    if not boa_cam:
         return
     iotctrl_msg = []
-    if env_bool("take_photo"):
+    if env_bool("boa_take_photo"):
         iotctrl_msg.append(tutk_protocol.K10058TakePhoto())
-    if not cam_http_alive(cam["ip"]):
+    if not cam_http_alive(boa_cam["ip"]):
         logger.info("starting boa server")
         iotctrl_msg.append(tutk_protocol.K10148StartBoa())
     if iotctrl_msg:
         with sess.iotctrl_mux() as mux:
             for msg in iotctrl_msg:
                 mux.send_ioctl(msg)
-    if datetime.now() > cam["cooldown"] and (
-        env_bool("pull_alarm") or env_bool("motion_http")
+    if datetime.now() > boa_cam["cooldown"] and (
+        env_bool("boa_alarm") or env_bool("boa_motion")
     ):
-        motion_alarm(cam)
-    if env_bool("pull_photo"):
-        pull_last_image(cam, "photo", True)
+        motion_alarm(boa_cam)
+    if env_bool("boa_photo"):
+        pull_last_image(boa_cam, "photo", True)
 
 
 def camera_control(
@@ -174,17 +182,24 @@ def camera_control(
     :param uri: URI-safe name of the camera.
     """
 
-    interval = 5
     mqtt = mqtt_sub_topic([f"{uri.lower()}/cmd"], sess)
     if mqtt:
         mqtt.on_message = _on_message
 
+    boa = check_boa_enabled(sess, uri)
     while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
+        boa_control(sess, boa)
         resp = {}
         with contextlib.suppress(Empty):
-            cmd = camera_cmd.get(timeout=interval)
+            cmd = camera_cmd.get(timeout=BOA_INTERVAL)
             if cmd == "camera_info":
-                resp = {cmd: sess.camera.camera_info}
+                cam_info = sess.camera.camera_info or {}
+                if boa:
+                    cam_info["boa_info"] = {
+                        "last_alarm": boa["last_alarm"],
+                        "last_photo": boa["last_photo"],
+                    }
+                resp = {cmd: cam_info}
             else:
                 resp = send_tutk_msg(sess, cmd, "web-ui")
 
@@ -196,7 +211,8 @@ def camera_control(
             continue
 
         if camera_info.qsize() > 0:
-            camera_info.get_nowait()
+            with contextlib.suppress(Empty):
+                camera_info.get_nowait()
         camera_cmd.task_done()
         camera_info.put(resp)
 
@@ -245,18 +261,15 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: str, source: str) -> dict:
 
 def motion_alarm(cam: dict):
     """Check alam and trigger MQTT/http motion and return cooldown."""
-
-    motion = False
-    cooldown = cam["cooldown"]
-    if (alarm := pull_last_image(cam, "alarm")) != cam["last_alarm"]:
-        logger.info(f"[MOTION] Alarm file detected at {cam['last_alarm'][1]}")
-        cooldown = datetime.now() + timedelta(0, int(env_bool("motion_cooldown", "10")))
-        motion = True
+    pull_last_image(cam, "alarm")
+    if motion := (cam["last_photo"][0] != cam["last_alarm"][0]):
+        logger.info(f"[MOTION] Alarm file detected at {cam['last_photo'][1]}")
+        cam["cooldown"] = datetime.now() + timedelta(seconds=BOA_COOLDOWN)
+        cam["last_alarm"] = cam["last_photo"]
     send_mqtt([(f"wyzebridge/{cam['uri']}/motion", motion)])
-    if motion and (http := env_bool("motion_http")):
+    if motion and (http := env_bool("boa_motion")):
         try:
             resp = requests.get(http.format(cam_name=cam["uri"]))
             resp.raise_for_status()
         except requests.exceptions.HTTPError as ex:
             logger.error(ex)
-    cam["last_alarm"] = alarm, cooldown

@@ -94,6 +94,13 @@
         "DEBUG_FRAMES": "bool?",
         "DEBUG_FFMPEG": "bool?",
         "IGNORE_RES": "int?",
+        "BOA_ENABLED": "bool?",
+        "BOA_INTERVAL": "int?",
+        "BOA_TAKE_PHOTO": "bool?",
+        "BOA_PHOTO": "bool?",
+        "BOA_ALARM": "bool?",
+        "BOA_MOTION": "str?",
+        "BOA_COOLDOWN": "int?",
         "CAM_OPTIONS": [
             {
                 "CAM_NAME": "str?",
