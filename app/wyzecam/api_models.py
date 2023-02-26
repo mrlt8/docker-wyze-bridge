@@ -161,6 +161,8 @@ class WyzeCamera(BaseModel):
 
     @property
     def can_substream(self) -> bool:
+        if self.rtsp_fw:
+            return False
         min_ver = SUBSTREAM_FW.get(self.product_model)
         return is_min_version(self.firmware_ver, min_ver)
 

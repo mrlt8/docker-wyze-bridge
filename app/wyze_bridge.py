@@ -23,7 +23,6 @@ class WyzeBridge:
         setup_hass()
         self.api: WyzeApi = WyzeApi()
         self.streams: StreamManager = StreamManager()
-        self.fw_rtsp: set[str] = set()
         self.thread: Optional[threading.Thread] = None
         self.rtsp: RtspServer = RtspServer(config.BRIDGE_IP)
 
@@ -53,13 +52,7 @@ class WyzeBridge:
                 audio=bool(env_cam("enable_audio", cam.name_uri)),
                 record=bool(env_cam("record", cam.name_uri)),
             )
-
-            if env_bool(f"SUBSTREAM_{cam.name_uri}"):
-                sub_opt = replace(options, quality="sd30", substream=True)
-                sub = WyzeStream(cam, sub_opt)
-                self.rtsp.add_path(sub.uri, on_demand=True)
-                self.streams.add(sub)
-
+            self.add_substream(cam, options)
             stream = WyzeStream(cam, options)
             if rtsp_fw := env_bool("rtsp_fw").lower():
                 if rtsp_path := stream.check_rtsp_fw(rtsp_fw == "force"):
@@ -69,6 +62,16 @@ class WyzeBridge:
                     stream.rtsp_fw_enabled = True
             self.rtsp.add_path(stream.uri, not bool(options.record))
             self.streams.add(stream)
+
+    def add_substream(self, cam, options):
+        """Setup and add substream if enabled for camera."""
+        if env_bool(f"SUBSTREAM_{cam.name_uri}") or (
+            env_bool("SUBSTREAM") and cam.can_substream
+        ):
+            sub_opt = replace(options, quality="sd30", substream=True)
+            sub = WyzeStream(cam, sub_opt)
+            self.rtsp.add_path(sub.uri, on_demand=True)
+            self.streams.add(sub)
 
     def start(self, fresh_data: bool = False) -> None:
         """Start asynchronously."""

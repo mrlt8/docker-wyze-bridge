@@ -3,10 +3,11 @@ configuration:
     name: Allowed Net Modes
   SNAPSHOT:
     name: Snapshot Mode
-  ON_DEMAND:
-    name: On-Demand Streams
   ENABLE_AUDIO:
     name: Enable Audio For All Cameras
+  SUBSTREAM:
+    name: Enable sub-stream
+    description: Create a secondary SD30 stream on "/cam-name-sub"
   FILTER_NAMES:
     name: Filter cameras by name
   FILTER_MODELS:
