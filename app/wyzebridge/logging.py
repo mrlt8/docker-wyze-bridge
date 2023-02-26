@@ -6,14 +6,13 @@ from sys import stdout
 
 from wyzebridge.bridge_utils import env_bool
 
-multiprocessing.current_process().name = "WyzeBridge"
-
 DEBUG_LEVEL: int = getattr(logging, env_bool("DEBUG_LEVEL").upper(), 20)
 
 log_info = "%(asctime)s [%(processName)s] %(message)s"
 log_debug = "%(asctime)s [%(processName)s][%(levelname)s] %(message)s"
 
 
+multiprocessing.current_process().name = "WyzeBridge"
 logger: logging.Logger = logging.getLogger("WyzeBridge")
 logger.setLevel(logging.DEBUG)
 
