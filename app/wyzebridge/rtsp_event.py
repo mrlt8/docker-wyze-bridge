@@ -25,23 +25,22 @@ class RtspEvent:
             ready, _, _ = select.select([self.pipe_fd], [], [], timeout)
             if not ready:
                 return
-            data = os.fdopen(self.pipe_fd, "r")
-            for msg in data.read().strip().split("\n"):
-                self.log_event(msg)
-
+            data = os.read(self.pipe_fd, 64)
+            for msg in data.decode().split("\n"):
+                if not msg:
+                    return
+                self.log_event(msg.strip())
         except OSError as ex:
-            if ex.errno == 9:
-                self.open_pipe()
-            else:
+            if ex.errno != 9:
                 logger.error(ex)
-
+            self.open_pipe()
         except Exception as ex:
             print(f"Error reading from pipe: {ex}")
 
     def open_pipe(self):
         if not os.path.exists(self.FIFO):
             os.mkfifo(self.FIFO)
-        self.pipe_fd = os.open(self.FIFO, os.O_RDONLY | os.O_NONBLOCK)
+        self.pipe_fd = os.open(self.FIFO, os.O_RDWR | os.O_NONBLOCK)
 
     def close_pipe(self):
         if self.pipe_fd:
@@ -51,25 +50,23 @@ class RtspEvent:
                 if ex.errno != 9:
                     logger.warning(ex)
             self.pipe_fd = 0
-            os.remove(self.FIFO)
+        os.unlink(self.FIFO)
 
     def log_event(self, event_data: str):
-        if not event_data:
-            return
         try:
-            camera_uri, event, status = event_data.split(",")
+            uri, event, status = event_data.split(",")
         except ValueError:
             logger.error(f"Error parsing {event_data=}")
             return
 
         if event.lower() == "start":
-            self.streams.start(camera_uri)
+            self.streams.start(uri)
         elif event.lower() == "read":
-            read_event(camera_uri, status)
+            read_event(uri, status)
         elif event.lower() == "ready":
-            ready_event(camera_uri, status)
+            ready_event(uri, status)
             if status == "0":
-                self.streams.stop(camera_uri)
+                self.streams.stop(uri)
 
 
 def read_event(camera: str, status: str):

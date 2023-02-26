@@ -1,5 +1,6 @@
 import json
 import multiprocessing as mp
+import os
 from ctypes import c_int
 from dataclasses import dataclass
 from enum import IntEnum
@@ -110,13 +111,14 @@ class WyzeStream:
 
     def stop(self) -> bool:
         update_mqtt_state(self.uri, "stopping")
+        self.state.value = StreamStatus.STOPPING
         self.start_time = 0
         if self.process and self.process.is_alive():
             self.process.kill()
             self.process.join()
         self.process = None
-        self.state.value = StreamStatus.STOPPED
         update_mqtt_state(self.uri, "stopped")
+        self.state.value = StreamStatus.STOPPED
         return True
 
     def enable(self) -> bool:
@@ -284,7 +286,6 @@ def start_tutk_stream(stream: WyzeStream) -> None:
     finally:
         stream.state.value = exit_code
         if audio_thread and audio_thread.is_alive():
-            open(f"/tmp/{stream.uri}.wav", "r").close()
             audio_thread.join()
         if control_thread and control_thread.is_alive():
             control_thread.join()
