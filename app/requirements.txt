@@ -1,6 +1,7 @@
 paho-mqtt
 requests
 pydantic
-xxtea # windows .whl currently only exist for Python 3.8.x
 flask
 Flask-HTTPAuth
+# xxtea # windows .whl currently only exist for Python 3.8.x
+git+https://github.com/ifduyue/xxtea.git
