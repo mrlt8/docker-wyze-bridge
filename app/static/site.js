@@ -482,7 +482,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const card = document.getElementById(cam);
     const img = card.getElementsByClassName("card-image")[0]
     const content = card.getElementsByClassName("content")[0]
-    this.getElementsByClassName("fas")[0].classList.toggle("fa-flip-horizontal");
+    let icon = this.getElementsByClassName("fas")[0].classList
+    if (icon.contains("fa-circle-info")) {
+      icon.remove("fa-circle-info");
+      icon.add("fa-circle-xmark");
+    } else {
+      icon.remove("fa-circle-xmark");
+      icon.add("fa-circle-info");
+    }
     if (content.classList.contains("is-hidden")) {
       const table = content.getElementsByTagName("table")[0]
       fetch(`api/${cam}`).then(resp => resp.json()).then(data => {
@@ -635,6 +642,21 @@ document.addEventListener("DOMContentLoaded", () => {
           break;
       }
       window.location = window.location.pathname;
+    })
+  })
+
+  // cam control
+  document.querySelectorAll(".cam-control").forEach((e) => {
+    let cam = e.dataset.cam;
+    e.querySelectorAll(".button").forEach((button) => {
+      button.addEventListener("click", () => {
+        fetch(`api/${cam}/${button.dataset.cmd}`)
+          .then((resp) => resp.json())
+          .then((data) => {
+            console.log(data);
+          });
+
+      })
     })
   })
 }); 

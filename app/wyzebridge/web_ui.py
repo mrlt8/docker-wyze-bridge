@@ -84,9 +84,10 @@ def format_stream(name_uri: str, hostname: Optional[str]) -> dict:
         "rtmp_url": (config.RTMP_URL or f"rtmp://{hostname}:1935") + f"/{name_uri}",
         "rtsp_url": (config.RTSP_URL or f"rtsp://{hostname}:8554") + f"/{name_uri}",
         "stream_auth": bool(os.getenv(f"RTSP_PATHS_{name_uri.upper()}_READUSER")),
-        "img_url": f"http://{hostname}/img/{img}" if img_time else None,
+        "img_url": f"img/{img}" if img_time else None,
+        "snapshot_url": f"snapshot/{img}",
+        "thumbnail_url": f"thumb/{img}",
         "img_time": img_time,
-        "snapshot_url": f"http://{hostname}/snapshot/{img}",
     }
     if config.LLHLS:
         data["hls_url"] = data["hls_url"].replace("http:", "https:")

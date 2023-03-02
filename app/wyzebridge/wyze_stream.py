@@ -200,6 +200,8 @@ class WyzeStream:
         }
         if not self.camera.camera_info:
             self.update_cam_info()
+        if self.camera.camera_info and "boa_info" in self.camera.camera_info:
+            data["boa_url"] = f"http://{self.camera.ip}/cgi-bin/hello.cgi?name=/"
         return data | self.camera.dict(exclude={"p2p_id", "enr", "parent_enr"})
 
     def update_cam_info(self) -> None:

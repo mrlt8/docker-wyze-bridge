@@ -13,6 +13,7 @@ section {
 }
 
 .preview-toggle .button,
+.card-footer-item .button,
 .card,
 .navbar-menu,
 .footer {
@@ -28,7 +29,8 @@ section {
 .dropdown-item,
 .content table {
   color: #fff;
-  background-color: #292929;
+  background-color: rgb(16, 16, 16);
+  z-index: 99;
 }
 
 .preview-toggle .button {
@@ -58,7 +60,7 @@ a:hover {
 }
 
 .preview-toggle .button:not(.is-active):hover,
-.card-footer a:hover {
+.card-footer-item:hover {
   background-color: #292929;
   border-color: #292929;
   color: #009670;
