@@ -97,7 +97,7 @@ class StreamManager:
 
     def monitor_streams(self) -> None:
         self.stop_flag = False
-        logger.info(f"🎬 Starting {self.total} stream{'s'[:self.total^1]}")
+        logger.info(f"🎬 {self.total} stream{'s'[:self.total^1]} enabled")
         event = RtspEvent(self)
         while not self.stop_flag:
             event.read(timeout=1)

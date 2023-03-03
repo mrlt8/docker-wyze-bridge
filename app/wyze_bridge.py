@@ -36,6 +36,8 @@ class WyzeBridge:
         """Start synchronously"""
         self.setup_streams(fresh_data)
         self.rtsp.start()
+        if self.streams.total < 1:
+            return self.clean_up()
         self.streams.monitor_streams()
 
     def setup_streams(self, fresh_data=False):
@@ -86,7 +88,8 @@ class WyzeBridge:
             self.streams.stop_all()
         self.rtsp.stop()
         if self.thread and self.thread.is_alive():
-            self.thread.join()
+            if threading.current_thread() is not self.thread:
+                self.thread.join()
         logger.info("👋 goodbye!")
         sys.exit(0)
 

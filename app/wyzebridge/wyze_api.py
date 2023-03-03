@@ -55,8 +55,8 @@ def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
     def wrapper(self, *args: Any, **kwargs: Any):
         if self.mfa_req:
             return
-        if not self.auth:
-            self.login()
+        if not self.auth and not self.login():
+            return
         try:
             return func(self, *args, **kwargs)
         except AssertionError:
@@ -100,18 +100,16 @@ class WyzeApi:
         try:
             self.auth = wyzecam.login(self.email, self.password)
         except HTTPError as ex:
-            logger.error(ex)
-            if ex.response.status_code == 400:
-                logger.warning("🚷 Invalid credentials?")
-            return
+            logger.error(f"⚠️ {ex}")
+            if resp := ex.response.json():
+                logger.warning(resp)
         except ValueError as ex:
             logger.error(ex)
-            return
-
-        if self.auth.mfa_options:
-            logger.warning("🔐 MFA code Required")
-            self._mfa_auth()
-        return self.auth
+        else:
+            if self.auth.mfa_options:
+                logger.warning("🔐 MFA code Required")
+                self._mfa_auth()
+            return self.auth
 
     @cached
     @authenticated
@@ -131,7 +129,7 @@ class WyzeApi:
         return self.cameras
 
     def filtered_cams(self) -> list[WyzeCamera]:
-        return filter_cams(self.get_cameras())
+        return filter_cams(self.get_cameras()) or []
 
     def get_camera(self, uri: str) -> Optional[WyzeCamera]:
         too_old = time() - self._last_pull > 120
