@@ -101,7 +101,7 @@ class WyzeApi:
             self.auth = wyzecam.login(self.email, self.password)
         except HTTPError as ex:
             logger.error(f"⚠️ {ex}")
-            if resp := ex.response.json():
+            if resp := ex.response.text:
                 logger.warning(resp)
         except ValueError as ex:
             logger.error(ex)
