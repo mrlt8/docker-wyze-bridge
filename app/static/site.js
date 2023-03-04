@@ -665,4 +665,8 @@ document.addEventListener("DOMContentLoaded", () => {
       })
     })
   })
+  document.querySelectorAll(".drag_handle").forEach((e) => {
+    e.addEventListener("mouseenter", () => { e.closest("div.card").classList.add("drag_hover") })
+    e.addEventListener("mouseleave", () => { e.closest("div.card").classList.remove("drag_hover") })
+  })
 }); 

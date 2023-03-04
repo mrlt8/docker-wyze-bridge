@@ -26,11 +26,11 @@ section {
 }
 
 .dropdown-content,
-.dropdown-item,
+.dropdown-menu,
 .content table {
   color: #fff;
   background-color: rgb(16, 16, 16);
-  z-index: 99;
+  z-index: 100;
 }
 
 .preview-toggle .button {
@@ -198,6 +198,14 @@ button:not(.offline):disabled+.age {
 .drag_handle {
   cursor: move;
   flex-grow: 2;
+}
+
+.card {
+  transition: box-shadow 0.5s ease-in-out;
+}
+
+.drag_hover {
+  box-shadow: 0 0 20px 1px #ffffffb1;
 }
 
 @media (prefers-color-scheme: dark) {
