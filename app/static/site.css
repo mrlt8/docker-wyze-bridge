@@ -29,7 +29,7 @@ section {
 .dropdown-menu,
 .content table {
   color: #fff;
-  background-color: rgb(16, 16, 16);
+  background-color: rgba(16, 16, 16, 0.5);
   z-index: 100;
 }
 
