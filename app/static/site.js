@@ -66,12 +66,12 @@ function applyPreferences() {
     );
   }
   var sortOrder = getCookie("camera_order", "");
-  // clean escaped camera_order from flask args
-  if (/["]/.test(sortOrder)) {
-    sortOrder = sortOrder.replace(/\\054/g, ",").replace(/["]+/g, '')
-    setCookie("camera_order", sortOrder)
-  }
   if (sortOrder) {
+    // clean escaped camera_order from flask args
+    if (sortOrder.includes("%2C")) {
+      sortOrder = sortOrder.replaceAll("%2C", ",")
+      setCookie("camera_order", sortOrder);
+    }
     console.debug("applyPreferences camera_order", sortOrder);
     const ids = sortOrder.split(",");
     var cameras = [...document.querySelectorAll(".camera")];
@@ -254,9 +254,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const newOrdering = ids.join(",");
     console.debug("New camera_order", newOrdering);
     setCookie("camera_order", newOrdering);
+    updateQueryParam("order", newOrdering)
   });
 });
 
+function updateQueryParam(paramName, paramValue) {
+  let url = new URL(window.location.href);
+  url.searchParams.set(paramName, paramValue);
+  window.history.replaceState(null, null, url.toString().replaceAll("%2C", ","));
+}
 document.addEventListener("DOMContentLoaded", () => {
   // Filter cameras
   function filterCams() {

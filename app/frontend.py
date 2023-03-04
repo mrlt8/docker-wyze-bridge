@@ -2,7 +2,7 @@ import logging
 import os
 import time
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote_plus, urlparse
 
 from flask import (
     Flask,
@@ -87,7 +87,7 @@ def create_app():
         )
         resp.set_cookie("fullscreen", "1" if fullscreen else "")
         if order := request.args.get("order"):
-            resp.set_cookie("camera_order", order)
+            resp.set_cookie("camera_order", quote_plus(order))
 
         return resp
 
