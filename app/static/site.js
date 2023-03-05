@@ -525,7 +525,7 @@ document.addEventListener("DOMContentLoaded", () => {
             valCell.innerHTML = "<code>" + value + "</code>"
           }
         }
-      }).catch(console.error);
+      }).catch(error => { console.error(error); });
     }
     img.classList.toggle("is-hidden");
     content.classList.toggle("is-hidden");

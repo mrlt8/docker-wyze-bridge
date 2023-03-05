@@ -207,7 +207,8 @@
                     <div class="content table-container is-hidden">
                         <table class="table">
                             <tbody>
-                                {% for key, value in camera.items() if key == "camera_info" and value %}
+                                {% for key, value in camera.items()%}
+                                {% if key == "camera_info" %}
                                 {% for cam_info, cam_val in value.items() %}
                                 <tr>
                                     <td>{{ cam_info }}</td>
@@ -218,7 +219,7 @@
                                 <tr>
                                     <td>{{ key }}</td>
                                     <td>
-                                        {% if value and key is string and key.endswith('_url') %}
+                                        {% if value and key is string and key =="thumbnail" or key.endswith('_url') %}
                                         <a href="{{ value }}" title="{{ value }}">{{ value|truncate(40, True,
                                             '...') }}</a>
                                         {% else %}
@@ -226,6 +227,7 @@
                                         {% endif %}
                                     </td>
                                 </tr>
+                                {% endif %}
                                 {% endfor %}
                             </tbody>
                         </table>

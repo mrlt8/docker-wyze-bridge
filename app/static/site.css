@@ -201,6 +201,7 @@ button:not(.offline):disabled+.age {
 }
 
 .card {
+  border-radius: 0.75rem;
   transition: box-shadow 0.5s ease-in-out;
 }
 
