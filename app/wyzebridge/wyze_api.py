@@ -71,6 +71,8 @@ def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
 
 
 class WyzeApi:
+    __slots__ = "auth", "user", "cameras", "email", "password", "mfa_req", "_last_pull"
+
     def __init__(self) -> None:
         self.auth: Optional[WyzeCredential] = None
         self.user: Optional[WyzeAccount] = None

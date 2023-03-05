@@ -33,7 +33,7 @@ class StreamStatus(IntEnum):
     CONNECTED = 3
 
 
-@dataclass
+@dataclass(slots=True)
 class WyzeStreamOptions:
     quality: str = "hd180"
     audio: bool = False
@@ -55,6 +55,17 @@ class WyzeStreamOptions:
 class WyzeStream:
     user: WyzeAccount
     api: WyzeApi
+    __slots__ = (
+        "camera",
+        "options",
+        "start_time",
+        "state",
+        "uri",
+        "cam_resp",
+        "cam_cmd",
+        "process",
+        "rtsp_fw_enabled",
+    )
 
     def __init__(self, camera: WyzeCamera, options: WyzeStreamOptions) -> None:
         self.camera = camera

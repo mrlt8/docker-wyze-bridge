@@ -14,6 +14,7 @@ class RtspEvent:
     """
 
     FIFO = "/tmp/rtsp_event"
+    __slots__ = "pipe_fd", "streams"
 
     def __init__(self, streams):
         self.pipe_fd: int = 0
@@ -38,19 +39,12 @@ class RtspEvent:
             print(f"Error reading from pipe: {ex}")
 
     def open_pipe(self):
-        if not os.path.exists(self.FIFO):
-            os.mkfifo(self.FIFO)
+        try:
+            os.mkfifo(self.FIFO, os.O_RDWR | os.O_NONBLOCK)
+        except OSError as ex:
+            if ex.errno != 17:
+                raise ex
         self.pipe_fd = os.open(self.FIFO, os.O_RDWR | os.O_NONBLOCK)
-
-    def close_pipe(self):
-        if self.pipe_fd:
-            try:
-                os.close(self.pipe_fd)
-            except OSError as ex:
-                if ex.errno != 9:
-                    logger.warning(ex)
-            self.pipe_fd = 0
-        os.unlink(self.FIFO)
 
     def log_event(self, event_data: str):
         try:

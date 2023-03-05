@@ -49,6 +49,8 @@ class Stream(Protocol):
 
 
 class StreamManager:
+    __slots__ = "stop_flag", "streams", "rtsp_snapshots", "last_snap"
+
     def __init__(self):
         self.stop_flag: bool = False
         self.streams: dict[str, Stream] = {}
@@ -104,7 +106,6 @@ class StreamManager:
             cams = self.health_check_all()
             if cams and SNAPSHOT_TYPE == "rtsp":
                 self.snap_all(cams)
-        event.close_pipe()
 
     def health_check_all(self) -> list[str]:
         """

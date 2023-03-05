@@ -16,6 +16,8 @@ from wyzebridge.wyze_stream import WyzeStream, WyzeStreamOptions
 
 
 class WyzeBridge:
+    __slots__ = "api", "streams", "thread", "rtsp"
+
     def __init__(self) -> None:
         for sig in {"SIGTERM", "SIGINT"}:
             signal.signal(getattr(signal, sig), lambda *_: self.clean_up())

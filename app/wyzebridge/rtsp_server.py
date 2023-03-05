@@ -45,6 +45,8 @@ class RtspEnv:
 class RtspServer:
     """Setup and interact with the backend rtsp-simple-server."""
 
+    __slots__ = "rtsp", "sub_process"
+
     def __init__(
         self,
         bridge_ip: Optional[str] = None,
@@ -59,7 +61,7 @@ class RtspServer:
         for event in {"Read", "Ready"}:
             stop_cmd = f"echo $RTSP_PATH,{event},0 > /tmp/rtsp_event;exit;"
             start_cmd = f"echo $RTSP_PATH,{event},1 > /tmp/rtsp_event;"
-            bash_cmd = f'trap "{stop_cmd}" INT;{start_cmd} tail -f /dev/null & wait'
+            bash_cmd = f'trap "{stop_cmd}" INT;{start_cmd} while :; do sleep 1; done'
             self.rtsp.set(uri, f"RunOn{event}", f"bash -c '{bash_cmd}'")
         if on_demand:
             cmd = "bash -c 'echo $RTSP_PATH,start,1 > /tmp/rtsp_event'"
