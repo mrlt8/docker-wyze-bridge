@@ -8,8 +8,8 @@ from wyzebridge.bridge_utils import env_bool
 
 DEBUG_LEVEL: int = getattr(logging, env_bool("DEBUG_LEVEL").upper(), 20)
 
-log_info = "%(asctime)s [%(processName)s] %(message)s"
-log_debug = "%(asctime)s [%(processName)s][%(levelname)s] %(message)s"
+log_info = "[%(processName)s] %(message)s"
+log_debug = f"%(asctime)s [%(levelname)s]{log_info}"
 
 
 multiprocessing.current_process().name = "WyzeBridge"
