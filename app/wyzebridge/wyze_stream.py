@@ -246,10 +246,12 @@ class WyzeStream:
                 iotc.tutk_platform_lib, self.user, self.camera
             ) as session:
                 if session.session_check().mode != 2:
-                    logger.warning(f"[{cam.nickname}] Camera is not on same LAN")
+                    logger.warning(
+                        f"[{self.camera.nickname}] Camera is not on same LAN"
+                    )
                     return
                 return session.check_native_rtsp(start_rtsp=force)
-        except wyzecam.TutkError:
+        except TutkError:
             return
 
 
