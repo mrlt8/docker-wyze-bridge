@@ -219,7 +219,7 @@
                                 <tr>
                                     <td>{{ key }}</td>
                                     <td>
-                                        {% if value and key is string and key =="thumbnail" or key.endswith('_url') %}
+                                        {% if value and (key == "thumbnail" or key.endswith('_url') )%}
                                         <a href="{{ value }}" title="{{ value }}">{{ value|truncate(40, True,
                                             '...') }}</a>
                                         {% else %}

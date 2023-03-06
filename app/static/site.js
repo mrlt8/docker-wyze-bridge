@@ -515,11 +515,11 @@ document.addEventListener("DOMContentLoaded", () => {
           let keyCell = newRow.insertCell(0)
           let valCell = newRow.insertCell(1)
           keyCell.innerHTML = key
-          if (typeof value === 'string' && value.startsWith("http")) {
+          if (typeof value === 'string' && (key.endsWith("_url") || key == 'thumbnail')) {
             let link = document.createElement('a');
             link.href = value;
             link.title = value;
-            link.innerHTML = value.substring(0, Math.min(50, value.length)) + (value.length >= 50 ? "..." : "");
+            link.innerHTML = value.substring(0, Math.min(40, value.length)) + (value.length >= 40 ? "..." : "");
             valCell.appendChild(link)
           } else {
             valCell.innerHTML = "<code>" + value + "</code>"
