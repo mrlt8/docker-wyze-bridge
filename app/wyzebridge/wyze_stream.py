@@ -73,7 +73,7 @@ class WyzeStream:
         self.state: c_int = mp.Value("i", StreamStatus.STOPPED, lock=False)
         self.uri = camera.name_uri + ("-sub" if options.substream else "")
         self.cam_resp: Optional[mp.Queue] = None
-        self.cam_cmd: Optional[mp.JoinableQueue] = None
+        self.cam_cmd: Optional[mp.Queue] = None
         self.process: Optional[mp.Process] = None
         self.rtsp_fw_enabled: bool = False
         self.setup()
@@ -81,7 +81,7 @@ class WyzeStream:
     def setup(self):
         if not self.options.substream:
             self.cam_resp = mp.Queue(1)
-            self.cam_cmd = mp.JoinableQueue(1)
+            self.cam_cmd = mp.Queue(1)
 
         if self.camera.is_gwell:
             logger.info(
@@ -229,7 +229,6 @@ class WyzeStream:
         if env_bool("disable_control") or not self.connected or not self.cam_cmd:
             return {}
         self.cam_cmd.put(cmd)
-        self.cam_cmd.join()
         try:
             cam_resp = self.cam_resp.get(timeout=5)
         except Empty:

@@ -2,7 +2,7 @@ import contextlib
 import json
 import socket
 from datetime import datetime, timedelta
-from multiprocessing import JoinableQueue, Queue
+from multiprocessing import Queue
 from queue import Empty
 from re import findall
 from typing import Optional
@@ -171,7 +171,7 @@ def camera_control(
     sess: WyzeIOTCSession,
     uri: str,
     camera_info: Queue,
-    camera_cmd: JoinableQueue,
+    camera_cmd: Queue,
 ):
     """
     Listen for commands to control the camera.
@@ -213,7 +213,6 @@ def camera_control(
         if camera_info.qsize() > 0:
             with contextlib.suppress(Empty):
                 camera_info.get_nowait()
-        camera_cmd.task_done()
         camera_info.put(resp)
 
     if mqtt:
