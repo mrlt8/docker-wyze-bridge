@@ -2,10 +2,9 @@ import json
 import logging
 import pathlib
 import time
-import typing
 from ctypes import LittleEndianStructure, c_char, c_uint16, c_uint32
 from struct import pack
-from typing import Optional
+from typing import Any, Optional
 
 import xxtea
 
@@ -72,7 +71,7 @@ class TutkWyzeProtocolMessage:
     :vartype expected_response_code: int
     """
 
-    expected_response_code: typing.Optional[int] = None
+    expected_response_code: Optional[int] = None
 
     def __init__(self, code: int) -> None:
         """Construct a new TutkWyzeProtocolMessage
@@ -82,6 +81,8 @@ class TutkWyzeProtocolMessage:
                    responses from the camera back to the client are always odd.
         """
         self.code = code
+        if not self.expected_response_code:
+            self.expected_response_code = code + 1
 
     def encode(self) -> bytes:
         """
@@ -91,7 +92,7 @@ class TutkWyzeProtocolMessage:
         """
         return encode(self.code, 0, None)
 
-    def parse_response(self, resp_data: bytes) -> typing.Any:
+    def parse_response(self, resp_data: bytes) -> Any:
         """
         Called by [TutkIOCtrlMux][wyzecam.tutk.tutk_ioctl_mux.TutkIOCtrlMux] upon receipt
         of the corresponding
@@ -113,25 +114,23 @@ class K10000ConnectRequest(TutkWyzeProtocolMessage):
     bytes for the client to sign with the 'enr' of the camera.
     """
 
-    expected_response_code = 10001
-
     def __init__(self, mac: Optional[str]):
         """Construct a new K10000ConnectRequest"""
         super().__init__(10000)
         self.mac = mac
 
     def encode(self) -> bytes:
-        if self.mac:
-            wake_dict = {
-                "cameraInfo": {
-                    "mac": self.mac,
-                    "encFlag": 0,
-                    "wakeupFlag": 1,
-                }
+        if not self.mac:
+            return encode(self.code, 0, bytes())
+        wake_dict = {
+            "cameraInfo": {
+                "mac": self.mac,
+                "encFlag": 0,
+                "wakeupFlag": 1,
             }
-            wake_json = json.dumps(wake_dict, separators=(",", ":")).encode("ascii")
-            return encode(10000, len(wake_json), wake_json)
-        return encode(10000, 0, bytes())
+        }
+        wake_json = json.dumps(wake_dict, separators=(",", ":")).encode("ascii")
+        return encode(self.code, len(wake_json), wake_json)
 
     def parse_response(self, resp_data):
         return resp_data
@@ -147,8 +146,6 @@ class K10002ConnectAuth(TutkWyzeProtocolMessage):
     The expected response to this command is `10003`, in which the camera provides a json object
     with the result of the authentication exchange (and if successful, a bunch of device information).
     """
-
-    expected_response_code = 10003
 
     def __init__(
         self,
@@ -173,7 +170,7 @@ class K10002ConnectAuth(TutkWyzeProtocolMessage):
         ), "expected challenge response to be 16 bytes long"
 
         if len(mac) < 4:
-            mac = mac + "1234"
+            mac += "1234"
 
         self.challenge_response = challenge_response
         self.username = mac
@@ -205,8 +202,6 @@ class K10008ConnectUserAuth(TutkWyzeProtocolMessage):
 
     """
 
-    expected_response_code = 10009
-
     def __init__(
         self,
         challenge_response: bytes,
@@ -232,7 +227,7 @@ class K10008ConnectUserAuth(TutkWyzeProtocolMessage):
         ), "expected challenge response to be 16 bytes long"
 
         if len(phone_id) < 4:
-            phone_id = phone_id + "1234"
+            phone_id += "1234"
 
         self.challenge_response = challenge_response
         self.username = phone_id
@@ -265,8 +260,6 @@ class K10010ControlChannel(TutkWyzeProtocolMessage):
     Not terribly well understood.
     """
 
-    expected_response_code = 10011
-
     def __init__(self, k: int = 1, v: int = 2):
         super().__init__(10010)
         assert k < 256, "control channel key must be < 256"
@@ -275,7 +268,7 @@ class K10010ControlChannel(TutkWyzeProtocolMessage):
         self.v = v
 
     def encode(self) -> bytes:
-        return encode(10010, 2, bytes([self.k, self.v]))
+        return encode(self.code, 2, bytes([self.k, self.v]))
 
 
 class K10020CheckCameraInfo(TutkWyzeProtocolMessage):
@@ -284,8 +277,6 @@ class K10020CheckCameraInfo(TutkWyzeProtocolMessage):
 
     Not terribly well understood.
     """
-
-    expected_response_code = 10021
 
     def __init__(self):
         super().__init__(10020)
@@ -306,8 +297,6 @@ class K10020CheckCameraParams(TutkWyzeProtocolMessage):
 
     Not terribly well understood.
     """
-
-    expected_response_code = 10021
 
     def __init__(self, *param_id: int):
         super().__init__(10020)
@@ -330,13 +319,8 @@ class K10030GetNetworkLightStatus(TutkWyzeProtocolMessage):
         - 2: Off
     """
 
-    expected_response_code = 10031
-
     def __init__(self):
         super().__init__(10030)
-
-    def parse_response(self, resp_data) -> int:
-        return resp_data[0]
 
 
 class K10032SetNetworkLightStatus(TutkWyzeProtocolMessage):
@@ -346,17 +330,12 @@ class K10032SetNetworkLightStatus(TutkWyzeProtocolMessage):
     :param enabled: boolean to set the camera light on/off.
     """
 
-    expected_response_code = 10033
-
     def __init__(self, light_status: bool):
         super().__init__(10032)
         self.light_status: int = 1 if light_status else 2
 
     def encode(self) -> bytes:
         return encode(self.code, 1, bytearray([self.light_status]))
-
-    def parse_response(self, resp_data) -> int:
-        return resp_data[0]
 
 
 class K10040GetNightVisionStatus(TutkWyzeProtocolMessage):
@@ -369,13 +348,8 @@ class K10040GetNightVisionStatus(TutkWyzeProtocolMessage):
         - 3: Auto.
     """
 
-    expected_response_code = 10041
-
     def __init__(self):
         super().__init__(10040)
-
-    def parse_response(self, resp_data) -> int:
-        return resp_data[0]
 
 
 class K10042SetNightVisionStatus(TutkWyzeProtocolMessage):
@@ -388,17 +362,12 @@ class K10042SetNightVisionStatus(TutkWyzeProtocolMessage):
         - 3: Auto.
     """
 
-    expected_response_code = 10043
-
     def __init__(self, status: int):
         super().__init__(10042)
         self.status: int = status
 
     def encode(self) -> bytes:
-        return encode(10042, 1, bytes([self.status]))
-
-    def parse_response(self, resp_data) -> int:
-        return resp_data[0]
+        return encode(self.code, 1, bytes([self.status]))
 
 
 class K10044GetIRLEDStatus(TutkWyzeProtocolMessage):
@@ -410,13 +379,8 @@ class K10044GetIRLEDStatus(TutkWyzeProtocolMessage):
         - 2: Off. 940 nmm close range IR.
     """
 
-    expected_response_code = 10045
-
     def __init__(self):
         super().__init__(10044)
-
-    def parse_response(self, resp_data) -> int:
-        return resp_data[0]
 
 
 class K10046SetIRLEDStatus(TutkWyzeProtocolMessage):
@@ -428,17 +392,12 @@ class K10046SetIRLEDStatus(TutkWyzeProtocolMessage):
         - 2: Off. 940 nmm close range IR.
     """
 
-    expected_response_code = 10047
-
     def __init__(self, status: int):
         super().__init__(10046)
         self.status: int = status
 
     def encode(self) -> bytes:
-        return encode(10046, 1, bytes([self.status]))
-
-    def parse_response(self, resp_data) -> int:
-        return resp_data[0]
+        return encode(self.code, 1, bytes([self.status]))
 
 
 class K10056SetResolvingBit(TutkWyzeProtocolMessage):
@@ -447,8 +406,6 @@ class K10056SetResolvingBit(TutkWyzeProtocolMessage):
 
     This is sent automatically after the authentication handshake completes successfully.
     """
-
-    expected_response_code = 10057
 
     def __init__(
         self, frame_size=tutk.FRAME_SIZE_1080P, bitrate=tutk.BITRATE_HD, fps: int = 0
@@ -480,7 +437,7 @@ class K10056SetResolvingBit(TutkWyzeProtocolMessage):
     def encode(self) -> bytes:
         payload = bytes([1 + self.frame_size, self.bitrate, self.fps])
 
-        return encode(10056, 3, payload)
+        return encode(self.code, 3, payload)
 
     def parse_response(self, resp_data):
         return resp_data == b"\x01"
@@ -492,8 +449,6 @@ class K10052DBSetResolvingBit(TutkWyzeProtocolMessage):
 
     This is sent automatically after the authentication handshake completes successfully.
     """
-
-    expected_response_code = 10053
 
     def __init__(
         self, frame_size=tutk.FRAME_SIZE_1080P, bitrate=tutk.BITRATE_HD, fps: int = 0
@@ -541,8 +496,6 @@ class K10090GetCameraTime(TutkWyzeProtocolMessage):
     :return time: The current unix timestamp in seconds.
     """
 
-    expected_response_code = 10091
-
     def __init__(self):
         super().__init__(10090)
 
@@ -557,16 +510,11 @@ class K10092SetCameraTime(TutkWyzeProtocolMessage):
     This will use the current time on the bridge +1 to set the time on the camera.
     """
 
-    expected_response_code = 10093
-
     def __init__(self):
         super().__init__(10092)
 
     def encode(self) -> bytes:
-        return encode(10092, 4, int(time.time() + 1).to_bytes(4, "little"))
-
-    def parse_response(self, resp_data):
-        return resp_data[0]
+        return encode(self.code, 4, int(time.time() + 1).to_bytes(4, "little"))
 
 
 class K10290GetMotionTagging(TutkWyzeProtocolMessage):
@@ -578,13 +526,8 @@ class K10290GetMotionTagging(TutkWyzeProtocolMessage):
         - 2: Disabled
     """
 
-    expected_response_code = 10291
-
     def __init__(self):
         super().__init__(10290)
-
-    def parse_response(self, resp_data):
-        return resp_data[0]
 
 
 class K10292SetMotionTagging(TutkWyzeProtocolMessage):
@@ -594,17 +537,12 @@ class K10292SetMotionTagging(TutkWyzeProtocolMessage):
     :param enabled: boolean to turn on/off motion tagging.
     """
 
-    expected_response_code = 10293
-
     def __init__(self, enabled: bool):
         super().__init__(10292)
         self.enabled = 1 if enabled else 2
 
     def encode(self) -> bytes:
-        return encode(10292, 1, bytes([self.enabled]))
-
-    def parse_response(self, resp_data):
-        return resp_data[0]
+        return encode(self.code, 1, bytes([self.enabled]))
 
 
 class K10620CheckNight(TutkWyzeProtocolMessage):
@@ -613,8 +551,6 @@ class K10620CheckNight(TutkWyzeProtocolMessage):
 
     Not terribly well understood.
     """
-
-    expected_response_code = 10621
 
     def __init__(self):
         super().__init__(10620)
@@ -629,13 +565,8 @@ class K10624GetAutoSwitchNightType(TutkWyzeProtocolMessage):
         - 2: Dark. Switch on night vision when the environment has extremely low light.
     """
 
-    expected_response_code = 10625
-
     def __init__(self):
         super().__init__(10624)
-
-    def parse_response(self, resp_data) -> int:
-        return resp_data[0]
 
 
 class K10626SetAutoSwitchNightType(TutkWyzeProtocolMessage):
@@ -647,17 +578,12 @@ class K10626SetAutoSwitchNightType(TutkWyzeProtocolMessage):
         - 2: Dark. Switch on night vision when the environment has extremely low light.
     """
 
-    expected_response_code = 10627
-
     def __init__(self, type: int):
         super().__init__(10626)
         self.type: int = type
 
     def encode(self) -> bytes:
-        return encode(10626, 1, bytes([self.type]))
-
-    def parse_response(self, resp_data) -> int:
-        return resp_data[0]
+        return encode(self.code, 1, bytes([self.type]))
 
 
 class K10630SetAlarmFlashing(TutkWyzeProtocolMessage):
@@ -667,17 +593,12 @@ class K10630SetAlarmFlashing(TutkWyzeProtocolMessage):
     :param enabled: boolean to turn on/off alarm/siren.
     """
 
-    expected_response_code = 10631
-
     def __init__(self, enabled: bool):
         super().__init__(10630)
         self.enabled: int = 2 if enabled else 1
 
     def encode(self) -> bytes:
-        return encode(10630, 2, bytes([self.enabled, self.enabled]))
-
-    def parse_response(self, resp_data) -> tuple[int, int]:
-        return resp_data[0], resp_data[1]
+        return encode(self.code, 2, bytes([self.enabled, self.enabled]))
 
 
 class K10632GetAlarmFlashing(TutkWyzeProtocolMessage):
@@ -689,13 +610,8 @@ class K10632GetAlarmFlashing(TutkWyzeProtocolMessage):
         - (2,2): Off.
     """
 
-    expected_response_code = 10633
-
     def __init__(self):
         super().__init__(10632)
-
-    def parse_response(self, resp_data) -> tuple[int, int]:
-        return resp_data[0], resp_data[1]
 
 
 class K10640GetSpotlightStatus(TutkWyzeProtocolMessage):
@@ -704,8 +620,6 @@ class K10640GetSpotlightStatus(TutkWyzeProtocolMessage):
 
     Not terribly well understood.
     """
-
-    expected_response_code = 10641
 
     def __init__(self):
         super().__init__(10640)
@@ -716,13 +630,8 @@ class K10058TakePhoto(TutkWyzeProtocolMessage):
     Take photo on camera sensor and save to /media/mmc/photo/YYYYMMDD/YYYYMMDD_HH_MM_SS.jpg
     """
 
-    expected_response_code = 10059
-
     def __init__(self):
         super().__init__(10058)
-
-    def parse_response(self, resp_data) -> int:
-        return resp_data[0]
 
 
 class K10148StartBoa(TutkWyzeProtocolMessage):
@@ -730,16 +639,11 @@ class K10148StartBoa(TutkWyzeProtocolMessage):
     Temporarily start boa server
     """
 
-    expected_response_code = 10149
-
     def __init__(self):
         super().__init__(10148)
 
     def encode(self) -> bytes:
-        return encode(10148, 5, bytes([0, 1, 0, 0, 0]))
-
-    def parse_response(self, resp_data) -> int:
-        return resp_data[0]
+        return encode(self.code, 5, bytes([0, 1, 0, 0, 0]))
 
 
 class K10600SetRtspSwitch(TutkWyzeProtocolMessage):
@@ -749,22 +653,18 @@ class K10600SetRtspSwitch(TutkWyzeProtocolMessage):
     :param enable: Optional Bool. Set True for on, False for off. Defaults to True.
     """
 
-    expected_response_code = 10601
-
     def __init__(self, enable: bool = True):
         super().__init__(10600)
         self.enable = 1 if enable else 0
 
     def encode(self) -> bytes:
-        return encode(10600, 1, bytes([self.enable]))
+        return encode(self.code, 1, bytes([self.enable]))
 
 
 class K10604GetRtspParam(TutkWyzeProtocolMessage):
     """
     Get RTSP parameters from supported firmware.
     """
-
-    expected_response_code = 10605
 
     def __init__(self):
         super().__init__(10604)
@@ -783,8 +683,6 @@ class K11000SetRotaryByDegree(TutkWyzeProtocolMessage):
 
     """
 
-    expected_response_code = 11001
-
     def __init__(self, horizontal: int, vertical: int, speed: int = 5):
         super().__init__(11000)
         self.horizontal = horizontal
@@ -793,10 +691,7 @@ class K11000SetRotaryByDegree(TutkWyzeProtocolMessage):
 
     def encode(self) -> bytes:
         msg = pack("<hhB", self.horizontal, self.vertical, self.speed)
-        return encode(11000, 5, msg)
-
-    def parse_response(self, resp_data) -> int:
-        return resp_data[0]
+        return encode(self.code, 5, msg)
 
 
 class K11002SetRotaryByAction(TutkWyzeProtocolMessage):
@@ -818,8 +713,6 @@ class K11002SetRotaryByAction(TutkWyzeProtocolMessage):
 
     """
 
-    expected_response_code = 11003
-
     def __init__(self, horizontal: int, vertical: int, speed: int = 5):
         super().__init__(11002)
         self.horizontal = horizontal if 0 <= horizontal <= 2 else 0
@@ -827,10 +720,7 @@ class K11002SetRotaryByAction(TutkWyzeProtocolMessage):
         self.speed = speed if 1 <= speed <= 9 else 5
 
     def encode(self) -> bytes:
-        return encode(11002, 3, bytes([self.horizontal, self.vertical, self.speed]))
-
-    def parse_response(self, resp_data) -> int:
-        return resp_data[0]
+        return encode(self.code, 3, bytes([self.horizontal, self.vertical, self.speed]))
 
 
 class K11004ResetRotatePosition(TutkWyzeProtocolMessage):
@@ -841,17 +731,12 @@ class K11004ResetRotatePosition(TutkWyzeProtocolMessage):
     - position (int,optional): Reset position? Defaults to 3
     """
 
-    expected_response_code = 11005
-
     def __init__(self, position: int = 3):
         super().__init__(11004)
         self.position = position
 
     def encode(self) -> bytes:
-        return encode(11004, 1, bytes([self.position]))
-
-    def parse_response(self, resp_data) -> int:
-        return resp_data[0]
+        return encode(self.code, 1, bytes([self.position]))
 
 
 class K11018SetPTZPosition(TutkWyzeProtocolMessage):
@@ -863,8 +748,6 @@ class K11018SetPTZPosition(TutkWyzeProtocolMessage):
     - hor_angle (int): horizontal angle.
     """
 
-    expected_response_code = 11019
-
     def __init__(self, ver_angle: int, hor_angle: int):
         super().__init__(11018)
         self.ver_angle = ver_angle
@@ -872,10 +755,8 @@ class K11018SetPTZPosition(TutkWyzeProtocolMessage):
 
     def encode(self) -> bytes:
         time_val = int(time.time() * 1000) % 1_000_000_000
-        return encode(11018, 7, pack("<IBH", time_val, self.ver_angle, self.hor_angle))
-
-    def parse_response(self, resp_data) -> int:
-        return resp_data[0]
+        msg = pack("<IBH", time_val, self.ver_angle, self.hor_angle)
+        return encode(self.code, 7, msg)
 
 
 def encode(code: int, data_len: int, data: Optional[bytes]) -> bytes:

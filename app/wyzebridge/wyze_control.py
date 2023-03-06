@@ -248,7 +248,7 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: str, source: str) -> dict:
     try:
         with sess.iotctrl_mux() as mux:
             if res := mux.send_ioctl(proto_msg).result(timeout=3):
-                resp |= {"status": "success", "response": res}
+                resp |= {"status": "success", "response": ",".join(map(str, res))}
     except Empty:
         logger.warning(f"[CONTROL] {cmd} empty response")
         resp |= {"status": "success", "response": None}

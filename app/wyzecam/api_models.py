@@ -1,6 +1,6 @@
 import os
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -66,7 +66,7 @@ class WyzeCredential(BaseModel):
     refresh_token: Optional[str]
     user_id: str
     mfa_options: Optional[list]
-    mfa_details: Optional[Dict[str, Any]]
+    mfa_details: Optional[dict[str, Any]]
     sms_session_id: Optional[str]
     phone_id: str
 
@@ -112,7 +112,7 @@ class WyzeCamera(BaseModel):
     enr: Optional[str]
     mac: str
     product_model: str
-    camera_info: Optional[Dict[str, Any]]
+    camera_info: Optional[dict[str, Any]]
     nickname: Optional[str]
     timezone_name: Optional[str]
     firmware_ver: Optional[str]
@@ -122,7 +122,7 @@ class WyzeCamera(BaseModel):
     parent_mac: Optional[str]
     thumbnail: Optional[str]
 
-    def set_camera_info(self, info: Dict[str, Any]) -> None:
+    def set_camera_info(self, info: dict[str, Any]) -> None:
         # Called internally as part of WyzeIOTC.connect_and_auth()
         self.camera_info = info
 

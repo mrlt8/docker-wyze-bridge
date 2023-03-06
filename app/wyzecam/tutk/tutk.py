@@ -1,5 +1,4 @@
 import pathlib
-import typing
 from ctypes import (
     CDLL,
     Structure,
@@ -538,7 +537,7 @@ class AVClientStartOutConfig(FormattedStructure):
 
 def av_recv_frame_data(
     tutk_platform_lib: CDLL, av_chan_id: c_int
-) -> typing.Tuple[
+) -> tuple[
     int,
     Optional[bytes],
     Optional[Union[FrameInfoStruct, FrameInfo3Struct]],
@@ -628,7 +627,7 @@ def av_check_audio_buf(tutk_platform_lib: CDLL, av_chan_id: c_int) -> int:
 
 def av_recv_io_ctrl(
     tutk_platform_lib: CDLL, av_chan_id: c_int, timeout_ms: int
-) -> typing.Tuple[int, int, Optional[typing.List[bytes]]]:
+) -> tuple[int, int, Optional[list[bytes]]]:
     """Receive AV IO control.
 
     This function is used by AV servers or AV clients to receive a AV IO control.
@@ -779,7 +778,7 @@ def av_client_start(
     timeout_secs: int,
     channel_id: int,
     resend: c_int8,
-) -> typing.Tuple[c_int, c_uint]:
+) -> tuple[c_int, c_uint]:
     """Start an AV client.
 
     Start an AV client by providing view account and password. It shall pass
@@ -812,8 +811,7 @@ def av_client_start(
     avc_out = AVClientStartOutConfig()
     avc_out.cb = sizeof(avc_out)
 
-    av_chan_id = tutk_platform_lib.avClientStartEx(byref(avc_in), byref(avc_out))
-    return av_chan_id
+    return tutk_platform_lib.avClientStartEx(byref(avc_in), byref(avc_out))
 
 
 def av_initialize(tutk_platform_lib: CDLL, max_num_channels: c_int = 1) -> int:
@@ -846,7 +844,7 @@ def av_deinitialize(tutk_platform_lib: CDLL) -> int:
 
 def iotc_session_check(
     tutk_platform_lib: CDLL, session_id: c_int
-) -> typing.Tuple[int, SInfoStructEx]:
+) -> tuple[int, SInfoStructEx]:
     """Used by a device or a client to check the IOTC session info.
 
     A device or a client may use this function to check if the IOTC session is
@@ -894,8 +892,8 @@ def iotc_check_device_online(
     tutk_platform_lib: CDLL,
     p2p_id: str,
     auth_key: bytes,
-    timeout_ms: Optional[int] = 5000,
-) -> c_int:
+    timeout_ms: int = 5000,
+) -> tuple[c_int, St_IOTCCheckDeviceOutput]:
     """Checking device online or not."""
     device_in = St_IOTCCheckDeviceInput()
     device_in.cb = sizeof(device_in)
@@ -1025,9 +1023,7 @@ def iotc_get_version(tutk_platform_lib: CDLL) -> int:
 
     This function returns the version of IOTC module.
     """
-    version = tutk_platform_lib.IOTC_Get_Version_String()
-
-    return version
+    return tutk_platform_lib.IOTC_Get_Version_String()
 
 
 def iotc_initialize(tutk_platform_lib: CDLL, udp_port: int = 0) -> int:
@@ -1053,7 +1049,6 @@ def iotc_initialize(tutk_platform_lib: CDLL, udp_port: int = 0) -> int:
 
 
 def TUTK_SDK_Set_License_Key(tutk_platform_lib: CDLL, key: str) -> int:
-
     errno: int = tutk_platform_lib.TUTK_SDK_Set_License_Key(
         c_char_p(key.encode("ascii"))
     )
@@ -1072,23 +1067,12 @@ def iotc_deinitialize(tutk_platform_lib: CDLL) -> c_int:
     return errno
 
 
-def load_library(
-    shared_lib_path: Optional[str] = None,
-) -> CDLL:
+def load_library(shared_lib_path: Optional[str] = None) -> CDLL:
     """Load the underlying iotc library
 
     :param shared_lib_path: the path to the shared library libIOTCAPIs_ALL
     :return: the tutk_platform_lib, suitable for passing to other functions in this module
     """
-    if shared_lib_path is None:
-        # if pathlib.Path("/usr/local/lib/libIOTCAPIs_ALL.dylib").exists():
-        #     shared_lib_path = "/usr/local/lib/libIOTCAPIs_ALL.dylib"
-        if pathlib.Path("/usr/local/lib/libIOTCAPIs_ALL.so").exists():
-            shared_lib_path = "/usr/local/lib/libIOTCAPIs_ALL.so"
-
-    if shared_lib_path is None:
-        raise RuntimeError(
-            "Could not find libIOTCAPIs_ALL shared library.  See documentation, "
-            "or specify the full path as an argument to load_library()."
-        )
+    if not shared_lib_path:
+        shared_lib_path = "/usr/local/lib/libIOTCAPIs_ALL.so"
     return cdll.LoadLibrary(shared_lib_path)

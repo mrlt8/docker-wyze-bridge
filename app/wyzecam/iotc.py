@@ -8,7 +8,7 @@ import pathlib
 import time
 import warnings
 from ctypes import CDLL, c_int
-from typing import Any, Dict, Iterator, Optional, Tuple, Union
+from typing import Any, Iterator, Optional, Union
 
 from wyzecam.api_models import WyzeAccount, WyzeCamera
 
@@ -389,7 +389,7 @@ class WyzeIOTCSession:
     def recv_video_data(
         self,
     ) -> Iterator[
-        Tuple[Optional[bytes], Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
+        tuple[Optional[bytes], Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
     ]:
         """A generator for returning raw video frames!
 
@@ -608,6 +608,7 @@ class WyzeIOTCSession:
                         warnings.warn(f"Error: {errno=}")
                         break
                     audio_pipe.write(frame_data)
+                audio_pipe.write(b"")
         except tutk.TutkError as ex:
             warnings.warn(str(ex))
         except IOError as ex:
@@ -625,7 +626,7 @@ class WyzeIOTCSession:
             sample_rate = int(audio_param.get("sampleRate", sample_rate))
         return sample_rate
 
-    def get_audio_codec(self, limit: int = 25) -> Tuple[str, int]:
+    def get_audio_codec(self, limit: int = 25) -> tuple[str, int]:
         """Identify audio codec."""
         sample_rate = self.get_audio_sample_rate()
         for _ in range(limit):
@@ -652,7 +653,7 @@ class WyzeIOTCSession:
     def recv_video_frame(
         self,
     ) -> Iterator[
-        Tuple["av.VideoFrame", Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
+        tuple["av.VideoFrame", Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
     ]:
         """A generator for returning decoded video frames!
 
@@ -698,7 +699,7 @@ class WyzeIOTCSession:
     def recv_video_frame_ndarray(
         self,
     ) -> Iterator[
-        Tuple["np.ndarray", Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
+        tuple["np.ndarray", Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
     ]:
         """A generator for returning decoded video frames!
 
@@ -746,10 +747,10 @@ class WyzeIOTCSession:
             str
         ] = "{width}x{height} {kilobytes_per_second} kB/s {frames_per_second} FPS",
     ) -> Iterator[
-        Tuple[
+        tuple[
             "np.ndarray[Any, Any]",
             Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct],
-            Dict[str, int],
+            dict[str, int],
         ]
     ]:
         """A generator for returning decoded video frames with stats!
