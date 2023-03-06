@@ -1,3 +1,4 @@
+import threading
 import time
 from subprocess import Popen, TimeoutExpired
 from typing import Any, Optional, Protocol
@@ -49,13 +50,14 @@ class Stream(Protocol):
 
 
 class StreamManager:
-    __slots__ = "stop_flag", "streams", "rtsp_snapshots", "last_snap"
+    __slots__ = "stop_flag", "streams", "rtsp_snapshots", "last_snap", "thread"
 
     def __init__(self):
         self.stop_flag: bool = False
         self.streams: dict[str, Stream] = {}
         self.rtsp_snapshots: dict[str, Popen] = {}
         self.last_snap: float = 0
+        self.thread: Optional[threading.Thread] = None
 
     @property
     def total(self):
@@ -96,6 +98,15 @@ class StreamManager:
         self.stop_flag = True
         for stream in self.streams.values():
             stream.stop()
+
+    def monitor_thread(self):
+        """
+        Start monitoring streams in a background thread.
+        """
+        if self.thread and self.thread.is_alive():
+            self.thread.join()
+        self.thread = threading.Thread(target=self.monitor_streams)
+        self.thread.start()
 
     def monitor_streams(self) -> None:
         self.stop_flag = False
@@ -178,3 +189,7 @@ class StreamManager:
                 ffmpeg.kill()
                 ffmpeg.communicate()
         return False
+
+    def cleanup(self):
+        if self.thread and self.thread.is_alive():
+            self.thread.join()

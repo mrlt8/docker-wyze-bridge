@@ -1,9 +1,8 @@
 import os
 import signal
 import sys
-import threading
 from dataclasses import replace
-from typing import NoReturn, Optional
+from typing import NoReturn
 
 from wyzebridge import config
 from wyzebridge.bridge_utils import env_bool, env_cam
@@ -16,7 +15,7 @@ from wyzebridge.wyze_stream import WyzeStream, WyzeStreamOptions
 
 
 class WyzeBridge:
-    __slots__ = "api", "streams", "thread", "rtsp"
+    __slots__ = "api", "streams", "rtsp"
 
     def __init__(self) -> None:
         for sig in {"SIGTERM", "SIGINT"}:
@@ -25,7 +24,6 @@ class WyzeBridge:
         setup_hass()
         self.api: WyzeApi = WyzeApi()
         self.streams: StreamManager = StreamManager()
-        self.thread: Optional[threading.Thread] = None
         self.rtsp: RtspServer = RtspServer(config.BRIDGE_IP)
 
         os.makedirs(config.TOKEN_PATH, exist_ok=True)
@@ -35,20 +33,20 @@ class WyzeBridge:
             self.rtsp.setup_llhls(config.TOKEN_PATH, bool(config.HASS_TOKEN))
 
     def run(self, fresh_data: bool = False) -> None:
-        """Start synchronously"""
         self.setup_streams(fresh_data)
         self.rtsp.start()
         if self.streams.total < 1:
             return self.clean_up()
-        self.streams.monitor_streams()
+        self.streams.monitor_thread()
 
-    def setup_streams(self, fresh_data=False):
+    def setup_streams(self, fresh_data: bool = False):
         """Gather and setup streams for each camera."""
         self.api.login(fresh_data=fresh_data)
 
         WyzeStream.user = self.api.get_user()
         WyzeStream.api = self.api
         for cam in self.api.filtered_cams():
+            logger.info(f"[+] Adding {cam.nickname} [{cam.product_model}]")
             if config.SNAPSHOT_TYPE == "API":
                 self.api.save_thumbnail(cam.name_uri)
             options = WyzeStreamOptions(
@@ -58,14 +56,18 @@ class WyzeBridge:
             )
             self.add_substream(cam, options)
             stream = WyzeStream(cam, options)
-            if rtsp_fw := env_bool("rtsp_fw").lower():
-                if rtsp_path := stream.check_rtsp_fw(rtsp_fw == "force"):
-                    rtsp_uri = f"{cam.name_uri}fw"
-                    logger.info(f"Adding /{rtsp_uri} as a source")
-                    self.rtsp.add_source(rtsp_uri, rtsp_path)
-                    stream.rtsp_fw_enabled = True
+            stream.rtsp_fw_enabled = self.rtsp_fw_proxy(cam, stream)
             self.rtsp.add_path(stream.uri, not bool(options.record))
             self.streams.add(stream)
+
+    def rtsp_fw_proxy(self, cam, stream) -> bool:
+        if rtsp_fw := env_bool("rtsp_fw").lower():
+            if rtsp_path := stream.check_rtsp_fw(rtsp_fw == "force"):
+                rtsp_uri = f"{cam.name_uri}fw"
+                logger.info(f"Adding /{rtsp_uri} as a source")
+                self.rtsp.add_source(rtsp_uri, rtsp_path)
+                return True
+        return False
 
     def add_substream(self, cam, options):
         """Setup and add substream if enabled for camera."""
@@ -77,24 +79,12 @@ class WyzeBridge:
             self.rtsp.add_path(sub.uri, on_demand=True)
             self.streams.add(sub)
 
-    def start(self, fresh_data: bool = False) -> None:
-        """Start asynchronously."""
-        if self.thread and self.thread.is_alive():
-            self.thread.join()
-        self.thread = threading.Thread(target=self.run, args=(fresh_data,))
-        self.thread.start()
-
     def clean_up(self) -> NoReturn:
         """Stop all streams and clean up before shutdown."""
         if self.streams:
             self.streams.stop_all()
         self.rtsp.stop()
-        if (
-            self.thread
-            and self.thread.is_alive()
-            and threading.current_thread() is not self.thread
-        ):
-            self.thread.join()
+        self.streams.cleanup()
         logger.info("👋 goodbye!")
         sys.exit(0)
 

@@ -18,7 +18,6 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from wyze_bridge import WyzeBridge
 from wyzebridge import config, web_ui
 
-wb: WyzeBridge = None
 auth = HTTPBasicAuth()
 auth_enabled = os.getenv("WEB_AUTH", "false").lower() != "false"
 if auth_enabled:
@@ -35,10 +34,8 @@ def verify_password(username, password):
 
 def create_app():
     app = Flask(__name__)
-    global wb
-    if not wb:
-        wb = WyzeBridge()
-        wb.start()
+    wb = WyzeBridge()
+    wb.run()
 
     @app.route("/")
     @auth.login_required
@@ -118,13 +115,13 @@ def create_app():
         if cam_name and cam_cmd == "status":
             return {"status": wb.streams.get_status(cam_name)}
         if cam_name and cam_cmd == "start":
-            return {"success": wb.streams.start(cam_name)}
+            return {"status": wb.streams.start(cam_name)}
         if cam_name and cam_cmd == "stop":
-            return {"success": wb.streams.stop(cam_name)}
+            return {"status": wb.streams.stop(cam_name)}
         if cam_name and cam_cmd == "disable":
-            return {"success": wb.streams.disable(cam_name)}
+            return {"status": wb.streams.disable(cam_name)}
         if cam_name and cam_cmd == "enable":
-            return {"success": wb.streams.enable(cam_name)}
+            return {"status": wb.streams.enable(cam_name)}
         if cam_name and cam_cmd:
             return wb.streams.send_cmd(cam_name, cam_cmd)
 
@@ -198,7 +195,7 @@ def create_app():
         """
         if restart_cmd == "cameras":
             wb.streams.stop_all()
-            wb.streams.monitor_streams()
+            wb.streams.monitor_thread()
         elif restart_cmd == "rtsp_server":
             wb.rtsp.restart()
         elif restart_cmd == "all":
