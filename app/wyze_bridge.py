@@ -61,7 +61,7 @@ class WyzeBridge:
             if rtsp_fw := env_bool("rtsp_fw").lower():
                 if rtsp_path := stream.check_rtsp_fw(rtsp_fw == "force"):
                     rtsp_uri = f"{cam.name_uri}fw"
-                    logger.info(f"Addingg /{rtsp_uri} as a source")
+                    logger.info(f"Adding /{rtsp_uri} as a source")
                     self.rtsp.add_source(rtsp_uri, rtsp_path)
                     stream.rtsp_fw_enabled = True
             self.rtsp.add_path(stream.uri, not bool(options.record))
@@ -89,9 +89,12 @@ class WyzeBridge:
         if self.streams:
             self.streams.stop_all()
         self.rtsp.stop()
-        if self.thread and self.thread.is_alive():
-            if threading.current_thread() is not self.thread:
-                self.thread.join()
+        if (
+            self.thread
+            and self.thread.is_alive()
+            and threading.current_thread() is not self.thread
+        ):
+            self.thread.join()
         logger.info("👋 goodbye!")
         sys.exit(0)
 

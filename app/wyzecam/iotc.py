@@ -465,9 +465,7 @@ class WyzeIOTCSession:
             bad_frames = 0
             first_run = False
 
-    def recv_bridge_frame(
-        self, timeout: int = 15, fps: int = 15
-    ) -> Iterator[Optional[bytes]]:
+    def recv_bridge_frame(self, timeout: int = 15, fps: int = 15) -> Iterator[bytes]:
         """A generator for returning raw video frames for the bridge.
 
         Note that the format of this data is either raw h264 or HVEC H265 video. You will
@@ -507,6 +505,8 @@ class WyzeIOTCSession:
                     warnings.warn(str(tutk.TutkError(errno).name))
                     continue
                 raise tutk.TutkError(errno)
+            if not frame_data:
+                continue
             assert frame_info is not None, "Got no frame info without an error!"
             if frame_info.frame_size not in ignore_res:
                 if last["key_frame"] == 0:
@@ -534,6 +534,7 @@ class WyzeIOTCSession:
             last |= {"frame": frame_info.frame_no, "time": time.time()}
             yield frame_data
         self.state = WyzeIOTCSessionState.CONNECTING_FAILED
+        return b""
 
     def update_frame_size_rate(
         self, bitrate: bool = False, fps: Optional[int] = None

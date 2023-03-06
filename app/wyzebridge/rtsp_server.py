@@ -71,13 +71,9 @@ class RtspServer:
             self.rtsp.set(uri, "readUser", read_user)
         if read_pass := self.rtsp.get(uri, "readPass"):
             self.rtsp.set(uri, "readPass", read_pass)
-        # if self.sub_process:
-        #     self.restart()
 
     def add_source(self, uri: str, value: str):
         self.rtsp.set(uri, "source", value)
-        # if self.sub_process:
-        #     self.restart()
 
     def start(self):
         if self.sub_process:

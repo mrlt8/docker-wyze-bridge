@@ -1,6 +1,5 @@
 import json
 import multiprocessing as mp
-import os
 from ctypes import c_int
 from dataclasses import dataclass
 from enum import IntEnum
@@ -277,8 +276,7 @@ def start_tutk_stream(stream: WyzeStream) -> None:
             stream.state.value = StreamStatus.CONNECTED
             with Popen(ffmpeg_cmd, stdin=PIPE) as ffmpeg:
                 for frame in sess.recv_bridge_frame(fps=fps):
-                    if frame:
-                        ffmpeg.stdin.write(frame)
+                    ffmpeg.stdin.write(frame)
 
     except TutkError as ex:
         logger.warning(f"{[ex.code]} {ex}")
