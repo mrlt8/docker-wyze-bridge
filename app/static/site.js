@@ -374,7 +374,9 @@ document.addEventListener("DOMContentLoaded", () => {
       fetch("restart/" + a.dataset.restart)
         .then((resp) => resp.json())
         .then((data) => {
-          console.log(data);
+          bulmaToast.toast({ message: `Restart ${a.dataset.restart}: ${data.result}`, type: "is-warning" });
+        }).catch((error) => {
+          bulmaToast.toast({ message: `Restart ${a.dataset.restart}: ${error}`, type: "is-danger" })
         });
       setTimeout(() => {
         a.style = null;
@@ -446,17 +448,22 @@ document.addEventListener("DOMContentLoaded", () => {
   })
   sse.addEventListener("message", (e) => {
     Object.entries(JSON.parse(e.data)).forEach(([cam, status]) => {
-      const statusIcon = document.querySelector(`#${cam} .status i.fas`);
-      const preview = document.querySelector(`#${cam} img.refresh_img,video[data-cam='${cam}']`);
+      const card = document.querySelector(`#${cam}`);
+      const statusIcon = card.querySelector(".status i.fas");
+      const preview = card.querySelector(`img.refresh_img,video[data-cam='${cam}']`);
+      const connected = (card.dataset.connected.toLowerCase() === "true")
+      card.dataset.connected = false;
       statusIcon.setAttribute("class", "fas")
       statusIcon.parentElement.title = ""
       if (preview) { preview.classList.remove("connected") }
       if (status == "connected") {
+        if (!connected) { bulmaToast.toast({ message: `Connected to ${cam}`, type: "is-success" }); }
+        card.dataset.connected = true;
         statusIcon.classList.add("fa-circle-play", "has-text-success");
         statusIcon.parentElement.title = "Click/tap to pause";
         if (preview) { preview.classList.add("connected") }
         autoplay();
-        let noPreview = document.querySelector(`#${cam} .no-preview`)
+        let noPreview = card.querySelector('.no-preview')
         if (noPreview) {
           let fig = noPreview.parentElement
           let preview = document.createElement("img")
@@ -470,12 +477,15 @@ document.addEventListener("DOMContentLoaded", () => {
         statusIcon.classList.add("fa-satellite-dish", "has-text-warning");
         statusIcon.parentElement.title = "Click/tap to pause";
       } else if (status == "stopped") {
+        if (connected) { bulmaToast.toast({ message: `Disconnected from ${cam}`, type: "is-danger" }); }
         statusIcon.classList.add("fa-circle-pause");
         statusIcon.parentElement.title = "Click/tap to play";
       } else if (status == "offline") {
+        if (connected) { bulmaToast.toast({ message: `${cam} offline`, type: "is-danger" }); }
         statusIcon.classList.add("fa-ghost");
         statusIcon.parentElement.title = "Camera offline";
       } else {
+        if (connected) { bulmaToast.toast({ message: `Disconnected from ${cam}`, type: "is-danger" }); }
         statusIcon.setAttribute("class", "fas fa-circle-exclamation")
         statusIcon.parentElement.title = "Not Connected";
       }
@@ -656,12 +666,16 @@ document.addEventListener("DOMContentLoaded", () => {
     let cam = e.dataset.cam;
     e.querySelectorAll(".button").forEach((button) => {
       button.addEventListener("click", () => {
+        button.classList.add("is-loading");
         fetch(`api/${cam}/${button.dataset.cmd}`)
           .then((resp) => resp.json())
           .then((data) => {
-            console.log(data);
+            bulmaToast.toast({ message: `[${cam}] ${button.dataset.cmd}: ${data.status}`, type: data.status == "error" ? "is-danger" : "is-primary" });
+            button.classList.remove("is-loading");
+          }).catch((error) => {
+            bulmaToast.toast({ message: `[${cam}] ${button.dataset.cmd}: ${error}`, type: "is-danger" })
+            button.classList.remove("is-loading");
           });
-
       })
     })
   })
