@@ -1,6 +1,5 @@
 from os import environ, getenv
 from pathlib import Path
-from signal import SIGINT
 from subprocess import DEVNULL, Popen
 from typing import Optional, Protocol
 
@@ -86,7 +85,7 @@ class RtspServer:
     def stop(self):
         logger.info("Stopping rtsp-simple-server...")
         if self.sub_process and self.sub_process.poll() is None:
-            self.sub_process.send_signal(SIGINT)
+            self.sub_process.kill()
             self.sub_process.communicate()
         self.sub_process = None
 

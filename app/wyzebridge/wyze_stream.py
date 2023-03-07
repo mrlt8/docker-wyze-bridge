@@ -80,10 +80,6 @@ class WyzeStream:
         self.setup()
 
     def setup(self):
-        if not self.options.substream:
-            self.cam_resp = mp.Queue(1)
-            self.cam_cmd = mp.Queue(1)
-
         if self.camera.is_gwell:
             logger.info(
                 f"[{self.camera.product_model}] {self.camera.nickname} not supported"
@@ -109,6 +105,9 @@ class WyzeStream:
         logger.info(
             f"🎉 Connecting to WyzeCam {self.camera.model_name} - {self.camera.nickname} on {self.camera.ip}"
         )
+        if not self.options.substream:
+            self.cam_resp = mp.Queue(1)
+            self.cam_cmd = mp.Queue(1)
         update_mqtt_state(self.uri, "starting")
         self.start_time = time()
 
@@ -128,6 +127,12 @@ class WyzeStream:
             self.process.kill()
             self.process.join()
         self.process = None
+        if self.cam_resp:
+            self.cam_resp.close()
+            self.cam_resp = None
+        if self.cam_cmd:
+            self.cam_cmd.close()
+            self.cam_cmd = None
         update_mqtt_state(self.uri, "stopped")
         self.state.value = StreamStatus.STOPPED
         return True
