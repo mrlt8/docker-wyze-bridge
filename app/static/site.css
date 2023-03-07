@@ -51,6 +51,11 @@ section {
   flex-grow: 0;
 }
 
+.dropdown-content .dropdown-item.is-active {
+  background-color: rgba(110, 118, 129, 0.4);
+}
+
+
 a {
   color: #1abc9c;
 }
