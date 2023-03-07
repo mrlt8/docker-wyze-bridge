@@ -1,9 +1,10 @@
+import contextlib
 import json
 import multiprocessing as mp
 from ctypes import c_int
 from dataclasses import dataclass
 from enum import IntEnum
-from queue import Empty
+from queue import Empty, Full
 from subprocess import PIPE, Popen
 from threading import Thread
 from time import time
@@ -226,11 +227,21 @@ class WyzeStream:
         return self.camera.camera_info.get("boa_info", {})
 
     def send_cmd(self, cmd: str) -> dict:
-        if env_bool("disable_control") or not self.connected or not self.cam_cmd:
+        if (
+            env_bool("disable_control")
+            or not self.connected
+            or not self.cam_cmd
+            or not self.cam_resp
+        ):
             return {}
-        self.cam_cmd.put(cmd)
+
+        with contextlib.suppress(Empty):
+            self.cam_resp.get_nowait()
         try:
+            self.cam_cmd.put(cmd, timeout=5)
             cam_resp = self.cam_resp.get(timeout=5)
+        except Full:
+            return {"response": "camera busy"}
         except Empty:
             return {"response": "timed out"}
         return cam_resp.pop(cmd, None) or {"response": "could not get result"}

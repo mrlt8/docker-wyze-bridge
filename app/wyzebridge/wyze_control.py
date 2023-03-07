@@ -3,7 +3,7 @@ import json
 import socket
 from datetime import datetime, timedelta
 from multiprocessing import Queue
-from queue import Empty
+from queue import Empty, Full
 from re import findall
 from typing import Optional
 
@@ -207,14 +207,9 @@ def camera_control(
         # sess.update_frame_size_rate(True)
 
         # update other cam info at same time?
-        if not resp:
-            continue
-
-        if camera_info.qsize() > 0:
-            with contextlib.suppress(Empty):
-                camera_info.get_nowait()
-        camera_info.put(resp)
-
+        if resp:
+            with contextlib.suppress(Full):
+                camera_info.put(resp, block=False)
     if mqtt:
         mqtt.loop_stop()
 
@@ -243,14 +238,13 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: str, source: str) -> dict:
     if not (proto := CAM_CMDS.get(cmd)):
         return resp | {"response": "Unknown command"}
     logger.info(f"[CONTROL] Request: {cmd} via {source.upper()}!")
-    proto_msg = getattr(tutk_protocol, proto[0])(*proto[1:])
     try:
         with sess.iotctrl_mux() as mux:
-            if res := mux.send_ioctl(proto_msg).result(timeout=3):
+            iotc = mux.send_ioctl(getattr(tutk_protocol, proto[0])(*proto[1:]))
+            if proto[0] in {"K11000SetRotaryByDegree"}:
+                resp |= {"status": "success", "response": None}
+            elif res := iotc.result(timeout=5):
                 resp |= {"status": "success", "response": ",".join(map(str, res))}
-    except Empty:
-        logger.warning(f"[CONTROL] {cmd} empty response")
-        resp |= {"status": "success", "response": None}
     except Exception as ex:
         resp |= {"response": ex}
         logger.warning(f"[CONTROL] {ex}")
