@@ -19,20 +19,21 @@ logger.setLevel(logging.DEBUG)
 warnings.formatwarning = lambda msg, *args, **kwargs: f"WARNING: {msg}"
 logging.captureWarnings(True)
 
-console_format = log_info
-if DEBUG_LEVEL < logging.INFO:
-    logging.getLogger().setLevel(DEBUG_LEVEL)
-    warnings.simplefilter("always")
-    console_format = log_debug
 
-
+console_format = log_info if DEBUG_LEVEL >= logging.INFO else log_debug
 console_logger = logging.StreamHandler(stdout)
 console_logger.setLevel(DEBUG_LEVEL)
-console_logger.setFormatter(logging.Formatter(log_info, "%X"))
+console_logger.setFormatter(logging.Formatter(console_format, "%X"))
 
-logger.addHandler(console_logger)
-logging.getLogger("py.warnings").addHandler(console_logger)
-logging.getLogger("werkzeug").addHandler(console_logger)
+
+if DEBUG_LEVEL >= logging.INFO:
+    logger.addHandler(console_logger)
+    logging.getLogger("py.warnings").addHandler(console_logger)
+    logging.getLogger("werkzeug").addHandler(console_logger)
+else:
+    logging.getLogger().setLevel(DEBUG_LEVEL)
+    logging.getLogger().addHandler(console_logger)
+    warnings.simplefilter("always")
 
 if env_bool("LOG_FILE"):
     log_path = "/logs/"
