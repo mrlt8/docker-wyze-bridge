@@ -18,7 +18,7 @@
     <section class="section">
         <nav class="navbar block is-dark fs-display-none">
             <div class="navbar-brand">
-                {% if cam_data.enabled != cam_data.total %}
+                {% if cam_data.enabled != cam_data.available %}
                 <a data-filter="enabled" class="navbar-item is-tab is-active filter">
                     <span class="icon-text">
                         <span class="icon"><i class="fas fa-plug-circle-check"></i></span><span><strong> {{
@@ -125,7 +125,7 @@
                             </span>
                             {% endif %}
                             {% if camera.camera_info %}
-                            {% if camera.camera_info.sdParm.status == "1"%}
+                            {% if camera.camera_info.sdParm and camera.camera_info.sdParm.status == "1"%}
                             <div class="dropdown is-hoverable">
                                 <span class="icon">
                                     <i class="fas fa-sd-card" aria-hidden="true"></i>
@@ -351,10 +351,12 @@
                 </div>
                 <div class="dropdown-menu" id="video-menu" role="menu">
                     <div class="dropdown-content">
-                        <a data-action="webrtc" class="dropdown-item" id="webrtc-toggle">
+                        <a data-action="webrtc" class="dropdown-item {{'is-active' if video_format == 'webrtc'}}"
+                            id="webrtc-toggle">
                             WebRTC
                         </a>
-                        <a data-action="hls" class="dropdown-item" id="hls-toggle">
+                        <a data-action="hls" class="dropdown-item {{'is-active' if video_format == 'hls'}}"
+                            id="hls-toggle">
                             HLS
                         </a>
                         <hr class="dropdown-divider">

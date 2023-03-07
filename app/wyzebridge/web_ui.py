@@ -111,7 +111,8 @@ def format_streams(cams: dict, host: Optional[str]) -> dict[str, dict]:
 def all_cams(streams: StreamManager, total: int, host: Optional[str]) -> dict:
     return {
         "total": total,
-        "enabled": streams.total,
+        "available": streams.total,
+        "enabled": streams.active,
         "cameras": format_streams(streams.get_all_cam_info(), host),
     }
 
