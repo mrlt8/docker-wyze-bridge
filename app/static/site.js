@@ -293,36 +293,23 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   // Check for version update
-  let checkAPI = document.getElementById("checkUpdate");
-  function checkVersion(api) {
-    let isNewer = (a, b) => {
-      return a.localeCompare(b, undefined, { numeric: true }) === 1;
-    };
-    let apiVersion = api.tag_name.replace(/[^0-9\.]/g, "");
-    let runVersion = checkAPI.dataset.version;
-    let icon = checkAPI.getElementsByClassName("fa-arrows-rotate")[0];
-    let newSpan = document.createElement("span");
-    icon.classList.remove("fa-arrows-rotate");
-    if (isNewer(apiVersion, runVersion)) {
-      newSpan.textContent = "Update available: v" + apiVersion;
-      checkAPI.classList.add("has-text-danger");
-      icon.classList.add("fa-triangle-exclamation");
-    } else {
-      newSpan.textContent = "Latest version";
-      checkAPI.classList.add("has-text-success");
-      icon.classList.add("fa-square-check");
-    }
-    checkAPI.appendChild(newSpan);
-    checkAPI.removeEventListener("click", getGithub);
-  }
-  function getGithub() {
-    fetch(
-      "https://api.github.com/repos/mrlt8/docker-wyze-bridge/releases/latest"
-    )
+  const checkAPI = document.getElementById("checkUpdate");
+  checkAPI.addEventListener("click", () => {
+    let icon = checkAPI.getElementsByClassName("fa-arrows-rotate")[0].classList;
+    icon.add("fa-spin");
+    fetch("https://api.github.com/repos/mrlt8/docker-wyze-bridge/releases/latest")
       .then((response) => response.json())
-      .then((data) => checkVersion(data));
-  }
-  checkAPI.addEventListener("click", getGithub);
+      .then((data) => {
+        let apiVersion = data.tag_name.replace(/[^0-9\.]/g, "");
+        if (apiVersion.localeCompare(checkAPI.dataset.version, undefined, { numeric: true }) === 1) {
+          sendNotification('Update available!', `🎉 v.${apiVersion}`, "warning");
+        } else {
+          sendNotification('All up to date!', '✅ Running the latest version!', "success");
+        }
+      })
+      .catch((error) => { sendNotification('Update check failed', error.message, "danger") })
+      .finally(() => { icon.remove("fa-spin"); });
+  });
 
   // Update preview after loading the page
   async function loadPreview(img) {
@@ -373,11 +360,8 @@ document.addEventListener("DOMContentLoaded", () => {
       a.classList.add("has-text-danger");
       fetch("restart/" + a.dataset.restart)
         .then((resp) => resp.json())
-        .then((data) => {
-          bulmaToast.toast({ message: `Restart ${a.dataset.restart}: ${data.result}`, type: "is-warning" });
-        }).catch((error) => {
-          bulmaToast.toast({ message: `Restart ${a.dataset.restart}: ${error}`, type: "is-danger" })
-        });
+        .then((data) => { sendNotification(`Restart ${a.dataset.restart}`, data.result, "warning"); })
+        .catch((error) => { sendNotification(`Restart ${a.dataset.restart}`, error.message, "danger"); });
       setTimeout(() => {
         a.style = null;
         a.classList.remove("has-text-danger");
@@ -457,7 +441,7 @@ document.addEventListener("DOMContentLoaded", () => {
       statusIcon.parentElement.title = ""
       if (preview) { preview.classList.remove("connected") }
       if (status == "connected") {
-        if (!connected) { bulmaToast.toast({ message: `Connected to ${cam}`, type: "is-success" }); }
+        if (!connected) { sendNotification('Connected', `Connected to ${cam}`, "success"); }
         card.dataset.connected = true;
         statusIcon.classList.add("fa-circle-play", "has-text-success");
         statusIcon.parentElement.title = "Click/tap to pause";
@@ -477,15 +461,15 @@ document.addEventListener("DOMContentLoaded", () => {
         statusIcon.classList.add("fa-satellite-dish", "has-text-warning");
         statusIcon.parentElement.title = "Click/tap to pause";
       } else if (status == "stopped") {
-        if (connected) { bulmaToast.toast({ message: `Disconnected from ${cam}`, type: "is-danger" }); }
+        if (connected) { sendNotification('Disconnected', `Disconnected from ${cam}`, "danger"); }
         statusIcon.classList.add("fa-circle-pause");
         statusIcon.parentElement.title = "Click/tap to play";
       } else if (status == "offline") {
-        if (connected) { bulmaToast.toast({ message: `${cam} offline`, type: "is-danger" }); }
+        if (connected) { sendNotification('Offline', `${cam} offline`, "danger"); }
         statusIcon.classList.add("fa-ghost");
         statusIcon.parentElement.title = "Camera offline";
       } else {
-        if (connected) { bulmaToast.toast({ message: `Disconnected from ${cam}`, type: "is-danger" }); }
+        if (connected) { sendNotification('Disconnected', `Disconnected from ${cam}`, "danger"); }
         statusIcon.setAttribute("class", "fas fa-circle-exclamation")
         statusIcon.parentElement.title = "Not Connected";
       }
@@ -669,13 +653,9 @@ document.addEventListener("DOMContentLoaded", () => {
         button.classList.add("is-loading");
         fetch(`api/${cam}/${button.dataset.cmd}`)
           .then((resp) => resp.json())
-          .then((data) => {
-            bulmaToast.toast({ message: `[${cam}] ${button.dataset.cmd}: ${data.status}`, type: data.status == "error" ? "is-danger" : "is-primary" });
-            button.classList.remove("is-loading");
-          }).catch((error) => {
-            bulmaToast.toast({ message: `[${cam}] ${button.dataset.cmd}: ${error}`, type: "is-danger" })
-            button.classList.remove("is-loading");
-          });
+          .then((data) => { sendNotification(cam, `${button.dataset.cmd}: ${data.status}`, data.status == "error" ? "danger" : "primary") })
+          .catch((error) => { sendNotification(cam, `${button.dataset.cmd}: ${error.message}`, "danger") })
+          .finally(() => { button.classList.remove("is-loading"); });
       })
     })
   })
@@ -683,4 +663,19 @@ document.addEventListener("DOMContentLoaded", () => {
     e.addEventListener("mouseenter", () => { e.closest("div.card").classList.add("drag_hover") })
     e.addEventListener("mouseleave", () => { e.closest("div.card").classList.remove("drag_hover") })
   })
-}); 
+
+  function notificationEnabled() {
+    if (!"Notification" in window) { return false }
+    if (Notification.permission === "granted") { return true }
+    Notification.requestPermission((permission) => {
+      if (permission === "granted") { return true }
+    });
+  }
+
+  function sendNotification(title, message, type = "primary") {
+    if (getCookie("fullscreen")) { return }
+    if (notificationEnabled() && document.visibilityState != "visible") {
+      new Notification(title, { body: message });
+    } else { bulmaToast.toast({ message: `<strong>${title}</strong> - ${message}`, type: `is-${type}`, pauseOnHover: true, duration: 10000 }) }
+  }
+});
