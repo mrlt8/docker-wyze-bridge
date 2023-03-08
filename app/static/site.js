@@ -465,7 +465,7 @@ document.addEventListener("DOMContentLoaded", () => {
         statusIcon.classList.add("fa-circle-pause");
         statusIcon.parentElement.title = "Click/tap to play";
       } else if (status == "offline") {
-        if (connected) { sendNotification('Offline', `${cam} offline`, "danger"); }
+        if (connected) { sendNotification('Offline', `${cam} is offline`, "danger"); }
         statusIcon.classList.add("fa-ghost");
         statusIcon.parentElement.title = "Camera offline";
       } else {
@@ -665,7 +665,7 @@ document.addEventListener("DOMContentLoaded", () => {
   })
 
   function notificationEnabled() {
-    if (!"Notification" in window) { return false }
+    if ("Notification" in window === false) { return }
     if (Notification.permission === "granted") { return true }
     Notification.requestPermission((permission) => {
       if (permission === "granted") { return true }
@@ -674,8 +674,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   function sendNotification(title, message, type = "primary") {
     if (getCookie("fullscreen")) { return }
-    if (notificationEnabled() && document.visibilityState != "visible") {
+    if (notificationEnabled() === true && document.visibilityState != "visible") {
       new Notification(title, { body: message });
-    } else { bulmaToast.toast({ message: `<strong>${title}</strong> - ${message}`, type: `is-${type}`, pauseOnHover: true, duration: 10000 }) }
+    } else {
+      bulmaToast.toast({ message: `<strong>${title}</strong> - ${message}`, type: `is-${type}`, pauseOnHover: true, duration: 10000 })
+    }
   }
 });
