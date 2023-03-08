@@ -191,5 +191,9 @@ class StreamManager:
         return False
 
     def cleanup(self):
-        if self.thread and self.thread.is_alive():
+        if (
+            self.thread
+            and self.thread.is_alive()
+            and self.thread is not threading.current_thread()
+        ):
             self.thread.join()

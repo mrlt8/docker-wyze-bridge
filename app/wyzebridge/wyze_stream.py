@@ -124,7 +124,6 @@ class WyzeStream:
         self.state.value = StreamStatus.STOPPING
         self.start_time = 0
         if self.process and self.process.is_alive():
-            self.process.kill()
             self.process.join()
         self.process = None
         if self.cam_resp:
@@ -310,7 +309,7 @@ def start_tutk_stream(stream: WyzeStream) -> None:
     except Exception as ex:
         logger.warning(ex)
     else:
-        logger.warning("Stream is down.")
+        logger.warning("Stream stopped")
     finally:
         stream.state.value = exit_code
         if audio_thread and audio_thread.is_alive():
