@@ -653,7 +653,7 @@ document.addEventListener("DOMContentLoaded", () => {
         button.classList.add("is-loading");
         fetch(`api/${cam}/${button.dataset.cmd}`)
           .then((resp) => resp.json())
-          .then((data) => { sendNotification(cam, `${button.dataset.cmd}: ${data.status}`, data.status == "error" ? "danger" : "primary") })
+          .then((data) => { sendNotification(cam, `${button.dataset.cmd}: ${data.status}`, ["error", false].includes(data.status) ? "danger" : "primary") })
           .catch((error) => { sendNotification(cam, `${button.dataset.cmd}: ${error.message}`, "danger") })
           .finally(() => { button.classList.remove("is-loading"); });
       })
@@ -665,9 +665,9 @@ document.addEventListener("DOMContentLoaded", () => {
   })
 
   function notificationEnabled() {
-    if ("Notification" in window === false) { return }
+    if ("Notification" in window === false || window.isSecureContext === false) { return }
     if (Notification.permission === "granted") { return true }
-    Notification.requestPermission((permission) => {
+    Notification.requestPermission().then((permission) => {
       if (permission === "granted") { return true }
     });
   }
