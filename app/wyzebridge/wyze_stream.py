@@ -5,6 +5,7 @@ from ctypes import c_int
 from dataclasses import dataclass
 from enum import IntEnum
 from queue import Empty, Full
+from signal import SIGINT
 from subprocess import PIPE, Popen
 from threading import Thread
 from time import time
@@ -124,6 +125,7 @@ class WyzeStream:
         self.state.value = StreamStatus.STOPPING
         self.start_time = 0
         if self.process and self.process.is_alive():
+            self.state.value = StreamStatus.STOPPING
             self.process.join()
         self.process = None
         if self.cam_resp:
