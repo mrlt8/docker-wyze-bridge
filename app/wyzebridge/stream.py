@@ -98,13 +98,13 @@ class StreamManager:
         self.stop_flag = True
         for stream in self.streams.values():
             stream.stop()
+        self.clear_monitoring_thread()
 
-    def monitor_thread(self):
+    def start_monitoring(self):
         """
         Start monitoring streams in a background thread.
         """
-        if self.thread and self.thread.is_alive():
-            self.thread.join()
+        self.clear_monitoring_thread()
         self.thread = threading.Thread(target=self.monitor_streams)
         self.thread.start()
 
@@ -117,6 +117,7 @@ class StreamManager:
             cams = self.health_check_all()
             if cams and SNAPSHOT_TYPE == "rtsp":
                 self.snap_all(cams)
+        logger.info("Stream monitoring stopped")
 
     def health_check_all(self) -> list[str]:
         """
@@ -138,10 +139,7 @@ class StreamManager:
             return
         self.last_snap = time.time()
         for cam in cams:
-            if (snap := self.rtsp_snapshots.get(cam)) and snap.poll() is None:
-                snap.kill()
-                snap.communicate()
-
+            stop_subprocess(self.rtsp_snapshots.get(cam))
             self.rtsp_snapshots[cam] = self.rtsp_snap_popen(cam)
 
     def get_status(self, uri: str) -> str:
@@ -185,15 +183,20 @@ class StreamManager:
             if ffmpeg.wait(timeout=10) == 0:
                 return True
         except TimeoutExpired:
-            if ffmpeg.poll() is None:
-                ffmpeg.kill()
-                ffmpeg.communicate()
+            stop_subprocess(ffmpeg)
         return False
 
-    def cleanup(self):
+    def clear_monitoring_thread(self):
         if (
             self.thread
             and self.thread.is_alive()
             and self.thread is not threading.current_thread()
         ):
+            self.stop_flag = True
             self.thread.join()
+
+
+def stop_subprocess(ffmpeg: Optional[Popen]):
+    if ffmpeg and ffmpeg.poll() is None:
+        ffmpeg.kill()
+        ffmpeg.communicate()

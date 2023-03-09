@@ -37,7 +37,7 @@ class WyzeBridge:
         self.rtsp.start()
         if self.streams.total < 1:
             return self.clean_up()
-        self.streams.monitor_thread()
+        self.streams.start_monitoring()
 
     def setup_streams(self, fresh_data: bool = False):
         """Gather and setup streams for each camera."""
@@ -84,7 +84,6 @@ class WyzeBridge:
         if self.streams:
             self.streams.stop_all()
         self.rtsp.stop()
-        self.streams.cleanup()
         logger.info("👋 goodbye!")
         sys.exit(0)
 
