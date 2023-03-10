@@ -63,7 +63,7 @@ class WyzeBridge:
     def rtsp_fw_proxy(self, cam, stream) -> bool:
         if rtsp_fw := env_bool("rtsp_fw").lower():
             if rtsp_path := stream.check_rtsp_fw(rtsp_fw == "force"):
-                rtsp_uri = f"{cam.name_uri}fw"
+                rtsp_uri = f"{cam.name_uri}-fw"
                 logger.info(f"Adding /{rtsp_uri} as a source")
                 self.rtsp.add_source(rtsp_uri, rtsp_path)
                 return True
