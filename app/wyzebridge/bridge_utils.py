@@ -1,5 +1,5 @@
 import os
-from typing import Any
+from typing import Any, Optional
 
 from wyzecam.api_models import WyzeCamera
 
@@ -45,7 +45,7 @@ def env_filter(cam: WyzeCamera) -> bool:
     )
 
 
-def split_int_str(env_value: str, min_int: int = 0) -> tuple[str, int]:
+def split_int_str(env_value: str, min: int = 0, default: int = 0) -> tuple[str, int]:
     string_value = "".join(filter(str.isalpha, env_value))
-    int_value = int("".join(filter(str.isnumeric, env_value)) or 0)
-    return string_value, max(int_value, min_int)
+    int_value = int("".join(filter(str.isnumeric, env_value)) or default)
+    return string_value, max(int_value, min)

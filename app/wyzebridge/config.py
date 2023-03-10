@@ -14,7 +14,7 @@ CONNECT_TIMEOUT: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
 TOKEN_PATH: str = "/config/wyze-bridge/" if HASS_TOKEN else "/tokens/"
 IMG_PATH: str = f'/{env_bool("IMG_DIR", "img").strip("/")}/'
 
-SNAPSHOT_TYPE, SNAPSHOT_INT = split_int_str(env_bool("SNAPSHOT"), min_int=30)
+SNAPSHOT_TYPE, SNAPSHOT_INT = split_int_str(env_bool("SNAPSHOT"), min=15, default=180)
 
 
 BRIDGE_IP: str = env_bool("WB_IP")

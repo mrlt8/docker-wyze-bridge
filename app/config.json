@@ -32,7 +32,6 @@
     },
     "environment": {
         "IMG_DIR": "config/www",
-        "SKIP_RTSP_LOG": "true",
         "RECORD_PATH": "media/wyze/{CAM_NAME}"
     },
     "map": [
@@ -61,7 +60,7 @@
         "WB_IP": "str?",
         "TOTP_KEY": "str?",
         "NET_MODE": "list(LAN|P2P|ANY)",
-        "SNAPSHOT": "list(API|RTSP|RTSP5|RTSP15|RTSP30|RTSP60|Disable)?",
+        "SNAPSHOT": "list(API|RTSP|RTSP15|RTSP30|RTSP60|RTSP180|RTSP300|Disable)?",
         "IMG_TYPE": "list(jpg|png)?",
         "IMG_DIR": "str?",
         "ENABLE_AUDIO": "bool?",
