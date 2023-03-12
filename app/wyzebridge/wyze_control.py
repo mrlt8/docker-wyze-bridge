@@ -188,7 +188,7 @@ def camera_control(
     while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
         boa_control(sess, boa)
         resp = {}
-        with contextlib.suppress(Empty):
+        with contextlib.suppress(Empty, ValueError):
             cmd = camera_cmd.get(timeout=BOA_INTERVAL)
             if cmd == "camera_info":
                 cam_info = sess.camera.camera_info or {}

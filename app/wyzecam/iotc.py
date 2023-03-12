@@ -150,7 +150,7 @@ class WyzeIOTC:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.deinitialize()
 
-    def session(self, stream) -> "WyzeIOTCSession":
+    def session(self, stream, state) -> "WyzeIOTCSession":
         if stream.options.substream:
             stream.user.phone_id = stream.user.phone_id[2:]
         return WyzeIOTCSession(
@@ -160,7 +160,7 @@ class WyzeIOTC:
             frame_size=stream.options.frame_size,
             bitrate=stream.options.bitrate,
             enable_audio=stream.options.audio,
-            stream_state=stream.state,
+            stream_state=state,
         )
 
     def connect_and_auth(

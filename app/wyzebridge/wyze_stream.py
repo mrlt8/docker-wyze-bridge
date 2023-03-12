@@ -1,15 +1,15 @@
 import contextlib
 import json
 import multiprocessing as mp
+from collections import namedtuple
 from ctypes import c_int
 from dataclasses import dataclass
 from enum import IntEnum
 from queue import Empty, Full
-from signal import SIGINT
 from subprocess import PIPE, Popen
 from threading import Thread
 from time import time
-from typing import Optional
+from typing import Optional, Union
 
 from wyzebridge.bridge_utils import env_bool, env_cam
 from wyzebridge.ffmpeg import get_ffmpeg_cmd
@@ -23,6 +23,9 @@ from wyzecam import TutkError, WyzeAccount, WyzeCamera, WyzeIOTC, WyzeIOTCSessio
 NET_MODE = {0: "P2P", 1: "RELAY", 2: "LAN"}
 
 COOLDOWN = env_bool("OFFLINE_TIME", "10", style="int")
+
+StreamTuple = namedtuple("stream", ["user", "camera", "options"])
+QueueTuple = namedtuple("queue", ["cam_resp", "cam_cmd"])
 
 
 class StreamStatus(IntEnum):
@@ -60,7 +63,7 @@ class WyzeStream:
         "camera",
         "options",
         "start_time",
-        "state",
+        "_state",
         "uri",
         "cam_resp",
         "cam_cmd",
@@ -71,13 +74,14 @@ class WyzeStream:
     def __init__(self, camera: WyzeCamera, options: WyzeStreamOptions) -> None:
         self.camera = camera
         self.options: WyzeStreamOptions = options
-        self.start_time: float = 0
-        self.state: c_int = mp.Value("i", StreamStatus.STOPPED, lock=False)
         self.uri = camera.name_uri + ("-sub" if options.substream else "")
-        self.cam_resp: Optional[mp.Queue] = None
-        self.cam_cmd: Optional[mp.Queue] = None
-        self.process: Optional[mp.Process] = None
+
         self.rtsp_fw_enabled: bool = False
+        self.start_time: float = 0
+        self.cam_resp: Optional[mp.Queue] = mp.Queue(1)
+        self.cam_cmd: Optional[mp.Queue] = mp.Queue(1)
+        self.process: Optional[mp.Process] = None
+        self._state: c_int = mp.Value("i", StreamStatus.STOPPED, lock=False)
         self.setup()
 
     def setup(self):
@@ -85,20 +89,29 @@ class WyzeStream:
             logger.info(
                 f"[{self.camera.product_model}] {self.camera.nickname} not supported"
             )
-            self.state.value = StreamStatus.DISABLED
+            self.state = StreamStatus.DISABLED
         if self.options.substream and not self.camera.can_substream:
             logger.error(f"{self.camera.nickname} may not support multiple streams!!")
-            # self.state.value = StreamStatus.DISABLED
+            # self.state = StreamStatus.DISABLED
         self.options.update_quality(self.camera.is_2k)
         wyze_discovery(self.camera, self.uri)
 
     @property
+    def state(self):
+        return self._state.value
+
+    @state.setter
+    def state(self, value):
+        self._state.value = value.value if isinstance(value, StreamStatus) else value
+        update_mqtt_state(self.uri, self.get_status())
+
+    @property
     def connected(self) -> bool:
-        return self.state.value == StreamStatus.CONNECTED
+        return self.state == StreamStatus.CONNECTED
 
     @property
     def enabled(self) -> bool:
-        return self.state.value != StreamStatus.DISABLED
+        return self.state != StreamStatus.DISABLED
 
     def start(self) -> bool:
         if self.health_check(False) != StreamStatus.STOPPED:
@@ -106,79 +119,66 @@ class WyzeStream:
         logger.info(
             f"🎉 Connecting to WyzeCam {self.camera.model_name} - {self.camera.nickname} on {self.camera.ip}"
         )
-        if not self.options.substream:
-            self.cam_resp = mp.Queue(1)
-            self.cam_cmd = mp.Queue(1)
-        update_mqtt_state(self.uri, "starting")
         self.start_time = time()
-
         self.process = mp.Process(
             target=start_tutk_stream,
-            args=(self,),
+            args=(
+                self.uri,
+                StreamTuple(self.user, self.camera, self.options),
+                QueueTuple(self.cam_resp, self.cam_cmd),
+                self._state,
+            ),
             name=self.uri,
         )
         self.process.start()
         return True
 
     def stop(self) -> bool:
-        update_mqtt_state(self.uri, "stopping")
-        self.state.value = StreamStatus.STOPPING
+        self.state = StreamStatus.STOPPING
         self.start_time = 0
-        if self.process and self.process.is_alive():
-            self.state.value = StreamStatus.STOPPING
-            self.process.join()
+        stop_and_wait(self.process)
         self.process = None
-        if self.cam_resp:
-            self.cam_resp.close()
-            self.cam_resp = None
-        if self.cam_cmd:
-            self.cam_cmd.close()
-            self.cam_cmd = None
-        update_mqtt_state(self.uri, "stopped")
-        self.state.value = StreamStatus.STOPPED
+        self.state = StreamStatus.STOPPED
         return True
 
     def enable(self) -> bool:
-        if self.state.value == StreamStatus.DISABLED:
+        if self.state == StreamStatus.DISABLED:
             logger.info(f"Enabling {self.uri}")
-            self.state.value = StreamStatus.STOPPED
-            update_mqtt_state(self.uri, "stopped")
-        return self.state.value > StreamStatus.DISABLED
+            self.state = StreamStatus.STOPPED
+        return self.state > StreamStatus.DISABLED
 
     def disable(self) -> bool:
-        if self.state.value == StreamStatus.DISABLED:
+        if self.state == StreamStatus.DISABLED:
             return True
         logger.info(f"Disabling {self.uri}")
-        if self.state.value != StreamStatus.STOPPED:
+        if self.state != StreamStatus.STOPPED:
             self.stop()
-        self.state.value = StreamStatus.DISABLED
-        update_mqtt_state(self.uri, "disabled")
+        self.state = StreamStatus.DISABLED
         return True
 
     def health_check(self, should_start: bool = True) -> int:
-        if self.state.value == StreamStatus.OFFLINE:
+        if self.state == StreamStatus.OFFLINE:
             if env_bool("IGNORE_OFFLINE"):
                 logger.info(f"🪦 {self.uri} is offline. WILL ignore.")
                 self.disable()
-                return self.state.value
-            logger.info(f"👻 Camera is offline. Will cooldown for {COOLDOWN}s.")
-        if self.state.value in {-13, -19, -68}:
+                return self.state
+            logger.info(f"👻 {self.camera.nickname} is offline.")
+        if self.state in {-13, -19, -68}:
             self.refresh_camera()
-        elif self.state.value < StreamStatus.DISABLED:
+        elif self.state < StreamStatus.DISABLED:
+            state = self.state
             self.stop()
-            self.start_time = time() + COOLDOWN
+            if state < StreamStatus.STOPPING:
+                self.start_time = time() + COOLDOWN
+                logger.info(f"{self.camera.nickname} will cooldown for {COOLDOWN}s.")
         elif (
-            self.state.value == StreamStatus.STOPPED
-            and self.options.record
-            and should_start
+            self.state == StreamStatus.STOPPED and self.options.record and should_start
         ):
             self.start()
-        elif self.state.value == StreamStatus.CONNECTING and is_timedout(
-            self.start_time, 20
-        ):
+        elif self.state == StreamStatus.CONNECTING and is_timedout(self.start_time, 20):
             logger.warning(f"⏰ Timed out connecting to {self.camera.nickname}.")
             self.stop()
-        return self.state.value if self.start_time < time() else 0
+        return self.state if self.start_time < time() else 0
 
     def refresh_camera(self):
         self.stop()
@@ -189,7 +189,7 @@ class WyzeStream:
 
     def get_status(self) -> str:
         try:
-            return StreamStatus(self.state.value).name.lower()
+            return StreamStatus(self._state.value).name.lower()
         except ValueError:
             return "error"
 
@@ -198,7 +198,7 @@ class WyzeStream:
             return self.boa_info()
         data = {
             "name_uri": self.uri,
-            "status": self.state.value,
+            "status": self.state,
             "connected": self.connected,
             "enabled": self.enabled,
             "on_demand": not self.options.record,
@@ -271,34 +271,39 @@ class WyzeStream:
             return
 
 
-def start_tutk_stream(stream: WyzeStream) -> None:
+def start_tutk_stream(
+    uri: str, stream: StreamTuple, queue: QueueTuple, state: c_int
+) -> None:
     """Connect and communicate with the camera using TUTK."""
-    was_offline = stream.state.value == StreamStatus.OFFLINE
-    stream.state.value = StreamStatus.CONNECTING
+    was_offline = state.value == StreamStatus.OFFLINE
+    state.value = StreamStatus.CONNECTING
     exit_code = StreamStatus.STOPPED
     control_thread = audio_thread = None
     try:
-        with WyzeIOTC() as iotc, iotc.session(stream) as sess:
-            v_codec, fps, audio = get_cam_params(sess, stream.uri, stream.options.audio)
-
-            control_thread = setup_control(sess, stream)
-            audio_thread = setup_audio(sess, stream.uri, bool(audio))
+        with WyzeIOTC() as iotc, iotc.session(stream, state) as sess:
+            assert state.value >= StreamStatus.CONNECTING, "Stream Stopped"
+            v_codec, fps, audio = get_cam_params(sess, uri, stream.options.audio)
+            if not stream.options.substream:
+                control_thread = setup_control(sess, uri, queue)
+            if audio:
+                audio_thread = setup_audio(sess, uri)
 
             ffmpeg_cmd = get_ffmpeg_cmd(
-                stream.uri,
+                uri,
                 v_codec,
                 audio,
                 stream.options.record,
                 stream.camera.is_vertical,
             )
-            stream.state.value = StreamStatus.CONNECTED
+            assert state.value >= StreamStatus.CONNECTING, "Stream Stopped"
+            state.value = StreamStatus.CONNECTED
             with Popen(ffmpeg_cmd, stdin=PIPE) as ffmpeg:
                 for frame in sess.recv_bridge_frame(fps=fps):
                     ffmpeg.stdin.write(frame)
 
     except TutkError as ex:
         logger.warning(f"{[ex.code]} {ex}")
-        set_cam_offline(stream.uri, ex, was_offline)
+        set_cam_offline(uri, ex, was_offline)
         if ex.code in {-10, -13, -19, -68, -90}:
             exit_code = ex.code
     except ValueError as ex:
@@ -313,16 +318,18 @@ def start_tutk_stream(stream: WyzeStream) -> None:
     else:
         logger.warning("Stream stopped")
     finally:
-        stream.state.value = exit_code
-        if audio_thread and audio_thread.is_alive():
-            audio_thread.join()
-        if control_thread and control_thread.is_alive():
-            control_thread.join()
+        state.value = exit_code
+        stop_and_wait(audio_thread)
+        stop_and_wait(control_thread)
 
 
-def setup_audio(sess: WyzeIOTCSession, uri: str, audio: bool) -> Optional[Thread]:
-    if not audio:
-        return
+def stop_and_wait(thread: Optional[Union[Thread, mp.Process]]):
+    while thread and thread.is_alive():
+        with contextlib.suppress(AttributeError):
+            thread.join(1)
+
+
+def setup_audio(sess: WyzeIOTCSession, uri: str) -> Thread:
     audio_thread = Thread(
         target=sess.recv_audio_frames,
         args=(uri,),
@@ -332,13 +339,11 @@ def setup_audio(sess: WyzeIOTCSession, uri: str, audio: bool) -> Optional[Thread
     return audio_thread
 
 
-def setup_control(sess: WyzeIOTCSession, stream: WyzeStream) -> Optional[Thread]:
-    if stream.options.substream:
-        return
+def setup_control(sess: WyzeIOTCSession, uri, queue: QueueTuple) -> Thread:
     control_thread = Thread(
         target=camera_control,
-        args=(sess, stream.uri, stream.cam_resp, stream.cam_cmd),
-        name=f"{stream.uri}_control",
+        args=(sess, uri, queue.cam_resp, queue.cam_cmd),
+        name=f"{uri}_control",
     )
     control_thread.start()
     return control_thread
