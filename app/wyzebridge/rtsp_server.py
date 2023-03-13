@@ -106,6 +106,7 @@ class RtspServer:
 
     def setup_llhls(self, token_path: str = "/tokens/", hass: bool = False):
         logger.info("Configuring LL-HLS")
+        self.rtsp.set_opt("hlsVariant", "lowLatency")
         self.rtsp.set_opt("hlsEncryption", "yes")
         if self.rtsp.get_opt("hlsServerKey"):
             return
