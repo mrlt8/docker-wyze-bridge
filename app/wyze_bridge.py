@@ -20,7 +20,7 @@ class WyzeBridge:
     def __init__(self) -> None:
         for sig in {"SIGTERM", "SIGINT"}:
             signal.signal(getattr(signal, sig), lambda *_: self.clean_up())
-        logger.info(f"🚀 STARTING DOCKER-WYZE-BRIDGE v{config.VERSION}\n")
+        print(f"\n🚀 STARTING DOCKER-WYZE-BRIDGE v{config.VERSION}\n")
         setup_hass()
         self.api: WyzeApi = WyzeApi()
         self.streams: StreamManager = StreamManager()

@@ -1,3 +1,4 @@
+import contextlib
 import threading
 import time
 from subprocess import Popen, TimeoutExpired
@@ -187,13 +188,10 @@ class StreamManager:
         return False
 
     def clear_monitoring_thread(self):
-        if (
-            self.thread
-            and self.thread.is_alive()
-            and self.thread is not threading.current_thread()
-        ):
+        if self.thread and self.thread.is_alive():
             self.stop_flag = True
-            self.thread.join()
+            with contextlib.suppress(AttributeError, RuntimeError):
+                self.thread.join()
 
 
 def stop_subprocess(ffmpeg: Optional[Popen]):

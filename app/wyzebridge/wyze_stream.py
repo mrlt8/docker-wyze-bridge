@@ -325,7 +325,7 @@ def start_tutk_stream(
 
 def stop_and_wait(thread: Optional[Union[Thread, mp.Process]]):
     while thread and thread.is_alive():
-        with contextlib.suppress(AttributeError):
+        with contextlib.suppress(AttributeError, RuntimeError):
             thread.join(1)
 
 
