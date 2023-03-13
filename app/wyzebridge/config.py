@@ -27,3 +27,16 @@ LLHLS: bool = env_bool("LLHLS", style="bool")
 
 BOA_INTERVAL: int = env_bool("boa_interval", "5", style="int")
 BOA_COOLDOWN: int = env_bool("boa_cooldown", "20", style="int")
+
+DEPRECATED = {
+    "ON_DEMAND",
+    "TAKE_PHOTO",
+    "PULL_PHOTO",
+    "PULL_ALARM",
+    "MOTION_HTTP",
+    "MOTION_COOLDOWN",
+}
+
+for env in DEPRECATED:
+    if getenv(env):
+        print(f"\n\nWARNING: {env} is deprecated\n\n")
