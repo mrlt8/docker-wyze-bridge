@@ -279,14 +279,14 @@
                                 <div class="dropdown-content">
                                     <p class="menu-label dropdown-item">Video Streams</p>
                                     {% if camera.webrtc_url %}
-                                    <a href="{{camera.webrtc_url}}" class="dropdown-item icon-text">
+                                    <a href="{{camera.webrtc_url}}" class="dropdown-item icon-text" target="_blank">
                                         <span class="icon is-small"><i class="fas fa-file-code" aria-hidden="true"></i>
                                         </span><span>WebRTC</span>{% if camera.stream_auth
                                         %}<span class="icon">
                                             <i class="fas fa-lock"></i>
                                         </span> {% endif %}</a>
                                     {% endif %}
-                                    <a href="{{camera.hls_url}}" class="dropdown-item icon-text">
+                                    <a href="{{camera.hls_url}}" class="dropdown-item icon-text" target="_blank">
                                         <span class="icon is-small"><i class="fas fa-file-code" aria-hidden="true"></i>
                                         </span><span>HLS</span>{% if camera.stream_auth
                                         %}<span class="icon">
@@ -382,9 +382,12 @@
                 <a href="https://github.com/mrlt8/docker-wyze-bridge"><i class="fa-brands fa-github"></i>
                     <strong>docker-wyze-bridge</strong></a>
                 v{{ version }}
-                <span id="checkUpdate" class="icon-text" data-version="{{version}}"><span class="icon"><i
-                            class="fas fa-arrows-rotate"></i></span>
-                </span>
+                <a id="checkUpdate" class="icon-text" title="Check for updates" data-version="{{version}}"><span
+                        class="icon"><i class="fas fa-arrows-rotate"></i></span>
+                </a>
+                <a href="https://ko-fi.com/mrlt8" id="kofi" class="icon-text" target="_blank"><span class="icon"><i
+                            class="fas fa-mug-hot"></i></span>
+                </a>
             </p>
         </div>
     </footer>
