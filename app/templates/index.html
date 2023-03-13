@@ -10,7 +10,7 @@
     <link rel="stylesheet" type="text/css"
         href="{{ 'static/site.css' if hass else url_for('static',filename='site.css') }}" />
     {% if show_video %}
-    <link href="https://vjs.zencdn.net/7.19.2/video-js.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/video.js/dist/video-js.min.css" rel="stylesheet" />
     {% endif %}
 </head>
 
@@ -207,7 +207,7 @@
                         <table class="table">
                             <tbody>
                                 {% for key, value in camera.items()%}
-                                {% if key == "camera_info" %}
+                                {% if key == "camera_info" and value %}
                                 {% for cam_info, cam_val in value.items() %}
                                 <tr>
                                     <td>{{ cam_info }}</td>
@@ -397,7 +397,7 @@
     {% if webrtc or video_format =="kvs" %}
     <script src="{{ 'static/webrtc.js' if hass else url_for('static', filename='webrtc.js') }}"></script>
     {% endif %}
-    <script src="https://vjs.zencdn.net/7.21.1/video.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/video.js/dist/video.min.js"></script>
     {% endif %}
 </body>
 
