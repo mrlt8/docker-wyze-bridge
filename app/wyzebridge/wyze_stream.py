@@ -9,9 +9,10 @@ from queue import Empty, Full
 from subprocess import PIPE, Popen
 from threading import Thread
 from time import time
-from typing import Optional, Union
+from typing import Optional
 
 from wyzebridge.bridge_utils import env_bool, env_cam
+from wyzebridge.config import BRIDGE_IP, COOLDOWN
 from wyzebridge.ffmpeg import get_ffmpeg_cmd
 from wyzebridge.logging import logger
 from wyzebridge.mqtt import send_mqtt, update_mqtt_state, wyze_discovery
@@ -22,7 +23,6 @@ from wyzecam import TutkError, WyzeAccount, WyzeCamera, WyzeIOTC, WyzeIOTCSessio
 
 NET_MODE = {0: "P2P", 1: "RELAY", 2: "LAN"}
 
-COOLDOWN = env_bool("OFFLINE_TIME", "10", style="int")
 
 StreamTuple = namedtuple("stream", ["user", "camera", "options"])
 QueueTuple = namedtuple("queue", ["cam_resp", "cam_cmd"])
@@ -134,9 +134,14 @@ class WyzeStream:
         return True
 
     def stop(self) -> bool:
-        self.state = StreamStatus.STOPPING
         self.start_time = 0
-        stop_and_wait(self.process)
+        state = self.state
+        self.state = StreamStatus.STOPPING
+        if self.process and self.process.is_alive():
+            with contextlib.suppress(AttributeError):
+                if state != StreamStatus.CONNECTED:
+                    self.process.kill()
+                self.process.join()
         self.process = None
         self.state = StreamStatus.STOPPED
         return True
@@ -223,7 +228,7 @@ class WyzeStream:
 
     def update_cam_info(self) -> None:
         resp = self.send_cmd("camera_info")
-        if resp or ("response" not in resp):
+        if resp and ("response" not in resp):
             self.camera.set_camera_info(resp)
 
     def boa_info(self) -> dict:
@@ -277,7 +282,7 @@ def start_tutk_stream(
     """Connect and communicate with the camera using TUTK."""
     was_offline = state.value == StreamStatus.OFFLINE
     state.value = StreamStatus.CONNECTING
-    exit_code = StreamStatus.STOPPED
+    exit_code = StreamStatus.STOPPING
     control_thread = audio_thread = None
     try:
         with WyzeIOTC() as iotc, iotc.session(stream, state) as sess:
@@ -323,10 +328,10 @@ def start_tutk_stream(
         stop_and_wait(control_thread)
 
 
-def stop_and_wait(thread: Optional[Union[Thread, mp.Process]]):
-    while thread and thread.is_alive():
+def stop_and_wait(thread: Optional[Thread]):
+    if thread and thread.is_alive():
         with contextlib.suppress(AttributeError, RuntimeError):
-            thread.join(1)
+            thread.join()
 
 
 def setup_audio(sess: WyzeIOTCSession, uri: str) -> Thread:
@@ -383,7 +388,8 @@ def get_cam_params(
     if enable_audio:
         codec, rate = sess.get_audio_codec()
         codec_str = codec.replace("s16le", "PCM")
-        if codec_out := env_bool("AUDIO_CODEC", "libopus" if "s16le" in codec else ""):
+        web_audio = "libopus" if BRIDGE_IP else "aac"
+        if codec_out := env_bool("AUDIO_CODEC", web_audio if "s16le" in codec else ""):
             codec_str += f" > {codec_out}"
         audio: dict = {"codec": codec, "rate": rate, "codec_out": codec_out.lower()}
         logger.info(f"🔊 Audio Enabled - {codec_str.upper()}/{rate:,}Hz")
