@@ -87,7 +87,6 @@ class WyzeBridge:
         logger.info("👋 goodbye!")
         sys.exit(0)
 
-
 if __name__ == "__main__":
     wb = WyzeBridge()
     wb.run()

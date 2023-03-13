@@ -633,6 +633,9 @@ class K10058TakePhoto(TutkWyzeProtocolMessage):
     def __init__(self):
         super().__init__(10058)
 
+    def parse_response(self, resp_data) -> int:
+        return resp_data[0]
+
 
 class K10148StartBoa(TutkWyzeProtocolMessage):
     """
@@ -712,6 +715,7 @@ class K11002SetRotaryByAction(TutkWyzeProtocolMessage):
     - Rotate down: K11002SetRotaryByAction(0,2)
 
     """
+
 
     def __init__(self, horizontal: int, vertical: int, speed: int = 5):
         super().__init__(11002)
