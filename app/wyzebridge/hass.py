@@ -1,30 +1,30 @@
 import json
 from os import environ
+from typing import Optional
 
 import requests
+
 import wyzecam
-from wyzebridge.config import HASS_TOKEN
 from wyzebridge.logging import logger
 
 
-def setup_hass() -> bool:
+def setup_hass(hass_token: Optional[str]) -> None:
     """Home Assistant related config."""
-    if not HASS_TOKEN:
-        return False
+    if not hass_token:
+        return
 
     logger.info("🏠 Home Assistant Mode")
 
     with open("/data/options.json") as f:
         conf = json.load(f)
 
-    auth = {"Authorization": f"Bearer {HASS_TOKEN}"}
+    auth = {"Authorization": f"Bearer {hass_token}"}
     try:
         assert "WB_IP" not in conf, f"Using WB_IP={conf['WB_IP']} from config"
         net_info = requests.get("http://supervisor/network/info", headers=auth).json()
         for i in net_info["data"]["interfaces"]:
-            if not i["primary"]:
-                continue
-            environ["WB_IP"] = i["ipv4"]["address"][0].split("/")[0]
+            if i["primary"]:
+                environ["WB_IP"] = i["ipv4"]["address"][0].split("/")[0]
     except Exception as e:
         logger.error(f"WEBRTC SETUP: {e}")
 
@@ -63,4 +63,3 @@ def setup_hass() -> bool:
 
     for k, v in conf.items():
         environ.update({k.replace(" ", "_").upper(): str(v)})
-    return True

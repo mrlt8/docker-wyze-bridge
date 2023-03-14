@@ -1,4 +1,3 @@
-import os
 import signal
 import sys
 from dataclasses import replace
@@ -6,7 +5,6 @@ from typing import NoReturn
 
 from wyzebridge import config
 from wyzebridge.bridge_utils import env_bool, env_cam
-from wyzebridge.hass import setup_hass
 from wyzebridge.logging import logger
 from wyzebridge.rtsp_server import RtspServer
 from wyzebridge.stream import StreamManager
@@ -21,13 +19,9 @@ class WyzeBridge:
         for sig in {"SIGTERM", "SIGINT"}:
             signal.signal(getattr(signal, sig), lambda *_: self.clean_up())
         print(f"\n🚀 STARTING DOCKER-WYZE-BRIDGE v{config.VERSION}\n")
-        setup_hass()
         self.api: WyzeApi = WyzeApi()
         self.streams: StreamManager = StreamManager()
         self.rtsp: RtspServer = RtspServer(config.BRIDGE_IP)
-
-        os.makedirs(config.TOKEN_PATH, exist_ok=True)
-        os.makedirs(config.IMG_PATH, exist_ok=True)
 
         if config.LLHLS:
             self.rtsp.setup_llhls(config.TOKEN_PATH, bool(config.HASS_TOKEN))
@@ -86,6 +80,7 @@ class WyzeBridge:
         self.rtsp.stop()
         logger.info("👋 goodbye!")
         sys.exit(0)
+
 
 if __name__ == "__main__":
     wb = WyzeBridge()

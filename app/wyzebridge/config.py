@@ -1,13 +1,15 @@
 import json
-from os import getenv
+from os import getenv, makedirs
 
 from wyzebridge.bridge_utils import env_bool, split_int_str
+from wyzebridge.hass import setup_hass
 
 with open("config.json") as f:
     config = json.load(f)
 
 VERSION: str = config.get("version", "DEV")
 HASS_TOKEN: str = getenv("SUPERVISOR_TOKEN", "")
+setup_hass(HASS_TOKEN)
 
 CONNECT_TIMEOUT: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
 
@@ -28,6 +30,11 @@ COOLDOWN = env_bool("OFFLINE_TIME", "10", style="int")
 
 BOA_INTERVAL: int = env_bool("boa_interval", "5", style="int")
 BOA_COOLDOWN: int = env_bool("boa_cooldown", "20", style="int")
+
+
+makedirs(TOKEN_PATH, exist_ok=True)
+makedirs(IMG_PATH, exist_ok=True)
+
 
 DEPRECATED = {
     "ON_DEMAND",
