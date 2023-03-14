@@ -1,9 +1,7 @@
-import logging
 import os
-import signal
-import sys
+import time
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import quote_plus, urlparse
 
 from flask import (
     Flask,
@@ -17,25 +15,14 @@ from flask import (
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import NotFound
 from werkzeug.security import check_password_hash, generate_password_hash
-from wyze_bridge import WyzeBridge, setup_logging
+from wyze_bridge import WyzeBridge
+from wyzebridge import config, web_ui
 
-log = logging.getLogger(__name__)
-wb: WyzeBridge = None
 auth = HTTPBasicAuth()
 auth_enabled = os.getenv("WEB_AUTH", "false").lower() != "false"
 if auth_enabled:
     user = os.getenv("WEB_USERNAME", os.getenv("WYZE_EMAIL"))
     pw = generate_password_hash(os.getenv("WEB_PASSWORD", os.getenv("WYZE_PASSWORD")))
-
-
-def clean_up():
-    """Run cleanup before exit."""
-    if not wb:
-        sys.exit(0)
-    wb.clean_up()
-
-
-signal.signal(signal.SIGTERM, lambda *_: clean_up())
 
 
 @auth.verify_password
@@ -46,12 +33,9 @@ def verify_password(username, password):
 
 
 def create_app():
-    setup_logging()
     app = Flask(__name__)
-    global wb
-    if not wb:
-        wb = WyzeBridge()
-        wb.start()
+    wb = WyzeBridge()
+    wb.run()
 
     @app.route("/")
     @auth.login_required
@@ -74,16 +58,16 @@ def create_app():
         video_format = request.cookies.get("video", "webrtc")
         if req_video := ({"webrtc", "hls", "kvs"} & set(request.args)):
             video_format = req_video.pop()
-
+        host = urlparse(request.root_url).hostname
         resp = make_response(
             render_template(
                 "index.html",
-                cam_data=wb.get_cameras(urlparse(request.root_url).hostname),
+                cam_data=web_ui.all_cams(wb.streams, wb.api.total_cams, host),
                 number_of_columns=number_of_columns,
                 refresh_period=refresh_period,
-                hass=wb.hass,
-                version=wb.version,
-                webrtc=bool(wb.bridge_ip) and video_format.lower() == "webrtc",
+                hass=bool(config.HASS_TOKEN),
+                version=config.VERSION,
+                webrtc=bool(config.BRIDGE_IP) and video_format.lower() == "webrtc",
                 show_video=show_video,
                 video_format=video_format.lower(),
                 autoplay=autoplay,
@@ -99,21 +83,29 @@ def create_app():
         )
         resp.set_cookie("fullscreen", "1" if fullscreen else "")
         if order := request.args.get("order"):
-            resp.set_cookie("camera_order", order)
+            resp.set_cookie("camera_order", quote_plus(order))
 
         return resp
 
-    @app.route("/mfa/<string:mfa_code>")
-    def set_mfa_code(mfa_code):
+    @app.route("/mfa/<string:code>")
+    def set_mfa_code(code):
         """Set mfa code."""
-        if len(mfa_code) != 6:
-            return {"error": f"Wrong length: {len(mfa_code)}"}
-        return {"success" if wb.set_mfa(mfa_code) else "error": f"Using: {mfa_code}"}
+        if len(code) != 6:
+            return {"error": f"Wrong length: {len(code)}"}
+        return {"success" if web_ui.set_mfa(code) else "error": f"Using: {code}"}
 
     @app.route("/api/sse_status")
     def sse_status():
         """Server sent event for camera status."""
-        return Response(wb.sse_status(), mimetype="text/event-stream")
+        if wb.api.mfa_req:
+            return Response(
+                web_ui.mfa_generator(wb.api.get_mfa),
+                mimetype="text/event-stream",
+            )
+        return Response(
+            web_ui.sse_generator(wb.streams.get_sse_status),
+            mimetype="text/event-stream",
+        )
 
     @app.route("/api")
     @app.route("/api/<string:cam_name>")
@@ -121,71 +113,94 @@ def create_app():
     def api(cam_name=None, cam_cmd=None):
         """JSON api endpoints."""
         if cam_name and cam_cmd == "status":
-            return {"status": wb.get_cam_status(cam_name)}
+            return {"status": wb.streams.get_status(cam_name)}
         if cam_name and cam_cmd == "start":
-            return {"success": wb.start_on_demand(cam_name)}
+            return {"status": wb.streams.start(cam_name)}
         if cam_name and cam_cmd == "stop":
-            return {"success": wb.stop_on_demand(cam_name)}
+            return {"status": wb.streams.stop(cam_name)}
+        if cam_name and cam_cmd == "disable":
+            return {"status": wb.streams.disable(cam_name)}
+        if cam_name and cam_cmd == "enable":
+            return {"status": wb.streams.enable(cam_name)}
         if cam_name and cam_cmd:
-            return wb.cam_cmd(cam_name, cam_cmd)
+            return wb.streams.send_cmd(cam_name, cam_cmd)
 
         host = urlparse(request.root_url).hostname
-        return wb.get_cam_info(cam_name, host) if cam_name else wb.get_cameras(host)
+        if not cam_name:
+            return web_ui.all_cams(wb.streams, wb.api.total_cams, host)
+        if cam := wb.streams.get_info(cam_name):
+            return cam | web_ui.format_stream(cam_name, host)
+        return {"error": f"Could not find camera [{cam_name}]"}
 
     @app.route("/signaling/<string:name>")
     def webrtc_signaling(name):
         if "kvs" in request.args:
-            return wb.get_kvs_signal(name)
-        return wb.get_webrtc_signal(name, urlparse(request.root_url).hostname)
+            return wb.api.get_kvs_signal(name)
+        return web_ui.get_webrtc_signal(name, urlparse(request.root_url).hostname)
 
     @app.route("/webrtc/<string:name>")
     def webrtc(name):
         """View WebRTC direct from camera."""
-        if (webrtc := wb.get_kvs_signal(name)).get("result") == "ok":
+        if (webrtc := wb.api.get_kvs_signal(name)).get("result") == "ok":
             return make_response(render_template("webrtc.html", webrtc=webrtc))
         return webrtc
 
     @app.route("/snapshot/<string:img_file>")
     def rtsp_snapshot(img_file: str):
         """Use ffmpeg to take a snapshot from the rtsp stream."""
-        if wb.rtsp_snap(Path(img_file).stem, wait=True):
-            return send_from_directory(wb.img_path, img_file)
+        if wb.streams.get_rtsp_snap(Path(img_file).stem):
+            return send_from_directory(config.IMG_PATH, img_file)
+        return thumbnail(img_file)
+
+    @app.route("/img/<string:img_file>")
+    def img(img_file: str):
+        """
+        Serve an existing local image or take a new snapshot from the rtsp stream.
+
+        Use the exp parameter to fetch a new snapshot if the existing one is too old.
+        """
+        try:
+            if exp := request.args.get("exp"):
+                created_at = os.path.getmtime(config.IMG_PATH + img_file)
+                if time.time() - created_at > int(exp):
+                    raise NotFound
+            return send_from_directory(config.IMG_PATH, img_file)
+        except (NotFound, FileNotFoundError, ValueError):
+            return rtsp_snapshot(img_file)
+
+    @app.route("/thumb/<string:img_file>")
+    def thumbnail(img_file: str):
+        if wb.api.save_thumbnail(Path(img_file).stem):
+            return send_from_directory(config.IMG_PATH, img_file)
         return redirect("/static/notavailable.svg", code=307)
 
     @app.route("/photo/<string:img_file>")
     def boa_photo(img_file: str):
         """Take a photo on the camera and grab it over the boa http server."""
         uri = Path(img_file).stem
-        if photo := wb.boa_photo(uri):
-            return send_from_directory(wb.img_path, f"{uri}_{photo[0]}")
+        if not (cam := wb.streams.get(uri)):
+            return redirect("/static/notavailable.svg", code=307)
+        if photo := web_ui.boa_snapshot(cam):
+            return send_from_directory(config.IMG_PATH, f"{uri}_{photo[0]}")
         return redirect(f"/img/{img_file}", code=307)
-
-    @app.route("/img/<string:img_file>")
-    def img(img_file: str):
-        """Serve static image if image exists else take a new snapshot from the rtsp stream."""
-        try:
-            return send_from_directory(wb.img_path, img_file)
-        except NotFound:
-            return rtsp_snapshot(img_file)
 
     @app.route("/restart/<string:restart_cmd>")
     def restart_bridge(restart_cmd: str):
         """
         Restart parts of the wyze-bridge.
 
-        /restart/cameras:       Stop and start all enabled cameras.
-        /restart/rtsp_server:   Stop and start rtsp-simple-server.
-        /restart/all:           Stop and start all enabled cameras and rtsp-simple-server.
+        /restart/cameras:       Restart camera connections.
+        /restart/rtsp_server:   Restart rtsp-simple-server.
+        /restart/all:           Restart camera connections and rtsp-simple-server.
         """
         if restart_cmd == "cameras":
-            wb.stop_cameras()
-            wb.run()
+            wb.streams.stop_all()
+            wb.streams.start_monitoring()
         elif restart_cmd == "rtsp_server":
-            wb.stop_rtsp_server()
-            wb.start_rtsp_server()
+            wb.rtsp.restart()
         elif restart_cmd == "all":
-            wb.stop_cameras()
-            wb.stop_rtsp_server()
+            wb.streams.stop_all()
+            wb.rtsp.stop()
             wb.run(fresh_data=True)
             restart_cmd = "cameras,rtsp_server"
         else:
@@ -197,8 +212,8 @@ def create_app():
         """
         Generate an m3u8 playlist with all enabled cameras.
         """
-        hostname = urlparse(request.root_url).hostname
-        cameras = wb.get_cameras(hostname)["cameras"]
+        host = urlparse(request.root_url).hostname
+        cameras = web_ui.format_streams(wb.streams.get_all_cam_info(), host)
         resp = make_response(render_template("m3u8.html", cameras=cameras))
         resp.headers.set("content-type", "application/x-mpegURL")
         return resp
@@ -207,6 +222,5 @@ def create_app():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
     app = create_app()
     app.run(debug=False, host="0.0.0.0", port=5000)

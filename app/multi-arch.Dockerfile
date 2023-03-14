@@ -1,5 +1,5 @@
-FROM amd64/python:3.10-slim-buster as base_amd64
-FROM arm32v7/python:3.10-slim-buster as base_arm
+FROM amd64/python:3.11-slim-buster as base_amd64
+FROM arm32v7/python:3.11-slim-buster as base_arm
 ARG ARM=1
 FROM base_arm AS base_arm64
 
@@ -10,7 +10,7 @@ ARG LIB_ARCH=${ARM:+arm}
 ARG RTSP_ARCH=${ARM:+armv7}
 ARG FFMPEG_ARCH=${ARM:+armv7l}
 RUN apt-get update \
-    && apt-get install -y tar unzip curl jq g++ \
+    && apt-get install -y tar unzip curl jq g++ git \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 

@@ -2,13 +2,13 @@ import time
 import urllib.parse
 import uuid
 from hashlib import md5
-from typing import Any, Dict, List, Optional
+from typing import Any, Optional
 
 import requests
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
-IOS_VERSION = "16.3"
-APP_VERSION = "2.38.4.3"
+IOS_VERSION = "16.3.1"
+APP_VERSION = "2.40.0.15"
 
 SV_VALUE = "e1fe392906d54888a9b99b88de4162d7"
 SC_VALUE = "9f275790cab94a72bd206c8876429f3c"
@@ -154,7 +154,7 @@ def get_user_info(auth_info: WyzeCredential) -> WyzeAccount:
     return WyzeAccount.parse_obj(dict(resp_json["data"], phone_id=auth_info.phone_id))
 
 
-def get_homepage_object_list(auth_info: WyzeCredential) -> Dict[str, Any]:
+def get_homepage_object_list(auth_info: WyzeCredential) -> dict[str, Any]:
     """Get all homepage objects."""
     payload = _get_payload(auth_info.access_token, auth_info.phone_id)
     ui_headers = get_headers(auth_info.phone_id, SCALE_USER_AGENT)
@@ -170,11 +170,11 @@ def get_homepage_object_list(auth_info: WyzeCredential) -> Dict[str, Any]:
     return resp_json["data"]
 
 
-def get_camera_list(auth_info: WyzeCredential) -> List[WyzeCamera]:
+def get_camera_list(auth_info: WyzeCredential) -> list[WyzeCamera]:
     """Return a list of all cameras on the account."""
     data = get_homepage_object_list(auth_info)
     result = []
-    for device in data["device_list"]:  # type: Dict[str, Any]
+    for device in data["device_list"]:  # type: dict[str, Any]
         if device["product_type"] != "Camera":
             continue
 
@@ -227,8 +227,7 @@ def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
     ui_headers = get_headers(auth_info.phone_id, SCALE_USER_AGENT)
     ui_headers["content-type"] = "application/json"
     ui_headers["authorization"] = auth_info.access_token
-    # if "_" in mac_id:
-    #     mac_id = mac_id.rsplit("_", 1)[1]
+
     resp = requests.get(
         f"https://webrtc.api.wyze.com/signaling/device/{mac_id}?use_trickle=true",
         headers=ui_headers,

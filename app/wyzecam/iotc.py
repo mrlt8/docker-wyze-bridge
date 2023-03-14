@@ -8,8 +8,7 @@ import pathlib
 import time
 import warnings
 from ctypes import CDLL, c_int
-from multiprocessing.synchronize import Event
-from typing import Any, Dict, Iterator, Optional, Tuple, Union
+from typing import Any, Iterator, Optional, Union
 
 from wyzecam.api_models import WyzeAccount, WyzeCamera
 
@@ -151,6 +150,19 @@ class WyzeIOTC:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.deinitialize()
 
+    def session(self, stream, state) -> "WyzeIOTCSession":
+        if stream.options.substream:
+            stream.user.phone_id = stream.user.phone_id[2:]
+        return WyzeIOTCSession(
+            self.tutk_platform_lib,
+            stream.user,
+            stream.camera,
+            frame_size=stream.options.frame_size,
+            bitrate=stream.options.bitrate,
+            enable_audio=stream.options.audio,
+            stream_state=state,
+        )
+
     def connect_and_auth(
         self, account: WyzeAccount, camera: WyzeCamera
     ) -> "WyzeIOTCSession":
@@ -253,7 +265,7 @@ class WyzeIOTCSession:
         bitrate: int = tutk.BITRATE_HD,
         enable_audio: bool = True,
         connect_timeout: int = 20,
-        stop_flag: Optional[Event] = None,
+        stream_state: c_int = c_int(0),
     ) -> None:
         """Construct a wyze iotc session.
 
@@ -279,7 +291,7 @@ class WyzeIOTCSession:
         self.preferred_bitrate: int = bitrate
         self.connect_timeout: int = connect_timeout
         self.enable_audio: bool = enable_audio
-        self.stop_flag: Optional[Event] = stop_flag
+        self.stream_state: c_int = stream_state
 
     @property
     def resolution(self) -> str:
@@ -344,43 +356,40 @@ class WyzeIOTCSession:
         :returns: A string with the rtsp url or None.
         """
 
-        if (
-            not self.camera.firmware_ver
-            or self.camera.firmware_ver[:5] not in tutk.RTSP_FW
-        ):
-            return None
+        if not self.camera.rtsp_fw:
+            return
 
         with self.iotctrl_mux() as mux:
             try:
                 resp = mux.send_ioctl(tutk_protocol.K10604GetRtspParam()).result(
                     timeout=5
                 )
-            except:
+            except Exception:
                 logger.warning("RTSP Check Failed.")
-                return None
+                return
         if not resp:
             logger.info("Could not determine if RTSP is supported.")
-            return None
+            return
         logger.debug(f"RTSP={resp}")
         if not resp[0]:
             logger.info("RTSP disabled in the app.")
             if not start_rtsp:
-                return None
+                return
             try:
                 with self.iotctrl_mux() as mux:
                     mux.send_ioctl(tutk_protocol.K10600SetRtspSwitch()).result(
                         timeout=5
                     )
-            except:
+            except Exception:
                 logger.warning("Can't start RTSP server on camera.")
-                return None
-        decoded_url = resp.decode().split("rtsp://")
-        return f"rtsp://{decoded_url[1]}" if len(decoded_url) > 1 else None
+                return
+        if len(decoded_url := resp.decode().split("rtsp://")) > 1:
+            return f"rtsp://{decoded_url[1]}"
 
     def recv_video_data(
         self,
     ) -> Iterator[
-        Tuple[Optional[bytes], Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
+        tuple[Optional[bytes], Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
     ]:
         """A generator for returning raw video frames!
 
@@ -456,24 +465,20 @@ class WyzeIOTCSession:
             bad_frames = 0
             first_run = False
 
-    def recv_bridge_frame(
-        self, keep_bad_frames: bool = False, timeout: int = 15, fps: int = 15
-    ) -> Iterator[Optional[bytes]]:
+    def recv_bridge_frame(self, timeout: int = 15, fps: int = 15) -> Iterator[bytes]:
         """A generator for returning raw video frames for the bridge.
 
         Note that the format of this data is either raw h264 or HVEC H265 video. You will
         have to introspect the frame_info object to determine the format!
-
-        :param keep_bad_frames: Don't drop frames that are missing a keyframe.
-        :param timeout: Number of seconds since the last yield before raising an exception.
         """
         assert self.av_chan_id is not None, "Please call _connect() first!"
         # Doorbell returns frame_size 3 or 4; 2K returns frame_size=4
         alt = self.preferred_frame_size + (1 if self.preferred_frame_size == 3 else 3)
         ignore_res = {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
         last = {"key_frame": 0, "key_time": 0, "frame": 0, "time": time.time()}
-        while self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED and (
-            not self.stop_flag or not self.stop_flag.is_set()
+        while (
+            self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
+            and self.stream_state.value > 1
         ):
             if (delta := time.time() - last["time"]) >= timeout:
                 if last["key_time"] == 0:
@@ -500,6 +505,8 @@ class WyzeIOTCSession:
                     warnings.warn(str(tutk.TutkError(errno).name))
                     continue
                 raise tutk.TutkError(errno)
+            if not frame_data:
+                continue
             assert frame_info is not None, "Got no frame info without an error!"
             if frame_info.frame_size not in ignore_res:
                 if last["key_frame"] == 0:
@@ -511,16 +518,11 @@ class WyzeIOTCSession:
                 self.update_frame_size_rate()
                 last |= {"key_frame": 0, "key_time": 0, "time": time.time()}
                 continue
-            # if frame_index and frame_index % 1000 == 0:
-            #     fps = max(
-            #         self.update_frame_size_rate(True, frame_info.framerate), fps, 10
-            #     )
             if frame_info.is_keyframe:
                 last |= {"key_frame": frame_info.frame_no, "key_time": time.time()}
             elif (
                 frame_info.frame_no - last["key_frame"] > fps * 3
-                and frame_info.frame_no - last["frame"] > 8
-                and not keep_bad_frames
+                and frame_info.frame_no - last["frame"] > fps
             ):
                 warnings.warn("Waiting for keyframe")
                 time.sleep((1 / (fps)) - 0.02)
@@ -532,6 +534,7 @@ class WyzeIOTCSession:
             last |= {"frame": frame_info.frame_no, "time": time.time()}
             yield frame_data
         self.state = WyzeIOTCSessionState.CONNECTING_FAILED
+        return b""
 
     def update_frame_size_rate(
         self, bitrate: bool = False, fps: Optional[int] = None
@@ -586,8 +589,9 @@ class WyzeIOTCSession:
         sleep_interval = 1 / 5
         try:
             with open(FIFO, "wb") as audio_pipe:
-                while self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED and (
-                    not self.stop_flag or not self.stop_flag.is_set()
+                while (
+                    self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
+                    and self.stream_state.value > 1
                 ):
                     if (buf := tutk.av_check_audio_buf(*tutav)) < 1:
                         if buf < 0:
@@ -605,6 +609,7 @@ class WyzeIOTCSession:
                         warnings.warn(f"Error: {errno=}")
                         break
                     audio_pipe.write(frame_data)
+                audio_pipe.write(b"")
         except tutk.TutkError as ex:
             warnings.warn(str(ex))
         except IOError as ex:
@@ -622,7 +627,7 @@ class WyzeIOTCSession:
             sample_rate = int(audio_param.get("sampleRate", sample_rate))
         return sample_rate
 
-    def get_audio_codec(self, limit: int = 25) -> Tuple[str, int]:
+    def get_audio_codec(self, limit: int = 25) -> tuple[str, int]:
         """Identify audio codec."""
         sample_rate = self.get_audio_sample_rate()
         for _ in range(limit):
@@ -649,7 +654,7 @@ class WyzeIOTCSession:
     def recv_video_frame(
         self,
     ) -> Iterator[
-        Tuple["av.VideoFrame", Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
+        tuple["av.VideoFrame", Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
     ]:
         """A generator for returning decoded video frames!
 
@@ -695,7 +700,7 @@ class WyzeIOTCSession:
     def recv_video_frame_ndarray(
         self,
     ) -> Iterator[
-        Tuple["np.ndarray", Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
+        tuple["np.ndarray", Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
     ]:
         """A generator for returning decoded video frames!
 
@@ -743,10 +748,10 @@ class WyzeIOTCSession:
             str
         ] = "{width}x{height} {kilobytes_per_second} kB/s {frames_per_second} FPS",
     ) -> Iterator[
-        Tuple[
+        tuple[
             "np.ndarray[Any, Any]",
             Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct],
-            Dict[str, int],
+            dict[str, int],
         ]
     ]:
         """A generator for returning decoded video frames with stats!

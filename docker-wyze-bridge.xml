@@ -25,7 +25,7 @@
   <Config Name="TOTP Key for 2FA" Target="TOTP_KEY" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Bridge IP for WebRTC" Target="WB_IP" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Enable Audio" Target="ENABLE_AUDIO" Default="True" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="On-demand Streams" Target="ON_DEMAND" Default="True" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="Enable Substreams" Target="SUBSTREAM" Default="False" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Custom RTSP URL" Target="WB_RTSP_URL" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Custom RTMP URL" Target="WB_RTMP_URL" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="Custom HLS URL" Target="WB_HLS_URL" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>

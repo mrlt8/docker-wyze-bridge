@@ -66,12 +66,12 @@ function applyPreferences() {
     );
   }
   var sortOrder = getCookie("camera_order", "");
-  // clean escaped camera_order from flask args
-  if (/["]/.test(sortOrder)) {
-    sortOrder = sortOrder.replace(/\\054/g, ",").replace(/["]+/g, '')
-    setCookie("camera_order", sortOrder)
-  }
   if (sortOrder) {
+    // clean escaped camera_order from flask args
+    if (sortOrder.includes("%2C")) {
+      sortOrder = sortOrder.replaceAll("%2C", ",")
+      setCookie("camera_order", sortOrder);
+    }
     console.debug("applyPreferences camera_order", sortOrder);
     const ids = sortOrder.split(",");
     var cameras = [...document.querySelectorAll(".camera")];
@@ -254,9 +254,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const newOrdering = ids.join(",");
     console.debug("New camera_order", newOrdering);
     setCookie("camera_order", newOrdering);
+    updateQueryParam("order", newOrdering)
   });
 });
 
+function updateQueryParam(paramName, paramValue) {
+  let url = new URL(window.location.href);
+  url.searchParams.set(paramName, paramValue);
+  window.history.replaceState(null, null, url.toString().replaceAll("%2C", ","));
+}
 document.addEventListener("DOMContentLoaded", () => {
   // Filter cameras
   function filterCams() {
@@ -287,36 +293,23 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
   // Check for version update
-  let checkAPI = document.getElementById("checkUpdate");
-  function checkVersion(api) {
-    let isNewer = (a, b) => {
-      return a.localeCompare(b, undefined, { numeric: true }) === 1;
-    };
-    let apiVersion = api.tag_name.replace(/[^0-9\.]/g, "");
-    let runVersion = checkAPI.dataset.version;
-    let icon = checkAPI.getElementsByClassName("fa-arrows-rotate")[0];
-    let newSpan = document.createElement("span");
-    icon.classList.remove("fa-arrows-rotate");
-    if (isNewer(apiVersion, runVersion)) {
-      newSpan.textContent = "Update available: v" + apiVersion;
-      checkAPI.classList.add("has-text-danger");
-      icon.classList.add("fa-triangle-exclamation");
-    } else {
-      newSpan.textContent = "Latest version";
-      checkAPI.classList.add("has-text-success");
-      icon.classList.add("fa-square-check");
-    }
-    checkAPI.appendChild(newSpan);
-    checkAPI.removeEventListener("click", getGithub);
-  }
-  function getGithub() {
-    fetch(
-      "https://api.github.com/repos/mrlt8/docker-wyze-bridge/releases/latest"
-    )
+  const checkAPI = document.getElementById("checkUpdate");
+  checkAPI.addEventListener("click", () => {
+    let icon = checkAPI.getElementsByClassName("fa-arrows-rotate")[0].classList;
+    icon.add("fa-spin");
+    fetch("https://api.github.com/repos/mrlt8/docker-wyze-bridge/releases/latest")
       .then((response) => response.json())
-      .then((data) => checkVersion(data));
-  }
-  checkAPI.addEventListener("click", getGithub);
+      .then((data) => {
+        let apiVersion = data.tag_name.replace(/[^0-9\.]/g, "");
+        if (apiVersion.localeCompare(checkAPI.dataset.version, undefined, { numeric: true }) === 1) {
+          sendNotification('Update available!', `🎉 v.${apiVersion}`, "warning");
+        } else {
+          sendNotification('All up to date!', '✅ Running the latest version!', "success");
+        }
+      })
+      .catch((error) => { sendNotification('Update check failed', error.message, "danger") })
+      .finally(() => { icon.remove("fa-spin"); });
+  });
 
   // Update preview after loading the page
   async function loadPreview(img) {
@@ -367,9 +360,8 @@ document.addEventListener("DOMContentLoaded", () => {
       a.classList.add("has-text-danger");
       fetch("restart/" + a.dataset.restart)
         .then((resp) => resp.json())
-        .then((data) => {
-          console.log(data);
-        });
+        .then((data) => { sendNotification(`Restart ${a.dataset.restart}`, data.result, "warning"); })
+        .catch((error) => { sendNotification(`Restart ${a.dataset.restart}`, error.message, "danger"); });
       setTimeout(() => {
         a.style = null;
         a.classList.remove("has-text-danger");
@@ -440,17 +432,22 @@ document.addEventListener("DOMContentLoaded", () => {
   })
   sse.addEventListener("message", (e) => {
     Object.entries(JSON.parse(e.data)).forEach(([cam, status]) => {
-      const statusIcon = document.querySelector(`#${cam} .status i.fas`);
-      const preview = document.querySelector(`#${cam} img.refresh_img,video[data-cam='${cam}']`);
+      const card = document.querySelector(`#${cam}`);
+      const statusIcon = card.querySelector(".status i.fas");
+      const preview = card.querySelector(`img.refresh_img,video[data-cam='${cam}']`);
+      const connected = (card.dataset.connected.toLowerCase() === "true")
+      card.dataset.connected = false;
       statusIcon.setAttribute("class", "fas")
       statusIcon.parentElement.title = ""
       if (preview) { preview.classList.remove("connected") }
       if (status == "connected") {
+        if (!connected) { sendNotification('Connected', `Connected to ${cam}`, "success"); }
+        card.dataset.connected = true;
         statusIcon.classList.add("fa-circle-play", "has-text-success");
         statusIcon.parentElement.title = "Click/tap to pause";
         if (preview) { preview.classList.add("connected") }
         autoplay();
-        let noPreview = document.querySelector(`#${cam} .no-preview`)
+        let noPreview = card.querySelector('.no-preview')
         if (noPreview) {
           let fig = noPreview.parentElement
           let preview = document.createElement("img")
@@ -463,13 +460,16 @@ document.addEventListener("DOMContentLoaded", () => {
       } else if (status == "connecting") {
         statusIcon.classList.add("fa-satellite-dish", "has-text-warning");
         statusIcon.parentElement.title = "Click/tap to pause";
-      } else if (status == "standby") {
+      } else if (status == "stopped") {
+        if (connected) { sendNotification('Disconnected', `Disconnected from ${cam}`, "danger"); }
         statusIcon.classList.add("fa-circle-pause");
         statusIcon.parentElement.title = "Click/tap to play";
       } else if (status == "offline") {
+        if (connected) { sendNotification('Offline', `${cam} is offline`, "danger"); }
         statusIcon.classList.add("fa-ghost");
         statusIcon.parentElement.title = "Camera offline";
       } else {
+        if (connected) { sendNotification('Disconnected', `Disconnected from ${cam}`, "danger"); }
         statusIcon.setAttribute("class", "fas fa-circle-exclamation")
         statusIcon.parentElement.title = "Not Connected";
       }
@@ -482,7 +482,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const card = document.getElementById(cam);
     const img = card.getElementsByClassName("card-image")[0]
     const content = card.getElementsByClassName("content")[0]
-    this.getElementsByClassName("fas")[0].classList.toggle("fa-flip-horizontal");
+    let icon = this.getElementsByClassName("fas")[0].classList
+    if (icon.contains("fa-circle-info")) {
+      icon.remove("fa-circle-info");
+      icon.add("fa-circle-xmark");
+    } else {
+      icon.remove("fa-circle-xmark");
+      icon.add("fa-circle-info");
+    }
     if (content.classList.contains("is-hidden")) {
       const table = content.getElementsByTagName("table")[0]
       fetch(`api/${cam}`).then(resp => resp.json()).then(data => {
@@ -502,17 +509,17 @@ document.addEventListener("DOMContentLoaded", () => {
           let keyCell = newRow.insertCell(0)
           let valCell = newRow.insertCell(1)
           keyCell.innerHTML = key
-          if (typeof value === 'string' && value.startsWith("http")) {
+          if (typeof value === 'string' && (key.endsWith("_url") || key == 'thumbnail')) {
             let link = document.createElement('a');
             link.href = value;
             link.title = value;
-            link.innerHTML = value.substring(0, Math.min(50, value.length)) + (value.length >= 50 ? "..." : "");
+            link.innerHTML = value.substring(0, Math.min(40, value.length)) + (value.length >= 40 ? "..." : "");
             valCell.appendChild(link)
           } else {
             valCell.innerHTML = "<code>" + value + "</code>"
           }
         }
-      }).catch(console.error);
+      }).catch(error => { console.error(error); });
     }
     img.classList.toggle("is-hidden");
     content.classList.toggle("is-hidden");
@@ -601,16 +608,14 @@ document.addEventListener("DOMContentLoaded", () => {
     }
     let autoPlay = getCookie("autoplay");
     videos.forEach(video => {
-      if (video.classList.contains("vjs-tech")) { video = videojs(video); } else {
-        video.classList.remove("lost");
+      video.classList.remove("lost");
+      if (!autoPlay) { return }
+      if (video.classList.contains("webrtc")) {
+        loadWebRTC(video);
+      } else if (video.classList.contains("vjs-tech")) {
+        video = videojs(video);
       }
-      if (autoPlay) {
-        if (video.classList.contains("webrtc")) {
-          loadWebRTC(video);
-        } else {
-          video.play();
-        }
-      }
+      video.play();
     });
   }
   // Change default video format for WebUI
@@ -639,4 +644,40 @@ document.addEventListener("DOMContentLoaded", () => {
       window.location = window.location.pathname;
     })
   })
-}); 
+
+  // cam control
+  document.querySelectorAll(".cam-control").forEach((e) => {
+    let cam = e.dataset.cam;
+    e.querySelectorAll(".button").forEach((button) => {
+      button.addEventListener("click", () => {
+        button.classList.add("is-loading");
+        fetch(`api/${cam}/${button.dataset.cmd}`)
+          .then((resp) => resp.json())
+          .then((data) => { sendNotification(cam, `${button.dataset.cmd}: ${data.status}`, ["error", false].includes(data.status) ? "danger" : "primary") })
+          .catch((error) => { sendNotification(cam, `${button.dataset.cmd}: ${error.message}`, "danger") })
+          .finally(() => { button.classList.remove("is-loading"); });
+      })
+    })
+  })
+  document.querySelectorAll(".drag_handle").forEach((e) => {
+    e.addEventListener("mouseenter", () => { e.closest("div.card").classList.add("drag_hover") })
+    e.addEventListener("mouseleave", () => { e.closest("div.card").classList.remove("drag_hover") })
+  })
+
+  function notificationEnabled() {
+    if ("Notification" in window === false || window.isSecureContext === false) { return }
+    if (Notification.permission === "granted") { return true }
+    Notification.requestPermission().then((permission) => {
+      if (permission === "granted") { return true }
+    });
+  }
+
+  function sendNotification(title, message, type = "primary") {
+    if (getCookie("fullscreen")) { return }
+    if (notificationEnabled() === true && document.visibilityState != "visible") {
+      new Notification(title, { body: message });
+    } else {
+      bulmaToast.toast({ message: `<strong>${title}</strong> - ${message}`, type: `is-${type}`, pauseOnHover: true, duration: 10000 })
+    }
+  }
+});

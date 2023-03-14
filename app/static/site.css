@@ -13,6 +13,7 @@ section {
 }
 
 .preview-toggle .button,
+.card-footer-item .button,
 .card,
 .navbar-menu,
 .footer {
@@ -25,10 +26,11 @@ section {
 }
 
 .dropdown-content,
-.dropdown-item,
+.dropdown-menu,
 .content table {
   color: #fff;
-  background-color: #292929;
+  background-color: rgba(16, 16, 16, 0.5);
+  z-index: 100;
 }
 
 .preview-toggle .button {
@@ -45,7 +47,14 @@ section {
 .table thead th,
 .dropdown-item {
   color: #fff;
+  display: block;
+  flex-grow: 0;
 }
+
+.dropdown-content .dropdown-item.is-active {
+  background-color: rgba(110, 118, 129, 0.4);
+}
+
 
 a {
   color: #1abc9c;
@@ -56,7 +65,7 @@ a:hover {
 }
 
 .preview-toggle .button:not(.is-active):hover,
-.card-footer a:hover {
+.card-footer-item:hover {
   background-color: #292929;
   border-color: #292929;
   color: #009670;
@@ -194,6 +203,15 @@ button:not(.offline):disabled+.age {
 .drag_handle {
   cursor: move;
   flex-grow: 2;
+}
+
+.card {
+  border-radius: 0.75rem;
+  transition: box-shadow 0.5s ease-in-out;
+}
+
+.drag_hover {
+  box-shadow: 0 0 20px 1px #ffffffb1;
 }
 
 @media (prefers-color-scheme: dark) {

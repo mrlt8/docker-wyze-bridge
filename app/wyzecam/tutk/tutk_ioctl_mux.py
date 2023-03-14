@@ -1,11 +1,10 @@
-from typing import Any, DefaultDict, Dict, List, Optional, Tuple, Union
-
 import logging
 import threading
 import time
 from collections import defaultdict
 from ctypes import CDLL, c_int
 from queue import Empty, Queue
+from typing import Any, DefaultDict, Optional, Union
 
 from . import tutk, tutk_protocol
 from .tutk_protocol import TutkWyzeProtocolMessage
@@ -32,7 +31,7 @@ class TutkIOCtrlFuture:
     def __init__(
         self,
         req: TutkWyzeProtocolMessage,
-        queue: Optional["Queue[Union[object, Tuple[int, int, int, bytes]]]"] = None,
+        queue: Optional["Queue[Union[object, tuple[int, int, int, bytes]]]"] = None,
         errcode: Optional[c_int] = None,
     ):
         self.req: TutkWyzeProtocolMessage = req
@@ -61,7 +60,7 @@ class TutkIOCtrlFuture:
             raise tutk.TutkError(self.errcode)
         if self.expected_response_code is None:
             logger.warning("no response code!")
-            return None
+            return
         assert self.queue is not None, "Future created without error nor queue!"
 
         msg = self.queue.get(block=block, timeout=timeout)
@@ -110,7 +109,7 @@ class TutkIOCtrlMux:
         self.tutk_platform_lib = tutk_platform_lib
         self.av_chan_id = av_chan_id
         self.queues: DefaultDict[
-            Union[str, int], "Queue[Union[object, Tuple[int, int, int, bytes]]]"
+            Union[str, int], "Queue[Union[object, tuple[int, int, int, bytes]]]"
         ] = defaultdict(Queue)
         self.listener = TutkIOCtrlMuxListener(
             tutk_platform_lib, av_chan_id, self.queues
@@ -190,9 +189,9 @@ class TutkIOCtrlMux:
 
     def waitfor(
         self,
-        futures: Union[TutkIOCtrlFuture, List[TutkIOCtrlFuture]],
+        futures: Union[TutkIOCtrlFuture, list[TutkIOCtrlFuture]],
         timeout: Optional[int] = None,
-    ) -> Union[Any, List[Any]]:
+    ) -> Union[Any, list[Any]]:
         """Wait for the responses of one or more `TutkIOCtrlFuture`s.
 
         ```python
@@ -253,7 +252,7 @@ class TutkIOCtrlMuxListener(threading.Thread):
         tutk_platform_lib: CDLL,
         av_chan_id: c_int,
         queues: DefaultDict[
-            Union[int, str], "Queue[Union[object, Tuple[int, int, int, bytes]]]"
+            Union[int, str], "Queue[Union[object, tuple[int, int, int, bytes]]]"
         ],
     ):
         super().__init__()

@@ -1,10 +1,10 @@
 import os
 import re
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
-model_names = {
+MODEL_NAMES = {
     "WYZEC1": "V1",
     "WYZEC1-JZ": "V2",
     "WYZE_CAKP2JFUS": "V3",
@@ -15,10 +15,12 @@ model_names = {
     "HL_PANP": "Pan Pro",
     "WYZEDB3": "Doorbell",
     "GW_BE1": "Doorbell Pro",
+    "AN_RDB1": "Doorbell Pro 2",
     "GW_GC1": "OG",
     "GW_GC2": "OG 3X",
     "WVOD1": "Outdoor",
     "HL_WCO2": "Outdoor V2",
+    "AN_RSCW": "Battery Cam Pro",
 }
 
 # These cameras don't seem to support WebRTC
@@ -33,6 +35,19 @@ NO_WEBRTC = {
     "GW_BE1",
     "AN_RDB1",
 }
+
+
+# known 2k cameras
+PRO_CAMS = {"HL_CAM3P", "HL_PANP"}
+
+BATTERY_CAMS = {"WVOD1", "HL_WCO2", "AN_RSCW"}
+
+# Doorbells
+VERTICAL_CAMS = {"WYZEDB3", "GW_BE1", "AN_RDB1"}
+# Minimum known firmware version that supports multiple streams
+SUBSTREAM_FW = {"WYZEC1-JZ": "4.9.9", "WYZE_CAKP2JFUS": "4.36.10", "HL_CAM3P": "4.58.0"}
+
+RTSP_FW = {"4.19.", "4.20.", "4.28.", "4.29.", "4.61."}
 
 
 class WyzeCredential(BaseModel):
@@ -51,7 +66,7 @@ class WyzeCredential(BaseModel):
     refresh_token: Optional[str]
     user_id: str
     mfa_options: Optional[list]
-    mfa_details: Optional[Dict[str, Any]]
+    mfa_details: Optional[dict[str, Any]]
     sms_session_id: Optional[str]
     phone_id: str
 
@@ -97,7 +112,7 @@ class WyzeCamera(BaseModel):
     enr: Optional[str]
     mac: str
     product_model: str
-    camera_info: Optional[Dict[str, Any]]
+    camera_info: Optional[dict[str, Any]]
     nickname: Optional[str]
     timezone_name: Optional[str]
     firmware_ver: Optional[str]
@@ -107,7 +122,7 @@ class WyzeCamera(BaseModel):
     parent_mac: Optional[str]
     thumbnail: Optional[str]
 
-    def set_camera_info(self, info: Dict[str, Any]) -> None:
+    def set_camera_info(self, info: dict[str, Any]) -> None:
         # Called internally as part of WyzeIOTC.connect_and_auth()
         self.camera_info = info
 
@@ -115,31 +130,61 @@ class WyzeCamera(BaseModel):
     def name_uri(self) -> str:
         """Return a URI friendly name by removing special characters and spaces."""
         uri_sep = "-"
-        if os.getenv("URI_SEPARATOR") in ("-", "_", "#"):
-            uri_sep = os.getenv("URI_SEPARATOR")
-        clean = (
-            re.sub(r"[^\-\w+]", "", self.nickname.strip().replace(" ", uri_sep))
-            .encode("ascii", "ignore")
-            .decode()
-        )
-        return clean.lower()
+        if os.getenv("URI_SEPARATOR") in {"-", "_", "#"}:
+            uri_sep = os.getenv("URI_SEPARATOR", uri_sep)
+        return clean_name(self.nickname or self.mac, uri_sep).lower()
 
     @property
     def model_name(self) -> str:
-        return model_names.get(self.product_model, self.product_model)
+        return MODEL_NAMES.get(self.product_model, self.product_model)
 
     @property
     def webrtc_support(self) -> bool:
         """Check if camera model is known to support WebRTC."""
         return self.product_model not in NO_WEBRTC
 
+    @property
+    def is_2k(self) -> bool:
+        return self.product_model in PRO_CAMS or self.model_name.endswith("Pro")
 
-def clean_name(name: str) -> str:
+    @property
+    def is_gwell(self) -> bool:
+        return self.product_model.startswith("GW_")
+
+    @property
+    def is_battery(self) -> bool:
+        return self.product_model in BATTERY_CAMS
+
+    @property
+    def is_vertical(self) -> bool:
+        return self.product_model in VERTICAL_CAMS
+
+    @property
+    def can_substream(self) -> bool:
+        if self.rtsp_fw:
+            return False
+        min_ver = SUBSTREAM_FW.get(self.product_model)
+        return is_min_version(self.firmware_ver, min_ver)
+
+    @property
+    def rtsp_fw(self) -> bool:
+        return bool(self.firmware_ver and self.firmware_ver[:5] in RTSP_FW)
+
+
+def clean_name(name: str, uri_sep: str = "_") -> str:
     """Return a URI friendly name by removing special characters and spaces."""
-    uri_sep = "_"
-    clean = (
+    return (
         re.sub(r"[^\-\w+]", "", name.strip().replace(" ", uri_sep))
         .encode("ascii", "ignore")
         .decode()
+    ).upper()
+
+
+def is_min_version(version: Optional[str], min_version: Optional[str]) -> bool:
+    if not version or not min_version:
+        return False
+    version_parts = list(map(int, version.split(".")))
+    min_version_parts = list(map(int, min_version.split(".")))
+    return (version_parts >= min_version_parts) or (
+        version_parts == min_version_parts and version >= min_version
     )
-    return clean.upper()

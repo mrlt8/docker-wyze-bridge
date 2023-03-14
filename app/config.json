@@ -1,10 +1,10 @@
 {
     "name": "Docker Wyze Bridge",
-    "description": "RTMP/RTSP/HLS bridge for Wyze cams in a docker container",
+    "description": "WebRTC/RTSP/RTMP/LL-HLS bridge for Wyze cams in a docker container",
     "slug": "docker-wyze-bridge",
     "url": "https://github.com/mrlt8/docker-wyze-bridge",
     "image": "mrlt8/wyze-bridge",
-    "version": "1.11.10",
+    "version": "2.0.0",
     "arch": [
         "armv7",
         "aarch64",
@@ -31,9 +31,7 @@
         "5000/tcp": "Web-UI/Snapshots"
     },
     "environment": {
-        "HASS": "true",
         "IMG_DIR": "config/www",
-        "SKIP_RTSP_LOG": "true",
         "RECORD_PATH": "media/wyze/{CAM_NAME}"
     },
     "map": [
@@ -53,7 +51,7 @@
         "SNAPSHOT": "Disable",
         "MQTT_DTOPIC": "homeassistant",
         "ENABLE_AUDIO": false,
-        "ON_DEMAND": false,
+        "SUBSTREAM": false,
         "CAM_OPTIONS": []
     },
     "schema": {
@@ -62,11 +60,11 @@
         "WB_IP": "str?",
         "TOTP_KEY": "str?",
         "NET_MODE": "list(LAN|P2P|ANY)",
-        "SNAPSHOT": "list(API|RTSP|RTSP5|RTSP15|RTSP30|RTSP60|Disable)?",
+        "SNAPSHOT": "list(API|RTSP|RTSP15|RTSP30|RTSP60|RTSP180|RTSP300|Disable)?",
         "IMG_TYPE": "list(jpg|png)?",
         "IMG_DIR": "str?",
-        "ON_DEMAND": "bool?",
         "ENABLE_AUDIO": "bool?",
+        "SUBSTREAM": "bool?",
         "AUDIO_CODEC": "list(COPY|AAC|MP3|LIBOPUS)?",
         "AUDIO_FILTER": "str?",
         "LLHLS": "bool?",
@@ -93,19 +91,17 @@
         "QUALITY": "str?",
         "FFMPEG_FLAGS": "str?",
         "FFMPEG_CMD": "str?",
-        "DEBUG_FRAMES": "bool?",
+        "DEBUG_LEVEL": "list(INFO|DEBUG)?",
+        "LOG_FILE": "bool?",
         "DEBUG_FFMPEG": "bool?",
         "IGNORE_RES": "int?",
-        "KEEP_BAD_FRAMES": "bool?",
-        "FPS_FIX": "bool?",
-        "WEBRTC": "bool?",
-        "ENABLE_BOA": "bool?",
+        "BOA_ENABLED": "bool?",
         "BOA_INTERVAL": "int?",
-        "TAKE_PHOTO": "bool?",
-        "PULL_PHOTO": "bool?",
-        "PULL_ALARM": "bool?",
-        "MOTION_HTTP": "str?",
-        "MOTION_COOLDOWN": "int?",
+        "BOA_TAKE_PHOTO": "bool?",
+        "BOA_PHOTO": "bool?",
+        "BOA_ALARM": "bool?",
+        "BOA_MOTION": "str?",
+        "BOA_COOLDOWN": "int?",
         "CAM_OPTIONS": [
             {
                 "CAM_NAME": "str?",
@@ -115,7 +111,8 @@
                 "NET_MODE": "str?",
                 "ROTATE": "bool?",
                 "QUALITY": "str?",
-                "RECORD": "bool?"
+                "RECORD": "bool?",
+                "SUBSTREAM": "bool?"
             }
         ],
         "RTSP_SIMPLE_SERVER": [
