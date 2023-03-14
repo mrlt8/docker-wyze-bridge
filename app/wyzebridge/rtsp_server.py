@@ -78,7 +78,7 @@ class RtspServer:
     def start(self):
         if self.sub_process:
             return
-        logger.info(f"starting rtsp-simple-server{rtsp_version()}")
+        logger.info(f"starting rtsp-simple-server {rtsp_version()}")
         self.sub_process = Popen(
             ["/app/rtsp-simple-server", "/app/rtsp-simple-server.yml"]
         )

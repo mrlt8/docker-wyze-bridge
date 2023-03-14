@@ -37,6 +37,10 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
+## What's Changed in v2.0.1
+
+* Fixed a bug where the WebUI would not start if 2FA was required. #741
+
 ## What's Changed in v2.0.0
 
 ⚠️ All streams will be on-demand unless local recording is enabled.

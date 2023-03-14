@@ -13,11 +13,10 @@ from typing import Any, Callable, Optional
 import wyzecam
 from requests import get
 from requests.exceptions import ConnectionError, HTTPError
-from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
-
 from wyzebridge.bridge_utils import env_bool, env_filter
 from wyzebridge.config import IMG_PATH, TOKEN_PATH
 from wyzebridge.logging import logger
+from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
 
 def cached(func: Callable[..., Any]) -> Callable[..., Any]:

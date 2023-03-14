@@ -58,7 +58,6 @@ class StreamManager:
         self.streams: dict[str, Stream] = {}
         self.rtsp_snapshots: dict[str, Popen] = {}
         self.last_snap: float = 0
-        self.thread: Optional[threading.Thread] = None
 
     @property
     def total(self):
@@ -99,15 +98,6 @@ class StreamManager:
         self.stop_flag = True
         for stream in self.streams.values():
             stream.stop()
-        self.clear_monitoring_thread()
-
-    def start_monitoring(self):
-        """
-        Start monitoring streams in a background thread.
-        """
-        self.clear_monitoring_thread()
-        self.thread = threading.Thread(target=self.monitor_streams)
-        self.thread.start()
 
     def monitor_streams(self) -> None:
         self.stop_flag = False
@@ -186,12 +176,6 @@ class StreamManager:
         except TimeoutExpired:
             stop_subprocess(ffmpeg)
         return False
-
-    def clear_monitoring_thread(self):
-        if self.thread and self.thread.is_alive():
-            self.stop_flag = True
-            with contextlib.suppress(AttributeError, RuntimeError):
-                self.thread.join()
 
 
 def stop_subprocess(ffmpeg: Optional[Popen]):

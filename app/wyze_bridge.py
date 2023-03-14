@@ -1,6 +1,7 @@
 import signal
 import sys
 from dataclasses import replace
+from threading import Thread
 from typing import NoReturn
 
 from wyzebridge import config
@@ -12,10 +13,11 @@ from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_stream import WyzeStream, WyzeStreamOptions
 
 
-class WyzeBridge:
+class WyzeBridge(Thread):
     __slots__ = "api", "streams", "rtsp"
 
     def __init__(self) -> None:
+        Thread.__init__(self)
         for sig in {"SIGTERM", "SIGINT"}:
             signal.signal(getattr(signal, sig), lambda *_: self.clean_up())
         print(f"\n🚀 STARTING DOCKER-WYZE-BRIDGE v{config.VERSION}\n")
@@ -27,16 +29,15 @@ class WyzeBridge:
             self.rtsp.setup_llhls(config.TOKEN_PATH, bool(config.HASS_TOKEN))
 
     def run(self, fresh_data: bool = False) -> None:
-        self.setup_streams(fresh_data)
+        self.api.login(fresh_data=fresh_data)
+        self.setup_streams()
         self.rtsp.start()
         if self.streams.total < 1:
             return self.clean_up()
-        self.streams.start_monitoring()
+        self.streams.monitor_streams()
 
-    def setup_streams(self, fresh_data: bool = False):
+    def setup_streams(self):
         """Gather and setup streams for each camera."""
-        self.api.login(fresh_data=fresh_data)
-
         WyzeStream.user = self.api.get_user()
         WyzeStream.api = self.api
         for cam in self.api.filtered_cams():

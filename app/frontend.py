@@ -35,7 +35,7 @@ def verify_password(username, password):
 def create_app():
     app = Flask(__name__)
     wb = WyzeBridge()
-    wb.run()
+    wb.start()
 
     @app.route("/")
     @auth.login_required
@@ -195,7 +195,7 @@ def create_app():
         """
         if restart_cmd == "cameras":
             wb.streams.stop_all()
-            wb.streams.start_monitoring()
+            wb.streams.monitor_streams()
         elif restart_cmd == "rtsp_server":
             wb.rtsp.restart()
         elif restart_cmd == "all":
