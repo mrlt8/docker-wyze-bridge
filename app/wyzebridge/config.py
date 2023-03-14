@@ -47,4 +47,4 @@ DEPRECATED = {
 
 for env in DEPRECATED:
     if getenv(env):
-        print(f"\n\nWARNING: {env} is deprecated\n\n")
+        print(f"\n\n[!] WARNING: {env} is deprecated\n\n")
