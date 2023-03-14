@@ -1,5 +1,7 @@
 ## What's Changed in v2.0.0
 
+⚠️ All streams will be on-demand unless local recording is enabled.
+
 * NEW: Substreams - Add a secondary lower resolution stream:
   * `SUBSTREAM=True` to enable a lower resolution sub-stream on all cameras with a compatible firmware.
   * `SUBSTREAM_CAM_NAME=True` to enable sub-stream for a single camera without a firmware version check.
@@ -21,5 +23,14 @@
 * Bump python to 3.11
 * Bump rtsp-simple-server to [v0.21.6](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.21.6)
 * Bump Wyze app version.
+
+Some ENV options have been deprecated:
+* `ON_DEMAND` - No longer used as all streams are now on-demand.
+* `TAKE_PHOTO` -> `BOA_TAKE_PHOTO`
+* `PULL_PHOTO` -> `BOA_PHOTO`
+* `PULL_ALARM` -> `BOA_ALARM`
+* `MOTION_HTTP` -> `BOA_MOTION`
+* `MOTION_COOLDOWN` -> `BOA_COOLDOWN`
+
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
