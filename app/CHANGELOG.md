@@ -6,6 +6,7 @@
   * Secondary 360p stream will be available using the `cam-name-sub` uri.
   * See the [substream](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Substreams) page for more info.
 * NEW: WebUI endpoints:
+  * `/img/camera-name.jpg?exp=90` Take a new snapshot if the existing one is older than the `exp` value in seconds.
   * `/thumb/cam-name.jpg` Pull the latest thumbnail from the wyze API.
   * `/api/cam-name/enable` Enable the stream for recording and streaming. #717
   * `/api/cam-name/disable` Disable the stream for recording and streaming. #717
