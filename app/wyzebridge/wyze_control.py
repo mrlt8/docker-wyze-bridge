@@ -241,10 +241,12 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: str, source: str) -> dict:
     try:
         with sess.iotctrl_mux() as mux:
             iotc = mux.send_ioctl(getattr(tutk_protocol, proto[0])(*proto[1:]))
-            if proto[0] in {"K11000SetRotaryByDegree"}:
+            if proto[0] in {"K11000SetRotaryByDegree", "K11004ResetRotatePosition"}:
                 resp |= {"status": "success", "response": None}
             elif res := iotc.result(timeout=5):
                 resp |= {"status": "success", "response": ",".join(map(str, res))}
+    except Empty:
+        resp |= {"status": "success", "response": None}
     except Exception as ex:
         resp |= {"response": ex}
         logger.warning(f"[CONTROL] {ex}")
