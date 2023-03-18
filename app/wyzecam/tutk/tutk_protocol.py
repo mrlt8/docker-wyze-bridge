@@ -255,20 +255,29 @@ class K10008ConnectUserAuth(TutkWyzeProtocolMessage):
 
 class K10010ControlChannel(TutkWyzeProtocolMessage):
     """
-    A command used frequently by the mobile app to configure settings on the camera.
+    Media Controls.
 
+    A command used frequently by the mobile app to configure settings on the camera.
     Not terribly well understood.
+
+    Parameters:
+    - media_type (int): The ID of the media to control:
+        - 1: Video
+        - 2: Audio
+        - 3: Return Audio
+        - 4: RDT
+    - enabled (bool): True if the media should be enabled, False otherwise
     """
 
-    def __init__(self, k: int = 1, v: int = 2):
+    def __init__(self, media_type: int = 1, enabled: bool = False):
         super().__init__(10010)
-        assert k < 256, "control channel key must be < 256"
-        assert v < 256, "control channel value must be < 256"
-        self.k = k
-        self.v = v
+
+        assert 0 < media_type <= 4, "control channel media_type must be 1-4"
+        self.media_type = media_type
+        self.enabled = 1 if enabled else 2
 
     def encode(self) -> bytes:
-        return encode(self.code, 2, bytes([self.k, self.v]))
+        return encode(self.code, 2, bytes([self.media_type, self.enabled]))
 
 
 class K10020CheckCameraInfo(TutkWyzeProtocolMessage):
