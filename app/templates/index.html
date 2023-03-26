@@ -150,6 +150,11 @@
                             </span>
                             {% endif %}
                             {% endif %}
+                            {% if camera.is_battery %}
+                            <span class="icon" title="Battery">
+                                <i class="fas fa-battery-empty" aria-hidden="true"></i>
+                            </span>
+                            {% endif %}
                         </div>
                         <span class="drag_handle" draggable="true"></span>
                         <button class="card-header-icon toggle-details" data-cam="{{cam_uri}}" title="Camera details">
