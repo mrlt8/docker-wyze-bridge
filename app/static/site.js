@@ -240,8 +240,11 @@ function refresh_imgs() {
   console.debug("refresh_imgs " + Date.now());
   document.querySelectorAll(".refresh_img").forEach(async function (image) {
     let url = image.getAttribute("src");
-    // Skip if not connected
-    await update_img(url, !image.classList.contains("connected"));
+    // Skip if not enabled or battery
+    let CameraBattery = document.getElementById(image.dataset.cam).dataset.battery?.toLowerCase() == "true";
+    let CameraConnected = image.classList.contains("connected");
+    let CameraEnabled = image.classList.contains("enabled");
+    await update_img(url, !(CameraEnabled && (!CameraBattery || CameraConnected)));
   });
 }
 
@@ -319,7 +322,7 @@ document.addEventListener("DOMContentLoaded", () => {
       oldUrl = `snapshot/${cam}.jpg`;
     }
     try {
-      let newUrl = await update_img(oldUrl, (getCookie("refresh_period") <= 10 || !img.classList.contains("connected")));
+      let newUrl = await update_img(oldUrl, (getCookie("refresh_period") <= 10 || !img.classList.contains("enabled")));
       let newVal = newUrl;
       img.parentElement.querySelectorAll("[src$=loading\\.svg],[style*=loading\\.svg],[poster$=loading\\.svg]")
         .forEach((e) => {
@@ -387,7 +390,7 @@ document.addEventListener("DOMContentLoaded", () => {
     clearInterval(refresh_interval);
     document.getElementById("connection-lost").style.display = "block";
     autoplay("stop");
-    document.querySelectorAll("img.connected").forEach((i) => { i.classList.remove("connected") })
+    document.querySelectorAll("img.refresh_img,video[data-cam='${cam}']").forEach((i) => { i.classList.remove("connected", "enabled") })
     document.querySelectorAll(".cam-overlay").forEach((i) => {
       i.getElementsByClassName("fas")[0].classList.remove("fa-spin");
     })
@@ -439,13 +442,15 @@ document.addEventListener("DOMContentLoaded", () => {
       card.dataset.connected = false;
       statusIcon.setAttribute("class", "fas")
       statusIcon.parentElement.title = ""
-      if (preview) { preview.classList.remove("connected") }
+      if (preview) {
+        if (status == "connected") { preview.classList.add("connected") } else { preview.classList.remove("connected") }
+        if (status == "disabled") { preview.classList.remove("enabled") } else { preview.classList.add("enabled") }
+      }
       if (status == "connected") {
         if (!connected) { sendNotification('Connected', `Connected to ${cam}`, "success"); }
         card.dataset.connected = true;
         statusIcon.classList.add("fa-circle-play", "has-text-success");
         statusIcon.parentElement.title = "Click/tap to pause";
-        if (preview) { preview.classList.add("connected") }
         autoplay();
         let noPreview = card.querySelector('.no-preview')
         if (noPreview) {
