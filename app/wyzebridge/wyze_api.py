@@ -3,8 +3,9 @@ import hmac
 import pickle
 import struct
 from base64 import b32decode
+from datetime import datetime
 from functools import wraps
-from os import environ, getenv, listdir, remove
+from os import environ, getenv, listdir, remove, utime
 from os.path import exists, getsize
 from pathlib import Path
 from time import sleep, time
@@ -153,6 +154,10 @@ class WyzeApi:
             return False
         with open(save_to, "wb") as f:
             f.write(img.content)
+        if modified := img.headers.get("Last-Modified"):
+            ts_format = "%a, %d %b %Y %H:%M:%S %Z"
+            if updated := int(datetime.strptime(modified, ts_format).timestamp()):
+                utime(save_to, (updated, updated))
         return True
 
     @authenticated
