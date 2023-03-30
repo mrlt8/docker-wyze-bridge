@@ -37,6 +37,18 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
+## What's Changed in v2.0.2
+
+* Camera Control: Don't wait for a response when sending `set_rotary_` commands. #746
+* Camera Control: Add commands for motion tagging (potentially useful if using waitmotion in mini hacks):
+  * `get_motion_tagging` current status: `1`=ON, `2`=OFF.
+  * `set_motion_tagging_on` turn on motion tagging.
+  * `set_motion_tagging_off` turn off motion tagging
+* WebUI: Refresh image previews even if camera is not connected but enabled. (will still ignore battery cameras) #750
+* WebUI: Add battery icon to cameras with a battery.
+* WebUI: Use Last-Modified date to calculate the age of the thumbnails from the wyze API. 
+* Update documentation for K10010ControlChannel media controls for potential on-demand control of video/audio.
+
 ## What's Changed in v2.0.1
 
 * Fixed a bug where the WebUI would not start if 2FA was required. #741
