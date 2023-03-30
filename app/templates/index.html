@@ -111,7 +111,8 @@
             {% if cam_data.cameras %}
             {% for cam_uri,camera in cam_data.cameras.items() %}
             <div id="{{ cam_uri }}" class="camera column {{'is-hidden' if not camera.enabled}}"
-                data-enabled="{{camera.enabled}}" data-connected="{{camera.connected}}">
+                data-enabled="{{camera.enabled}}" data-connected="{{camera.connected}}"
+                data-battery="{{camera.is_battery}}">
                 <div class="card">
                     <header class="card-header fs-display-none">
                         <div class="card-header-title">
@@ -148,6 +149,11 @@
                                 <i class="fas fa-volume-high" aria-hidden="true"></i>
                             </span>
                             {% endif %}
+                            {% endif %}
+                            {% if camera.is_battery %}
+                            <span class="icon" title="Battery">
+                                <i class="fas fa-battery-empty" aria-hidden="true"></i>
+                            </span>
                             {% endif %}
                         </div>
                         <span class="drag_handle" draggable="true"></span>
