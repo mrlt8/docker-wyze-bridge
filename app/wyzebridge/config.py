@@ -17,6 +17,7 @@ TOKEN_PATH: str = "/config/wyze-bridge/" if HASS_TOKEN else "/tokens/"
 IMG_PATH: str = f'/{env_bool("IMG_DIR", "img").strip("/")}/'
 
 SNAPSHOT_TYPE, SNAPSHOT_INT = split_int_str(env_bool("SNAPSHOT"), min=15, default=180)
+SNAPSHOT_FORMAT: str = env_bool("SNAPSHOT_FORMAT", style="original").strip("/")
 
 
 BRIDGE_IP: str = env_bool("WB_IP")

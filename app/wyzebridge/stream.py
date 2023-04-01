@@ -131,7 +131,7 @@ class StreamManager:
         self.last_snap = time.time()
         for cam in cams:
             stop_subprocess(self.rtsp_snapshots.get(cam))
-            self.rtsp_snapshots[cam] = self.rtsp_snap_popen(cam)
+            self.rtsp_snapshots[cam] = self.rtsp_snap_popen(cam, True)
 
     def get_status(self, uri: str) -> str:
         if self.stop_flag:
@@ -159,11 +159,11 @@ class StreamManager:
         cam_resp = stream.send_cmd(cmd)
         return cam_resp if "status" in cam_resp else resp | cam_resp
 
-    def rtsp_snap_popen(self, cam_name: str) -> Popen:
+    def rtsp_snap_popen(self, cam_name: str, interval: bool = False) -> Popen:
         self.start(cam_name)
         ffmpeg = self.rtsp_snapshots.get(cam_name)
         if not ffmpeg or ffmpeg.poll() is not None:
-            ffmpeg = Popen(rtsp_snap_cmd(cam_name))
+            ffmpeg = Popen(rtsp_snap_cmd(cam_name, interval))
         return ffmpeg
 
     def get_rtsp_snap(self, cam_name: str) -> bool:
