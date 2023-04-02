@@ -7,7 +7,7 @@ from typing import Optional, Protocol
 from wyzebridge.logging import logger
 
 
-class RtspInterface(Protocol):
+class MtxInterface(Protocol):
     def set(self, uri: str, path: str, value: str) -> None:
         ...
 
@@ -21,50 +21,50 @@ class RtspInterface(Protocol):
         ...
 
 
-class RtspEnv:
-    """Use environment variables to interface with rtsp-simple-server."""
+class MtxEnv:
+    """Use environment variables to interface with mediamtx."""
 
     def set(self, uri: str, path: str, value: str) -> None:
-        env = f"RTSP_PATHS_{uri}_{path}".upper()
+        env = f"MTX_PATHS_{uri}_{path}".upper()
         if not getenv(env):
             environ[env] = value
 
     def get(self, uri: str, path: str) -> Optional[str]:
-        env = f"RTSP_PATHS_{{}}_{path}".upper()
+        env = f"MTX_PATHS_{{}}_{path}".upper()
         return getenv(env.format(uri.upper()), getenv(env.format("ALL")))
 
     def set_opt(self, option: str, value: str) -> None:
-        env = f"RTSP_{option}".upper()
+        env = f"MTX_{option}".upper()
         if not getenv(env):
             environ[env] = value
 
     def get_opt(self, option: str) -> Optional[str]:
-        return getenv(f"RTSP_{option}".upper())
+        return getenv(f"MTX_{option}".upper())
 
 
-class RtspServer:
-    """Setup and interact with the backend rtsp-simple-server."""
+class MtxServer:
+    """Setup and interact with the backend mediamtx."""
 
     __slots__ = "rtsp", "sub_process"
 
     def __init__(
         self,
         bridge_ip: Optional[str] = None,
-        rtsp_interface: RtspInterface = RtspEnv(),
+        mtx_interface: MtxInterface = MtxEnv(),
     ) -> None:
-        self.rtsp: RtspInterface = rtsp_interface
+        self.rtsp: MtxInterface = mtx_interface
         self.sub_process: Optional[Popen] = None
         if bridge_ip:
             self.setup_webrtc(bridge_ip)
 
     def add_path(self, uri: str, on_demand: bool = True):
         for event in {"Read", "Ready"}:
-            stop_cmd = f"echo $RTSP_PATH,{event},0 > /tmp/rtsp_event;exit;"
-            start_cmd = f"echo $RTSP_PATH,{event},1 > /tmp/rtsp_event;"
+            stop_cmd = f"echo $MTX_PATH,{event},0 > /tmp/mtx_event;exit;"
+            start_cmd = f"echo $MTX_PATH,{event},1 > /tmp/mtx_event;"
             bash_cmd = f'trap "{stop_cmd}" INT;{start_cmd} while :; do sleep 1; done'
             self.rtsp.set(uri, f"RunOn{event}", f"bash -c '{bash_cmd}'")
         if on_demand:
-            cmd = "bash -c 'echo $RTSP_PATH,start,1 > /tmp/rtsp_event'"
+            cmd = "bash -c 'echo $MTX_PATH,start,1 > /tmp/mtx_event'"
             self.rtsp.set(uri, "runOnDemand", cmd)
             self.rtsp.set(uri, "runOnDemandStartTimeout", "30s")
         if read_user := self.rtsp.get(uri, "readUser"):
@@ -78,13 +78,11 @@ class RtspServer:
     def start(self):
         if self.sub_process:
             return
-        logger.info(f"starting rtsp-simple-server {rtsp_version()}")
-        self.sub_process = Popen(
-            ["/app/rtsp-simple-server", "/app/rtsp-simple-server.yml"]
-        )
+        logger.info(f"starting MediaMTX {mtx_version()}")
+        self.sub_process = Popen(["/app/mediamtx", "/app/mediamtx.yml"])
 
     def stop(self):
-        logger.info("Stopping rtsp-simple-server...")
+        logger.info("Stopping MediaMTX...")
         if self.sub_process and self.sub_process.poll() is None:
             self.sub_process.send_signal(SIGINT)
             self.sub_process.communicate()
@@ -125,9 +123,9 @@ class RtspServer:
         self.rtsp.set_opt("hlsServerCert", f"{cert_path}.crt")
 
 
-def rtsp_version() -> str:
+def mtx_version() -> str:
     try:
-        with open("/RTSP_TAG", "r") as tag:
+        with open("/MTX_TAG", "r") as tag:
             return tag.read().strip()
     except FileNotFoundError:
         return ""

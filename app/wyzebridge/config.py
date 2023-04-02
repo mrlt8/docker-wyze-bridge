@@ -1,5 +1,5 @@
 import json
-from os import getenv, makedirs
+from os import environ, getenv, makedirs
 
 from wyzebridge.bridge_utils import env_bool, split_int_str
 from wyzebridge.hass import setup_hass
@@ -49,3 +49,10 @@ DEPRECATED = {
 for env in DEPRECATED:
     if getenv(env):
         print(f"\n\n[!] WARNING: {env} is deprecated\n\n")
+
+for key, value in environ.items():
+    if key.startswith("RTSP_") and key != "RTSP_FW":
+        mtx_key = f"MTX{key[4:]}"
+        print(f"\n[!] WARNING: {key} is deprecated. Please use {mtx_key} instead\n")
+        environ.pop(key, None)
+        environ[mtx_key] = value

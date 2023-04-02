@@ -38,8 +38,8 @@ configuration:
     name: Print WebRTC Credentials
   WB_SHOW_VIDEO:
     name: HLS Player in Web-UI
-  RTSP_SIMPLE_SERVER:
-    name: rtsp-simple-server config
+  MEDIAMTX:
+    name: MediaMTX config
     description: Use `=` to specify the value and use `_` in place of spaces.
   BOA_ENABLED:
     name: Enable Boa HTTP*
