@@ -7,7 +7,7 @@ from typing import NoReturn
 from wyzebridge import config
 from wyzebridge.bridge_utils import env_bool, env_cam
 from wyzebridge.logging import logger
-from wyzebridge.rtsp_server import RtspServer
+from wyzebridge.rtsp_server import MtxServer
 from wyzebridge.stream import StreamManager
 from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_stream import WyzeStream, WyzeStreamOptions
@@ -23,7 +23,7 @@ class WyzeBridge(Thread):
         print(f"\n🚀 STARTING DOCKER-WYZE-BRIDGE v{config.VERSION}\n")
         self.api: WyzeApi = WyzeApi()
         self.streams: StreamManager = StreamManager()
-        self.rtsp: RtspServer = RtspServer(config.BRIDGE_IP)
+        self.rtsp: MtxServer = MtxServer(config.BRIDGE_IP)
 
         if config.LLHLS:
             self.rtsp.setup_llhls(config.TOKEN_PATH, bool(config.HASS_TOKEN))
@@ -69,7 +69,8 @@ class WyzeBridge(Thread):
         if env_bool(f"SUBSTREAM_{cam.name_uri}") or (
             env_bool("SUBSTREAM") and cam.can_substream
         ):
-            sub_opt = replace(options, quality="sd30", substream=True)
+            quality = env_bool("sub_quality", "sd30")
+            sub_opt = replace(options, quality=quality, substream=True)
             sub = WyzeStream(cam, sub_opt)
             self.rtsp.add_path(sub.uri, on_demand=True)
             self.streams.add(sub)

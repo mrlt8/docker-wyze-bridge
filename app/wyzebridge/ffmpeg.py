@@ -1,7 +1,8 @@
 import os
+from datetime import datetime
 
-from wyzebridge import config
 from wyzebridge.bridge_utils import env_bool, env_cam
+from wyzebridge.config import IMG_PATH, SNAPSHOT_FORMAT
 from wyzebridge.logging import logger
 
 
@@ -36,7 +37,7 @@ def get_ffmpeg_cmd(
         audio_in = f"-thread_queue_size 96 -f {audio['codec']} -ar {audio['rate']} -i /tmp/{uri}.wav"
         audio_out = audio["codec_out"] or "copy"
         a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
-    rtsp_transport = "udp" if "udp" in env_bool("RTSP_PROTOCOLS") else "tcp"
+    rtsp_transport = "udp" if "udp" in env_bool("MTX_PROTOCOLS") else "tcp"
     rss_cmd = f"[{{}}f=rtsp:{rtsp_transport=:}:bsfs/v=dump_extra=freq=keyframe]rtsp://0.0.0.0:8554/{uri}"
     rtsp_ss = rss_cmd.format("")
     if env_cam("AUDIO_STREAM", uri) and audio:
@@ -171,14 +172,19 @@ def get_livestream_cmd(uri: str) -> str:
     return cmd
 
 
-def rtsp_snap_cmd(cam_name: str):
+def rtsp_snap_cmd(cam_name: str, interval: bool = False):
     if auth := os.getenv(f"RTSP_PATHS_{cam_name.upper()}_READUSER", ""):
         auth += f':{os.getenv(f"RTSP_PATHS_{cam_name.upper()}_READPASS","")}@'
-    img = f"{config.IMG_PATH}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
+    img = f"{IMG_PATH}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
+
+    if interval and SNAPSHOT_FORMAT:
+        file = datetime.now().strftime(f"{IMG_PATH}{SNAPSHOT_FORMAT}")
+        img = file.format(cam_name=cam_name, CAM_NAME=cam_name.upper())
+        os.makedirs(os.path.dirname(img), exist_ok=True)
+
     return (
-        ["ffmpeg", "-loglevel", "fatal", "-threads", "1"]
-        + ["-analyzeduration", "10000000", "-probesize", "10000000"]
+        ["ffmpeg", "-loglevel", "fatal", "-analyzeduration", "0", "-probesize", "32"]
         + ["-f", "rtsp", "-rtsp_transport", "tcp", "-thread_queue_size", "500"]
-        + ["-i", f"rtsp://{auth}0.0.0.0:8554/{cam_name}", "-an"]
+        + ["-i", f"rtsp://{auth}0.0.0.0:8554/{cam_name}", "-map", "0:v:0"]
         + ["-f", "image2", "-frames:v", "1", "-y", img]
     )

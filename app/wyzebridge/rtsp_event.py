@@ -10,10 +10,10 @@ from wyzebridge.mqtt import update_mqtt_state
 
 class RtspEvent:
     """
-    Reads from the `/tmp/rtsp_event` named pipe and logs events.
+    Reads from the `/tmp/mtx_event` named pipe and logs events.
     """
 
-    FIFO = "/tmp/rtsp_event"
+    FIFO = "/tmp/mtx_event"
     __slots__ = "pipe_fd", "streams"
 
     def __init__(self, streams):

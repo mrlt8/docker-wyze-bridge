@@ -3,7 +3,6 @@ from os import environ
 from typing import Optional
 
 import requests
-
 import wyzecam
 from wyzebridge.logging import logger
 
@@ -54,11 +53,11 @@ def setup_hass(hass_token: Optional[str]) -> None:
             if "SUBSTREAM" in cam:
                 environ[f"SUBSTREAM_{cam_name}"] = str(cam["SUBSTREAM"])
 
-    if rtsp_options := conf.pop("RTSP_SIMPLE_SERVER", None):
-        for opt in rtsp_options:
+    if mtx_options := conf.pop("MEDIAMTX", None):
+        for opt in mtx_options:
             if (split_opt := opt.split("=", 1)) and len(split_opt) == 2:
                 key = split_opt[0].strip().upper()
-                key = key if key.startswith("RTSP_") else f"RTSP_{key}"
+                key = key if key.startswith("MTX_") else f"MTX_{key}"
                 environ[key] = split_opt[1].strip()
 
     for k, v in conf.items():

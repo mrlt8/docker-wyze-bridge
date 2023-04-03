@@ -115,7 +115,7 @@
                 "SUBSTREAM": "bool?"
             }
         ],
-        "RTSP_SIMPLE_SERVER": [
+        "MEDIAMTX": [
             "match(^\\w+=.*)?"
         ],
         "WB_HLS_URL": "str?",

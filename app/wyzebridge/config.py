@@ -1,5 +1,5 @@
 import json
-from os import getenv, makedirs
+from os import environ, getenv, makedirs
 
 from wyzebridge.bridge_utils import env_bool, split_int_str
 from wyzebridge.hass import setup_hass
@@ -17,6 +17,7 @@ TOKEN_PATH: str = "/config/wyze-bridge/" if HASS_TOKEN else "/tokens/"
 IMG_PATH: str = f'/{env_bool("IMG_DIR", "img").strip("/")}/'
 
 SNAPSHOT_TYPE, SNAPSHOT_INT = split_int_str(env_bool("SNAPSHOT"), min=15, default=180)
+SNAPSHOT_FORMAT: str = env_bool("SNAPSHOT_FORMAT", style="original").strip("/")
 
 
 BRIDGE_IP: str = env_bool("WB_IP")
@@ -48,3 +49,10 @@ DEPRECATED = {
 for env in DEPRECATED:
     if getenv(env):
         print(f"\n\n[!] WARNING: {env} is deprecated\n\n")
+
+for key, value in environ.items():
+    if key.startswith("RTSP_") and key != "RTSP_FW":
+        mtx_key = f"MTX{key[4:]}"
+        print(f"\n[!] WARNING: {key} is deprecated. Please use {mtx_key} instead\n")
+        environ.pop(key, None)
+        environ[mtx_key] = value
