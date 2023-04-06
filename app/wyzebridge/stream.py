@@ -1,12 +1,13 @@
-import contextlib
-import threading
 import time
 from subprocess import Popen, TimeoutExpired
+from threading import Thread
 from typing import Any, Optional, Protocol
 
-from wyzebridge.config import SNAPSHOT_INT, SNAPSHOT_TYPE
+from wyzebridge.bridge_utils import env_bool
+from wyzebridge.config import MQTT_DISCOVERY, SNAPSHOT_INT, SNAPSHOT_TYPE
 from wyzebridge.ffmpeg import rtsp_snap_cmd
 from wyzebridge.logging import logger
+from wyzebridge.mqtt import update_preview
 from wyzebridge.rtsp_event import RtspEvent
 
 
@@ -58,6 +59,10 @@ class StreamManager:
         self.streams: dict[str, Stream] = {}
         self.rtsp_snapshots: dict[str, Popen] = {}
         self.last_snap: float = 0
+        self.thread: Optional[Thread] = None
+
+        if MQTT_DISCOVERY:
+            self.thread = Thread(target=self.monior_snapshots)
 
     @property
     def total(self):
@@ -101,6 +106,8 @@ class StreamManager:
 
     def monitor_streams(self) -> None:
         self.stop_flag = False
+        if self.thread:
+            self.thread.start()
         logger.info(f"🎬 {self.total} stream{'s'[:self.total^1]} enabled")
         event = RtspEvent(self)
         while not self.stop_flag:
@@ -109,6 +116,18 @@ class StreamManager:
             if cams and SNAPSHOT_TYPE == "rtsp":
                 self.snap_all(cams)
         logger.info("Stream monitoring stopped")
+
+    def monior_snapshots(self) -> None:
+        for cam in self.streams:
+            print(f"Sending {cam}")
+            update_preview(cam)
+        while not self.stop_flag:
+            for cam, ffmpeg in list(self.rtsp_snapshots.items()):
+                if (returncode := ffmpeg.returncode) is not None:
+                    if returncode == 0:
+                        update_preview(cam)
+                    del self.rtsp_snapshots[cam]
+            time.sleep(1)
 
     def health_check_all(self) -> list[str]:
         """
@@ -131,7 +150,7 @@ class StreamManager:
         self.last_snap = time.time()
         for cam in cams:
             stop_subprocess(self.rtsp_snapshots.get(cam))
-            self.rtsp_snapshots[cam] = self.rtsp_snap_popen(cam, True)
+            self.rtsp_snap_popen(cam, True)
 
     def get_status(self, uri: str) -> str:
         if self.stop_flag:
@@ -164,6 +183,7 @@ class StreamManager:
         ffmpeg = self.rtsp_snapshots.get(cam_name)
         if not ffmpeg or ffmpeg.poll() is not None:
             ffmpeg = Popen(rtsp_snap_cmd(cam_name, interval))
+            self.rtsp_snapshots[cam_name] = ffmpeg
         return ffmpeg
 
     def get_rtsp_snap(self, cam_name: str) -> bool:

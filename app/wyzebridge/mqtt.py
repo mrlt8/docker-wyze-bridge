@@ -1,3 +1,4 @@
+import contextlib
 import json
 from os import getenv
 from typing import Optional
@@ -5,6 +6,7 @@ from typing import Optional
 import paho.mqtt.client
 import paho.mqtt.publish
 from wyzebridge.bridge_utils import env_bool
+from wyzebridge.config import IMG_PATH, MQTT_DISCOVERY, VERSION
 from wyzebridge.logging import logger
 from wyzecam import WyzeCamera, WyzeIOTCSession
 
@@ -18,25 +20,76 @@ def wyze_discovery(cam: WyzeCamera, cam_uri: str) -> None:
     if not MQTT_ENABLED:
         return
     base = f"wyzebridge/{cam_uri or cam.name_uri}/"
-    msgs: list[tuple[str, str]] = [(f"{base}state", "disconnected")]
-    if env_bool("MQTT_DTOPIC"):
-        topic = f"{getenv('MQTT_DTOPIC')}/camera/{cam.mac}/config"
-        payload = {
-            "uniq_id": f"WYZE{cam.mac}",
-            "name": f"Wyze Cam {cam.nickname}",
-            "json_attributes_topic": f"{base}attributes",
+    msgs = [(f"{base}state", "stopped")]
+
+    if MQTT_DISCOVERY:
+        base_payload = {
             "availability_topic": f"{base}state",
-            "icon": "mdi:image",
+            "payload_not_available": "stopped",
             "device": {
+                "name": f"Wyze Cam {cam.nickname}",
                 "connections": [["mac", cam.mac]],
                 "identifiers": cam.mac,
                 "manufacturer": "Wyze",
                 "model": cam.product_model,
                 "sw_version": cam.firmware_ver,
-                "via_device": "docker-wyze-bridge",
+                "via_device": f"docker-wyze-bridge v{VERSION}",
             },
         }
-        msgs.append((topic, json.dumps(payload)))
+
+        entities = {
+            "preview": {
+                "type": "camera",
+                "payload": {
+                    "topic": f"{base}image",
+                    "icon": "mdi:cctv",
+                },
+            },
+            "ir": {
+                "type": "switch",
+                "payload": {
+                    "command_topic": f"{base}cmd",
+                    "payload_on": "set_irled_on",
+                    "payload_off": "set_irled_off",
+                    "icon": "mdi:lightbulb-night",
+                },
+            },
+            "night_vision": {
+                "type": "switch",
+                "payload": {
+                    "command_topic": f"{base}cmd",
+                    "payload_auto": "set_night_vision_auto",
+                    "payload_on": "set_night_vision_auto",
+                    "payload_off": "set_night_vision_off",
+                    "icon": "mdi:weather-night",
+                },
+            },
+            "signal": {
+                "type": "sensor",
+                "payload": {
+                    "state_topic": f"{base}wifi",
+                    "icon": "mdi:wifi",
+                    "entity_category": "diagnostic",
+                },
+            },
+            "audio": {
+                "type": "sensor",
+                "payload": {
+                    "state_topic": f"{base}audio",
+                    "icon": "mdi:volume-high",
+                    "entity_category": "diagnostic",
+                },
+            },
+        }
+        for entity, data in entities.items():
+            topic = f"{MQTT_DISCOVERY}/{data['type']}/{cam.mac}/{entity}/config"
+            payload = base_payload | data["payload"]
+            payload[
+                "name"
+            ] = f"Wyze Cam {cam.nickname} {' '.join(entity.upper().split('_'))}"
+            payload["uniq_id"] = f"WYZE{cam.mac}{entity.upper()}"
+
+            msgs.append((topic, json.dumps(payload)))
     send_mqtt(msgs)
 
 
@@ -104,3 +157,12 @@ def publish_message(topic: str, message: Optional[str] = None):
 def update_mqtt_state(camera: str, state: str):
     if MQTT_ENABLED:
         return publish_message(f"{camera}/state", state)
+
+
+def update_preview(cam_name: str):
+    if not MQTT_DISCOVERY:
+        return
+    with contextlib.suppress(FileNotFoundError):
+        img_file = f"{IMG_PATH}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
+        with open(img_file, "rb") as img:
+            publish_message(f"{cam_name}/image", img.read())
