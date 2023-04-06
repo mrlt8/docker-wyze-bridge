@@ -3,7 +3,6 @@ from subprocess import Popen, TimeoutExpired
 from threading import Thread
 from typing import Any, Optional, Protocol
 
-from wyzebridge.bridge_utils import env_bool
 from wyzebridge.config import MQTT_DISCOVERY, SNAPSHOT_INT, SNAPSHOT_TYPE
 from wyzebridge.ffmpeg import rtsp_snap_cmd
 from wyzebridge.logging import logger
