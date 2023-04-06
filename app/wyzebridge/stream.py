@@ -119,7 +119,6 @@ class StreamManager:
 
     def monior_snapshots(self) -> None:
         for cam in self.streams:
-            print(f"Sending {cam}")
             update_preview(cam)
         while not self.stop_flag:
             for cam, ffmpeg in list(self.rtsp_snapshots.items()):
