@@ -16,7 +16,7 @@ It just works!
 
 Streams direct from camera without additional bandwidth or subscriptions.
 
-Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
+Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/mediamtx](https://github.com/aler9/mediamtx).
 
 
 Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) this project if you found it useful, or use the [affiliate link](https://amzn.to/3NLnbvt) when shopping on amazon!
@@ -39,7 +39,7 @@ See [basic usage](#basic-usage) for additional information.
 
 ## What's Changed in v2.1.0
 
-⚠️ This version updates the backend rtsp-simple-server to MediaMTX which may cause some issues if you're using custom rtsp-simple-server related configs.
+⚠️ This version updates the backend rtsp-simple-server to [MediaMTX](https://github.com/aler9/mediamtx) which may cause some issues if you're using custom rtsp-simple-server related configs.
 
 * CHANGED: rtsp-simple-server to MediaMTX.
 * ENV Options:
