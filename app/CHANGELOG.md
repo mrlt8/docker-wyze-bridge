@@ -1,3 +1,16 @@
+## What's Changed in v2.1.0
+
+⚠️ This version updates the backend rtsp-simple-server to MediaMTX which may cause some issues if you're using custom rtsp-simple-server related configs.
+
+* CHANGED: rtsp-simple-server to MediaMTX.
+* ENV Options:
+  * New: `SUB_QUALITY` - Specify the quality to be used for the substream. #755
+  * New: `SNAPSHOT_FORMAT` - Specify the output file format when using `SNAPSHOT` which can be used to create a timelapse/save multiple snapshots. e.g., `SNAPSHOT_FORMAT={cam_name}/%Y-%m-%d/%H-%M.jpg` #757:
+* Home Assistant/MQTT:
+  * Fixed: MQTT auto-discovery error #751
+  * New: Additional entities for each of the cameras.
+  * Changed: Default IMG_DIR to `media/wyze/img/` #660
+
 ## What's Changed in v2.0.2
 
 * Camera Control: Don't wait for a response when sending `set_rotary_` commands. #746
