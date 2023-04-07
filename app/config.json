@@ -31,7 +31,7 @@
         "5000/tcp": "Web-UI/Snapshots"
     },
     "environment": {
-        "IMG_DIR": "config/www",
+        "IMG_DIR": "media/wyze/img/",
         "RECORD_PATH": "media/wyze/{CAM_NAME}"
     },
     "map": [
@@ -44,6 +44,7 @@
     ],
     "ingress": true,
     "ingress_port": 5000,
+    "panel_icon": "mdi:bridge",
     "options": {
         "WYZE_EMAIL": null,
         "WYZE_PASSWORD": null,
