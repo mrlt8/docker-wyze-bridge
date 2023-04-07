@@ -42,7 +42,7 @@ class WyzeBridge(Thread):
         WyzeStream.api = self.api
         for cam in self.api.filtered_cams():
             logger.info(f"[+] Adding {cam.nickname} [{cam.product_model}]")
-            if config.SNAPSHOT_TYPE == "API":
+            if config.SNAPSHOT_TYPE == "api":
                 self.api.save_thumbnail(cam.name_uri)
             options = WyzeStreamOptions(
                 quality=env_cam("quality", cam.name_uri),
