@@ -498,6 +498,15 @@ class K10052DBSetResolvingBit(TutkWyzeProtocolMessage):
         return resp_data == b"\x01"
 
 
+class K10052SetFPS(TutkWyzeProtocolMessage):
+    def __init__(self, fps: int = 0):
+        super().__init__(10052)
+        self.fps = fps
+
+    def encode(self) -> bytes:
+        return encode(self.code, 6, bytes([0, 0, 0, self.fps, 0, 0]))
+
+
 class K10090GetCameraTime(TutkWyzeProtocolMessage):
     """
     A message used to get the current time on the camera.

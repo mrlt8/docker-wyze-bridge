@@ -47,6 +47,10 @@ CAM_CMDS = {
     "get_motion_tagging": ("K10290GetMotionTagging",),
     "set_motion_tagging_on": ("K10292SetMotionTagging", True),
     "set_motion_tagging_off": ("K10292SetMotionTagging", False),
+    "set_fps_5": ("K10052SetFPS", 5),
+    "set_fps_10": ("K10052SetFPS", 10),
+    "set_fps_15": ("K10052SetFPS", 15),
+    "set_fps_20": ("K10052SetFPS", 20),
 }
 
 

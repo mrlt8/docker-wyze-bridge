@@ -4,7 +4,7 @@
     "slug": "docker-wyze-bridge",
     "url": "https://github.com/mrlt8/docker-wyze-bridge",
     "image": "mrlt8/wyze-bridge",
-    "version": "2.0.2",
+    "version": "2.1.0",
     "arch": [
         "armv7",
         "aarch64",
@@ -31,7 +31,7 @@
         "5000/tcp": "Web-UI/Snapshots"
     },
     "environment": {
-        "IMG_DIR": "config/www",
+        "IMG_DIR": "media/wyze/img/",
         "RECORD_PATH": "media/wyze/{CAM_NAME}"
     },
     "map": [
@@ -44,6 +44,7 @@
     ],
     "ingress": true,
     "ingress_port": 5000,
+    "panel_icon": "mdi:bridge",
     "options": {
         "WYZE_EMAIL": null,
         "WYZE_PASSWORD": null,
@@ -61,6 +62,7 @@
         "TOTP_KEY": "str?",
         "NET_MODE": "list(LAN|P2P|ANY)",
         "SNAPSHOT": "list(API|RTSP|RTSP15|RTSP30|RTSP60|RTSP180|RTSP300|Disable)?",
+        "SNAPSHOT_FORMAT": "str?",
         "IMG_TYPE": "list(jpg|png)?",
         "IMG_DIR": "str?",
         "ENABLE_AUDIO": "bool?",
@@ -89,6 +91,7 @@
         "FRESH_DATA": "bool?",
         "URI_SEPARATOR": "list(-|_|#)?",
         "QUALITY": "str?",
+        "SUB_QUALITY": "str?",
         "FFMPEG_FLAGS": "str?",
         "FFMPEG_CMD": "str?",
         "DEBUG_LEVEL": "list(INFO|DEBUG)?",

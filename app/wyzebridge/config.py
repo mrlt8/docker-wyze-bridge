@@ -10,6 +10,7 @@ with open("config.json") as f:
 VERSION: str = config.get("version", "DEV")
 HASS_TOKEN: str = getenv("SUPERVISOR_TOKEN", "")
 setup_hass(HASS_TOKEN)
+MQTT_DISCOVERY = env_bool("MQTT_DTOPIC")
 
 CONNECT_TIMEOUT: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
 
