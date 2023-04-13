@@ -42,6 +42,7 @@ class WyzeStreamOptions:
     quality: str = "hd180"
     audio: bool = False
     record: bool = False
+    reconnect: bool = False or record
     substream: bool = False
     frame_size: int = 0
     bitrate: int = 120
@@ -177,7 +178,9 @@ class WyzeStream:
                 self.start_time = time() + COOLDOWN
                 logger.info(f"{self.camera.nickname} will cooldown for {COOLDOWN}s.")
         elif (
-            self.state == StreamStatus.STOPPED and self.options.record and should_start
+            self.state == StreamStatus.STOPPED
+            and self.options.reconnect
+            and should_start
         ):
             self.start()
         elif self.state == StreamStatus.CONNECTING and is_timedout(self.start_time, 20):
@@ -206,7 +209,7 @@ class WyzeStream:
             "status": self.state,
             "connected": self.connected,
             "enabled": self.enabled,
-            "on_demand": not self.options.record,
+            "on_demand": not self.options.reconnect,
             "audio": self.options.audio,
             "record": self.options.record,
             "substream": self.options.substream,

@@ -12,6 +12,7 @@ HASS_TOKEN: str = getenv("SUPERVISOR_TOKEN", "")
 setup_hass(HASS_TOKEN)
 MQTT_DISCOVERY = env_bool("MQTT_DTOPIC")
 
+ON_DEMAND = bool(env_bool("on_demand") if getenv("ON_DEMAND") else True)
 CONNECT_TIMEOUT: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
 
 TOKEN_PATH: str = "/config/wyze-bridge/" if HASS_TOKEN else "/tokens/"
@@ -39,7 +40,6 @@ makedirs(IMG_PATH, exist_ok=True)
 
 
 DEPRECATED = {
-    "ON_DEMAND",
     "TAKE_PHOTO",
     "PULL_PHOTO",
     "PULL_ALARM",
