@@ -48,11 +48,12 @@ class WyzeBridge(Thread):
                 quality=env_cam("quality", cam.name_uri),
                 audio=bool(env_cam("enable_audio", cam.name_uri)),
                 record=bool(env_cam("record", cam.name_uri)),
+                reconnect=not config.ON_DEMAND,
             )
             self.add_substream(cam, options)
             stream = WyzeStream(cam, options)
             stream.rtsp_fw_enabled = self.rtsp_fw_proxy(cam, stream)
-            self.rtsp.add_path(stream.uri, not bool(options.record))
+            self.rtsp.add_path(stream.uri, not options.reconnect)
             self.streams.add(stream)
 
     def rtsp_fw_proxy(self, cam, stream) -> bool:
@@ -72,7 +73,7 @@ class WyzeBridge(Thread):
             quality = env_bool("sub_quality", "sd30")
             sub_opt = replace(options, quality=quality, substream=True)
             sub = WyzeStream(cam, sub_opt)
-            self.rtsp.add_path(sub.uri, on_demand=True)
+            self.rtsp.add_path(sub.uri, not options.reconnect)
             self.streams.add(sub)
 
     def clean_up(self) -> NoReturn:

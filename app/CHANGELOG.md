@@ -1,3 +1,9 @@
+## What's Changed in v2.1.1
+
+* FIXED: WebRTC on UDP Port #772
+* UPDATED: MediaMTX to [v0.22.1](https://github.com/aler9/mediamtx/releases/tag/v0.22.1)
+* ENV Options: Re-enable `ON_DEMAND` to toggle connection mode. #643 #750 #764
+
 ## What's Changed in v2.1.0
 
 ⚠️ This version updates the backend rtsp-simple-server to MediaMTX which may cause some issues if you're using custom rtsp-simple-server related configs.
