@@ -173,8 +173,8 @@ def get_livestream_cmd(uri: str) -> str:
 
 
 def rtsp_snap_cmd(cam_name: str, interval: bool = False):
-    if auth := os.getenv(f"RTSP_PATHS_{cam_name.upper()}_READUSER", ""):
-        auth += f':{os.getenv(f"RTSP_PATHS_{cam_name.upper()}_READPASS","")}@'
+    if auth := os.getenv(f"MTX_PATHS_{cam_name.upper()}_READUSER", ""):
+        auth += f':{os.getenv(f"MTX_PATHS_{cam_name.upper()}_READPASS","")}@'
     img = f"{IMG_PATH}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
 
     if interval and SNAPSHOT_FORMAT:
