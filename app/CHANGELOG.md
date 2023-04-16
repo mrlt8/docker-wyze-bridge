@@ -1,3 +1,10 @@
+## What's Changed in v2.1.2
+
+* Increase close on-demand time to 60s to prevent reconnect messages. #643 #750 #764
+* Disable default LL-HLS for compatibility with apple. LL-HLS can still be enabled with `LLHLS=true` which will generate the necessary SSL certificates to work on Apple devices.
+* Disable MQTT if connection refused.
+* UPDATED: MediaMTX to [v0.22.2](https://github.com/aler9/mediamtx/releases/tag/v0.22.2)
+
 ## What's Changed in v2.1.1
 
 * FIXED: WebRTC on UDP Port #772
