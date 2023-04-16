@@ -1,5 +1,6 @@
 import contextlib
 import json
+from functools import wraps
 from os import getenv
 from typing import Optional
 
@@ -15,10 +16,26 @@ MQTT_USER, _, MQTT_PASS = getenv("MQTT_AUTH", ":").partition(":")
 MQTT_HOST, _, MQTT_PORT = getenv("MQTT_HOST", ":").partition(":")
 
 
+def mqtt_enabled(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        global MQTT_ENABLED
+        if not MQTT_ENABLED:
+            return
+        try:
+            return func(*args, **kwargs)
+        except ConnectionRefusedError:
+            logger.warning("[MQTT] connection refused. Disabling MQTT.")
+            MQTT_ENABLED = False
+        except Exception as ex:
+            logger.warning(f"[MQTT] {ex}")
+
+    return wrapper
+
+
+@mqtt_enabled
 def wyze_discovery(cam: WyzeCamera, cam_uri: str) -> None:
     """Add Wyze camera to MQTT if enabled."""
-    if not MQTT_ENABLED:
-        return
     base = f"wyzebridge/{cam_uri or cam.name_uri}/"
     msgs = [(f"{base}state", "stopped")]
 
@@ -93,13 +110,11 @@ def wyze_discovery(cam: WyzeCamera, cam_uri: str) -> None:
     send_mqtt(msgs)
 
 
+@mqtt_enabled
 def mqtt_sub_topic(
     m_topics: list, sess: WyzeIOTCSession
 ) -> Optional[paho.mqtt.client.Client]:
     """Connect to mqtt and return the client."""
-    if not MQTT_ENABLED:
-        return
-
     client = paho.mqtt.client.Client()
 
     client.username_pw_set(MQTT_USER, MQTT_PASS or None)
@@ -107,61 +122,49 @@ def mqtt_sub_topic(
     client.on_connect = lambda mq_client, *_: [
         mq_client.subscribe(f"wyzebridge/{m_topic}") for m_topic in m_topics
     ]
-    try:
-        client.connect(MQTT_HOST, int(MQTT_PORT or 1883), 30)
-        client.loop_start()
-        return client
-    except TimeoutError:
-        logger.warning("[MQTT] timed out connecting to server")
+    client.connect(MQTT_HOST, int(MQTT_PORT or 1883), 30)
+    client.loop_start()
+    return client
 
 
+@mqtt_enabled
 def send_mqtt(messages: list) -> None:
     """Publish a message to the MQTT server."""
-    if not MQTT_ENABLED:
-        return
-    try:
-        paho.mqtt.publish.multiple(
-            messages,
-            hostname=MQTT_HOST,
-            port=int(MQTT_PORT or 1883),
-            auth=(
-                {"username": MQTT_USER, "password": MQTT_PASS}
-                if env_bool("MQTT_AUTH")
-                else None
-            ),
-        )
-    except Exception as ex:
-        logger.warning(f"[MQTT] {ex}")
+    paho.mqtt.publish.multiple(
+        messages,
+        hostname=MQTT_HOST,
+        port=int(MQTT_PORT or 1883),
+        auth=(
+            {"username": MQTT_USER, "password": MQTT_PASS}
+            if env_bool("MQTT_AUTH")
+            else None
+        ),
+    )
 
 
+@mqtt_enabled
 def publish_message(topic: str, message: Optional[str] = None):
-    if not MQTT_ENABLED:
-        return
     base = "wyzebridge/"
-    try:
-        paho.mqtt.publish.single(
-            topic=base + topic,
-            payload=message,
-            hostname=MQTT_HOST,
-            port=int(MQTT_PORT or 1883),
-            auth=(
-                {"username": MQTT_USER, "password": MQTT_PASS}
-                if env_bool("MQTT_AUTH")
-                else None
-            ),
-        )
-    except Exception as ex:
-        logger.warning(f"[MQTT] {ex}")
+    paho.mqtt.publish.single(
+        topic=base + topic,
+        payload=message,
+        hostname=MQTT_HOST,
+        port=int(MQTT_PORT or 1883),
+        auth=(
+            {"username": MQTT_USER, "password": MQTT_PASS}
+            if env_bool("MQTT_AUTH")
+            else None
+        ),
+    )
 
 
+@mqtt_enabled
 def update_mqtt_state(camera: str, state: str):
-    if MQTT_ENABLED:
-        return publish_message(f"{camera}/state", state)
+    return publish_message(f"{camera}/state", state)
 
 
+@mqtt_enabled
 def update_preview(cam_name: str):
-    if not MQTT_DISCOVERY:
-        return
     with contextlib.suppress(FileNotFoundError):
         img_file = f"{IMG_PATH}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
         with open(img_file, "rb") as img:
