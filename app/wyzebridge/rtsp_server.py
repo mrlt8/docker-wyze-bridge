@@ -67,6 +67,7 @@ class MtxServer:
             cmd = "bash -c 'echo $RTSP_PATH,start,1 > /tmp/mtx_event'"
             self.rtsp.set(uri, "runOnDemand", cmd)
             self.rtsp.set(uri, "runOnDemandStartTimeout", "30s")
+            self.rtsp.set(uri, "runOnDemandCloseAfter", "60s")
         if read_user := self.rtsp.get(uri, "readUser"):
             self.rtsp.set(uri, "readUser", read_user)
         if read_pass := self.rtsp.get(uri, "readPass"):
