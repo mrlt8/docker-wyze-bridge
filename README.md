@@ -37,7 +37,7 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information.
 
-## What's Changed in v2.1.2
+## What's Changed in v2.1.2/3
 
 * Increase close on-demand time to 60s to prevent reconnect messages. #643 #750 #764
 * Disable default LL-HLS for compatibility with apple. LL-HLS can still be enabled with `LLHLS=true` which will generate the necessary SSL certificates to work on Apple devices.
