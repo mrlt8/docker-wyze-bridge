@@ -35,7 +35,12 @@ docker run \
 
 You can then use the web interface at `http://localhost:5000` where localhost is the hostname or ip of the machine running the bridge.
 
-See [basic usage](#basic-usage) for additional information.
+See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
+
+## What's Changed in v2.1.4
+
+* FIX: Record option would not auto-connect. #784 Thanks @JA16122000!
+* 
 
 ## What's Changed in v2.1.2/3
 
@@ -141,6 +146,8 @@ This is similar to the docker run command, but will save all your options in a y
 3. Run `docker-compose up`.
 
 Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
+
+NOTE: You may need to [update the WebUI links](https://github.com/mrlt8/docker-wyze-bridge/wiki/WebUI#custom-ports) if you're changing the ports or using a reverse proxy.
 
 #### Updating your container
 
