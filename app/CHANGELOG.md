@@ -1,3 +1,7 @@
+## What's Changed in v2.1.4
+
+* FIX: Record option would not auto-connect. #784 Thanks @JA16122000!
+
 ## What's Changed in v2.1.2/3
 
 * Increase close on-demand time to 60s to prevent reconnect messages. #643 #750 #764
