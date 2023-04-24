@@ -25,6 +25,8 @@ Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) 
 
 Install [docker](https://docs.docker.com/get-docker/) and use your Wyze credentials to run:
 
+(If your credentials have special characters, you must escape them)
+
 ```bash
 docker run \
   -e WYZE_EMAIL=you@email.com \
