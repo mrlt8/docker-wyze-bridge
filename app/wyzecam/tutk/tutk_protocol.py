@@ -613,7 +613,7 @@ class K10630SetAlarmFlashing(TutkWyzeProtocolMessage):
 
     def __init__(self, enabled: bool):
         super().__init__(10630)
-        self.enabled: int = 2 if enabled else 1
+        self.enabled: int = 1 if enabled else 2
 
     def encode(self) -> bytes:
         return encode(self.code, 2, bytes([self.enabled, self.enabled]))

@@ -435,7 +435,7 @@ document.addEventListener("DOMContentLoaded", () => {
   })
   sse.addEventListener("message", (e) => {
     Object.entries(JSON.parse(e.data)).forEach(([cam, status]) => {
-      const card = document.querySelector(`#${cam}`);
+      const card = document.getElementById(cam);
       const statusIcon = card.querySelector(".status i.fas");
       const preview = card.querySelector(`img.refresh_img,video[data-cam='${cam}']`);
       const connected = (card.dataset.connected.toLowerCase() === "true")
