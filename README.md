@@ -39,6 +39,13 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.1.5
+
+* FIX: set_alarm_on/set_alarm_off was inverted #795. Thanks @iferlive!
+* NEW: `URI_MAC=true` to append last 4 characters of the MAC address to the URI to avoid conflicting URIs when multiple cameras share the same name. #760
+* Home Assistant: Add RECORD_FILE_NAME option #791
+* UPDATE: base image to bullseye.
+
 ## What's Changed in v2.1.4
 
 * FIX: Record option would not auto-connect. #784 Thanks @JA16122000!
