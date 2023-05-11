@@ -31,10 +31,10 @@ class WyzeBridge(Thread):
     def run(self, fresh_data: bool = False) -> None:
         self.api.login(fresh_data=fresh_data)
         self.setup_streams()
-        self.rtsp.start()
         if self.streams.total < 1:
-            return self.clean_up()
-        self.streams.monitor_streams()
+            return signal.raise_signal(signal.SIGINT)
+        self.rtsp.start()
+        self.streams.monitor_streams(self.rtsp.health_check)
 
     def setup_streams(self):
         """Gather and setup streams for each camera."""

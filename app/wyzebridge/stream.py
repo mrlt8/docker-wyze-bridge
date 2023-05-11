@@ -1,7 +1,7 @@
 import time
 from subprocess import Popen, TimeoutExpired
 from threading import Thread
-from typing import Any, Optional, Protocol
+from typing import Any, Callable, Optional, Protocol
 
 from wyzebridge.config import MQTT_DISCOVERY, SNAPSHOT_INT, SNAPSHOT_TYPE
 from wyzebridge.ffmpeg import rtsp_snap_cmd
@@ -103,13 +103,14 @@ class StreamManager:
         for stream in self.streams.values():
             stream.stop()
 
-    def monitor_streams(self) -> None:
+    def monitor_streams(self, mtx_health: Callable) -> None:
         self.stop_flag = False
         if self.thread:
             self.thread.start()
         logger.info(f"🎬 {self.total} stream{'s'[:self.total^1]} enabled")
         event = RtspEvent(self)
         while not self.stop_flag:
+            mtx_health()
             event.read(timeout=1)
             cams = self.health_check_all()
             if cams and SNAPSHOT_TYPE == "rtsp":

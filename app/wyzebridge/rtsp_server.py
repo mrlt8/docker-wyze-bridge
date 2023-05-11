@@ -94,6 +94,11 @@ class MtxServer:
             self.stop()
         self.start()
 
+    def health_check(self):
+        if self.sub_process and self.sub_process.poll() is not None:
+            logger.error(f"[MediaMTX] Process exited with {self.sub_process.poll()}")
+            self.restart()
+
     def setup_webrtc(self, bridge_ip: str):
         if not bridge_ip:
             logger.warning("SET WB_IP to allow WEBRTC connections.")
