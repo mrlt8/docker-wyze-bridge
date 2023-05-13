@@ -26,17 +26,16 @@ class RtspEvent:
             ready, _, _ = select.select([self.pipe_fd], [], [], timeout)
             if not ready:
                 return
-            data = os.read(self.pipe_fd, 64)
-            for msg in data.decode().split("\n"):
-                if not msg:
-                    return
-                self.log_event(msg.strip())
+            data = os.read(self.pipe_fd, 128)
+            for msg in data.decode().split("!"):
+                if msg and "," in msg:
+                    self.log_event(msg.strip())
         except OSError as ex:
             if ex.errno != 9:
                 logger.error(ex)
             self.open_pipe()
         except Exception as ex:
-            print(f"Error reading from pipe: {ex}")
+            logger.error(f"Error reading from pipe: {ex}")
 
     def open_pipe(self):
         try:
