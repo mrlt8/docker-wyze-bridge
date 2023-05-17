@@ -18,9 +18,9 @@ COPY *.lib /tmp/lib/
 RUN mkdir -p /build/app /build/tokens /build/img \
     && curl -L https://github.com/homebridge/ffmpeg-for-homebridge/releases/latest/download/ffmpeg-debian-${FFMPEG_ARCH:-x86_64}.tar.gz \
     | tar xzf - -C /build \
-    && MTX_TAG=$(curl -s https://api.github.com/repos/aler9/mediamtx/releases/latest | jq -r .tag_name) \
+    && MTX_TAG=$(curl -s https://api.github.com/repos/bluenviron/mediamtx/releases/latest | jq -r .tag_name) \
     && echo -n $MTX_TAG > /build/MTX_TAG \
-    && curl -L https://github.com/aler9/mediamtx/releases/download/${MTX_TAG}/mediamtx_${MTX_TAG}_linux_${MTX_ARCH:-amd64}.tar.gz \
+    && curl -L https://github.com/bluenviron/mediamtx/releases/download/${MTX_TAG}/mediamtx_${MTX_TAG}_linux_${MTX_ARCH:-amd64}.tar.gz \
     | tar xzf - -C /build/app \
     && cp /tmp/lib/${LIB_ARCH:-amd}.lib /build/usr/local/lib/libIOTCAPIs_ALL.so\
     && rm -rf /tmp/*
