@@ -1,3 +1,9 @@
+## What's Changed in v2.1.6
+
+* UPDATE: MediaMTX to v0.23.0
+* FIXED: Error reading some events.
+* FIXED: Restart MediaMTX on exit and kill flask on cleanup which could prevent the bridge from restarting.
+
 ## What's Changed in v2.1.5
 
 * FIX: set_alarm_on/set_alarm_off was inverted #795. Thanks @iferlive!
