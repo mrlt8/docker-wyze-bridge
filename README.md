@@ -103,6 +103,8 @@ Known Issues/Bugs:
 ![Wyze Cam Outdoor V2](https://img.shields.io/badge/wyze_outdoor_v2-yes-success.svg)
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
 
+Cameras from [Gwell Times](http://cloud.gwell.cc) are currently not supported:
+
 ![Wyze Cam Doorbell Pro](https://img.shields.io/badge/wyze_doorbell_pro-no-inactive.svg)
 ![Wyze Cam OG](https://img.shields.io/badge/wyze_og-no-inactive.svg)
 ![Wyze Cam OG 3x](https://img.shields.io/badge/wyze_og_3x-no-inactive.svg)
