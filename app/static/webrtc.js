@@ -68,7 +68,7 @@ class Receiver {
     }
 
     onClose(err = null) {
-        if (err) { console.error('WebSocket error:', err); }
+        if (err) { console.error('Error:', err); }
         if (this.ws !== null) {
             this.ws.close();
             this.ws = null;
