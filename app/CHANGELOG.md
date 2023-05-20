@@ -1,3 +1,8 @@
+## What's Changed in v2.1.7
+
+* FIX: WebRTC not loading in the WebUI.
+* UPDATE: MediaMTX to v0.23.2
+
 ## What's Changed in v2.1.6
 
 * UPDATE: MediaMTX to v0.23.0
