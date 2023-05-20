@@ -757,6 +757,22 @@ class K11004ResetRotatePosition(TutkWyzeProtocolMessage):
         return encode(self.code, 1, bytes([self.position]))
 
 
+class K11016SetCruise(TutkWyzeProtocolMessage):
+    """
+    Set switch value for Pan Scan, aka Cruise.
+
+    Parameters:
+    :param enable: Optional Bool. Set True for on, False for off. Defaults to True.
+    """
+
+    def __init__(self, enable: bool = True):
+        super().__init__(11016)
+        self.flag = 1 if enable else 2
+
+    def encode(self) -> bytes:
+        return encode(self.code, 1, bytes([self.enabled]))
+
+
 class K11018SetPTZPosition(TutkWyzeProtocolMessage):
     """
     Set PTZ Position.
