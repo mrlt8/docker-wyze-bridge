@@ -108,29 +108,40 @@ def create_app():
         )
 
     @app.route("/api")
-    @app.route("/api/<string:cam_name>")
-    @app.route("/api/<string:cam_name>/<string:cam_cmd>")
-    def api(cam_name=None, cam_cmd=None):
-        """JSON api endpoints."""
-        if cam_name and cam_cmd == "status":
-            return {"status": wb.streams.get_status(cam_name)}
-        if cam_name and cam_cmd == "start":
-            return {"status": wb.streams.start(cam_name)}
-        if cam_name and cam_cmd == "stop":
-            return {"status": wb.streams.stop(cam_name)}
-        if cam_name and cam_cmd == "disable":
-            return {"status": wb.streams.disable(cam_name)}
-        if cam_name and cam_cmd == "enable":
-            return {"status": wb.streams.enable(cam_name)}
-        if cam_name and cam_cmd:
-            return wb.streams.send_cmd(cam_name, cam_cmd)
-
+    def api_all_cams():
         host = urlparse(request.root_url).hostname
-        if not cam_name:
-            return web_ui.all_cams(wb.streams, wb.api.total_cams, host)
+        return web_ui.all_cams(wb.streams, wb.api.total_cams, host)
+
+    @app.route("/api/<string:cam_name>")
+    def api_cam(cam_name: str):
+        host = urlparse(request.root_url).hostname
         if cam := wb.streams.get_info(cam_name):
             return cam | web_ui.format_stream(cam_name, host)
         return {"error": f"Could not find camera [{cam_name}]"}
+
+    @app.route("/api/<cam_name>/<cam_cmd>", methods=["GET", "PUT", "POST"])
+    @app.route("/api/<cam_name>/<cam_cmd>/<payload>")
+    def api_cam_control(cam_name: str, cam_cmd: str, payload: str = ""):
+        """API Endpoint to send tutk commands to the camera."""
+        if cam_cmd == "status":
+            return {"status": wb.streams.get_status(cam_name)}
+        if cam_cmd == "start":
+            return {"status": wb.streams.start(cam_name)}
+        if cam_cmd == "stop":
+            return {"status": wb.streams.stop(cam_name)}
+        if cam_cmd == "disable":
+            return {"status": wb.streams.disable(cam_name)}
+        if cam_cmd == "enable":
+            return {"status": wb.streams.enable(cam_name)}
+
+        if request.values:
+            payload = next(request.values.values())
+        elif request.is_json:
+            payload = list(request.get_json().values())[0]
+        elif request.data:
+            payload = request.data.decode()
+
+        return wb.streams.send_cmd(cam_name, cam_cmd, payload)
 
     @app.route("/signaling/<string:name>")
     def webrtc_signaling(name):
