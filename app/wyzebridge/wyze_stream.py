@@ -19,7 +19,8 @@ from wyzebridge.mqtt import send_mqtt, update_mqtt_state, wyze_discovery
 from wyzebridge.webhooks import ifttt_webhook
 from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_control import camera_control
-from wyzecam import TutkError, WyzeAccount, WyzeCamera, WyzeIOTC, WyzeIOTCSession
+from wyzecam import (TutkError, WyzeAccount, WyzeCamera, WyzeIOTC,
+                     WyzeIOTCSession)
 
 NET_MODE = {0: "P2P", 1: "RELAY", 2: "LAN"}
 
@@ -234,7 +235,7 @@ class WyzeStream:
         return data | self.camera.dict(exclude={"p2p_id", "enr", "parent_enr"})
 
     def update_cam_info(self) -> None:
-        resp = self.send_cmd("camera_info")
+        resp = self.send_cmd("caminfo")
         if resp and ("response" not in resp):
             self.camera.set_camera_info(resp)
 
@@ -244,21 +245,23 @@ class WyzeStream:
             return {}
         return self.camera.camera_info.get("boa_info", {})
 
-    def send_cmd(self, cmd: str) -> dict:
+    def send_cmd(self, cmd: str, value: str = "") -> dict:
         if (
             env_bool("disable_control")
             or not self.connected
             or not self.cam_cmd
             or not self.cam_resp
         ):
-            return {}
+            return {"response": "camera not available"}
 
         with contextlib.suppress(Empty):
             self.cam_resp.get_nowait()
         try:
-            self.cam_cmd.put(cmd, timeout=5)
+            self.cam_cmd.put((cmd, value), timeout=5)
             cam_resp = self.cam_resp.get(timeout=5)
         except Full:
+            with contextlib.suppress(Empty):
+                self.cam_resp.get_nowait()
             return {"response": "camera busy"}
         except Empty:
             return {"response": "timed out"}
