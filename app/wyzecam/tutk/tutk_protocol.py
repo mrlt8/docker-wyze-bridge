@@ -793,6 +793,36 @@ class K11018SetPTZPosition(TutkWyzeProtocolMessage):
         return encode(self.code, 7, msg)
 
 
+class K11020GetMotionTracking(TutkWyzeProtocolMessage):
+    """
+    A message used to check if motion tracking is enabled (camera pans
+    to follow detected motion).
+
+    :return: returns the current motion tracking status:
+        - 1: Enabled
+        - 2: Disabled
+    """
+
+    def __init__(self):
+        super().__init__(11020)
+
+
+class K11022SetMotionTracking(TutkWyzeProtocolMessage):
+    """
+    A message used to enable/disable motion tracking (camera pans
+    to follow detected motion).
+
+    :param enabled: boolean to turn on/off motion tracking.
+    """
+
+    def __init__(self, enabled: bool):
+        super().__init__(11022)
+        self.enabled = 1 if enabled else 2
+
+    def encode(self) -> bytes:
+        return encode(self.code, 1, bytes([self.enabled]))
+
+
 def encode(code: int, data_len: int, data: Optional[bytes]) -> bytes:
     assert (data is None and data_len == 0) or (
         data is not None and data_len == len(data)
