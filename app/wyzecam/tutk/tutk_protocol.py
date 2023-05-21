@@ -757,6 +757,19 @@ class K11004ResetRotatePosition(TutkWyzeProtocolMessage):
         return encode(self.code, 1, bytes([self.position]))
 
 
+class K11014GetCruise(TutkWyzeProtocolMessage):
+    """
+    Get switch value for Pan Scan, aka Cruise.
+
+    :return: returns the current cruise status:
+        - 1: On
+        - 2: Off
+    """
+
+    def __init__(self):
+        super().__init__(11014)
+
+
 class K11016SetCruise(TutkWyzeProtocolMessage):
     """
     Set switch value for Pan Scan, aka Cruise.
