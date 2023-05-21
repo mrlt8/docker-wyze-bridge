@@ -9,7 +9,8 @@ import paho.mqtt.publish
 from wyzebridge.bridge_utils import env_bool
 from wyzebridge.config import IMG_PATH, MQTT_DISCOVERY, VERSION
 from wyzebridge.logging import logger
-from wyzecam import WyzeCamera, WyzeIOTCSession
+from wyzebridge.wyze_control import GET_CMDS, SET_CMDS
+from wyzecam import WyzeCamera
 
 MQTT_ENABLED = bool(env_bool("MQTT_HOST"))
 MQTT_USER, _, MQTT_PASS = getenv("MQTT_AUTH", ":").partition(":")
@@ -65,19 +66,20 @@ def wyze_discovery(cam: WyzeCamera, cam_uri: str) -> None:
             "ir": {
                 "type": "switch",
                 "payload": {
-                    "command_topic": f"{base}cmd",
-                    "payload_on": "set_irled_on",
-                    "payload_off": "set_irled_off",
+                    "state_topic": f"{base}irled",
+                    "command_topic": f"{base}irled/set",
+                    "payload_on": 3,
+                    "payload_off": 2,
                     "icon": "mdi:lightbulb-night",
                 },
             },
             "night_vision": {
                 "type": "switch",
                 "payload": {
-                    "command_topic": f"{base}cmd",
-                    "payload_auto": "set_night_vision_auto",
-                    "payload_on": "set_night_vision_auto",
-                    "payload_off": "set_night_vision_off",
+                    "state_topic": f"{base}night_vision",
+                    "command_topic": f"{base}night_vision/set",
+                    "payload_on": 3,
+                    "payload_off": 2,
                     "icon": "mdi:weather-night",
                 },
             },
@@ -111,14 +113,12 @@ def wyze_discovery(cam: WyzeCamera, cam_uri: str) -> None:
 
 
 @mqtt_enabled
-def mqtt_sub_topic(
-    m_topics: list, sess: WyzeIOTCSession
-) -> Optional[paho.mqtt.client.Client]:
+def mqtt_sub_topic(m_topics: list, callback) -> Optional[paho.mqtt.client.Client]:
     """Connect to mqtt and return the client."""
     client = paho.mqtt.client.Client()
 
     client.username_pw_set(MQTT_USER, MQTT_PASS or None)
-    client.user_data_set(sess)
+    client.user_data_set(callback)
     client.on_connect = lambda mq_client, *_: [
         mq_client.subscribe(f"wyzebridge/{m_topic}") for m_topic in m_topics
     ]
@@ -143,7 +143,7 @@ def send_mqtt(messages: list) -> None:
 
 
 @mqtt_enabled
-def publish_message(topic: str, message: Optional[str] = None):
+def publish_message(topic: str, message=None):
     base = "wyzebridge/"
     paho.mqtt.publish.single(
         topic=base + topic,
@@ -169,3 +169,26 @@ def update_preview(cam_name: str):
         img_file = f"{IMG_PATH}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
         with open(img_file, "rb") as img:
             publish_message(f"{cam_name}/image", img.read())
+
+
+@mqtt_enabled
+def mqtt_cam_control(cam_names: dict, callback):
+    topics = []
+    for uri in cam_names:
+        topics += [f"{uri.lower()}/{t}/set" for t in SET_CMDS.keys()]
+        topics += [f"{uri.lower()}/{t}/get" for t in GET_CMDS.keys()]
+
+    if client := mqtt_sub_topic(topics, callback):
+        client.on_message = _on_message
+
+
+def _on_message(client, callback, msg):
+    payload = msg.payload.decode() if "/set" in msg.topic else ""
+    try:
+        topic = msg.topic.split("/")[-2]
+        cam = msg.topic.split("/")[-3]
+    except IndexError:
+        return
+    resp = callback(cam, topic, payload)
+    if resp.get("status") != "success":
+        logger.info(f"[MQTT] {resp}")
