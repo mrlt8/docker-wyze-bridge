@@ -336,15 +336,18 @@ class K10032SetNetworkLightStatus(TutkWyzeProtocolMessage):
     """
     A message used to set the Camera Status Light on the camera.
 
-    :param enabled: boolean to set the camera light on/off.
+    Parameters:
+    -  value (int): 1 for on; 2 for off.
     """
 
-    def __init__(self, light_status: bool):
+    def __init__(self, value: int):
         super().__init__(10032)
-        self.light_status: int = 1 if light_status else 2
+
+        assert 0 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
 
     def encode(self) -> bytes:
-        return encode(self.code, 1, bytearray([self.light_status]))
+        return encode(self.code, 1, bytes([self.value]))
 
 
 class K10040GetNightVisionStatus(TutkWyzeProtocolMessage):
@@ -528,7 +531,7 @@ class K10092SetCameraTime(TutkWyzeProtocolMessage):
     This will use the current time on the bridge +1 to set the time on the camera.
     """
 
-    def __init__(self):
+    def __init__(self, _=None):
         super().__init__(10092)
 
     def encode(self) -> bytes:
@@ -552,15 +555,18 @@ class K10292SetMotionTagging(TutkWyzeProtocolMessage):
     """
     A message used to enable/disable motion tagging (green box around motion).
 
-    :param enabled: boolean to turn on/off motion tagging.
+    Parameters:
+    -  value (int): 1 for on; 2 for off.
     """
 
-    def __init__(self, enabled: bool):
+    def __init__(self, value: int):
         super().__init__(10292)
-        self.enabled = 1 if enabled else 2
+
+        assert 0 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
 
     def encode(self) -> bytes:
-        return encode(self.code, 1, bytes([self.enabled]))
+        return encode(self.code, 1, bytes([self.value]))
 
 
 class K10620CheckNight(TutkWyzeProtocolMessage):
@@ -606,17 +612,19 @@ class K10626SetAutoSwitchNightType(TutkWyzeProtocolMessage):
 
 class K10630SetAlarmFlashing(TutkWyzeProtocolMessage):
     """
-    A message used to control the alarm/siren on the camera.
+    A message used to control the alarm AND siren on the camera.
 
-    :param enabled: boolean to turn on/off alarm/siren.
+    Parameters:
+    -  value (int):  1 to turn on alarm and siren; 2 to turn off alarm and siren.
     """
 
-    def __init__(self, enabled: bool):
+    def __init__(self, value: int):
         super().__init__(10630)
-        self.enabled: int = 1 if enabled else 2
+        assert 0 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
 
     def encode(self) -> bytes:
-        return encode(self.code, 2, bytes([self.enabled, self.enabled]))
+        return encode(self.code, 2, bytes([self.value, self.value]))
 
 
 class K10632GetAlarmFlashing(TutkWyzeProtocolMessage):
@@ -668,15 +676,17 @@ class K10600SetRtspSwitch(TutkWyzeProtocolMessage):
     """
     Set switch value for RTSP server on camera.
 
-    :param enable: Optional Bool. Set True for on, False for off. Defaults to True.
+    Parameters:
+    -  value (int): 1 for on; 2 for off. Defaults to True.
     """
 
-    def __init__(self, enable: bool = True):
+    def __init__(self, value: int = 1):
         super().__init__(10600)
-        self.enable = 1 if enable else 0
+        assert 0 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
 
     def encode(self) -> bytes:
-        return encode(self.code, 1, bytes([self.enable]))
+        return encode(self.code, 1, bytes([self.value]))
 
 
 class K10604GetRtspParam(TutkWyzeProtocolMessage):
@@ -775,15 +785,17 @@ class K11016SetCruise(TutkWyzeProtocolMessage):
     Set switch value for Pan Scan, aka Cruise.
 
     Parameters:
-    :param enable: Optional Bool. Set True for on, False for off. Defaults to True.
+    -  value (int): 1 for on; 2 for off. Defaults to On.
     """
 
-    def __init__(self, enable: bool = True):
+    def __init__(self, value: int):
         super().__init__(11016)
-        self.flag = 1 if enable else 2
+
+        assert 0 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
 
     def encode(self) -> bytes:
-        return encode(self.code, 1, bytes([self.enabled]))
+        return encode(self.code, 1, bytes([self.value]))
 
 
 class K11018SetPTZPosition(TutkWyzeProtocolMessage):
@@ -825,15 +837,18 @@ class K11022SetMotionTracking(TutkWyzeProtocolMessage):
     A message used to enable/disable motion tracking (camera pans
     to follow detected motion).
 
-    :param enabled: boolean to turn on/off motion tracking.
+    Parameters:
+    -  value (int): 1 for on; 2 for off.
     """
 
-    def __init__(self, enabled: bool):
+    def __init__(self, value: int):
         super().__init__(11022)
-        self.enabled = 1 if enabled else 2
+
+        assert 0 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
 
     def encode(self) -> bytes:
-        return encode(self.code, 1, bytes([self.enabled]))
+        return encode(self.code, 1, bytes([self.value]))
 
 
 def encode(code: int, data_len: int, data: Optional[bytes]) -> bytes:
