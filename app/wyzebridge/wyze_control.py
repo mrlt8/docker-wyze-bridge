@@ -43,6 +43,8 @@ CAM_CMDS = {
     "set_rotary_down": ("K11000SetRotaryByDegree", 0, -90),
     "set_rotary_right": ("K11000SetRotaryByDegree", 90, 0),
     "set_rotary_left": ("K11000SetRotaryByDegree", -90, 0),
+    "set_pan_cruise_on": ("K11016SetCruise", True),
+    "set_pan_cruise_off": ("K11016SetCruise", False),
     "start_boa": ("K10148StartBoa",),
     "get_motion_tagging": ("K10290GetMotionTagging",),
     "set_motion_tagging_on": ("K10292SetMotionTagging", True),
