@@ -123,17 +123,6 @@ def create_app():
     @app.route("/api/<cam_name>/<cam_cmd>/<payload>")
     def api_cam_control(cam_name: str, cam_cmd: str, payload: str = ""):
         """API Endpoint to send tutk commands to the camera."""
-        if cam_cmd == "status":
-            return {"status": wb.streams.get_status(cam_name)}
-        if cam_cmd == "start":
-            return {"status": wb.streams.start(cam_name)}
-        if cam_cmd == "stop":
-            return {"status": wb.streams.stop(cam_name)}
-        if cam_cmd == "disable":
-            return {"status": wb.streams.disable(cam_name)}
-        if cam_cmd == "enable":
-            return {"status": wb.streams.enable(cam_name)}
-
         if request.values:
             payload = next(request.values.values())
         elif request.is_json:
@@ -141,7 +130,7 @@ def create_app():
         elif request.data:
             payload = request.data.decode()
 
-        return wb.streams.send_cmd(cam_name, cam_cmd, payload)
+        return wb.streams.send_cmd(cam_name, cam_cmd.lower(), payload)
 
     @app.route("/signaling/<string:name>")
     def webrtc_signaling(name):

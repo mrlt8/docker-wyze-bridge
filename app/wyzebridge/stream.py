@@ -44,7 +44,7 @@ class Stream(Protocol):
     def get_info(self, item: Optional[str] = None) -> dict:
         ...
 
-    def get_status(self) -> str:
+    def status(self) -> str:
         ...
 
     def send_cmd(self, cmd: str, value: str = "") -> dict:
@@ -86,18 +86,6 @@ class StreamManager:
     def get_all_cam_info(self) -> dict:
         return {uri: s.get_info() for uri, s in self.streams.items()}
 
-    def start(self, uri: str) -> bool:
-        return stream.start() if (stream := self.get(uri)) else False
-
-    def stop(self, uri: str) -> bool:
-        return stream.stop() if (stream := self.get(uri)) else False
-
-    def enable(self, uri: str) -> bool:
-        return stream.enable() if (stream := self.get(uri)) else False
-
-    def disable(self, uri: str) -> bool:
-        return stream.disable() if (stream := self.get(uri)) else False
-
     def stop_all(self) -> None:
         logger.info(f"Stopping {self.total} stream{'s'[:self.total^1]}")
         self.stop_flag = True
@@ -110,7 +98,7 @@ class StreamManager:
             self.thread.start()
         mqtt = mqtt_cam_control(self.streams, self.send_cmd)
         logger.info(f"🎬 {self.total} stream{'s'[:self.total^1]} enabled")
-        event = RtspEvent(self)
+        event = RtspEvent(self.streams)
         while not self.stop_flag:
             mtx_health()
             event.read(timeout=1)
@@ -155,13 +143,8 @@ class StreamManager:
             stop_subprocess(self.rtsp_snapshots.get(cam))
             self.rtsp_snap_popen(cam, True)
 
-    def get_status(self, uri: str) -> str:
-        if self.stop_flag:
-            return "stopping"
-        return stream.get_status() if (stream := self.get(uri)) else "unavailable"
-
     def get_sse_status(self) -> dict:
-        return {uri: cam.get_status() for uri, cam in self.streams.items()}
+        return {uri: cam.status() for uri, cam in self.streams.items()}
 
     def send_cmd(self, cam_name: str, cmd: str, payload: str = "") -> dict:
         """
@@ -176,8 +159,17 @@ class StreamManager:
         - dictionary: Results that can be converted to JSON.
         """
         resp = {"status": "error", "command": cmd, "payload": payload}
+
         if not (stream := self.get(cam_name)):
             return resp | {"response": "Camera not found"}
+        if cmd in {"status", "start", "stop", "disable", "enable"}:
+            response = getattr(stream, cmd)()
+            publish_message(f"{cam_name}/{cmd}", response)
+            return resp | {
+                "status": "success" if response else "error",
+                "response": response,
+            }
+
         if cam_resp := stream.send_cmd(cmd, payload):
             status = cam_resp.get("value") if cam_resp.get("status") == "success" else 0
             if isinstance(status, dict):
@@ -185,8 +177,10 @@ class StreamManager:
             publish_message(f"{cam_name}/{cmd}", status)
         return cam_resp if "status" in cam_resp else resp | cam_resp
 
-    def rtsp_snap_popen(self, cam_name: str, interval: bool = False) -> Popen:
-        self.start(cam_name)
+    def rtsp_snap_popen(self, cam_name: str, interval: bool = False) -> Optional[Popen]:
+        if not (stream := self.get(cam_name)):
+            return
+        stream.start()
         ffmpeg = self.rtsp_snapshots.get(cam_name)
         if not ffmpeg or ffmpeg.poll() is not None:
             ffmpeg = Popen(rtsp_snap_cmd(cam_name, interval))
@@ -196,7 +190,8 @@ class StreamManager:
     def get_rtsp_snap(self, cam_name: str) -> bool:
         if not (stream := self.get(cam_name)) or stream.health_check() < 1:
             return False
-        ffmpeg = self.rtsp_snap_popen(cam_name)
+        if not (ffmpeg := self.rtsp_snap_popen(cam_name)):
+            return False
         try:
             if ffmpeg.wait(timeout=10) == 0:
                 return True

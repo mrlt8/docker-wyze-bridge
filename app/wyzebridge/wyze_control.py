@@ -15,6 +15,7 @@ from wyzebridge.logging import logger
 from wyzecam import WyzeIOTCSession, WyzeIOTCSessionState, tutk_protocol
 
 GET_CMDS = {
+    "status": None,
     "take_photo": "K10058TakePhoto",
     "irled": "K10044GetIRLEDStatus",
     "night_vision": "K10040GetNightVisionStatus",
@@ -31,6 +32,10 @@ GET_CMDS = {
 }
 
 SET_CMDS = {
+    "start": None,
+    "stop": None,
+    "disable": None,
+    "enable": None,
     "irled": "K10046SetIRLEDStatus",
     "night_vision": "K10042SetNightVisionStatus",
     "status_light": "K10032SetNetworkLightStatus",

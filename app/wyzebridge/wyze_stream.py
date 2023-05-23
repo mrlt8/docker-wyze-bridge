@@ -19,8 +19,7 @@ from wyzebridge.mqtt import send_mqtt, update_mqtt_state, wyze_discovery
 from wyzebridge.webhooks import ifttt_webhook
 from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_control import camera_control
-from wyzecam import (TutkError, WyzeAccount, WyzeCamera, WyzeIOTC,
-                     WyzeIOTCSession)
+from wyzecam import TutkError, WyzeAccount, WyzeCamera, WyzeIOTC, WyzeIOTCSession
 
 NET_MODE = {0: "P2P", 1: "RELAY", 2: "LAN"}
 
@@ -109,7 +108,7 @@ class WyzeStream:
     @state.setter
     def state(self, value):
         self._state.value = value.value if isinstance(value, StreamStatus) else value
-        update_mqtt_state(self.uri, self.get_status())
+        update_mqtt_state(self.uri, self.status())
 
     @property
     def connected(self) -> bool:
@@ -200,7 +199,7 @@ class WyzeStream:
         self.camera = cam
         return True
 
-    def get_status(self) -> str:
+    def status(self) -> str:
         try:
             return StreamStatus(self._state.value).name.lower()
         except ValueError:
