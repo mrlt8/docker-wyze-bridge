@@ -284,16 +284,19 @@ class K10020CheckCameraInfo(TutkWyzeProtocolMessage):
     """
     A command used to read the current settings of the camera.
 
-    Not terribly well understood.
+    Parameters:
+    - count (int): The number of camera parameters to read.  Defaults to 99.
+
+    Returns:
+    - A json object with the camera parameters.
     """
 
-    def __init__(self):
+    def __init__(self, count: int = 99):
         super().__init__(10020)
+        self.count = count
 
     def encode(self) -> bytes:
-        arr = bytearray()
-        arr.append(50)
-        arr.extend(range(1, 51))
+        arr = bytes([self.count, *range(1, self.count + 1)])
         return encode(self.code, len(arr), arr)
 
     def parse_response(self, resp_data):

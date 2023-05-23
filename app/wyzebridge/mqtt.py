@@ -9,7 +9,7 @@ import paho.mqtt.publish
 from wyzebridge.bridge_utils import env_bool
 from wyzebridge.config import IMG_PATH, MQTT_DISCOVERY, VERSION
 from wyzebridge.logging import logger
-from wyzebridge.wyze_control import GET_CMDS, SET_CMDS
+from wyzebridge.wyze_control import GET_CMDS, GET_PAYLOAD, SET_CMDS
 from wyzecam import WyzeCamera
 
 MQTT_ENABLED = bool(env_bool("MQTT_HOST"))
@@ -183,12 +183,14 @@ def mqtt_cam_control(cam_names: dict, callback):
 
 
 def _on_message(client, callback, msg):
-    payload = msg.payload.decode() if "/set" in msg.topic else ""
-    try:
-        topic = msg.topic.split("/")[-2]
-        cam = msg.topic.split("/")[-3]
-    except IndexError:
+    msg_topic = msg.topic.split("/")
+    if len(msg_topic) < 3:
+        logger.warning(f"[MQTT] Invalid topic: {msg.topic}")
         return
-    resp = callback(cam, topic, payload)
+
+    cam, topic, action = msg_topic[-3:]
+    include_payload = action == "set" or topic in GET_PAYLOAD
+
+    resp = callback(cam, topic, msg.payload.decode() if include_payload else "")
     if resp.get("status") != "success":
         logger.info(f"[MQTT] {resp}")

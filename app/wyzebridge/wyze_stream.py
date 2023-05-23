@@ -246,6 +246,7 @@ class WyzeStream:
 
     def send_cmd(self, cmd: str, value: str | dict = "") -> dict:
         if cmd in {"status", "start", "stop", "disable", "enable"}:
+            logger.info(f"[CONTROL] {cmd.upper()}")
             response = getattr(self, cmd)()
             return {
                 "status": "success" if response else "error",

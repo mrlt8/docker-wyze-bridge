@@ -29,7 +29,11 @@ GET_CMDS = {
     "motion_tagging": "K10290GetMotionTagging",
     "camera_info": "K10020CheckCameraInfo",
     "rtsp": "K10604GetRtspParam",
+    "param_info": "K10020CheckCameraParams",  # Requires a Payload
 }
+
+# These GET_CMDS can include a payload:
+GET_PAYLOAD = {"param_info"}
 
 SET_CMDS = {
     "start": None,
@@ -223,38 +227,34 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str) -> dict:
     Rreturns:
     - dictionary: tutk response from camera.
     """
-
-    tutk_msg, topic, payload, value = lookup_cmd(cmd)
-    resp = {"command": topic, "payload": value}
+    tutk_msg, topic, payload, payload_str = lookup_cmd(cmd)
+    resp = {"command": topic, "payload": payload_str}
 
     if not tutk_msg:
         return resp | {"status": "error", "response": "Invalid command"}
 
-    log_msg = f"SET: {topic}={payload}" if payload else f"GET: {topic}"
-    logger.info(f"[CONTROL] {log_msg}")
-
     try:
         with sess.iotctrl_mux() as mux:
             iotc = mux.send_ioctl(tutk_msg)
+
+            # These do not return a response
             if tutk_msg.code in {11000, 11004}:
                 resp |= {"status": "success", "response": None}
             elif res := iotc.result(timeout=5):
-                response = (
-                    res if isinstance(res, (dict, int)) else ",".join(map(str, res))
-                )
-                resp |= {"status": "success", "response": response, "value": response}
-            if payload:
-                resp["value"] = (
-                    payload
-                    if isinstance(payload, (dict))
-                    else ",".join(map(str, payload))
-                )
-
+                value = res if isinstance(res, (dict, int)) else ",".join(map(str, res))
+                resp |= {"status": "success", "response": value, "value": value}
     except Empty:
         resp |= {"status": "success", "response": None}
     except Exception as ex:
         resp |= {"response": ex, "status": "error"}
         logger.warning(f"[CONTROL] {ex}")
+
+    if payload and topic not in GET_PAYLOAD:
+        if isinstance(payload, dict):
+            resp["value"] = payload
+        else:
+            resp["value"] = ",".join(map(str, payload))
+
     logger.info(f"[CONTROL] Response: {resp}")
     return {topic: resp}
 
@@ -262,15 +262,15 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str) -> dict:
 def lookup_cmd(cmd: tuple[str, Optional[str | dict]] | str) -> tuple:
     topic, payload_str = cmd if isinstance(cmd, tuple) else (cmd, None)
 
-    cam_cmds = SET_CMDS if payload_str else GET_CMDS
-    if not (tutk_topic := cam_cmds.get(topic)):
+    should_set = payload_str and topic not in GET_PAYLOAD
+
+    log_msg = f"SET: {topic}={payload_str}" if should_set else f"GET: {topic}"
+    logger.info(f"[CONTROL] Attempting to {log_msg}")
+
+    tutk_topic = SET_CMDS.get(topic) if should_set else GET_CMDS.get(topic)
+
+    if not tutk_topic or not (tutk_msg := getattr(tutk_protocol, tutk_topic, None)):
         return None, topic, payload_str, payload_str
-
-    if not (tutk_msg := getattr(tutk_protocol, tutk_topic, None)):
-        return tutk_msg, topic, payload_str, payload_str
-
-    if not payload_str:
-        return tutk_msg(), topic, payload_str, payload_str
 
     if isinstance(payload_str, dict):
         payload = {k: int(v) if str(v).isdigit() else v for k, v in payload_str.items()}
