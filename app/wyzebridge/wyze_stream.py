@@ -244,7 +244,15 @@ class WyzeStream:
             return {}
         return self.camera.camera_info.get("boa_info", {})
 
-    def send_cmd(self, cmd: str, value: str = "") -> dict:
+    def send_cmd(self, cmd: str, value: str | dict = "") -> dict:
+        if cmd in {"status", "start", "stop", "disable", "enable"}:
+            response = getattr(self, cmd)()
+            return {
+                "status": "success" if response else "error",
+                "response": response,
+                "value": response,
+            }
+
         if (
             env_bool("disable_control")
             or not self.connected

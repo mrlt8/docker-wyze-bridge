@@ -47,7 +47,7 @@ class Stream(Protocol):
     def status(self) -> str:
         ...
 
-    def send_cmd(self, cmd: str, value: str = "") -> dict:
+    def send_cmd(self, cmd: str, value: str | dict = "") -> dict:
         ...
 
 
@@ -146,13 +146,13 @@ class StreamManager:
     def get_sse_status(self) -> dict:
         return {uri: cam.status() for uri, cam in self.streams.items()}
 
-    def send_cmd(self, cam_name: str, cmd: str, payload: str = "") -> dict:
+    def send_cmd(self, cam_name: str, cmd: str, payload: str | dict = "") -> dict:
         """
         Send a command directly to the camera and wait for a response.
 
         Parameters:
         - cam_name (str): uri-friendly name of the camera.
-        - cmd (str): The tutk command to send.
+        - cmd (str): The camera/tutk command to send.
         - payload (str): value for the tutk command.
 
         Returns:
@@ -162,13 +162,6 @@ class StreamManager:
 
         if not (stream := self.get(cam_name)):
             return resp | {"response": "Camera not found"}
-        if cmd in {"status", "start", "stop", "disable", "enable"}:
-            response = getattr(stream, cmd)()
-            publish_message(f"{cam_name}/{cmd}", response)
-            return resp | {
-                "status": "success" if response else "error",
-                "response": response,
-            }
 
         if cam_resp := stream.send_cmd(cmd, payload):
             status = cam_resp.get("value") if cam_resp.get("status") == "success" else 0

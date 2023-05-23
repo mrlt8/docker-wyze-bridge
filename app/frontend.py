@@ -121,12 +121,13 @@ def create_app():
 
     @app.route("/api/<cam_name>/<cam_cmd>", methods=["GET", "PUT", "POST"])
     @app.route("/api/<cam_name>/<cam_cmd>/<payload>")
-    def api_cam_control(cam_name: str, cam_cmd: str, payload: str = ""):
+    def api_cam_control(cam_name: str, cam_cmd: str, payload: str | dict = ""):
         """API Endpoint to send tutk commands to the camera."""
-        if request.values:
-            payload = next(request.values.values())
+        if args := request.values:
+            payload = args.to_dict() if len(args) > 1 else next(args.values())
         elif request.is_json:
-            payload = list(request.get_json().values())[0]
+            json = request.get_json()
+            payload = json if len(json) > 1 else list(json.values())[0]
         elif request.data:
             payload = request.data.decode()
 
