@@ -182,9 +182,15 @@ def rtsp_snap_cmd(cam_name: str, interval: bool = False):
         img = file.format(cam_name=cam_name, CAM_NAME=cam_name.upper())
         os.makedirs(os.path.dirname(img), exist_ok=True)
 
+    rotation = []
+    if rotate_img := env_bool(f"ROTATE_IMG_{cam_name}"):
+        transpose = rotate_img if rotate_img in {"0", "1", "2", "3"} else "clock"
+        rotation = ["-filter:v", f"{transpose=}"]
+
     return (
         ["ffmpeg", "-loglevel", "fatal", "-analyzeduration", "0", "-probesize", "32"]
         + ["-f", "rtsp", "-rtsp_transport", "tcp", "-thread_queue_size", "500"]
         + ["-i", f"rtsp://{auth}0.0.0.0:8554/{cam_name}", "-map", "0:v:0"]
+        + rotation
         + ["-f", "image2", "-frames:v", "1", "-y", img]
     )
