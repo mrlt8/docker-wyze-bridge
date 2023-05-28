@@ -498,6 +498,15 @@ class K10052DBSetResolvingBit(TutkWyzeProtocolMessage):
         return resp_data == b"\x01"
 
 
+class K10052SetFPS(TutkWyzeProtocolMessage):
+    def __init__(self, fps: int = 0):
+        super().__init__(10052)
+        self.fps = fps
+
+    def encode(self) -> bytes:
+        return encode(self.code, 6, bytes([0, 0, 0, self.fps, 0, 0]))
+
+
 class K10090GetCameraTime(TutkWyzeProtocolMessage):
     """
     A message used to get the current time on the camera.
@@ -604,7 +613,7 @@ class K10630SetAlarmFlashing(TutkWyzeProtocolMessage):
 
     def __init__(self, enabled: bool):
         super().__init__(10630)
-        self.enabled: int = 2 if enabled else 1
+        self.enabled: int = 1 if enabled else 2
 
     def encode(self) -> bytes:
         return encode(self.code, 2, bytes([self.enabled, self.enabled]))
@@ -748,6 +757,22 @@ class K11004ResetRotatePosition(TutkWyzeProtocolMessage):
         return encode(self.code, 1, bytes([self.position]))
 
 
+class K11016SetCruise(TutkWyzeProtocolMessage):
+    """
+    Set switch value for Pan Scan, aka Cruise.
+
+    Parameters:
+    :param enable: Optional Bool. Set True for on, False for off. Defaults to True.
+    """
+
+    def __init__(self, enable: bool = True):
+        super().__init__(11016)
+        self.flag = 1 if enable else 2
+
+    def encode(self) -> bytes:
+        return encode(self.code, 1, bytes([self.enabled]))
+
+
 class K11018SetPTZPosition(TutkWyzeProtocolMessage):
     """
     Set PTZ Position.
@@ -766,6 +791,36 @@ class K11018SetPTZPosition(TutkWyzeProtocolMessage):
         time_val = int(time.time() * 1000) % 1_000_000_000
         msg = pack("<IBH", time_val, self.ver_angle, self.hor_angle)
         return encode(self.code, 7, msg)
+
+
+class K11020GetMotionTracking(TutkWyzeProtocolMessage):
+    """
+    A message used to check if motion tracking is enabled (camera pans
+    to follow detected motion).
+
+    :return: returns the current motion tracking status:
+        - 1: Enabled
+        - 2: Disabled
+    """
+
+    def __init__(self):
+        super().__init__(11020)
+
+
+class K11022SetMotionTracking(TutkWyzeProtocolMessage):
+    """
+    A message used to enable/disable motion tracking (camera pans
+    to follow detected motion).
+
+    :param enabled: boolean to turn on/off motion tracking.
+    """
+
+    def __init__(self, enabled: bool):
+        super().__init__(11022)
+        self.enabled = 1 if enabled else 2
+
+    def encode(self) -> bytes:
+        return encode(self.code, 1, bytes([self.enabled]))
 
 
 def encode(code: int, data_len: int, data: Optional[bytes]) -> bytes:

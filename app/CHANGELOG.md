@@ -1,3 +1,51 @@
+## What's Changed in v2.1.7
+
+* FIX: WebRTC not loading in the WebUI.
+* UPDATE: MediaMTX to v0.23.2
+
+## What's Changed in v2.1.6
+
+* UPDATE: MediaMTX to v0.23.0
+* FIXED: Error reading some events.
+* FIXED: Restart MediaMTX on exit and kill flask on cleanup which could prevent the bridge from restarting.
+
+## What's Changed in v2.1.5
+
+* FIX: set_alarm_on/set_alarm_off was inverted #795. Thanks @iferlive!
+* NEW: `URI_MAC=true` to append last 4 characters of the MAC address to the URI to avoid conflicting URIs when multiple cameras share the same name. #760
+* Home Assistant: Add RECORD_FILE_NAME option #791
+* UPDATE: base image to bullseye.
+
+## What's Changed in v2.1.4
+
+* FIX: Record option would not auto-connect. #784 Thanks @JA16122000!
+
+## What's Changed in v2.1.2/3
+
+* Increase close on-demand time to 60s to prevent reconnect messages. #643 #750 #764
+* Disable default LL-HLS for compatibility with apple. LL-HLS can still be enabled with `LLHLS=true` which will generate the necessary SSL certificates to work on Apple devices.
+* Disable MQTT if connection refused.
+* UPDATED: MediaMTX to [v0.22.2](https://github.com/aler9/mediamtx/releases/tag/v0.22.2)
+
+## What's Changed in v2.1.1
+
+* FIXED: WebRTC on UDP Port #772
+* UPDATED: MediaMTX to [v0.22.1](https://github.com/aler9/mediamtx/releases/tag/v0.22.1)
+* ENV Options: Re-enable `ON_DEMAND` to toggle connection mode. #643 #750 #764
+
+## What's Changed in v2.1.0
+
+⚠️ This version updates the backend rtsp-simple-server to MediaMTX which may cause some issues if you're using custom rtsp-simple-server related configs.
+
+* CHANGED: rtsp-simple-server to MediaMTX.
+* ENV Options:
+  * New: `SUB_QUALITY` - Specify the quality to be used for the substream. #755
+  * New: `SNAPSHOT_FORMAT` - Specify the output file format when using `SNAPSHOT` which can be used to create a timelapse/save multiple snapshots. e.g., `SNAPSHOT_FORMAT={cam_name}/%Y-%m-%d/%H-%M.jpg` #757:
+* Home Assistant/MQTT:
+  * Fixed: MQTT auto-discovery error #751
+  * New: Additional entities for each of the cameras.
+  * Changed: Default IMG_DIR to `media/wyze/img/` #660
+
 ## What's Changed in v2.0.2
 
 * Camera Control: Don't wait for a response when sending `set_rotary_` commands. #746

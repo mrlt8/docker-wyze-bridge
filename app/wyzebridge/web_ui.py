@@ -43,18 +43,17 @@ def set_mfa(mfa_code: str) -> bool:
 
 
 def get_webrtc_signal(cam_name: str, hostname: Optional[str] = "localhost") -> dict:
-    """Generate signaling for rtsp-simple-server webrtc."""
-    wss = "s" if env_bool("RTSP_WEBRTCENCRYPTION") else ""
-    socket = config.WEBRTC_URL.lstrip("http") or f"{wss}://{hostname}:8889"
-    ice_server = env_bool("RTSP_WEBRTCICESERVERS") or [
+    """Generate signaling for MediaMTX webrtc."""
+    ssl = "s" if env_bool("MTX_WEBRTCENCRYPTION") else ""
+    webrtc = config.WEBRTC_URL.lstrip("http") or f"{ssl}://{hostname}:8889"
+    ice_server = env_bool("MTX_WEBRTCICESERVERS") or [
         {"credentialType": "password", "urls": ["stun:stun.l.google.com:19302"]}
     ]
     return {
         "result": "ok",
         "cam": cam_name,
-        "signalingUrl": f"ws{socket}/{cam_name}/ws",
+        "whep": f"http{webrtc}/{cam_name}/whep",
         "servers": ice_server,
-        "rss": True,
     }
 
 
@@ -83,7 +82,7 @@ def format_stream(name_uri: str, hostname: Optional[str]) -> dict:
         "webrtc_url": webrtc_url if config.BRIDGE_IP else None,
         "rtmp_url": (config.RTMP_URL or f"rtmp://{hostname}:1935") + f"/{name_uri}",
         "rtsp_url": (config.RTSP_URL or f"rtsp://{hostname}:8554") + f"/{name_uri}",
-        "stream_auth": bool(os.getenv(f"RTSP_PATHS_{name_uri.upper()}_READUSER")),
+        "stream_auth": bool(os.getenv(f"MTX_PATHS_{name_uri.upper()}_READUSER")),
         "img_url": f"img/{img}" if img_time else None,
         "snapshot_url": f"snapshot/{img}",
         "thumbnail_url": f"thumb/{img}",

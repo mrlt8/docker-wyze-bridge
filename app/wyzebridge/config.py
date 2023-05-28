@@ -1,5 +1,5 @@
 import json
-from os import getenv, makedirs
+from os import environ, getenv, makedirs
 
 from wyzebridge.bridge_utils import env_bool, split_int_str
 from wyzebridge.hass import setup_hass
@@ -10,13 +10,16 @@ with open("config.json") as f:
 VERSION: str = config.get("version", "DEV")
 HASS_TOKEN: str = getenv("SUPERVISOR_TOKEN", "")
 setup_hass(HASS_TOKEN)
+MQTT_DISCOVERY = env_bool("MQTT_DTOPIC")
 
+ON_DEMAND = bool(env_bool("on_demand") if getenv("ON_DEMAND") else True)
 CONNECT_TIMEOUT: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
 
 TOKEN_PATH: str = "/config/wyze-bridge/" if HASS_TOKEN else "/tokens/"
 IMG_PATH: str = f'/{env_bool("IMG_DIR", "img").strip("/")}/'
 
 SNAPSHOT_TYPE, SNAPSHOT_INT = split_int_str(env_bool("SNAPSHOT"), min=15, default=180)
+SNAPSHOT_FORMAT: str = env_bool("SNAPSHOT_FORMAT", style="original").strip("/")
 
 
 BRIDGE_IP: str = env_bool("WB_IP")
@@ -37,7 +40,6 @@ makedirs(IMG_PATH, exist_ok=True)
 
 
 DEPRECATED = {
-    "ON_DEMAND",
     "TAKE_PHOTO",
     "PULL_PHOTO",
     "PULL_ALARM",
@@ -48,3 +50,10 @@ DEPRECATED = {
 for env in DEPRECATED:
     if getenv(env):
         print(f"\n\n[!] WARNING: {env} is deprecated\n\n")
+
+for key, value in environ.items():
+    if key.startswith("RTSP_") and key != "RTSP_FW":
+        mtx_key = f"MTX{key[4:]}"
+        print(f"\n[!] WARNING: {key} is deprecated. Please use {mtx_key} instead\n")
+        environ.pop(key, None)
+        environ[mtx_key] = value

@@ -16,7 +16,7 @@ It just works!
 
 Streams direct from camera without additional bandwidth or subscriptions.
 
-Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/rtsp-simple-server](https://github.com/aler9/rtsp-simple-server).
+Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/mediamtx](https://github.com/aler9/mediamtx).
 
 
 Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) this project if you found it useful, or use the [affiliate link](https://amzn.to/3NLnbvt) when shopping on amazon!
@@ -24,6 +24,8 @@ Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) 
 ## Quick Start
 
 Install [docker](https://docs.docker.com/get-docker/) and use your Wyze credentials to run:
+
+(If your credentials have special characters, you must escape them)
 
 ```bash
 docker run \
@@ -35,57 +37,57 @@ docker run \
 
 You can then use the web interface at `http://localhost:5000` where localhost is the hostname or ip of the machine running the bridge.
 
-See [basic usage](#basic-usage) for additional information.
+See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.0.2
+## What's Changed in v2.1.7
 
-* Camera Control: Don't wait for a response when sending `set_rotary_` commands. #746
-* Camera Control: Add commands for motion tagging (potentially useful if using waitmotion in mini hacks):
-  * `get_motion_tagging` current status: `1`=ON, `2`=OFF.
-  * `set_motion_tagging_on` turn on motion tagging.
-  * `set_motion_tagging_off` turn off motion tagging
-* WebUI: Refresh image previews even if camera is not connected but enabled. (will still ignore battery cameras) #750
-* WebUI: Add battery icon to cameras with a battery.
-* WebUI: Use Last-Modified date to calculate the age of the thumbnails from the wyze API. 
-* Update documentation for K10010ControlChannel media controls for potential on-demand control of video/audio.
+* FIX: WebRTC not loading in the WebUI.
+* UPDATE: MediaMTX to v0.23.2
 
-## What's Changed in v2.0.1
+## What's Changed in v2.1.6
 
-* Fixed a bug where the WebUI would not start if 2FA was required. #741
+* UPDATE: MediaMTX to v0.23.0
+* FIXED: Error reading some events.
+* FIXED: Restart MediaMTX on exit and kill flask on cleanup which could prevent the bridge from restarting.
 
-## What's Changed in v2.0.0
+## What's Changed in v2.1.5
 
-⚠️ All streams will be on-demand unless local recording is enabled.
+* FIX: set_alarm_on/set_alarm_off was inverted #795. Thanks @iferlive!
+* NEW: `URI_MAC=true` to append last 4 characters of the MAC address to the URI to avoid conflicting URIs when multiple cameras share the same name. #760
+* Home Assistant: Add RECORD_FILE_NAME option #791
+* UPDATE: base image to bullseye.
 
-* NEW: Substreams - Add a secondary lower resolution stream:
-  * `SUBSTREAM=True` to enable a lower resolution sub-stream on all cameras with a compatible firmware.
-  * `SUBSTREAM_CAM_NAME=True` to enable sub-stream for a single camera without a firmware version check.
-  * Secondary 360p stream will be available using the `cam-name-sub` uri.
-  * See the [substream](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Substreams) page for more info.
-* NEW: WebUI endpoints:
-  * `/img/camera-name.jpg?exp=90` Take a new snapshot if the existing one is older than the `exp` value in seconds.
-  * `/thumb/cam-name.jpg` Pull the latest thumbnail from the wyze API.
-  * `/api/cam-name/enable` Enable the stream for recording and streaming. #717
-  * `/api/cam-name/disable` Disable the stream for recording and streaming. #717
-* NEW: ENV Options:
-  * `LOG_FILE=true` Log to file (`/logs/debug.log`).
-  * `SUBJECT_ALT_NAME=str` Specify the subjectAltName for SSL. #725
-* NEW: WebUI controls: `start/stop/enable/disable` as well as some basic controls for the night vision.
-* NEW: JS notifications when the status of a stream changes.
-* NEW: Browser notifications when the page is in the background. Requires a secure context.
-* Performance improvements and memory optimization!
-* Updated boa to work alongside other camera controls on supported firmware.
-* Bump python to 3.11
-* Bump rtsp-simple-server to [v0.21.6](https://github.com/aler9/rtsp-simple-server/releases/tag/v0.21.6)
-* Bump Wyze app version.
+## What's Changed in v2.1.4
 
-Some ENV options have been deprecated:
-* `ON_DEMAND` - No longer used as all streams are now on-demand.
-* `TAKE_PHOTO` -> `BOA_TAKE_PHOTO`
-* `PULL_PHOTO` -> `BOA_PHOTO`
-* `PULL_ALARM` -> `BOA_ALARM`
-* `MOTION_HTTP` -> `BOA_MOTION`
-* `MOTION_COOLDOWN` -> `BOA_COOLDOWN`
+* FIX: Record option would not auto-connect. #784 Thanks @JA16122000!
+* 
+
+## What's Changed in v2.1.2/3
+
+* Increase close on-demand time to 60s to prevent reconnect messages. #643 #750 #764
+* Disable default LL-HLS for compatibility with apple. LL-HLS can still be enabled with `LLHLS=true` which will generate the necessary SSL certificates to work on Apple devices.
+* Disable MQTT if connection refused.
+* UPDATED: MediaMTX to [v0.22.2](https://github.com/aler9/mediamtx/releases/tag/v0.22.2)
+
+
+## What's Changed in v2.1.1
+
+* FIXED: WebRTC on UDP Port #772
+* UPDATED: MediaMTX to [v0.22.1](https://github.com/aler9/mediamtx/releases/tag/v0.22.1)
+* ENV Options: Re-enable `ON_DEMAND` to toggle connection mode. #643 #750 #764
+
+## What's Changed in v2.1.0
+
+⚠️ This version updates the backend rtsp-simple-server to [MediaMTX](https://github.com/aler9/mediamtx) which may cause some issues if you're using custom rtsp-simple-server related configs.
+
+* CHANGED: rtsp-simple-server to MediaMTX.
+* ENV Options:
+  * New: `SUB_QUALITY` - Specify the quality to be used for the substream. #755
+  * New: `SNAPSHOT_FORMAT` - Specify the output file format when using `SNAPSHOT` which can be used to create a timelapse/save multiple snapshots. e.g., `SNAPSHOT_FORMAT={cam_name}/%Y-%m-%d/%H-%M.jpg` #757:
+* Home Assistant/MQTT:
+  * Fixed: MQTT auto-discovery error #751
+  * New: Additional entities for each of the cameras.
+  * Changed: Default IMG_DIR to `media/wyze/img/` #660
 
 
 Known Issues/Bugs:
@@ -111,6 +113,8 @@ Known Issues/Bugs:
 ![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-yes-success.svg)
 ![Wyze Cam Outdoor V2](https://img.shields.io/badge/wyze_outdoor_v2-yes-success.svg)
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
+
+Cameras from [Gwell Times](http://cloud.gwell.cc) are currently not supported:
 
 ![Wyze Cam Doorbell Pro](https://img.shields.io/badge/wyze_doorbell_pro-no-inactive.svg)
 ![Wyze Cam OG](https://img.shields.io/badge/wyze_og-no-inactive.svg)
@@ -164,6 +168,8 @@ This is similar to the docker run command, but will save all your options in a y
 3. Run `docker-compose up`.
 
 Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
+
+NOTE: You may need to [update the WebUI links](https://github.com/mrlt8/docker-wyze-bridge/wiki/WebUI#custom-ports) if you're changing the ports or using a reverse proxy.
 
 #### Updating your container
 

@@ -43,10 +43,19 @@ CAM_CMDS = {
     "set_rotary_down": ("K11000SetRotaryByDegree", 0, -90),
     "set_rotary_right": ("K11000SetRotaryByDegree", 90, 0),
     "set_rotary_left": ("K11000SetRotaryByDegree", -90, 0),
+    "set_pan_cruise_on": ("K11016SetCruise", True),
+    "set_pan_cruise_off": ("K11016SetCruise", False),
     "start_boa": ("K10148StartBoa",),
     "get_motion_tagging": ("K10290GetMotionTagging",),
     "set_motion_tagging_on": ("K10292SetMotionTagging", True),
     "set_motion_tagging_off": ("K10292SetMotionTagging", False),
+    "get_motion_tracking": ("K11020GetMotionTracking",),
+    "set_motion_tracking_on": ("K11022SetMotionTracking", True),
+    "set_motion_tracking_off": ("K11022SetMotionTracking", False),
+    "set_fps_5": ("K10052SetFPS", 5),
+    "set_fps_10": ("K10052SetFPS", 10),
+    "set_fps_15": ("K10052SetFPS", 15),
+    "set_fps_20": ("K10052SetFPS", 20),
 }
 
 
