@@ -16,7 +16,7 @@ It just works!
 
 Streams direct from camera without additional bandwidth or subscriptions.
 
-Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/mediamtx](https://github.com/aler9/mediamtx).
+Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [bluenviron/mediamtx](https://github.com/bluenviron/mediamtx).
 
 
 Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) this project if you found it useful, or use the [affiliate link](https://amzn.to/3NLnbvt) when shopping on amazon!
@@ -38,6 +38,16 @@ docker run \
 You can then use the web interface at `http://localhost:5000` where localhost is the hostname or ip of the machine running the bridge.
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
+
+## What's Changed in v2.1.8
+
+* NEW: Camera Commands
+  * `set_pan_cruise_on`/ `set_pan_cruise_off`  - Enables or disables the Pan Scan ("Cruise") behavior, where the camera cycles through configured waypoints every 10 seconds. Thanks @jhansche
+  * `set_motion_tracking_on`/`set_motion_tracking_off`/`get_motion_tracking` - Follow detected motion events on Pan Cams. Thanks @jhansche
+* NEW: ENV Option
+  * `ROTATE_IMG_CAM_NAME=<true|0|1|2|3>` - Rotate snapshots for a single camera. #804
+* UPDATE: MediaMTX to v0.23.3
+* UPDATE: WebRTC offer to use SDP for compatibility with MTX v0.23.3
 
 ## What's Changed in v2.1.7
 
