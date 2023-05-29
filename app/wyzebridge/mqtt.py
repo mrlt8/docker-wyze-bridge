@@ -9,7 +9,7 @@ import paho.mqtt.publish
 from wyzebridge.bridge_utils import env_bool
 from wyzebridge.config import IMG_PATH, MQTT_DISCOVERY, VERSION
 from wyzebridge.logging import logger
-from wyzebridge.wyze_control import GET_CMDS, GET_PAYLOAD, SET_CMDS
+from wyzebridge.wyze_commands import GET_CMDS, GET_PAYLOAD, SET_CMDS
 from wyzecam import WyzeCamera
 
 MQTT_ENABLED = bool(env_bool("MQTT_HOST"))
@@ -42,8 +42,6 @@ def wyze_discovery(cam: WyzeCamera, cam_uri: str) -> None:
 
     if MQTT_DISCOVERY:
         base_payload = {
-            "availability_topic": f"{base}state",
-            "payload_not_available": "stopped",
             "device": {
                 "name": f"Wyze Cam {cam.nickname}",
                 "connections": [["mac", cam.mac]],
@@ -57,6 +55,8 @@ def wyze_discovery(cam: WyzeCamera, cam_uri: str) -> None:
 
         entities = {
             "preview": {
+                "availability_topic": f"{base}state",
+                "payload_not_available": "stopped",
                 "type": "camera",
                 "payload": {
                     "topic": f"{base}image",
@@ -68,7 +68,7 @@ def wyze_discovery(cam: WyzeCamera, cam_uri: str) -> None:
                 "payload": {
                     "state_topic": f"{base}irled",
                     "command_topic": f"{base}irled/set",
-                    "payload_on": 3,
+                    "payload_on": 1,
                     "payload_off": 2,
                     "icon": "mdi:lightbulb-night",
                 },
@@ -107,7 +107,6 @@ def wyze_discovery(cam: WyzeCamera, cam_uri: str) -> None:
                 "name"
             ] = f"Wyze Cam {cam.nickname} {' '.join(entity.upper().split('_'))}"
             payload["uniq_id"] = f"WYZE{cam.mac}{entity.upper()}"
-
             msgs.append((topic, json.dumps(payload)))
     send_mqtt(msgs)
 

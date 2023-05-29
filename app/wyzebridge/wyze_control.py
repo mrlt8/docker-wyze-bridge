@@ -10,53 +10,9 @@ import requests
 from wyzebridge.bridge_utils import env_bool
 from wyzebridge.config import BOA_COOLDOWN, BOA_INTERVAL, IMG_PATH
 from wyzebridge.logging import logger
-
-# from wyzebridge.mqtt import send_mqtt
+from wyzebridge.mqtt import MQTT_ENABLED, send_mqtt
+from wyzebridge.wyze_commands import CMD_VALUES, GET_CMDS, GET_PAYLOAD, SET_CMDS
 from wyzecam import WyzeIOTCSession, WyzeIOTCSessionState, tutk_protocol
-
-GET_CMDS = {
-    "status": None,
-    "take_photo": "K10058TakePhoto",
-    "irled": "K10044GetIRLEDStatus",
-    "night_vision": "K10040GetNightVisionStatus",
-    "status_light": "K10030GetNetworkLightStatus",
-    "camera_time": "K10090GetCameraTime",
-    "night_switch": "K10624GetAutoSwitchNightType",
-    "alarm": "K10632GetAlarmFlashing",
-    "start_boa": "K10148StartBoa",
-    "pan_cruise": "K11014GetCruise",
-    "motion_tracking": "K11020GetMotionTracking",
-    "motion_tagging": "K10290GetMotionTagging",
-    "camera_info": "K10020CheckCameraInfo",
-    "rtsp": "K10604GetRtspParam",
-    "param_info": "K10020CheckCameraParams",  # Requires a Payload
-}
-
-# These GET_CMDS can include a payload:
-GET_PAYLOAD = {"param_info"}
-
-SET_CMDS = {
-    "start": None,
-    "stop": None,
-    "disable": None,
-    "enable": None,
-    "irled": "K10046SetIRLEDStatus",
-    "night_vision": "K10042SetNightVisionStatus",
-    "status_light": "K10032SetNetworkLightStatus",
-    "camera_time": "K10092SetCameraTime",
-    "night_switch": "K10626SetAutoSwitchNightType",
-    "alarm": "K10630SetAlarmFlashing",
-    "rotary_action": "K11002SetRotaryByAction",
-    "rotary_degree": "K11000SetRotaryByDegree",
-    "reset_rotation": "K11004ResetRotatePosition",
-    "pan_cruise": "K11016SetCruise",
-    "motion_tracking": "K10292SetMotionTagging",
-    "motion_tagging": "K10292SetMotionTagging",
-    "fps": "K10052SetFPS",
-    "rtsp": "K10600SetRtspSwitch",
-}
-
-CMD_VALUES = {"on": 1, "off": 2, "auto": 3, "true": 1, "false": 2}
 
 
 def cam_http_alive(ip: str) -> bool:
@@ -187,6 +143,9 @@ def camera_control(
     """
 
     boa = check_boa_enabled(sess, uri)
+
+    update_mqtt_values(sess)
+
     while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
         boa_control(sess, boa)
         resp = {}
@@ -216,7 +175,21 @@ def camera_control(
                 camera_info.put(resp, block=False)
 
 
-def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str) -> dict:
+def update_mqtt_values(sess: WyzeIOTCSession):
+    if not MQTT_ENABLED:
+        return
+    param = send_tutk_msg(sess, ("param_info", "2,50"), False).get("param_info")
+
+    if param and (resp := param.get("response")):
+        send_mqtt(
+            [
+                (f"wyzebridge/{sess.camera.name_uri}/night_vision", resp.get("2", 0)),
+                (f"wyzebridge/{sess.camera.name_uri}/irled", resp.get("50", 0)),
+            ]
+        )
+
+
+def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: bool = True) -> dict:
     """
     Send tutk protocol message to camera.
 
@@ -227,7 +200,7 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str) -> dict:
     Rreturns:
     - dictionary: tutk response from camera.
     """
-    tutk_msg, topic, payload, payload_str = lookup_cmd(cmd)
+    tutk_msg, topic, payload, payload_str = lookup_cmd(cmd, log)
     resp = {"command": topic, "payload": payload_str}
 
     if not tutk_msg:
@@ -254,18 +227,18 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str) -> dict:
             resp["value"] = payload
         else:
             resp["value"] = ",".join(map(str, payload))
-
-    logger.info(f"[CONTROL] Response: {resp}")
+    if log:
+        logger.info(f"[CONTROL] Response: {resp}")
     return {topic: resp}
 
 
-def lookup_cmd(cmd: tuple[str, Optional[str | dict]] | str) -> tuple:
+def lookup_cmd(cmd: tuple[str, Optional[str | dict]] | str, log: bool = True) -> tuple:
     topic, payload_str = cmd if isinstance(cmd, tuple) else (cmd, None)
 
     should_set = payload_str and topic not in GET_PAYLOAD
-
     log_msg = f"SET: {topic}={payload_str}" if should_set else f"GET: {topic}"
-    logger.info(f"[CONTROL] Attempting to {log_msg}")
+    if log:
+        logger.info(f"[CONTROL] Attempting to {log_msg}")
 
     tutk_topic = SET_CMDS.get(topic) if should_set else GET_CMDS.get(topic)
 
@@ -292,7 +265,7 @@ def motion_alarm(cam: dict):
         logger.info(f"[MOTION] Alarm file detected at {cam['last_photo'][1]}")
         cam["cooldown"] = datetime.now() + timedelta(seconds=BOA_COOLDOWN)
         cam["last_alarm"] = cam["last_photo"]
-    # send_mqtt([(f"wyzebridge/{cam['uri']}/motion", motion)])
+    send_mqtt([(f"wyzebridge/{cam['uri']}/motion", motion)])
     if motion and (http := env_bool("boa_motion")):
         try:
             resp = requests.get(http.format(cam_name=cam["uri"]))
