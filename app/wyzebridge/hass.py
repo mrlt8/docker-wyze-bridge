@@ -44,6 +44,8 @@ def setup_hass(hass_token: Optional[str]) -> None:
                 environ[f"NET_MODE_{cam_name}"] = str(cam["NET_MODE"])
             if "ROTATE" in cam:
                 environ[f"ROTATE_CAM_{cam_name}"] = str(cam["ROTATE"])
+            if "ROTATE_IMG" in cam:
+                environ[f"ROTATE_IMG_{cam_name}"] = str(cam["ROTATE_IMG"])
             if "QUALITY" in cam:
                 environ[f"QUALITY_{cam_name}"] = str(cam["QUALITY"])
             if "LIVESTREAM" in cam:
