@@ -8,7 +8,7 @@ from enum import IntEnum
 from queue import Empty, Full
 from subprocess import PIPE, Popen
 from threading import Thread
-from time import time
+from time import sleep, time
 from typing import Optional
 
 from wyzebridge.bridge_utils import env_bool, env_cam
@@ -83,8 +83,8 @@ class WyzeStream:
 
         self.rtsp_fw_enabled: bool = False
         self.start_time: float = 0
-        self.cam_resp: Optional[mp.Queue] = mp.Queue(1)
-        self.cam_cmd: Optional[mp.Queue] = mp.Queue(1)
+        self.cam_resp: mp.Queue
+        self.cam_cmd: mp.Queue
         self.process: Optional[mp.Process] = None
         self._state: c_int = mp.Value("i", StreamStatus.STOPPED, lock=False)
         self.setup()
@@ -125,6 +125,8 @@ class WyzeStream:
             f"🎉 Connecting to WyzeCam {self.camera.model_name} - {self.camera.nickname} on {self.camera.ip}"
         )
         self.start_time = time()
+        self.cam_resp = mp.Queue(1)
+        self.cam_cmd = mp.Queue(1)
         self.process = mp.Process(
             target=start_tutk_stream,
             args=(
@@ -227,15 +229,17 @@ class WyzeStream:
             "req_frame_size": self.options.frame_size,
             "req_bitrate": self.options.bitrate,
         }
-        if not self.camera.camera_info:
+        if self.connected and not self.camera.camera_info:
             self.update_cam_info()
         if self.camera.camera_info and "boa_info" in self.camera.camera_info:
             data["boa_url"] = f"http://{self.camera.ip}/cgi-bin/hello.cgi?name=/"
         return data | self.camera.dict(exclude={"p2p_id", "enr", "parent_enr"})
 
     def update_cam_info(self) -> None:
-        resp = self.send_cmd("caminfo")
-        if resp and ("response" not in resp):
+        if not self.connected:
+            return
+
+        if (resp := self.send_cmd("caminfo")) and ("response" not in resp):
             self.camera.set_camera_info(resp)
 
     def boa_info(self) -> dict:
@@ -246,7 +250,7 @@ class WyzeStream:
 
     def send_cmd(self, cmd: str, value: str | dict = "") -> dict:
         if cmd in {"status", "start", "stop", "disable", "enable"}:
-            logger.info(f"[CONTROL] {cmd.upper()}")
+            logger.info(f"[{self.uri}][CONTROL] {cmd.upper()}")
             response = getattr(self, cmd)()
             return {
                 "status": "success" if response else "error",
@@ -254,25 +258,23 @@ class WyzeStream:
                 "value": response,
             }
 
-        if (
-            env_bool("disable_control")
-            or not self.connected
-            or not self.cam_cmd
-            or not self.cam_resp
-        ):
-            return {"response": "camera not available"}
-
-        with contextlib.suppress(Empty):
-            self.cam_resp.get_nowait()
+        if env_bool("disable_control"):
+            return {"response": "control disabled"}
+        if on_demand := not self.connected:
+            self.start()
+            while not self.connected and time() - self.start_time < 10:
+                sleep(0.1)
+        self._clear_mp_queue()
         try:
-            self.cam_cmd.put((cmd, value), timeout=5)
-            cam_resp = self.cam_resp.get(timeout=5)
+            self.cam_cmd.put_nowait((cmd, value))
+            cam_resp = self.cam_resp.get(timeout=10)
         except Full:
-            with contextlib.suppress(Empty):
-                self.cam_resp.get_nowait()
             return {"response": "camera busy"}
         except Empty:
             return {"response": "timed out"}
+        finally:
+            if on_demand:
+                self.stop()
         return cam_resp.pop(cmd, None) or {"response": "could not get result"}
 
     def check_rtsp_fw(self, force: bool = False) -> Optional[str]:
@@ -292,6 +294,12 @@ class WyzeStream:
                 return session.check_native_rtsp(start_rtsp=force)
         except TutkError:
             return
+
+    def _clear_mp_queue(self):
+        with contextlib.suppress(Empty):
+            self.cam_cmd.get_nowait()
+        with contextlib.suppress(Empty):
+            self.cam_resp.get_nowait()
 
 
 def start_tutk_stream(
