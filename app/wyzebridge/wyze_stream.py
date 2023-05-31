@@ -250,7 +250,7 @@ class WyzeStream:
 
     def send_cmd(self, cmd: str, value: str | dict = "") -> dict:
         if cmd in {"status", "start", "stop", "disable", "enable"}:
-            logger.info(f"[{self.uri}][CONTROL] {cmd.upper()}")
+            logger.info(f"[CONTROL] {self.uri}:{cmd.upper()}")
             response = getattr(self, cmd)()
             return {
                 "status": "success" if response else "error",
@@ -261,6 +261,7 @@ class WyzeStream:
         if env_bool("disable_control"):
             return {"response": "control disabled"}
         if on_demand := not self.connected:
+            logger.info(f"[CONTROL] Connecting to {self.uri}")
             self.start()
             while not self.connected and time() - self.start_time < 10:
                 sleep(0.1)
@@ -274,6 +275,7 @@ class WyzeStream:
             return {"response": "timed out"}
         finally:
             if on_demand:
+                logger.info(f"[CONTROL] Disconnecting from {self.uri}")
                 self.stop()
         return cam_resp.pop(cmd, None) or {"response": "could not get result"}
 
