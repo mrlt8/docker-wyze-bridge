@@ -204,7 +204,9 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: bool = True) -> 
     resp = {"command": topic, "payload": payload_str}
 
     if not tutk_msg:
-        return resp | {"status": "error", "response": "Invalid command"}
+        return {
+            topic: resp | {"status": "error", "response": payload or "Invalid command"}
+        }
 
     try:
         with sess.iotctrl_mux() as mux:
@@ -243,18 +245,24 @@ def lookup_cmd(cmd: tuple[str, Optional[str | dict]] | str, log: bool = True) ->
     tutk_topic = SET_CMDS.get(topic) if should_set else GET_CMDS.get(topic)
 
     if not tutk_topic or not (tutk_msg := getattr(tutk_protocol, tutk_topic, None)):
-        return None, topic, payload_str, payload_str
+        logger.error(f"[CONTROL] Invalid command: `{topic}` not found")
+        return None, topic, None, payload_str
 
     if isinstance(payload_str, dict):
         payload = {k: int(v) if str(v).isdigit() else v for k, v in payload_str.items()}
-        return tutk_msg(**payload), topic, payload, payload
+        try:
+            return tutk_msg(**payload), topic, payload, payload
+        except TypeError as ex:
+            logger.error(f"[CONTROL] {ex}")
+            return None, topic, ex, payload_str
 
     payload = []
-    for v in [v.strip().lower() for v in payload_str.split(",")]:
-        if v.strip("-").isdigit():
-            payload.append(int(v))
-        elif v in CMD_VALUES:
-            payload.append(CMD_VALUES.get(v))
+    for i in str(payload_str).split(","):
+        value = i.strip().lower()
+        if value.strip("-").isdigit():
+            payload.append(int(value))
+        elif value in CMD_VALUES:
+            payload.append(CMD_VALUES.get(value))
     return tutk_msg(*payload), topic, payload, payload_str
 
 
