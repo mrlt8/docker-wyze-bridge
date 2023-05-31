@@ -18,6 +18,7 @@ from wyzebridge.logging import logger
 from wyzebridge.mqtt import send_mqtt, update_mqtt_state, wyze_discovery
 from wyzebridge.webhooks import ifttt_webhook
 from wyzebridge.wyze_api import WyzeApi
+from wyzebridge.wyze_commands import GET_CMDS, SET_CMDS
 from wyzebridge.wyze_control import camera_control
 from wyzecam import TutkError, WyzeAccount, WyzeCamera, WyzeIOTC, WyzeIOTCSession
 
@@ -260,6 +261,8 @@ class WyzeStream:
 
         if env_bool("disable_control"):
             return {"response": "control disabled"}
+        if cmd not in GET_CMDS | SET_CMDS:
+            return {"response": "invalid command"}
         if on_demand := not self.connected:
             logger.info(f"[CONTROL] Connecting to {self.uri}")
             self.start()
