@@ -40,4 +40,14 @@ SET_CMDS = {
     "rtsp": "K10600SetRtspSwitch",
 }
 
-CMD_VALUES = {"on": 1, "off": 2, "auto": 3, "true": 1, "false": 2}
+CMD_VALUES = {
+    "on": 1,
+    "off": 2,
+    "auto": 3,
+    "true": 1,
+    "false": 2,
+    "left": (-90, 0),
+    "right": (90, 0),
+    "up": (0, 90),
+    "down": (0, -90),
+}
