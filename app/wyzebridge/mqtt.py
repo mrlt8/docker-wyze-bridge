@@ -190,6 +190,11 @@ def _on_message(client, callback, msg):
     cam, topic, action = msg_topic[-3:]
     include_payload = action == "set" or topic in GET_PAYLOAD
 
-    resp = callback(cam, topic, msg.payload.decode() if include_payload else "")
+    payload = msg.payload.decode()
+    with contextlib.suppress(json.JSONDecodeError):
+        json_msg = json.loads(payload)
+        payload = json_msg if len(json_msg) > 1 else next(iter(json_msg.values()))
+
+    resp = callback(cam, topic, payload if include_payload else "")
     if resp.get("status") != "success":
         logger.info(f"[MQTT] {resp}")
