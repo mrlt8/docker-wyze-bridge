@@ -13,6 +13,15 @@ See [wiki](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Commands) for
 * NEW: start/stop/enable/disable over MQTT.
 * FIXED: camera busy on re-connect.
 
+## What's Changed in v2.1.8
+
+* NEW: Camera Commands
+  * `set_pan_cruise_on`/ `set_pan_cruise_off`  - Enables or disables the Pan Scan ("Cruise") behavior, where the camera cycles through configured waypoints every 10 seconds. Thanks @jhansche
+  * `set_motion_tracking_on`/`set_motion_tracking_off`/`get_motion_tracking` - Follow detected motion events on Pan Cams. Thanks @jhansche
+* NEW: ENV Option
+  * `ROTATE_IMG_CAM_NAME=<true|0|1|2|3>` - Rotate snapshots for a single camera. #804
+* UPDATE: MediaMTX to v0.23.3
+* UPDATE: WebRTC offer to use SDP for compatibility with MTX v0.23.3
 
 ## What's Changed in v2.1.7
 
