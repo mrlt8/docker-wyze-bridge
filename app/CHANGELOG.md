@@ -1,3 +1,18 @@
+## What's Changed in v2.2.0
+
+⚠️ Breaking changes for MQTT/REST API 
+
+See [wiki](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Commands) for details.
+
+* CHANGED: API commands are now split into topics and payload values for more flexibility.
+* NEW: API commands will initiate connection if not connected.
+* NEW: json payload for API commands.
+* NEW: `PUT`/`POST` methods for REST API.
+* NEW: MQTT topics for each get and set command.
+* NEW: MQTT value gets updated on set command.
+* NEW: start/stop/enable/disable over MQTT.
+* FIXED: camera busy on re-connect.
+
 ## What's Changed in v2.1.8
 
 * NEW: Camera Commands

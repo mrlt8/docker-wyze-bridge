@@ -1,5 +1,4 @@
 import contextlib
-import json
 import socket
 from datetime import datetime, timedelta
 from multiprocessing import Queue
@@ -11,52 +10,9 @@ import requests
 from wyzebridge.bridge_utils import env_bool
 from wyzebridge.config import BOA_COOLDOWN, BOA_INTERVAL, IMG_PATH
 from wyzebridge.logging import logger
-from wyzebridge.mqtt import mqtt_sub_topic, send_mqtt
+from wyzebridge.mqtt import MQTT_ENABLED, send_mqtt
+from wyzebridge.wyze_commands import CMD_VALUES, GET_CMDS, GET_PAYLOAD, SET_CMDS
 from wyzecam import WyzeIOTCSession, WyzeIOTCSessionState, tutk_protocol
-
-CAM_CMDS = {
-    "take_photo": ("K10058TakePhoto",),
-    "get_status_light": ("K10030GetNetworkLightStatus",),
-    "set_status_light_on": ("K10032SetNetworkLightStatus", True),
-    "set_status_light_off": ("K10032SetNetworkLightStatus", False),
-    "get_night_vision": ("K10040GetNightVisionStatus",),
-    "set_night_vision_on": ("K10042SetNightVisionStatus", 1),
-    "set_night_vision_off": ("K10042SetNightVisionStatus", 2),
-    "set_night_vision_auto": ("K10042SetNightVisionStatus", 3),
-    "get_irled_status": ("K10044GetIRLEDStatus",),
-    "set_irled_on": ("K10046SetIRLEDStatus", 1),
-    "set_irled_off": ("K10046SetIRLEDStatus", 2),
-    "get_camera_time": ("K10090GetCameraTime",),
-    "set_camera_time": ("K10092SetCameraTime",),
-    "get_night_switch_condition": ("K10624GetAutoSwitchNightType",),
-    "set_night_switch_dusk": ("K10626SetAutoSwitchNightType", 1),
-    "set_night_switch_dark": ("K10626SetAutoSwitchNightType", 2),
-    "set_alarm_on": ("K10630SetAlarmFlashing", True),
-    "set_alarm_off": ("K10630SetAlarmFlashing", False),
-    "get_alarm_status": ("K10632GetAlarmFlashing",),
-    "set_action_left": ("K11002SetRotaryByAction", 1, 0),
-    "set_action_right": ("K11002SetRotaryByAction", 2, 0),
-    "set_action_up": ("K11002SetRotaryByAction", 0, 1),
-    "set_action_down": ("K11002SetRotaryByAction", 0, 2),
-    "reset_rotation": ("K11004ResetRotatePosition",),
-    "set_rotary_up": ("K11000SetRotaryByDegree", 0, 90),
-    "set_rotary_down": ("K11000SetRotaryByDegree", 0, -90),
-    "set_rotary_right": ("K11000SetRotaryByDegree", 90, 0),
-    "set_rotary_left": ("K11000SetRotaryByDegree", -90, 0),
-    "set_pan_cruise_on": ("K11016SetCruise", True),
-    "set_pan_cruise_off": ("K11016SetCruise", False),
-    "start_boa": ("K10148StartBoa",),
-    "get_motion_tagging": ("K10290GetMotionTagging",),
-    "set_motion_tagging_on": ("K10292SetMotionTagging", True),
-    "set_motion_tagging_off": ("K10292SetMotionTagging", False),
-    "get_motion_tracking": ("K11020GetMotionTracking",),
-    "set_motion_tracking_on": ("K11022SetMotionTracking", True),
-    "set_motion_tracking_off": ("K11022SetMotionTracking", False),
-    "set_fps_5": ("K10052SetFPS", 5),
-    "set_fps_10": ("K10052SetFPS", 10),
-    "set_fps_15": ("K10052SetFPS", 15),
-    "set_fps_20": ("K10052SetFPS", 20),
-}
 
 
 def cam_http_alive(ip: str) -> bool:
@@ -186,26 +142,27 @@ def camera_control(
     :param uri: URI-safe name of the camera.
     """
 
-    mqtt = mqtt_sub_topic([f"{uri.lower()}/cmd"], sess)
-    if mqtt:
-        mqtt.on_message = _on_message
-
     boa = check_boa_enabled(sess, uri)
+
+    update_mqtt_values(sess)
+
     while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
         boa_control(sess, boa)
         resp = {}
         with contextlib.suppress(Empty, ValueError):
             cmd = camera_cmd.get(timeout=BOA_INTERVAL)
-            if cmd == "camera_info":
+            topic = cmd[0] if isinstance(cmd, tuple) else cmd
+
+            if topic == "caminfo":
                 cam_info = sess.camera.camera_info or {}
                 if boa:
                     cam_info["boa_info"] = {
                         "last_alarm": boa["last_alarm"],
                         "last_photo": boa["last_photo"],
                     }
-                resp = {cmd: cam_info}
+                resp = {topic: cam_info}
             else:
-                resp = send_tutk_msg(sess, cmd, "web-ui")
+                resp = send_tutk_msg(sess, cmd)
                 if boa and cmd == "take_photo":
                     pull_last_image(boa, "photo")
 
@@ -216,48 +173,102 @@ def camera_control(
         if resp:
             with contextlib.suppress(Full):
                 camera_info.put(resp, block=False)
-    if mqtt:
-        mqtt.loop_stop()
 
 
-def _on_message(client, sess, msg):
-    if not (cmd := msg.payload.decode()) or cmd not in CAM_CMDS:
+def update_mqtt_values(sess: WyzeIOTCSession):
+    if not MQTT_ENABLED:
         return
-    if resp := send_tutk_msg(sess, cmd, "mqtt").get(cmd):
-        client.publish(msg.topic, json.dumps(resp))
+    param = send_tutk_msg(sess, ("param_info", "2,50"), False).get("param_info")
+
+    if param and (resp := param.get("response")):
+        send_mqtt(
+            [
+                (f"wyzebridge/{sess.camera.name_uri}/night_vision", resp.get("2", 0)),
+                (f"wyzebridge/{sess.camera.name_uri}/irled", resp.get("50", 0)),
+            ]
+        )
 
 
-def send_tutk_msg(sess: WyzeIOTCSession, cmd: str, source: str) -> dict:
+def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: bool = True) -> dict:
     """
     Send tutk protocol message to camera.
 
     Parameters:
     - sess (WyzeIOTCSession): used to communicate with the camera.
-    - cmd (str): Command to send to the camera. See CAM_CMDS.
-    - source (str): The source of the command for logging.
+    - cmd (tuple|str): tutk command to send to the camera.
 
     Rreturns:
     - dictionary: tutk response from camera.
-
     """
-    resp = {"cmd": cmd, "status": "error", "response": "timeout"}
-    if not (proto := CAM_CMDS.get(cmd)):
-        return resp | {"response": "Unknown command"}
-    logger.info(f"[CONTROL] Request: {cmd} via {source.upper()}!")
+    tutk_msg, topic, payload, payload_str = lookup_cmd(cmd, log)
+    resp = {"command": topic, "payload": payload_str}
+
+    if not tutk_msg:
+        return {
+            topic: resp | {"status": "error", "response": payload or "Invalid command"}
+        }
+
     try:
         with sess.iotctrl_mux() as mux:
-            iotc = mux.send_ioctl(getattr(tutk_protocol, proto[0])(*proto[1:]))
-            if proto[0] in {"K11000SetRotaryByDegree", "K11004ResetRotatePosition"}:
+            iotc = mux.send_ioctl(tutk_msg)
+
+            # These do not return a response
+            if tutk_msg.code in {11000, 11004}:
                 resp |= {"status": "success", "response": None}
             elif res := iotc.result(timeout=5):
-                resp |= {"status": "success", "response": ",".join(map(str, res))}
+                value = res if isinstance(res, (dict, int)) else ",".join(map(str, res))
+                resp |= {"status": "success", "response": value, "value": value}
     except Empty:
         resp |= {"status": "success", "response": None}
     except Exception as ex:
-        resp |= {"response": ex}
+        resp |= {"response": ex, "status": "error"}
         logger.warning(f"[CONTROL] {ex}")
-    logger.info(f"[CONTROL] Response: {resp}")
-    return {cmd: resp}
+
+    if payload and topic not in GET_PAYLOAD:
+        if isinstance(payload, dict):
+            resp["value"] = payload
+        else:
+            resp["value"] = ",".join(map(str, payload))
+    if log:
+        logger.info(f"[CONTROL] Response: {resp}")
+    return {topic: resp}
+
+
+def lookup_cmd(cmd: tuple[str, Optional[str | dict]] | str, log: bool = True) -> tuple:
+    topic, payload_str = cmd if isinstance(cmd, tuple) else (cmd, None)
+
+    should_set = payload_str and topic not in GET_PAYLOAD
+    log_msg = f"SET: {topic}={payload_str}" if should_set else f"GET: {topic}"
+    if log:
+        logger.info(f"[CONTROL] Attempting to {log_msg}")
+
+    tutk_topic = SET_CMDS.get(topic) if should_set else GET_CMDS.get(topic)
+
+    if not tutk_topic or not (tutk_msg := getattr(tutk_protocol, tutk_topic, None)):
+        logger.error(f"[CONTROL] Invalid command: `{topic}` not found")
+        return None, topic, None, payload_str
+
+    if isinstance(payload_str, dict):
+        payload = {k: int(v) if str(v).isdigit() else v for k, v in payload_str.items()}
+        try:
+            return tutk_msg(**payload), topic, payload, payload
+        except TypeError as ex:
+            logger.error(f"[CONTROL] {ex}")
+            return None, topic, ex, payload_str
+
+    payload = []
+    print(payload_str)
+    print(type(payload_str))
+    if isinstance(payload_str, int):
+        payload.append(payload_str)
+    elif payload_str and (value := CMD_VALUES.get(payload_str.strip().lower())):
+        payload = [value] if isinstance(value, int) else value
+    elif payload_str:
+        payload = [
+            int(v) for v in payload_str.split(",") if v.strip().strip("-").isdigit()
+        ]
+
+    return tutk_msg(*payload), topic, payload, payload_str
 
 
 def motion_alarm(cam: dict):

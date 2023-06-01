@@ -8,7 +8,7 @@ from enum import IntEnum
 from queue import Empty, Full
 from subprocess import PIPE, Popen
 from threading import Thread
-from time import time
+from time import sleep, time
 from typing import Optional
 
 from wyzebridge.bridge_utils import env_bool, env_cam
@@ -18,6 +18,7 @@ from wyzebridge.logging import logger
 from wyzebridge.mqtt import send_mqtt, update_mqtt_state, wyze_discovery
 from wyzebridge.webhooks import ifttt_webhook
 from wyzebridge.wyze_api import WyzeApi
+from wyzebridge.wyze_commands import GET_CMDS, SET_CMDS
 from wyzebridge.wyze_control import camera_control
 from wyzecam import TutkError, WyzeAccount, WyzeCamera, WyzeIOTC, WyzeIOTCSession
 
@@ -83,8 +84,8 @@ class WyzeStream:
 
         self.rtsp_fw_enabled: bool = False
         self.start_time: float = 0
-        self.cam_resp: Optional[mp.Queue] = mp.Queue(1)
-        self.cam_cmd: Optional[mp.Queue] = mp.Queue(1)
+        self.cam_resp: mp.Queue
+        self.cam_cmd: mp.Queue
         self.process: Optional[mp.Process] = None
         self._state: c_int = mp.Value("i", StreamStatus.STOPPED, lock=False)
         self.setup()
@@ -108,7 +109,7 @@ class WyzeStream:
     @state.setter
     def state(self, value):
         self._state.value = value.value if isinstance(value, StreamStatus) else value
-        update_mqtt_state(self.uri, self.get_status())
+        update_mqtt_state(self.uri, self.status())
 
     @property
     def connected(self) -> bool:
@@ -125,6 +126,8 @@ class WyzeStream:
             f"🎉 Connecting to WyzeCam {self.camera.model_name} - {self.camera.nickname} on {self.camera.ip}"
         )
         self.start_time = time()
+        self.cam_resp = mp.Queue(1)
+        self.cam_cmd = mp.Queue(1)
         self.process = mp.Process(
             target=start_tutk_stream,
             args=(
@@ -199,7 +202,7 @@ class WyzeStream:
         self.camera = cam
         return True
 
-    def get_status(self) -> str:
+    def status(self) -> str:
         try:
             return StreamStatus(self._state.value).name.lower()
         except ValueError:
@@ -227,15 +230,17 @@ class WyzeStream:
             "req_frame_size": self.options.frame_size,
             "req_bitrate": self.options.bitrate,
         }
-        if not self.camera.camera_info:
+        if self.connected and not self.camera.camera_info:
             self.update_cam_info()
         if self.camera.camera_info and "boa_info" in self.camera.camera_info:
             data["boa_url"] = f"http://{self.camera.ip}/cgi-bin/hello.cgi?name=/"
         return data | self.camera.dict(exclude={"p2p_id", "enr", "parent_enr"})
 
     def update_cam_info(self) -> None:
-        resp = self.send_cmd("camera_info")
-        if resp and ("response" not in resp):
+        if not self.connected:
+            return
+
+        if (resp := self.send_cmd("caminfo")) and ("response" not in resp):
             self.camera.set_camera_info(resp)
 
     def boa_info(self) -> dict:
@@ -244,24 +249,37 @@ class WyzeStream:
             return {}
         return self.camera.camera_info.get("boa_info", {})
 
-    def send_cmd(self, cmd: str) -> dict:
-        if (
-            env_bool("disable_control")
-            or not self.connected
-            or not self.cam_cmd
-            or not self.cam_resp
-        ):
-            return {}
+    def send_cmd(self, cmd: str, value: str | dict = "") -> dict:
+        if cmd in {"status", "start", "stop", "disable", "enable"}:
+            logger.info(f"[CONTROL] {self.uri}:{cmd.upper()}")
+            response = getattr(self, cmd)()
+            return {
+                "status": "success" if response else "error",
+                "response": response,
+                "value": response,
+            }
 
-        with contextlib.suppress(Empty):
-            self.cam_resp.get_nowait()
+        if env_bool("disable_control"):
+            return {"response": "control disabled"}
+        if cmd not in GET_CMDS | SET_CMDS:
+            return {"response": "invalid command"}
+        if on_demand := not self.connected:
+            logger.info(f"[CONTROL] Connecting to {self.uri}")
+            self.start()
+            while not self.connected and time() - self.start_time < 10:
+                sleep(0.1)
+        self._clear_mp_queue()
         try:
-            self.cam_cmd.put(cmd, timeout=5)
-            cam_resp = self.cam_resp.get(timeout=5)
+            self.cam_cmd.put_nowait((cmd, value))
+            cam_resp = self.cam_resp.get(timeout=10)
         except Full:
             return {"response": "camera busy"}
         except Empty:
             return {"response": "timed out"}
+        finally:
+            if on_demand:
+                logger.info(f"[CONTROL] Disconnecting from {self.uri}")
+                self.stop()
         return cam_resp.pop(cmd, None) or {"response": "could not get result"}
 
     def check_rtsp_fw(self, force: bool = False) -> Optional[str]:
@@ -281,6 +299,12 @@ class WyzeStream:
                 return session.check_native_rtsp(start_rtsp=force)
         except TutkError:
             return
+
+    def _clear_mp_queue(self):
+        with contextlib.suppress(Empty):
+            self.cam_cmd.get_nowait()
+        with contextlib.suppress(Empty):
+            self.cam_resp.get_nowait()
 
 
 def start_tutk_stream(

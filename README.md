@@ -39,71 +39,21 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.1.8
+## What's Changed in v2.2.0
 
-* NEW: Camera Commands
-  * `set_pan_cruise_on`/ `set_pan_cruise_off`  - Enables or disables the Pan Scan ("Cruise") behavior, where the camera cycles through configured waypoints every 10 seconds. Thanks @jhansche
-  * `set_motion_tracking_on`/`set_motion_tracking_off`/`get_motion_tracking` - Follow detected motion events on Pan Cams. Thanks @jhansche
-* NEW: ENV Option
-  * `ROTATE_IMG_CAM_NAME=<true|0|1|2|3>` - Rotate snapshots for a single camera. #804
-* UPDATE: MediaMTX to v0.23.3
-* UPDATE: WebRTC offer to use SDP for compatibility with MTX v0.23.3
+⚠️ Breaking changes for MQTT/REST API 
 
-## What's Changed in v2.1.7
-
-* FIX: WebRTC not loading in the WebUI.
-* UPDATE: MediaMTX to v0.23.2
-
-## What's Changed in v2.1.6
-
-* UPDATE: MediaMTX to v0.23.0
-* FIXED: Error reading some events.
-* FIXED: Restart MediaMTX on exit and kill flask on cleanup which could prevent the bridge from restarting.
-
-## What's Changed in v2.1.5
-
-* FIX: set_alarm_on/set_alarm_off was inverted #795. Thanks @iferlive!
-* NEW: `URI_MAC=true` to append last 4 characters of the MAC address to the URI to avoid conflicting URIs when multiple cameras share the same name. #760
-* Home Assistant: Add RECORD_FILE_NAME option #791
-* UPDATE: base image to bullseye.
-
-## What's Changed in v2.1.4
-
-* FIX: Record option would not auto-connect. #784 Thanks @JA16122000!
-* 
-
-## What's Changed in v2.1.2/3
-
-* Increase close on-demand time to 60s to prevent reconnect messages. #643 #750 #764
-* Disable default LL-HLS for compatibility with apple. LL-HLS can still be enabled with `LLHLS=true` which will generate the necessary SSL certificates to work on Apple devices.
-* Disable MQTT if connection refused.
-* UPDATED: MediaMTX to [v0.22.2](https://github.com/aler9/mediamtx/releases/tag/v0.22.2)
+* CHANGED: API commands are now split into topics and payload values for more flexibility.
+* NEW: API commands will initiate connection if not connected.
+* NEW: json payload for API commands.
+* NEW: `PUT`/`POST` methods for REST API.
+* NEW: MQTT topics for each get and set command.
+* NEW: MQTT value gets updated on set command.
+* NEW: start/stop/enable/disable over MQTT.
+* FIXED: camera busy on re-connect.
 
 
-## What's Changed in v2.1.1
 
-* FIXED: WebRTC on UDP Port #772
-* UPDATED: MediaMTX to [v0.22.1](https://github.com/aler9/mediamtx/releases/tag/v0.22.1)
-* ENV Options: Re-enable `ON_DEMAND` to toggle connection mode. #643 #750 #764
-
-## What's Changed in v2.1.0
-
-⚠️ This version updates the backend rtsp-simple-server to [MediaMTX](https://github.com/aler9/mediamtx) which may cause some issues if you're using custom rtsp-simple-server related configs.
-
-* CHANGED: rtsp-simple-server to MediaMTX.
-* ENV Options:
-  * New: `SUB_QUALITY` - Specify the quality to be used for the substream. #755
-  * New: `SNAPSHOT_FORMAT` - Specify the output file format when using `SNAPSHOT` which can be used to create a timelapse/save multiple snapshots. e.g., `SNAPSHOT_FORMAT={cam_name}/%Y-%m-%d/%H-%M.jpg` #757:
-* Home Assistant/MQTT:
-  * Fixed: MQTT auto-discovery error #751
-  * New: Additional entities for each of the cameras.
-  * Changed: Default IMG_DIR to `media/wyze/img/` #660
-
-
-Known Issues/Bugs:
-
-* WebUI Audio: Limited audio compatibility between HLS and WebRTC. May need to force the audio codec to `AUDIO_CODEC=aac` for HLS and `AUDIO_CODEC=libopus` for WebRTC.
-* Substream: SD stream seems to have a stuttering issue due to the hardware encoding on the camera. May need to force a re-encode of the video using `FORCE_ENCODE=true`.
 
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)

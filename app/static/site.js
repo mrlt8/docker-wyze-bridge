@@ -652,11 +652,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // cam control
   document.querySelectorAll(".cam-control").forEach((e) => {
-    let cam = e.dataset.cam;
+    let { cam } = e.dataset;
     e.querySelectorAll(".button").forEach((button) => {
       button.addEventListener("click", () => {
         button.classList.add("is-loading");
-        fetch(`api/${cam}/${button.dataset.cmd}`)
+        const { payload } = button.dataset
+        fetch(`api/${cam}/${button.dataset.cmd}${payload ? `/${payload}` : ''}`)
           .then((resp) => resp.json())
           .then((data) => { sendNotification(cam, `${button.dataset.cmd}: ${data.status}`, ["error", false].includes(data.status) ? "danger" : "primary") })
           .catch((error) => { sendNotification(cam, `${button.dataset.cmd}: ${error.message}`, "danger") })
