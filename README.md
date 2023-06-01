@@ -43,6 +43,8 @@ See [basic usage](#basic-usage) for additional information or visit the [wiki pa
 
 ⚠️ Breaking changes for MQTT/REST API 
 
+See [wiki](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Commands) for details.
+
 * CHANGED: API commands are now split into topics and payload values for more flexibility.
 * NEW: API commands will initiate connection if not connected.
 * NEW: json payload for API commands.
