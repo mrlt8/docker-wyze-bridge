@@ -12,7 +12,7 @@ from wyzebridge.config import BOA_COOLDOWN, BOA_INTERVAL, IMG_PATH
 from wyzebridge.logging import logger
 from wyzebridge.mqtt import MQTT_ENABLED, send_mqtt
 from wyzebridge.wyze_commands import CMD_VALUES, GET_CMDS, GET_PAYLOAD, SET_CMDS
-from wyzecam import WyzeIOTCSession, WyzeIOTCSessionState, tutk_protocol
+from wyzecam import TutkError, WyzeIOTCSession, WyzeIOTCSessionState, tutk_protocol
 
 
 def cam_http_alive(ip: str) -> bool:
@@ -211,8 +211,6 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: bool = True) -> 
     try:
         with sess.iotctrl_mux() as mux:
             iotc = mux.send_ioctl(tutk_msg)
-
-            # These do not return a response
             if tutk_msg.code in {11000, 11004}:
                 resp |= {"status": "success", "response": None}
             elif res := iotc.result(timeout=5):
@@ -220,6 +218,8 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: bool = True) -> 
                 resp |= {"status": "success", "response": value, "value": value}
     except Empty:
         resp |= {"status": "success", "response": None}
+    except TutkError as ex:
+        resp |= {"status": "error", "response": ex}
     except Exception as ex:
         resp |= {"response": ex, "status": "error"}
         logger.warning(f"[CONTROL] {ex}")
@@ -257,8 +257,6 @@ def lookup_cmd(cmd: tuple[str, Optional[str | dict]] | str, log: bool = True) ->
             return None, topic, ex, payload_str
 
     payload = []
-    print(payload_str)
-    print(type(payload_str))
     if isinstance(payload_str, int):
         payload.append(payload_str)
     elif payload_str and (value := CMD_VALUES.get(payload_str.strip().lower())):

@@ -1,3 +1,9 @@
+## What's Changed in v2.2.1
+
+* FIXED: topic to set `motion_tracking` Thanks @crslen! #823
+* FIXED: additional cam info was missing from web-ui.
+* NEW: outdoor cam related tutk commands and `battery` topic for API.
+
 ## What's Changed in v2.2.0
 
 ⚠️ Breaking changes for MQTT/REST API 
