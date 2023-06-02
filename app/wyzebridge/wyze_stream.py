@@ -92,7 +92,7 @@ class WyzeStream:
         self.setup()
 
     def setup(self):
-        if self.camera.is_gwell:
+        if self.camera.is_gwell or self.camera.product_model == "LD_CFP":
             logger.info(
                 f"[{self.camera.product_model}] {self.camera.nickname} not supported"
             )
