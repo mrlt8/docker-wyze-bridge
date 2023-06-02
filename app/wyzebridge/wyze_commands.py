@@ -12,6 +12,7 @@ GET_CMDS = {
     "motion_tracking": "K11020GetMotionTracking",
     "motion_tagging": "K10290GetMotionTagging",
     "camera_info": "K10020CheckCameraInfo",
+    "battery": "K10448GetBatteryUsage",
     "rtsp": "K10604GetRtspParam",
     "param_info": "K10020CheckCameraParams",  # Requires a Payload
 }
@@ -34,7 +35,7 @@ SET_CMDS = {
     "rotary_degree": "K11000SetRotaryByDegree",
     "reset_rotation": "K11004ResetRotatePosition",
     "pan_cruise": "K11016SetCruise",
-    "motion_tracking": "K10292SetMotionTagging",
+    "motion_tracking": "K11022SetMotionTracking",
     "motion_tagging": "K10292SetMotionTagging",
     "fps": "K10052SetFPS",
     "rtsp": "K10600SetRtspSwitch",

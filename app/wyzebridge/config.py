@@ -31,7 +31,7 @@ LLHLS: bool = env_bool("LLHLS", style="bool")
 COOLDOWN = env_bool("OFFLINE_TIME", "10", style="int")
 
 
-BOA_INTERVAL: int = env_bool("boa_interval", "5", style="int")
+BOA_INTERVAL: int = env_bool("boa_interval", "15", style="int")
 BOA_COOLDOWN: int = env_bool("boa_cooldown", "20", style="int")
 
 

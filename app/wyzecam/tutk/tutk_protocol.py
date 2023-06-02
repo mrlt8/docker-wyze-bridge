@@ -675,6 +675,53 @@ class K10148StartBoa(TutkWyzeProtocolMessage):
         return encode(self.code, 5, bytes([0, 1, 0, 0, 0]))
 
 
+class K10444SetDeviceState(TutkWyzeProtocolMessage):
+    """
+    Set outdoor cam wake status?
+
+    Parameters:
+    -  value (int): 1 = on; 2 = off. Defaults to on.
+    """
+
+    def __init__(self, value: int = 1):
+        super().__init__(10444)
+        assert 0 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, 1, bytes([self.value]))
+
+
+class K10446CheckConnStatus(TutkWyzeProtocolMessage):
+    """
+    Get connection status on outdoor cam?
+
+    Returns:
+    - json: connection status.
+    """
+
+    def __init__(self):
+        super().__init__(10446)
+
+    def parse_response(self, resp_data):
+        return json.loads(resp_data)
+
+
+class K10448GetBatteryUsage(TutkWyzeProtocolMessage):
+    """
+    Get battery usage on outdoor cam?
+
+    Returns:
+    - json: battery usage.
+    """
+
+    def __init__(self):
+        super().__init__(10448)
+
+    def parse_response(self, resp_data):
+        return json.loads(resp_data)
+
+
 class K10600SetRtspSwitch(TutkWyzeProtocolMessage):
     """
     Set switch value for RTSP server on camera.
