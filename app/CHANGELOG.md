@@ -1,3 +1,11 @@
+## What's Changed in v2.2.2
+
+* FIXED: `autoplay` URL parameter was being ignored - Thanks @stere0123! #826
+* NEW: Fullscreen mode on web-ui enables autoplay.
+* Disabled `LD_CFP` "Floodlight Pro" because it doesn't use tutk - Thanks @cryptosmasher! #822
+  * This seems to be slightly different than the Gwell cameras (OG/Doorbell Pro). Needs further investigation. 
+* UPDATED: MediaMTX to [v0.23.4](https://github.com/bluenviron/mediamtx/releases/tag/v0.23.4).
+
 ## What's Changed in v2.2.1
 
 * FIXED: topic to set `motion_tracking` Thanks @crslen! #823

@@ -39,6 +39,15 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.2.2
+
+* FIXED: `autoplay` URL parameter was being ignored - Thanks @stere0123! #826
+* NEW: Fullscreen mode on web-ui enables autoplay.
+* Disabled `LD_CFP` "Floodlight Pro" because it doesn't use tutk - Thanks @cryptosmasher! #822
+  * This seems to be slightly different than the Gwell cameras (OG/Doorbell Pro). Needs further investigation. 
+* UPDATED: MediaMTX to [v0.23.4](https://github.com/bluenviron/mediamtx/releases/tag/v0.23.4).
+
+
 ## What's Changed in v2.2.1
 
 * FIXED: topic to set `motion_tracking` Thanks @crslen! #823
@@ -104,7 +113,7 @@ Cameras from [Gwell Times](http://cloud.gwell.cc) are currently not supported:
 | Wyze Cam Doorbell             | WYZEDB3        | ✅                                                           |
 | Wyze Battery Cam Pro          | AN_RSCW        | ❓                                                           |
 | Wyze Cam Doorbell Pro 2       | AN_RDB1        | ❓                                                           |
-| Wyze Cam Flood Light Pro [2K] | LD_CFP         | ❓                                                           |
+| Wyze Cam Flood Light Pro [2K] | LD_CFP         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/822) |
 | Wyze Cam Doorbell Pro         | GW_BE1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276) |
 | Wyze Cam OG                   | GW_GC1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/677) |
 | Wyze Cam OG Telephoto 3x      | GW_GC2         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/677) |
