@@ -169,7 +169,7 @@
                             {% if webrtc or (camera.webrtc and video_format == "kvs") %}
                             <video data-cam="{{cam_uri}}"
                                 class="webrtc loading-preview refresh_img placeholder {{'connected' if camera.connected}}"
-                                muted playsinline {{ "autoplay" if autoplay and camera.connected else 'preload=none' }}
+                                muted playsinline {{ "autoplay" if autoplay and camera.connected else "preload=none" }}
                                 poster="{{camera.img_url or 'static/loading.svg'}}"></video>
                             <i class="fas"></i>
                             {% else %}
