@@ -578,6 +578,7 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll(".fs-display-none").forEach((e) => {
       if (fs) { e.classList.add("fs-mode") } else { e.classList.remove("fs-mode") }
     })
+    if (fs) { autoplay(); }
   }
   document.querySelector(".fullscreen button").addEventListener("click", () => {
     let fs = !getCookie("fullscreen", false) ? "1" : "";
@@ -612,9 +613,10 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     let autoPlay = getCookie("autoplay");
+    let fullscreen = getCookie("fullscreen");
     videos.forEach(video => {
       video.classList.remove("lost");
-      if (!autoPlay) { return }
+      if (!autoPlay && !fullscreen && !video.autoplay) { return }
       if (video.classList.contains("webrtc")) {
         loadWebRTC(video);
       } else if (video.classList.contains("vjs-tech")) {
