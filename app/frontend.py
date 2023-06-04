@@ -67,7 +67,7 @@ def create_app():
                 refresh_period=refresh_period,
                 hass=bool(config.HASS_TOKEN),
                 version=config.VERSION,
-                webrtc=bool(config.BRIDGE_IP) and video_format.lower() == "webrtc",
+                webrtc=bool(config.BRIDGE_IP),
                 show_video=show_video,
                 video_format=video_format.lower(),
                 autoplay=autoplay,
