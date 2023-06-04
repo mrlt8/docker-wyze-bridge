@@ -240,7 +240,7 @@ function refresh_imgs() {
   console.debug("refresh_imgs " + Date.now());
   document.querySelectorAll(".refresh_img").forEach(async function (image) {
     let url = image.getAttribute("src");
-    // Skip if not enabled or battery
+    if (url === null) { return; }
     let CameraBattery = document.getElementById(image.dataset.cam).dataset.battery?.toLowerCase() == "true";
     let CameraConnected = image.classList.contains("connected");
     let CameraEnabled = image.classList.contains("enabled");
@@ -580,8 +580,9 @@ document.addEventListener("DOMContentLoaded", () => {
     })
     if (fs) { autoplay(); }
   }
+
   document.querySelector(".fullscreen button").addEventListener("click", () => {
-    let fs = !getCookie("fullscreen", false) ? "1" : "";
+    let fs = getCookie("fullscreen", false) ? "" : "1";
     setCookie("fullscreen", fs)
     toggleFullscreen(fs)
   })
