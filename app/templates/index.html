@@ -166,10 +166,10 @@
                     <div class="card-image has-text-centered">
                         <figure class="image">
                             {% if show_video and (camera.on_demand or camera.enabled) %}
-                            {% if webrtc or (camera.webrtc and video_format == "kvs") %}
+                            {% if (webrtc and video_format == "webrtc") or (camera.webrtc and video_format == "kvs") %}
                             <video data-cam="{{cam_uri}}"
                                 class="webrtc loading-preview refresh_img placeholder {{'connected' if camera.connected}}"
-                                muted playsinline {{ "autoplay" if autoplay and camera.connected else 'preload=none' }}
+                                muted playsinline {{ "autoplay" if autoplay and camera.connected else "preload=none" }}
                                 poster="{{camera.img_url or 'static/loading.svg'}}"></video>
                             <i class="fas"></i>
                             {% else %}
@@ -356,10 +356,12 @@
                 </div>
                 <div class="dropdown-menu" id="video-menu" role="menu">
                     <div class="dropdown-content">
+                        {% if webrtc %}
                         <a data-action="webrtc" class="dropdown-item {{'is-active' if video_format == 'webrtc'}}"
                             id="webrtc-toggle">
                             WebRTC
                         </a>
+                        {% endif %}
                         <a data-action="hls" class="dropdown-item {{'is-active' if video_format == 'hls'}}"
                             id="hls-toggle">
                             HLS
@@ -400,7 +402,7 @@
     <script src="https://cdn.jsdelivr.net/npm/bulma-toast@2.4.2/dist/bulma-toast.min.js"></script>
     <script src="{{ 'static/site.js' if hass else url_for('static', filename='site.js') }}"></script>
     {% if show_video %}
-    {% if webrtc or video_format =="kvs" %}
+    {% if (webrtc and video_format == "webrtc") or video_format =="kvs" %}
     <script src="{{ 'static/webrtc.js' if hass else url_for('static', filename='webrtc.js') }}"></script>
     {% endif %}
     <script src="https://cdn.jsdelivr.net/npm/video.js/dist/video.min.js"></script>

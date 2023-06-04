@@ -194,9 +194,16 @@ button:not(.offline):disabled+.age {
   display: inline-block;
 }
 
-.is-overlay .age,
 .fs-mode .card-header-title {
+  opacity: 0.8;
+  transition: 0.5s;
+}
+
+.is-overlay .age,
+.card:hover>.fs-mode .card-header-title {
+  transition: 0.5s;
   text-shadow: #000 0px 0px 2px;
+  opacity: 1;
 }
 
 
