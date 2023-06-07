@@ -68,7 +68,7 @@ def setup_hass(hass_token: Optional[str]) -> None:
         environ.update({k.replace(" ", "_").upper(): str(v)})
 
     log_time = "%X" if conf.get("LOG_TIME") else ""
-    log_level = conf.get("DEBUG_LEVEL", "")
+    log_level = conf.get("LOG_LEVEL", "")
     if log_level or log_time:
         log_level = getattr(logging, log_level.upper(), 20)
         format_logging(logging.StreamHandler(stdout), log_level, log_time)

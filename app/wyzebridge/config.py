@@ -45,6 +45,7 @@ DEPRECATED = {
     "PULL_ALARM",
     "MOTION_HTTP",
     "MOTION_COOLDOWN",
+    "DEBUG_LEVEL",
 }
 
 for env in DEPRECATED:

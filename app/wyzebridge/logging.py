@@ -6,7 +6,7 @@ from sys import stdout
 
 from wyzebridge.bridge_utils import env_bool
 
-log_level: int = getattr(logging, env_bool("DEBUG_LEVEL").upper(), 20)
+log_level: int = getattr(logging, env_bool("LOG_LEVEL").upper(), 20)
 log_time = "%X" if env_bool("LOG_TIME") else ""
 
 multiprocessing.current_process().name = "WyzeBridge"

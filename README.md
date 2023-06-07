@@ -39,6 +39,13 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.2.3
+
+* NEW: `LOG_TIME` config to add timestamps to the logs. #830
+* CHANGED: `DEBUG_LEVEL` is now `LOG_LEVEL`
+* FIXED: `DEBUG_LEVEL`/`LOG_LEVEL` and `LOG_FILE` were broken in Home Assistant. #830
+  * `LOG_FILE` now logs to `/config/wyze-bridge/logs/`
+    
 ## What's Changed in v2.2.2
 
 * FIXED: `autoplay` URL parameter was being ignored - Thanks @stere0123! #826

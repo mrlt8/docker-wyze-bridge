@@ -20,8 +20,7 @@ from wyzebridge.webhooks import ifttt_webhook
 from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_commands import GET_CMDS, SET_CMDS
 from wyzebridge.wyze_control import camera_control
-from wyzecam import (TutkError, WyzeAccount, WyzeCamera, WyzeIOTC,
-                     WyzeIOTCSession)
+from wyzecam import TutkError, WyzeAccount, WyzeCamera, WyzeIOTC, WyzeIOTCSession
 
 NET_MODE = {0: "P2P", 1: "RELAY", 2: "LAN"}
 
@@ -404,8 +403,7 @@ def get_cam_params(
             fps = force_fps
         v_codec = video_param.get("type", "h264")
         bit_frame += f" ({v_codec}/{fps}fps)"
-        if env_bool("DEBUG_LEVEL"):
-            logger.info(f"[videoParm] {video_param}")
+        logger.debug(f"[videoParm] {video_param}")
     firmware = sess.camera.camera_info["basicInfo"].get("firmware", "NA")
     if sess.camera.dtls or sess.camera.parent_dtls:
         firmware += " 🔒 (DTLS)"
