@@ -271,11 +271,11 @@ def get_totp(secret: str) -> str:
 def filter_cams(cams: list[WyzeCamera]) -> list[WyzeCamera]:
     if env_bool("FILTER_BLOCK"):
         if filtered := list(filter(lambda cam: not env_filter(cam), cams)):
-            logger.info(f"🪄 BLACKLIST MODE ON [{len(filtered)}/{len(cams)}]")
+            logger.info(f"🪄 DENYLIST MODE ON [{len(filtered)}/{len(cams)}]")
             return filtered
     elif any(key.startswith("FILTER_") for key in environ):
         if filtered := list(filter(env_filter, cams)):
-            logger.info(f"🪄 WHITELIST MODE ON [{len(filtered)}/{len(cams)}]")
+            logger.info(f"🪄 ALLOWLIST MODE ON [{len(filtered)}/{len(cams)}]")
             return filtered
     return cams
 
