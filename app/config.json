@@ -100,6 +100,7 @@
         "FFMPEG_CMD": "str?",
         "DEBUG_LEVEL": "list(INFO|DEBUG)?",
         "LOG_FILE": "bool?",
+        "LOG_TIME": "bool?",
         "DEBUG_FFMPEG": "bool?",
         "IGNORE_RES": "int?",
         "BOA_ENABLED": "bool?",
