@@ -1,10 +1,12 @@
 import json
-from os import environ
+import logging
+from os import environ, makedirs
+from sys import stdout
 from typing import Optional
 
 import requests
 import wyzecam
-from wyzebridge.logging import logger
+from wyzebridge.logging import format_logging, logger
 
 
 def setup_hass(hass_token: Optional[str]) -> None:
@@ -64,3 +66,15 @@ def setup_hass(hass_token: Optional[str]) -> None:
 
     for k, v in conf.items():
         environ.update({k.replace(" ", "_").upper(): str(v)})
+
+    log_time = "%X" if conf.get("LOG_TIME") else ""
+    log_level = conf.get("LOG_LEVEL", "")
+    if log_level or log_time:
+        log_level = getattr(logging, log_level.upper(), 20)
+        format_logging(logging.StreamHandler(stdout), log_level, log_time)
+    if conf.get("LOG_FILE"):
+        log_path = "/config/wyze-bridge/logs/"
+        log_file = f"{log_path}debug.log"
+        logger.info(f"Logging to file: {log_file}")
+        makedirs(log_path, exist_ok=True)
+        format_logging(logging.FileHandler(log_file), logging.DEBUG, "%Y/%m/%d %X")
