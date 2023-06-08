@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="columns is-centered">
+    <div class="column is-5">
+        <p class="subtitle has-text-white">Wyze credentials required to complete authentication.
+        </p>
+        <form id="login" class="box">
+            <div id="error"></div>
+            <div class="field">
+                <label for="" class="label">Email</label>
+                <div class="control has-icons-left">
+                    <input name="email" type="email" placeholder="e.g. me@mail.com" class="input" required>
+                    <span class="icon is-small is-left">
+                        <i class="fa fa-envelope"></i>
+                    </span>
+                </div>
+            </div>
+            <div class="field">
+                <label for="" class="label">Password</label>
+                <div class="control has-icons-left">
+                    <input name="password" type="password" placeholder="*******" class="input" required>
+                    <span class="icon is-small is-left">
+                        <i class="fa fa-lock"></i>
+                    </span>
+                </div>
+            </div>
+            <div class="field">
+                <button id="submitLogin" class="button is-success is-large is-fullwidth">
+                    Login
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+    const loginForm = document.getElementById("login")
+    const button = document.getElementById("submitLogin").classList
+    loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        button.add("is-loading");
+        fetch("login", {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: new URLSearchParams(new FormData(loginForm)).toString()
+        }).then(resp => resp.json()).then(data => {
+            if (data.status == "success") {
+                loginForm.innerHTML = '<article class="message is-success container"><div class="message-body"><span class="icon"><i class="fas fa-check-circle"></i></span><span>Attempting login. <i class="fas fa-spinner fa-pulse"></i></div></article>'
+                setTimeout(function () { window.location = '.'; }, 5000);
+            } else {
+                console.error(data)
+                button.remove("is-loading")
+                document.getElementById("error").innerHTML = '<article class="message is-danger container"><div class="message-body"><span class="icon"><i class="fas fa-circle-exclamation"></i></span><span>' + data.status + '. Please try again.</div></article>'
+            }
+        }).catch(error => { console.error(error) });
+
+    });
+</script>
+{% endblock %}

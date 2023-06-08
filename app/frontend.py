@@ -6,6 +6,7 @@ from urllib.parse import quote_plus, urlparse
 from flask import (
     Flask,
     Response,
+    flash,
     make_response,
     redirect,
     render_template,
@@ -37,9 +38,28 @@ def create_app():
     wb = WyzeBridge()
     wb.start()
 
+    @app.route("/login", methods=["GET", "POST"])
+    def wyze_login():
+        if not wb.api.creds.login_req:
+            return redirect("/")
+        if request.method == "GET":
+            return render_template(
+                "login.html",
+                hass=bool(config.HASS_TOKEN),
+                version=config.VERSION,
+            )
+        email = request.form.get("email")
+        password = request.form.get("password")
+        if email and password:
+            wb.api.creds.update(email, password)
+            return {"status": "success"}
+        return {"status": "missing email or password"}
+
     @app.route("/")
     @auth.login_required
     def index():
+        if wb.api.creds.login_req:
+            return redirect("/login")
         if not (columns := request.args.get("columns")):
             columns = request.cookies.get("number_of_columns", "2")
         if not (refresh := request.args.get("refresh")):
