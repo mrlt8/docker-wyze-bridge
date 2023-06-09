@@ -892,14 +892,14 @@ class K11018SetPTZPosition(TutkWyzeProtocolMessage):
     Set PTZ Position.
 
     Parameters:
-    - ver_angle (int): vertical angle.
-    - hor_angle (int): horizontal angle.
+    - vertical (int): vertical angle.
+    - horizontal (int): horizontal angle.
     """
 
-    def __init__(self, ver_angle: int, hor_angle: int):
+    def __init__(self, vertical: int = 0, horizontal: int = 0):
         super().__init__(11018)
-        self.ver_angle = ver_angle
-        self.hor_angle = hor_angle
+        self.ver_angle = vertical
+        self.hor_angle = horizontal
 
     def encode(self) -> bytes:
         time_val = int(time.time() * 1000) % 1_000_000_000

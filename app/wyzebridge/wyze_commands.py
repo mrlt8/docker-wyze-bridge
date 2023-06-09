@@ -37,6 +37,7 @@ SET_CMDS = {
     "reset_rotation": "K11004ResetRotatePosition",
     "cruise_points": "K11012SetCruisePoints",
     "pan_cruise": "K11016SetCruise",
+    "ptz_position": "K11018SetPTZPosition",
     "motion_tracking": "K11022SetMotionTracking",
     "motion_tagging": "K10292SetMotionTagging",
     "fps": "K10052SetFPS",
