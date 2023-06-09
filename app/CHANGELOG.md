@@ -1,3 +1,12 @@
+## What's Changed in v2.2.4
+
+* NEW: Add Wyze credentials via WebUI.
+  * This does not replace the old method, but is just an alternate way to pass your wyze credentials to the container.
+  * This should hopefully resolve the issue some users were facing when they had special characters in their docker-compose.
+  * `WYZE_EMAIL` and `WYZE_PASSWORD` are no longer required to start the bridge. #807
+* FIXED: Log wording when filtering is enabled. Thanks @cturra
+* UPDATED: MediaMTX to v0.23.5
+
 ## What's Changed in v2.2.3
 
 * NEW: `LOG_TIME` config to add timestamps to the logs. #830
