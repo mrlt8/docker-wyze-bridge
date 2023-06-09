@@ -22,10 +22,10 @@ from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
 def cached(func: Callable[..., Any]) -> Callable[..., Any]:
     def wrapper(self, *args: Any, **kwargs: Any):
-        if self.creds.login_req:
+        if self.mfa_req or self.creds.login_req:
             return
         name = "auth" if func.__name__ == "login" else func.__name__.split("_", 1)[-1]
-        if not kwargs.get("fresh_data") and not env_bool("FRESH_DATA"):
+        if not kwargs.get("fresh_data"):
             if getattr(self, name, None):
                 return func(self, *args, **kwargs)
             try:
@@ -54,7 +54,7 @@ def cached(func: Callable[..., Any]) -> Callable[..., Any]:
 def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(func)
     def wrapper(self, *args: Any, **kwargs: Any):
-        if self.mfa_req:
+        if self.mfa_req or self.creds.login_req:
             return
         if not self.auth and not self.login():
             return
