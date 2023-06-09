@@ -269,13 +269,14 @@ def get_totp(secret: str) -> str:
 
 
 def filter_cams(cams: list[WyzeCamera]) -> list[WyzeCamera]:
+    total = len(cams)
     if env_bool("FILTER_BLOCK"):
         if filtered := list(filter(lambda cam: not env_filter(cam), cams)):
-            logger.info(f"🪄 BLACKLIST MODE ON [{len(filtered)}/{len(cams)}]")
+            logger.info(f"🪄 FILTER BLOCKING: {total - len(filtered)} of {total} cams")
             return filtered
     elif any(key.startswith("FILTER_") for key in environ):
         if filtered := list(filter(env_filter, cams)):
-            logger.info(f"🪄 WHITELIST MODE ON [{len(filtered)}/{len(cams)}]")
+            logger.info(f"🪄 FILTER ALLOWING: {len(filtered)} of {total} cams")
             return filtered
     return cams
 
