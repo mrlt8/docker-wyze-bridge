@@ -814,6 +814,15 @@ class K11004ResetRotatePosition(TutkWyzeProtocolMessage):
         return encode(self.code, 1, bytes([self.position]))
 
 
+class K11010GetCruisePoints(TutkWyzeProtocolMessage):
+    """
+    Get cruise points.
+    """
+
+    def __init__(self):
+        super().__init__(11010)
+
+
 class K11012SetCruisePoints(TutkWyzeProtocolMessage):
     """
     Set cruise points.

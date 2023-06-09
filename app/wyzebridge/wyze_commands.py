@@ -8,6 +8,7 @@ GET_CMDS = {
     "night_switch": "K10624GetAutoSwitchNightType",
     "alarm": "K10632GetAlarmFlashing",
     "start_boa": "K10148StartBoa",
+    "cruise_points": "K11010GetCruisePoints",
     "pan_cruise": "K11014GetCruise",
     "motion_tracking": "K11020GetMotionTracking",
     "motion_tagging": "K10290GetMotionTagging",
