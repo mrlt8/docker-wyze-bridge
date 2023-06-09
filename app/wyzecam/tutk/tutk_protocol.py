@@ -132,9 +132,6 @@ class K10000ConnectRequest(TutkWyzeProtocolMessage):
         wake_json = json.dumps(wake_dict, separators=(",", ":")).encode("ascii")
         return encode(self.code, len(wake_json), wake_json)
 
-    def parse_response(self, resp_data):
-        return resp_data
-
 
 class K10002ConnectAuth(TutkWyzeProtocolMessage):
     """
@@ -815,6 +812,39 @@ class K11004ResetRotatePosition(TutkWyzeProtocolMessage):
 
     def encode(self) -> bytes:
         return encode(self.code, 1, bytes([self.position]))
+
+
+class K11012SetCruisePoints(TutkWyzeProtocolMessage):
+    """
+    Set cruise points.
+
+    Parameters:
+    -  points (list[dict]): list of cruise points as a dictionary:
+            - vertical (int, optional): vertical angle.
+            - horizontal (int, optional): horizontal angle.
+            - time (int, optional): wait time in seconds. Defaults to 10.
+            - blank (int, optional): isBlankPst?.
+    - wait_time(int, optional): Default wait time. Defaults to 10.
+    """
+
+    def __init__(self, points: list[dict], wait_time=10):
+        super().__init__(11012)
+
+        cruise_points = [0]
+        for count, point in enumerate(points, 1):
+            cruise_points[0] = count
+            cruise_points.extend(
+                [
+                    int(point.get("vertical", 0)),
+                    int(point.get("horizontal", 0)),
+                    int(point.get("time", wait_time)),
+                    int(point.get("blank", 0)),
+                ]
+            )
+        self.points = cruise_points
+
+    def encode(self) -> bytes:
+        return encode(self.code, len(self.points), bytes(self.points))
 
 
 class K11014GetCruise(TutkWyzeProtocolMessage):

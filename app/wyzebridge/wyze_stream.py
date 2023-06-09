@@ -249,7 +249,7 @@ class WyzeStream:
             return {}
         return self.camera.camera_info.get("boa_info", {})
 
-    def send_cmd(self, cmd: str, value: str | dict = "") -> dict:
+    def send_cmd(self, cmd: str, value: str | list | dict = "") -> dict:
         if cmd in {"status", "start", "stop", "disable", "enable"}:
             logger.info(f"[CONTROL] {self.uri}:{cmd.upper()}")
             response = getattr(self, cmd)()

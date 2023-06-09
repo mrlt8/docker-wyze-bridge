@@ -257,7 +257,9 @@ def lookup_cmd(cmd: tuple[str, Optional[str | dict]] | str, log: bool = True) ->
             return None, topic, ex, payload_str
 
     payload = []
-    if isinstance(payload_str, int):
+    if isinstance(payload_str, list):
+        payload.append(payload_str)
+    elif isinstance(payload_str, int):
         payload.append(payload_str)
     elif payload_str and (value := CMD_VALUES.get(payload_str.strip().lower())):
         payload = [value] if isinstance(value, int) else value

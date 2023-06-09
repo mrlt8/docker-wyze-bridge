@@ -34,6 +34,7 @@ SET_CMDS = {
     "rotary_action": "K11002SetRotaryByAction",
     "rotary_degree": "K11000SetRotaryByDegree",
     "reset_rotation": "K11004ResetRotatePosition",
+    "cruise_points": "K11012SetCruisePoints",
     "pan_cruise": "K11016SetCruise",
     "motion_tracking": "K11022SetMotionTracking",
     "motion_tagging": "K10292SetMotionTagging",
