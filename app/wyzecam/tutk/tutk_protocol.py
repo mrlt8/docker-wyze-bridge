@@ -814,6 +814,19 @@ class K11004ResetRotatePosition(TutkWyzeProtocolMessage):
         return encode(self.code, 1, bytes([self.position]))
 
 
+class K11006GetCurCruisePoint(TutkWyzeProtocolMessage):
+    """
+    Get current PTZ.
+    """
+
+    def __init__(self):
+        super().__init__(11010)
+
+    def encode(self) -> bytes:
+        msg = pack("<I", int(time.time() * 1000) % 1_000_000_000)
+        return encode(self.code, 4, msg)
+
+
 class K11010GetCruisePoints(TutkWyzeProtocolMessage):
     """
     Get cruise points.

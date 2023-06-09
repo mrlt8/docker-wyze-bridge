@@ -10,6 +10,7 @@ GET_CMDS = {
     "start_boa": "K10148StartBoa",
     "cruise_points": "K11010GetCruisePoints",
     "pan_cruise": "K11014GetCruise",
+    "ptz_position": "K11006GetCurCruisePoint",
     "motion_tracking": "K11020GetMotionTracking",
     "motion_tagging": "K10290GetMotionTagging",
     "camera_info": "K10020CheckCameraInfo",
