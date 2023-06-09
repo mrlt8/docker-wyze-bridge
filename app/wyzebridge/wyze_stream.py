@@ -259,6 +259,8 @@ class WyzeStream:
                 "value": response,
             }
 
+        if self.state < StreamStatus.STOPPED:
+            return {"response": self.status()}
         if env_bool("disable_control"):
             return {"response": "control disabled"}
         if cmd not in GET_CMDS | SET_CMDS and cmd not in {"caminfo"}:
