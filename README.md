@@ -23,21 +23,24 @@ Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) 
 
 ## Quick Start
 
-Install [docker](https://docs.docker.com/get-docker/) and use your Wyze credentials to run:
-
-(If your credentials have special characters, you must escape them)
+Install [docker](https://docs.docker.com/get-docker/) and run:
 
 ```bash
-docker run \
-  -e WYZE_EMAIL=you@email.com \
-  -e WYZE_PASSWORD=yourpassw0rd \
-  -p 1935:1935 -p 8554:8554 -p 8888:8888 -p 5000:5000 \
-  mrlt8/wyze-bridge:latest
+docker run -p 8554:8554 -p 8888:8888 -p 5000:5000 mrlt8/wyze-bridge
 ```
 
 You can then use the web interface at `http://localhost:5000` where localhost is the hostname or ip of the machine running the bridge.
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
+
+## What's Changed in v2.2.4
+
+* NEW: Add Wyze credentials via WebUI.
+  * This does not replace the old method, but is just an alternate way to pass your wyze credentials to the container.
+  * This should hopefully resolve the issue some users were facing when they had special characters in their docker-compose.
+  * `WYZE_EMAIL` and `WYZE_PASSWORD` are no longer required to start the bridge. #807
+* FIXED: Log wording when filtering is enabled. Thanks @cturra
+* UPDATED: MediaMTX to v0.23.5
 
 ## What's Changed in v2.2.3
 

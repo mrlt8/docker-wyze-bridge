@@ -13,7 +13,7 @@ from typing import Any, Callable, Optional
 
 import wyzecam
 from requests import get
-from requests.exceptions import ConnectionError, HTTPError
+from requests.exceptions import ConnectionError, HTTPError, RequestException
 from wyzebridge.bridge_utils import env_bool, env_filter
 from wyzebridge.config import IMG_PATH, TOKEN_PATH
 from wyzebridge.logging import logger
@@ -22,17 +22,17 @@ from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
 def cached(func: Callable[..., Any]) -> Callable[..., Any]:
     def wrapper(self, *args: Any, **kwargs: Any):
-        name = func.__name__.split("_", 1)[-1]
-        if func.__name__ == "login":
-            name = "auth"
-        if not kwargs.get("fresh_data") and not env_bool("FRESH_DATA"):
+        if self.mfa_req or self.creds.login_req:
+            return
+        name = "auth" if func.__name__ == "login" else func.__name__.split("_", 1)[-1]
+        if not kwargs.get("fresh_data"):
             if getattr(self, name, None):
                 return func(self, *args, **kwargs)
             try:
                 with open(TOKEN_PATH + name + ".pickle", "rb") as pkl_f:
                     if not (data := pickle.load(pkl_f)):
                         raise OSError
-                if name == "user" and data.email.lower() != self.email.strip().lower():
+                if name == "user" and not self.creds.same_email(data.email):
                     raise ValueError("🕵️ Cached email doesn't match 'WYZE_EMAIL'")
                 logger.info(f"📚 Using '{name}' from local cache...")
                 setattr(self, name, data)
@@ -54,7 +54,7 @@ def cached(func: Callable[..., Any]) -> Callable[..., Any]:
 def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(func)
     def wrapper(self, *args: Any, **kwargs: Any):
-        if self.mfa_req:
+        if self.mfa_req or self.creds.login_req:
             return
         if not self.auth and not self.login():
             return
@@ -71,15 +71,50 @@ def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 
+class WyzeCredentials:
+    __slots__ = "email", "password", "login_req"
+
+    def __init__(self) -> None:
+        self.email: str = getenv("WYZE_EMAIL", "").strip()
+        self.password: str = getenv("WYZE_PASSWORD", "").strip()
+        self.login_req: bool = False
+
+        if not self.is_set:
+            logger.warning("[WARN] Credentials are NOT set")
+
+    @property
+    def is_set(self) -> bool:
+        return bool(self.email and self.password)
+
+    def update(self, email: str, password: str) -> None:
+        self.email = email.strip()
+        self.password = password.strip()
+
+    def same_email(self, email: str) -> bool:
+        return self.email.lower() == email.lower() if self.is_set else True
+
+    def creds(self) -> tuple[str, str]:
+        return (self.email, self.password)
+
+    def login_check(self):
+        if self.login_req or self.is_set:
+            return
+
+        self.login_req = True
+        logger.error("Credentials required to complete login!")
+        logger.info("Please visit the WebUI to enter your credentials.")
+        while not self.is_set:
+            sleep(0.2)
+
+
 class WyzeApi:
-    __slots__ = "auth", "user", "cameras", "email", "password", "mfa_req", "_last_pull"
+    __slots__ = "auth", "user", "creds", "cameras", "mfa_req", "_last_pull"
 
     def __init__(self) -> None:
         self.auth: Optional[WyzeCredential] = None
         self.user: Optional[WyzeAccount] = None
+        self.creds: WyzeCredentials = WyzeCredentials()
         self.cameras: Optional[list[WyzeCamera]] = None
-        self.email: str = getenv("WYZE_EMAIL", "")
-        self.password: str = getenv("WYZE_PASSWORD", "")
         self.mfa_req: Optional[str] = None
         self._last_pull: float = 0
         if env_bool("FRESH_DATA"):
@@ -87,28 +122,28 @@ class WyzeApi:
 
     @property
     def total_cams(self) -> int:
-        return 0 if self.mfa_req else len(self.get_cameras())
+        return 0 if self.mfa_req else len(self.get_cameras() or [])
 
     @cached
-    def login(
-        self, email: str = "", password: str = "", fresh_data: bool = False
-    ) -> Optional[WyzeCredential]:
+    def login(self, fresh_data: bool = False) -> Optional[WyzeCredential]:
         if fresh_data:
             self.clear_cache()
         if self.auth:
             logger.info("already authenticated")
             return
-        self.email = email or self.email
-        self.password = password or self.password
+        self.creds.login_check()
         try:
-            self.auth = wyzecam.login(self.email, self.password)
+            self.auth = wyzecam.login(*self.creds.creds())
         except HTTPError as ex:
             logger.error(f"⚠️ {ex}")
             if resp := ex.response.text:
                 logger.warning(resp)
         except ValueError as ex:
             logger.error(ex)
+        except RequestException as ex:
+            logger.error(f"⚠️ ERROR: {ex}")
         else:
+            self.creds.login_req = False
             if self.auth.mfa_options:
                 logger.warning("🔐 MFA code Required")
                 self._mfa_auth()
@@ -186,9 +221,7 @@ class WyzeApi:
                 resp.update({"code": code})
             logger.info(f'🔑 Using {resp["code"]} for authentication')
             try:
-                self.auth = wyzecam.login(
-                    self.email, self.password, self.auth.phone_id, resp
-                )
+                self.auth = wyzecam.login(*self.creds.creds(), self.auth.phone_id, resp)
                 if self.auth.access_token:
                     logger.info("✅ Verification code accepted!")
             except HTTPError as ex:

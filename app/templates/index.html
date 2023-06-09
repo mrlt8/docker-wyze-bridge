@@ -1,412 +1,381 @@
-<!DOCTYPE html>
-<html lang="en" class="has-background-black-ter">
+{% extends 'base.html' %}
 
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Wyze-Bridge</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
-    <link rel="stylesheet" type="text/css"
-        href="{{ 'static/site.css' if hass else url_for('static',filename='site.css') }}" />
-    {% if show_video %}
-    <link href="https://cdn.jsdelivr.net/npm/video.js/dist/video-js.min.css" rel="stylesheet" />
-    {% endif %}
-</head>
+{% block stylesheet %}
+{% if show_video %}
+<link href="https://cdn.jsdelivr.net/npm/video.js/dist/video-js.min.css" rel="stylesheet" />
+{% endif %}
+{% endblock %}
 
-<body>
-    <section class="section">
-        <nav class="navbar block is-dark fs-display-none">
-            <div class="navbar-brand">
-                {% if cam_data.enabled != cam_data.available %}
-                <a data-filter="enabled" class="navbar-item is-tab is-active filter">
-                    <span class="icon-text">
-                        <span class="icon"><i class="fas fa-plug-circle-check"></i></span><span><strong> {{
-                                cam_data.enabled
-                                }}</strong> enabled</span></span></a>
-                <a data-filter="all" class="navbar-item is-tab filter">
-                    <span class="icon-text"><span class="icon"><i class="fas fa-users-viewfinder"></i></span><span>
-                            All cameras</span></span></a>
-                {%else%}
-                <p class="navbar-item"><span class="icon-text"><span class="icon"><i
-                                class="fas fa-users-viewfinder"></i></span><span>Detected {{ cam_data.total
-                            }} cameras</span></p>
-                {% endif %}
-                <a class="navbar-burger">
-                    <span aria-hidden="true"></span>
-                    <span aria-hidden="true"></span>
-                    <span aria-hidden="true"></span>
-                </a>
-            </div>
-            <div class="navbar-menu" id="refresh-menu">
-                <div class="navbar-end">
-                    <div class="navbar-item">
-                        <div class="field is-grouped">
-                            <div class="control has-icons-left is-hidden-mobile">
-                                <input class="input is-rounded" id="select_number_of_columns" type="number" min="1"
-                                    max="6" size="3" value="{{number_of_columns}}" title="Number of columns" />
-                                <div class="icon is-small is-left">
-                                    <i class="fas fa-table-columns"></i>
-                                </div>
-                            </div>
-                            <div class="control has-icons-left is-expanded">
-                                <input class="input is-rounded" id="select_refresh_period" type="number" min="0"
-                                    max="1200" size="3" value="{{refresh_period}}" title="Refresh (seconds)" />
-                                <div class="icon is-small is-left">
-                                    <i class="fa-solid fa-rotate"></i>
-                                </div>
-                            </div>
+{% block content %}
+<nav class="navbar block is-dark fs-display-none">
+    <div class="navbar-brand">
+        {% if cam_data.enabled != cam_data.available %}
+        <a data-filter="enabled" class="navbar-item is-tab is-active filter">
+            <span class="icon-text">
+                <span class="icon"><i class="fas fa-plug-circle-check"></i></span><span><strong> {{
+                        cam_data.enabled
+                        }}</strong> enabled</span></span></a>
+        <a data-filter="all" class="navbar-item is-tab filter">
+            <span class="icon-text"><span class="icon"><i class="fas fa-users-viewfinder"></i></span><span>
+                    All cameras</span></span></a>
+        {%else%}
+        <p class="navbar-item"><span class="icon-text"><span class="icon"><i
+                        class="fas fa-users-viewfinder"></i></span><span>Detected {{ cam_data.total
+                    }} cameras</span></p>
+        {% endif %}
+        <a class="navbar-burger">
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+            <span aria-hidden="true"></span>
+        </a>
+    </div>
+    <div class="navbar-menu" id="refresh-menu">
+        <div class="navbar-end">
+            <div class="navbar-item">
+                <div class="field is-grouped">
+                    <div class="control has-icons-left is-hidden-mobile">
+                        <input class="input is-rounded" id="select_number_of_columns" type="number" min="1" max="6"
+                            size="3" value="{{number_of_columns}}" title="Number of columns" />
+                        <div class="icon is-small is-left">
+                            <i class="fas fa-table-columns"></i>
                         </div>
                     </div>
-                    <div class="navbar-item dropdown is-hoverable is-right">
-                        <div class="dropdown-trigger">
-                            <button class="button is-fullwidth is-danger is-outlined" aria-haspopup="true"
-                                aria-controls="dropdown-menu">
-                                <span class="icon is-small">
-                                    <i class="fas fa-power-off"></i>
-                                </span>
-                                <span>Restart</span>
-                            </button>
-                        </div>
-                        <div class="dropdown-menu" id="restart-menu" role="menu">
-                            <div class="dropdown-content">
-                                <a data-restart="cameras" class="dropdown-item">
-                                    <span class="icon is-small">
-                                        <i class="fas fa-video"></i>
-                                    </span>
-                                    <span>connection to cameras</span>
-                                </a>
-                                <a data-restart="rtsp_server" class="dropdown-item">
-                                    <span class="icon is-small">
-                                        <i class="fas fa-solid fa-network-wired"></i>
-                                    </span>
-                                    <span>rtsp-simple-server</span>
-                                </a>
-                                <a data-restart="all" class="dropdown-item">
-                                    <span class="icon is-small">
-                                        <i class="fas fa-solid fa-cloud-arrow-down"></i>
-                                    </span>
-                                    <span>clear cache and reconnect</span>
-                                </a>
-
-                            </div>
+                    <div class="control has-icons-left is-expanded">
+                        <input class="input is-rounded" id="select_refresh_period" type="number" min="0" max="1200"
+                            size="3" value="{{refresh_period}}" title="Refresh (seconds)" />
+                        <div class="icon is-small is-left">
+                            <i class="fa-solid fa-rotate"></i>
                         </div>
                     </div>
                 </div>
             </div>
-        </nav>
-        <article id="connection-lost" class="message is-danger" style="display:none;">
-            <div class="message-body">
-                <span class="icon-text">
-                    <span class="icon">
-                        <i class="fas fa-house-signal"></i>
-                    </span>
-                    <span>Lost connection to the bridge...</span>
-                </span>
-            </div>
-        </article>
-        <div id="alert" class="container is-hidden">
-        </div>
-        <div class="cameras columns is-multiline">
-            {% if cam_data.cameras %}
-            {% for cam_uri,camera in cam_data.cameras.items() %}
-            <div id="{{ cam_uri }}" class="camera column {{'is-hidden' if not camera.enabled}}"
-                data-enabled="{{camera.enabled}}" data-connected="{{camera.connected}}"
-                data-battery="{{camera.is_battery}}">
-                <div class="card">
-                    <header class="card-header fs-display-none">
-                        <div class="card-header-title">
-                            <span class="icon status {{'enabled' if camera.enabled}}" data-cam="{{cam_uri}}">
-                                <i class="fas fa-circle-stop" aria-hidden="true"></i>
-                            </span>
-                            {{camera.nickname}}
-                            {% if camera.substream %}
-                            <span class="icon" title="Sub-stream of {{ camera.nickname }}">
-                                <i class="fas fa-object-ungroup" aria-hidden="true"></i>
-                            </span>
-                            {% endif %}
-                            {% if camera.camera_info %}
-                            {% if camera.camera_info.sdParm and camera.camera_info.sdParm.status == "1"%}
-                            <div class="dropdown is-hoverable">
-                                <span class="icon">
-                                    <i class="fas fa-sd-card" aria-hidden="true"></i>
-                                </span>
-                                <div class="dropdown-menu" role="menu">
-                                    <div class="dropdown-content">
-                                        <p class="menu-label dropdown-item">{{
-                                            (camera.camera_info.sdParm.capacity|int/1024)|round(2) }} GB SD Card</p>
-                                        <progress class="progress is-medium dropdown-item"
-                                            value="{{(camera.camera_info.sdParm.capacity|int-camera.camera_info.sdParm.free|int)/camera.camera_info.sdParm.capacity|int}}"
-                                            max="1">15%</progress>
-                                        <span class="dropdown-item">{{
-                                            (camera.camera_info.sdParm.free|int/1024)|round(2) }} GB Available</span>
-                                    </div>
-                                </div>
-                            </div>
-                            {% endif %}
-                            {% if camera.camera_info.channelResquestResult.audio == "1"%}
-                            <span class="icon" title="Audio Enabled">
-                                <i class="fas fa-volume-high" aria-hidden="true"></i>
-                            </span>
-                            {% endif %}
-                            {% endif %}
-                            {% if camera.is_battery %}
-                            <span class="icon" title="Battery">
-                                <i class="fas fa-battery-empty" aria-hidden="true"></i>
-                            </span>
-                            {% endif %}
-                        </div>
-                        <span class="drag_handle" draggable="true"></span>
-                        <button class="card-header-icon toggle-details" data-cam="{{cam_uri}}" title="Camera details">
-                            <span class="icon">
-                                <i class="fas fa-circle-info" aria-hidden="true"></i>
-                            </span>
-                        </button>
-                    </header>
-                    <div class="card-image has-text-centered">
-                        <figure class="image">
-                            {% if show_video and (camera.on_demand or camera.enabled) %}
-                            {% if (webrtc and video_format == "webrtc") or (camera.webrtc and video_format == "kvs") %}
-                            <video data-cam="{{cam_uri}}"
-                                class="webrtc loading-preview refresh_img placeholder {{'connected' if camera.connected}}"
-                                muted playsinline {{ "autoplay" if autoplay and camera.connected else "preload=none" }}
-                                poster="{{camera.img_url or 'static/loading.svg'}}"></video>
-                            <i class="fas"></i>
-                            {% else %}
-                            <video-js id="video-{{cam_uri}}" class="video-js vjs-live vjs-big-play-centered" controls
-                                muted playsinline preload={{"auto" if autoplay and camera.connected else "none" }}
-                                poster="{{camera.img_url or 'static/loading.svg'}}" data-cam="{{cam_uri}}"
-                                data-setup='{"liveui": true, "fluid": true, "muted": true, "autoplay": {{'"muted"' if autoplay and camera.connected
-                                else "false" }}}' data-src="{{camera.hls_url}}stream.m3u8" width="100%">
-                                <source src="{{camera.hls_url}}stream.m3u8" type="application/x-mpegURL" />
-                                <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
-                                    src="{{camera.img_url or 'static/loading.svg'}}" data-cam="{{cam_uri}}"
-                                    width="100%" />
-                            </video-js>
-                            {% endif %}
-                            {% elif camera.img_url or camera.connected or (camera.on_demand and camera.enabled) %}
-                            <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
-                                src="{{ camera.img_url or 'static/loading.svg' }}" data-cam="{{cam_uri}}"
-                                width="100%" />
-                            {% else %}
-                            <section class="section has-background-black has-text-white no-preview"
-                                data-on-demand="{{camera.on_demand}}">
-                                <span class="icon is-medium">
-                                    <i class="fas fa-video-slash"></i>
-                                </span>
-                                <p>Preview not available</p>
-                            </section>
-                            {% endif %} {% if not show_video %}
-                            <div class="card-content is-overlay has-text-right cam-overlay">
-                                <button class="button is-primary update-preview" data-cam="{{cam_uri}}"
-                                    title="Update preview">
-                                    <span class="icon is-small">
-                                        <i class="fas fa-arrows-rotate"></i>
-                                    </span>
-                                </button>
-                                <span class="age" data-age={{camera.img_time}}></span>
-                            </div>
-                            {% endif %}
-                        </figure>
-                    </div>
-                    <div class="content table-container is-hidden">
-                        <table class="table">
-                            <tbody>
-                                {% for key, value in camera.items()%}
-                                {% if key == "camera_info" and value %}
-                                {% for cam_info, cam_val in value.items() %}
-                                <tr>
-                                    <td>{{ cam_info }}</td>
-                                    <td><code>{{ cam_val }}</code></td>
-                                </tr>
-                                {% endfor %}
-                                {% else %}
-                                <tr>
-                                    <td>{{ key }}</td>
-                                    <td>
-                                        {% if value and (key == "thumbnail" or key.endswith('_url') )%}
-                                        <a href="{{ value }}" title="{{ value }}">{{ value|truncate(40, True,
-                                            '...') }}</a>
-                                        {% else %}
-                                        <code>{{ value }}</code>
-                                        {% endif %}
-                                    </td>
-                                </tr>
-                                {% endif %}
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                    <footer class="card-footer fs-display-none">
-                        <div class="card-footer-item dropdown is-up is-hoverable">
-                            <div class="dropdown-trigger">
-                                <span class="icon is-small">
-                                    <i class="fas fa-sliders" aria-hidden="true"></i>
-                                </span>
-                                Controls
-                            </div>
-                            <div class="dropdown-menu" role="menu">
-                                <div class="dropdown-content cam-control" data-cam="{{cam_uri}}">
-                                    <p class="menu-label dropdown-item">Stream</p>
-                                    <div class="buttons are-small is-centered">
-                                        <button class="button" data-cmd="enable">
-                                            <span class="icon is-small">
-                                                <i class="fas fa-circle-check" aria-hidden="true"></i></span>
-                                            <span>Enable</span></button>
-                                        <button class="button" data-cmd="disable"> <span class="icon is-small">
-                                                <i class="fas fa-circle-xmark" aria-hidden="true"></i></span>
-                                            <span>Disable</span></button></button>
-                                    </div>
-                                    <div class="buttons are-small is-centered">
-                                        <button class="button" data-cmd="start"> <span class="icon is-small">
-                                                <i class="fas fa-circle-play" aria-hidden="true"></i></span>
-                                            <span>Start</span></button>
-                                        <button class="button" data-cmd="stop"> <span class="icon is-small">
-                                                <i class="fas fa-circle-pause" aria-hidden="true"></i></span>
-                                            <span>Stop</span></button>
-                                    </div>
-                                    <p class="menu-label dropdown-item">Night Vision</p>
-                                    <div class="buttons are-small is-centered">
-                                        <button class="button" data-cmd="night_vision" data-payload="on">On</button>
-                                        <button class="button" data-cmd="night_vision" data-payload="off">Off</button>
-                                        <button class="button" data-cmd="night_vision" data-payload="auto">Auto</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="card-footer-item dropdown is-up is-hoverable is-right">
-                            <div class="dropdown-trigger">
-                                <span class="icon is-small">
-                                    <i class="fas fa-photo-film" aria-hidden="true"></i>
-                                </span>
-                                Streams
-                            </div>
-                            <div class="dropdown-menu" role="menu">
-                                <div class="dropdown-content">
-                                    <p class="menu-label dropdown-item">Video Streams</p>
-                                    {% if camera.webrtc_url %}
-                                    <a href="{{camera.webrtc_url}}" class="dropdown-item icon-text" target="_blank">
-                                        <span class="icon is-small"><i class="fas fa-file-code" aria-hidden="true"></i>
-                                        </span><span>WebRTC</span>{% if camera.stream_auth
-                                        %}<span class="icon">
-                                            <i class="fas fa-lock"></i>
-                                        </span> {% endif %}</a>
-                                    {% endif %}
-                                    <a href="{{camera.hls_url}}" class="dropdown-item icon-text" target="_blank">
-                                        <span class="icon is-small"><i class="fas fa-file-code" aria-hidden="true"></i>
-                                        </span><span>HLS</span>{% if camera.stream_auth
-                                        %}<span class="icon">
-                                            <i class="fas fa-lock"></i>
-                                        </span> {% endif %}</a>
-                                    <a href="{{camera.rtmp_url}}" class="dropdown-item icon-text">
-                                        <span class="icon is-small"><i class="fas fa-file-video" aria-hidden="true"></i>
-                                        </span><span>RTMP</span> {% if camera.stream_auth
-                                        %}<span class="icon">
-                                            <i class="fas fa-lock"></i>
-                                        </span> {% endif %}</a>
-                                    <a href="{{camera.rtsp_url}}" class="dropdown-item icon-text">
-                                        <span class="icon is-small"><i class="fas fa-file-video" aria-hidden="true"></i>
-                                        </span><span>RTSP</span>{% if camera.stream_auth
-                                        %}<span class="icon is-small">
-                                            <i class="fas fa-file-video" aria-hidden="true"></i>
-                                        </span><span class="icon">
-                                            <i class="fas fa-lock"></i>
-                                        </span>{% endif %}</a>
-                                    {% if camera.rtsp_fw_enabled %}
-                                    <a href="{{camera.rtsp_url}}fw" class="dropdown-item icon-text" target="_blank">
-                                        <span class="icon is-small"><i class="fas fa-file-video"
-                                                aria-hidden="true"></i></span>
-                                        <span>FW_RTSP</span></a>
-                                    {% endif %}
-                                    {% if camera.boa_url %}
-                                    <a href="{{camera.boa_url}}" class="dropdown-item icon-text" target="_blank">SD
-                                        Card</a>
-                                    {% endif %}
-                                    <p class="menu-label dropdown-item">Snapshots</p>
-                                    <a href="{{camera.snapshot_url}}" class="dropdown-item icon-text" target="_blank">
-                                        <span class="icon is-small"><i class="fas fa-file-image" aria-hidden="true"></i>
-                                        </span><span>RTSP Snapshot</span></a>
-                                    <a href="{{camera.thumbnail_url}}" class="dropdown-item icon-text" target="_blank">
-                                        <span class="icon is-small"><i class="fas fa-file-image" aria-hidden="true"></i>
-                                        </span><span>API Thumbnail</span></a>
-                                </div>
-                            </div>
-                        </div>
-
-                    </footer>
-                </div>
-            </div>
-            {% endfor %}
-        </div>
-        <div class="preview-toggle buttons is-centered fs-display-none">
-            <button data-action="snapshot" class="button {% if not show_video %} is-active{% endif %}">
-                <span class="icon is-small"><i class="fas fa-image"></i></span>
-                <span>Snapshot</span>
-            </button>
-            <div class="dropdown is-hoverable">
+            <div class="navbar-item dropdown is-hoverable is-right">
                 <div class="dropdown-trigger">
-                    <button data-action="video" data-action="" class="button{% if show_video %} is-active{% endif %}"
-                        aria-haspopup="true" aria-controls="video-menu">
-                        <span class="icon is-small"><i class="fas fa-film"></i></span>
-                        <span>Video</span>
+                    <button class="button is-fullwidth is-danger is-outlined" aria-haspopup="true"
+                        aria-controls="dropdown-menu">
                         <span class="icon is-small">
-                            <i class="fas fa-angle-down" aria-hidden="true"></i>
+                            <i class="fas fa-power-off"></i>
                         </span>
+                        <span>Restart</span>
                     </button>
                 </div>
-                <div class="dropdown-menu" id="video-menu" role="menu">
+                <div class="dropdown-menu" id="restart-menu" role="menu">
                     <div class="dropdown-content">
-                        {% if webrtc %}
-                        <a data-action="webrtc" class="dropdown-item {{'is-active' if video_format == 'webrtc'}}"
-                            id="webrtc-toggle">
-                            WebRTC
+                        <a data-restart="cameras" class="dropdown-item">
+                            <span class="icon is-small">
+                                <i class="fas fa-video"></i>
+                            </span>
+                            <span>connection to cameras</span>
                         </a>
-                        {% endif %}
-                        <a data-action="hls" class="dropdown-item {{'is-active' if video_format == 'hls'}}"
-                            id="hls-toggle">
-                            HLS
+                        <a data-restart="rtsp_server" class="dropdown-item">
+                            <span class="icon is-small">
+                                <i class="fas fa-solid fa-network-wired"></i>
+                            </span>
+                            <span>rtsp-simple-server</span>
                         </a>
-                        <hr class="dropdown-divider">
-                        <a data-action="autoplay" class="dropdown-item" id="toggle-autoplay">
-                            <span class="icon is-small"><i class="fas fa-square{{ '-check' if autoplay}}"></i></span>
-                            auto-play
+                        <a data-restart="all" class="dropdown-item">
+                            <span class="icon is-small">
+                                <i class="fas fa-solid fa-cloud-arrow-down"></i>
+                            </span>
+                            <span>clear cache and reconnect</span>
                         </a>
+
                     </div>
                 </div>
             </div>
         </div>
-        <div class="fullscreen">
-            <button class="button is-small">
+    </div>
+</nav>
+<article id="connection-lost" class="message is-danger" style="display:none;">
+    <div class="message-body">
+        <span class="icon-text">
+            <span class="icon">
+                <i class="fas fa-house-signal"></i>
+            </span>
+            <span>Lost connection to the bridge...</span>
+        </span>
+    </div>
+</article>
+<div id="alert" class="container is-hidden">
+</div>
+<div class="cameras columns is-multiline">
+    {% if cam_data.cameras %}
+    {% for cam_uri,camera in cam_data.cameras.items() %}
+    <div id="{{ cam_uri }}" class="camera column {{'is-hidden' if not camera.enabled}}"
+        data-enabled="{{camera.enabled}}" data-connected="{{camera.connected}}" data-battery="{{camera.is_battery}}">
+        <div class="card">
+            <header class="card-header fs-display-none">
+                <div class="card-header-title">
+                    <span class="icon status {{'enabled' if camera.enabled}}" data-cam="{{cam_uri}}">
+                        <i class="fas fa-circle-stop" aria-hidden="true"></i>
+                    </span>
+                    {{camera.nickname}}
+                    {% if camera.substream %}
+                    <span class="icon" title="Sub-stream of {{ camera.nickname }}">
+                        <i class="fas fa-object-ungroup" aria-hidden="true"></i>
+                    </span>
+                    {% endif %}
+                    {% if camera.camera_info %}
+                    {% if camera.camera_info.sdParm and camera.camera_info.sdParm.status == "1"%}
+                    <div class="dropdown is-hoverable">
+                        <span class="icon">
+                            <i class="fas fa-sd-card" aria-hidden="true"></i>
+                        </span>
+                        <div class="dropdown-menu" role="menu">
+                            <div class="dropdown-content">
+                                <p class="menu-label dropdown-item">{{
+                                    (camera.camera_info.sdParm.capacity|int/1024)|round(2) }} GB SD Card</p>
+                                <progress class="progress is-medium dropdown-item"
+                                    value="{{(camera.camera_info.sdParm.capacity|int-camera.camera_info.sdParm.free|int)/camera.camera_info.sdParm.capacity|int}}"
+                                    max="1">15%</progress>
+                                <span class="dropdown-item">{{
+                                    (camera.camera_info.sdParm.free|int/1024)|round(2) }} GB Available</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                    {% if camera.camera_info.channelResquestResult.audio == "1"%}
+                    <span class="icon" title="Audio Enabled">
+                        <i class="fas fa-volume-high" aria-hidden="true"></i>
+                    </span>
+                    {% endif %}
+                    {% endif %}
+                    {% if camera.is_battery %}
+                    <span class="icon" title="Battery">
+                        <i class="fas fa-battery-empty" aria-hidden="true"></i>
+                    </span>
+                    {% endif %}
+                </div>
+                <span class="drag_handle" draggable="true"></span>
+                <button class="card-header-icon toggle-details" data-cam="{{cam_uri}}" title="Camera details">
+                    <span class="icon">
+                        <i class="fas fa-circle-info" aria-hidden="true"></i>
+                    </span>
+                </button>
+            </header>
+            <div class="card-image has-text-centered">
+                <figure class="image">
+                    {% if show_video and (camera.on_demand or camera.enabled) %}
+                    {% if (webrtc and video_format == "webrtc") or (camera.webrtc and video_format == "kvs") %}
+                    <video data-cam="{{cam_uri}}"
+                        class="webrtc loading-preview refresh_img placeholder {{'connected' if camera.connected}}" muted
+                        playsinline {{ "autoplay" if autoplay and camera.connected else "preload=none" }}
+                        poster="{{camera.img_url or 'static/loading.svg'}}"></video>
+                    <i class="fas"></i>
+                    {% else %}
+                    <video-js id="video-{{cam_uri}}" class="video-js vjs-live vjs-big-play-centered" controls muted
+                        playsinline preload={{"auto" if autoplay and camera.connected else "none" }}
+                        poster="{{camera.img_url or 'static/loading.svg'}}" data-cam="{{cam_uri}}"
+                        data-setup='{"liveui": true, "fluid": true, "muted": true, "autoplay": {{'"muted"' if autoplay and camera.connected
+                                else "false" }}}' data-src="{{camera.hls_url}}stream.m3u8" width="100%">
+                        <source src="{{camera.hls_url}}stream.m3u8" type="application/x-mpegURL" />
+                        <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
+                            src="{{camera.img_url or 'static/loading.svg'}}" data-cam="{{cam_uri}}" width="100%" />
+                    </video-js>
+                    {% endif %}
+                    {% elif camera.img_url or camera.connected or (camera.on_demand and camera.enabled) %}
+                    <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
+                        src="{{ camera.img_url or 'static/loading.svg' }}" data-cam="{{cam_uri}}" width="100%" />
+                    {% else %}
+                    <section class="section has-background-black has-text-white no-preview"
+                        data-on-demand="{{camera.on_demand}}">
+                        <span class="icon is-medium">
+                            <i class="fas fa-video-slash"></i>
+                        </span>
+                        <p>Preview not available</p>
+                    </section>
+                    {% endif %} {% if not show_video %}
+                    <div class="card-content is-overlay has-text-right cam-overlay">
+                        <button class="button is-primary update-preview" data-cam="{{cam_uri}}" title="Update preview">
+                            <span class="icon is-small">
+                                <i class="fas fa-arrows-rotate"></i>
+                            </span>
+                        </button>
+                        <span class="age" data-age={{camera.img_time}}></span>
+                    </div>
+                    {% endif %}
+                </figure>
+            </div>
+            <div class="content table-container is-hidden">
+                <table class="table">
+                    <tbody>
+                        {% for key, value in camera.items()%}
+                        {% if key == "camera_info" and value %}
+                        {% for cam_info, cam_val in value.items() %}
+                        <tr>
+                            <td>{{ cam_info }}</td>
+                            <td><code>{{ cam_val }}</code></td>
+                        </tr>
+                        {% endfor %}
+                        {% else %}
+                        <tr>
+                            <td>{{ key }}</td>
+                            <td>
+                                {% if value and (key == "thumbnail" or key.endswith('_url') )%}
+                                <a href="{{ value }}" title="{{ value }}">{{ value|truncate(40, True,
+                                    '...') }}</a>
+                                {% else %}
+                                <code>{{ value }}</code>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endif %}
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <footer class="card-footer fs-display-none">
+                <div class="card-footer-item dropdown is-up is-hoverable">
+                    <div class="dropdown-trigger">
+                        <span class="icon is-small">
+                            <i class="fas fa-sliders" aria-hidden="true"></i>
+                        </span>
+                        Controls
+                    </div>
+                    <div class="dropdown-menu" role="menu">
+                        <div class="dropdown-content cam-control" data-cam="{{cam_uri}}">
+                            <p class="menu-label dropdown-item">Stream</p>
+                            <div class="buttons are-small is-centered">
+                                <button class="button" data-cmd="enable">
+                                    <span class="icon is-small">
+                                        <i class="fas fa-circle-check" aria-hidden="true"></i></span>
+                                    <span>Enable</span></button>
+                                <button class="button" data-cmd="disable"> <span class="icon is-small">
+                                        <i class="fas fa-circle-xmark" aria-hidden="true"></i></span>
+                                    <span>Disable</span></button></button>
+                            </div>
+                            <div class="buttons are-small is-centered">
+                                <button class="button" data-cmd="start"> <span class="icon is-small">
+                                        <i class="fas fa-circle-play" aria-hidden="true"></i></span>
+                                    <span>Start</span></button>
+                                <button class="button" data-cmd="stop"> <span class="icon is-small">
+                                        <i class="fas fa-circle-pause" aria-hidden="true"></i></span>
+                                    <span>Stop</span></button>
+                            </div>
+                            <p class="menu-label dropdown-item">Night Vision</p>
+                            <div class="buttons are-small is-centered">
+                                <button class="button" data-cmd="night_vision" data-payload="on">On</button>
+                                <button class="button" data-cmd="night_vision" data-payload="off">Off</button>
+                                <button class="button" data-cmd="night_vision" data-payload="auto">Auto</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer-item dropdown is-up is-hoverable is-right">
+                    <div class="dropdown-trigger">
+                        <span class="icon is-small">
+                            <i class="fas fa-photo-film" aria-hidden="true"></i>
+                        </span>
+                        Streams
+                    </div>
+                    <div class="dropdown-menu" role="menu">
+                        <div class="dropdown-content">
+                            <p class="menu-label dropdown-item">Video Streams</p>
+                            {% if camera.webrtc_url %}
+                            <a href="{{camera.webrtc_url}}" class="dropdown-item icon-text" target="_blank">
+                                <span class="icon is-small"><i class="fas fa-file-code" aria-hidden="true"></i>
+                                </span><span>WebRTC</span>{% if camera.stream_auth
+                                %}<span class="icon">
+                                    <i class="fas fa-lock"></i>
+                                </span> {% endif %}</a>
+                            {% endif %}
+                            <a href="{{camera.hls_url}}" class="dropdown-item icon-text" target="_blank">
+                                <span class="icon is-small"><i class="fas fa-file-code" aria-hidden="true"></i>
+                                </span><span>HLS</span>{% if camera.stream_auth
+                                %}<span class="icon">
+                                    <i class="fas fa-lock"></i>
+                                </span> {% endif %}</a>
+                            <a href="{{camera.rtmp_url}}" class="dropdown-item icon-text">
+                                <span class="icon is-small"><i class="fas fa-file-video" aria-hidden="true"></i>
+                                </span><span>RTMP</span> {% if camera.stream_auth
+                                %}<span class="icon">
+                                    <i class="fas fa-lock"></i>
+                                </span> {% endif %}</a>
+                            <a href="{{camera.rtsp_url}}" class="dropdown-item icon-text">
+                                <span class="icon is-small"><i class="fas fa-file-video" aria-hidden="true"></i>
+                                </span><span>RTSP</span>{% if camera.stream_auth
+                                %}<span class="icon is-small">
+                                    <i class="fas fa-file-video" aria-hidden="true"></i>
+                                </span><span class="icon">
+                                    <i class="fas fa-lock"></i>
+                                </span>{% endif %}</a>
+                            {% if camera.rtsp_fw_enabled %}
+                            <a href="{{camera.rtsp_url}}fw" class="dropdown-item icon-text" target="_blank">
+                                <span class="icon is-small"><i class="fas fa-file-video" aria-hidden="true"></i></span>
+                                <span>FW_RTSP</span></a>
+                            {% endif %}
+                            {% if camera.boa_url %}
+                            <a href="{{camera.boa_url}}" class="dropdown-item icon-text" target="_blank">SD
+                                Card</a>
+                            {% endif %}
+                            <p class="menu-label dropdown-item">Snapshots</p>
+                            <a href="{{camera.snapshot_url}}" class="dropdown-item icon-text" target="_blank">
+                                <span class="icon is-small"><i class="fas fa-file-image" aria-hidden="true"></i>
+                                </span><span>RTSP Snapshot</span></a>
+                            <a href="{{camera.thumbnail_url}}" class="dropdown-item icon-text" target="_blank">
+                                <span class="icon is-small"><i class="fas fa-file-image" aria-hidden="true"></i>
+                                </span><span>API Thumbnail</span></a>
+                        </div>
+                    </div>
+                </div>
+
+            </footer>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+<div class="preview-toggle buttons is-centered fs-display-none">
+    <button data-action="snapshot" class="button {% if not show_video %} is-active{% endif %}">
+        <span class="icon is-small"><i class="fas fa-image"></i></span>
+        <span>Snapshot</span>
+    </button>
+    <div class="dropdown is-hoverable">
+        <div class="dropdown-trigger">
+            <button data-action="video" data-action="" class="button{% if show_video %} is-active{% endif %}"
+                aria-haspopup="true" aria-controls="video-menu">
+                <span class="icon is-small"><i class="fas fa-film"></i></span>
+                <span>Video</span>
                 <span class="icon is-small">
-                    <i class="fas fa-maximize"></i>
+                    <i class="fas fa-angle-down" aria-hidden="true"></i>
                 </span>
             </button>
         </div>
-        {% endif %}
-    </section>
-    <footer class="footer fs-display-none">
-        <div class="content has-text-centered">
-            <p>
-                <a href="https://github.com/mrlt8/docker-wyze-bridge"><i class="fa-brands fa-github"></i>
-                    <strong>docker-wyze-bridge</strong></a>
-                v{{ version }}
-                <a id="checkUpdate" class="icon-text" title="Check for updates" data-version="{{version}}"><span
-                        class="icon"><i class="fas fa-arrows-rotate"></i></span>
+        <div class="dropdown-menu" id="video-menu" role="menu">
+            <div class="dropdown-content">
+                {% if webrtc %}
+                <a data-action="webrtc" class="dropdown-item {{'is-active' if video_format == 'webrtc'}}"
+                    id="webrtc-toggle">
+                    WebRTC
                 </a>
-                <a href="https://ko-fi.com/mrlt8" id="kofi" class="icon-text" target="_blank"><span class="icon"><i
-                            class="fas fa-mug-hot"></i></span>
+                {% endif %}
+                <a data-action="hls" class="dropdown-item {{'is-active' if video_format == 'hls'}}" id="hls-toggle">
+                    HLS
                 </a>
-            </p>
+                <hr class="dropdown-divider">
+                <a data-action="autoplay" class="dropdown-item" id="toggle-autoplay">
+                    <span class="icon is-small"><i class="fas fa-square{{ '-check' if autoplay}}"></i></span>
+                    auto-play
+                </a>
+            </div>
         </div>
-    </footer>
-    <script src="https://cdn.jsdelivr.net/npm/bulma-toast@2.4.2/dist/bulma-toast.min.js"></script>
-    <script src="{{ 'static/site.js' if hass else url_for('static', filename='site.js') }}"></script>
-    {% if show_video %}
-    {% if (webrtc and video_format == "webrtc") or video_format =="kvs" %}
-    <script src="{{ 'static/webrtc.js' if hass else url_for('static', filename='webrtc.js') }}"></script>
-    {% endif %}
-    <script src="https://cdn.jsdelivr.net/npm/video.js/dist/video.min.js"></script>
-    {% endif %}
-</body>
+    </div>
+</div>
+<div class="fullscreen">
+    <button class="button is-small">
+        <span class="icon is-small">
+            <i class="fas fa-maximize"></i>
+        </span>
+    </button>
+</div>
+{% endif %}
+{% endblock %}
 
-</html>
+{% block javascript %}
+<script src="{{ 'static/site.js' if hass else url_for('static', filename='site.js') }}"></script>
+{% if show_video %}
+{% if (webrtc and video_format == "webrtc") or video_format =="kvs" %}
+<script src="{{ 'static/webrtc.js' if hass else url_for('static', filename='webrtc.js') }}"></script>
+{% endif %}
+<script src="https://cdn.jsdelivr.net/npm/video.js/dist/video.min.js"></script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en" class="has-background-black-ter">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Wyze-Bridge</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
+    <link rel="stylesheet" href="{{ 'static/site.css' if hass else url_for('static',filename='site.css') }}" />
+    {% block stylesheet %}
+    {% endblock %}
+</head>
+
+<body>
+    <section class="section">
+        {% block content %}
+        {% endblock %}
+    </section>
+    <footer class="footer fs-display-none">
+        <div class="content has-text-centered">
+            <p>
+                <a href="https://github.com/mrlt8/docker-wyze-bridge"><i class="fa-brands fa-github"></i>
+                    <strong>docker-wyze-bridge</strong></a>
+                v{{ version }}
+                <a id="checkUpdate" class="icon-text" title="Check for updates" data-version="{{version}}"><span
+                        class="icon"><i class="fas fa-arrows-rotate"></i></span>
+                </a>
+                <a href="https://ko-fi.com/mrlt8" id="kofi" class="icon-text" target="_blank"><span class="icon"><i
+                            class="fas fa-mug-hot"></i></span>
+                </a>
+            </p>
+        </div>
+    </footer>
+    <script src="https://cdn.jsdelivr.net/npm/bulma-toast@2.4.2/dist/bulma-toast.min.js"></script>
+    {% block javascript %}
+    {% endblock %}
+</body>
+
+</html>
