@@ -817,6 +817,13 @@ class K11004ResetRotatePosition(TutkWyzeProtocolMessage):
 class K11006GetCurCruisePoint(TutkWyzeProtocolMessage):
     """
     Get current PTZ.
+
+    Returns:
+    - dict: current PTZ:
+        - vertical (int): vertical angle.
+        - horizontal (int): horizontal angle.
+        - time (int): wait time in seconds.
+        - blank (int): isBlankPst?.
     """
 
     def __init__(self):
@@ -826,14 +833,40 @@ class K11006GetCurCruisePoint(TutkWyzeProtocolMessage):
         msg = pack("<I", int(time.time() * 1000) % 1_000_000_000)
         return encode(self.code, 4, msg)
 
+    def parse_response(self, resp_data: bytes):
+        return {
+            "vertical": resp_data[1],
+            "horizontal": resp_data[2],
+            "time": resp_data[3],
+            "blank": resp_data[4],
+        }
+
 
 class K11010GetCruisePoints(TutkWyzeProtocolMessage):
     """
     Get cruise points.
+
+    Returns:
+    - list[dict]: list of cruise points as a dictionary:
+        - vertical (int): vertical angle.
+        - horizontal (int): horizontal angle.
+        - time (int): wait time in seconds.
+        - blank (int): isBlankPst?.
     """
 
     def __init__(self):
         super().__init__(11010)
+
+    def parse_response(self, resp_data: bytes):
+        return [
+            {
+                "vertical": resp_data[i + 1],
+                "horizontal": resp_data[i + 2],
+                "time": resp_data[i + 3],
+                "blank": resp_data[i + 4],
+            }
+            for i in range(0, resp_data[0] * 4, 4)
+        ]
 
 
 class K11012SetCruisePoints(TutkWyzeProtocolMessage):
