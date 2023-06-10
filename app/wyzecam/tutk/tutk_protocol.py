@@ -830,8 +830,7 @@ class K11006GetCurCruisePoint(TutkWyzeProtocolMessage):
         super().__init__(11010)
 
     def encode(self) -> bytes:
-        msg = pack("<I", int(time.time() * 1000) % 1_000_000_000)
-        return encode(self.code, 4, msg)
+        return encode(self.code, 4, pack("<i", int(time.time())))
 
     def parse_response(self, resp_data: bytes):
         return {
@@ -944,12 +943,12 @@ class K11018SetPTZPosition(TutkWyzeProtocolMessage):
 
     def __init__(self, vertical: int = 0, horizontal: int = 0):
         super().__init__(11018)
-        self.ver_angle = vertical
-        self.hor_angle = horizontal
+        self.vertical = vertical
+        self.horizontal = horizontal
 
     def encode(self) -> bytes:
         time_val = int(time.time() * 1000) % 1_000_000_000
-        msg = pack("<IBH", time_val, self.ver_angle, self.hor_angle)
+        msg = pack("<ibh", time_val, self.vertical, self.horizontal)
         return encode(self.code, 7, msg)
 
 
