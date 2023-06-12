@@ -980,7 +980,7 @@ class K11022SetMotionTracking(TutkWyzeProtocolMessage):
 def encode(code: int, data: Optional[bytes]) -> bytes:
     data_len = 0 if data is None else len(data)
     encoded_msg = bytearray([0] * (16 + data_len))
-    protocol = 1  # The app seems to be using protocol version 5
+    protocol = 5
     pack_into("<BBHHH", encoded_msg, 0, 72, 76, protocol, code, data_len)
 
     if data:
