@@ -138,6 +138,7 @@ class WyzeApi:
             logger.error(f"⚠️ {ex}")
             if resp := ex.response.text:
                 logger.warning(resp)
+            sleep(15)
         except ValueError as ex:
             logger.error(ex)
         except RequestException as ex:
@@ -167,7 +168,7 @@ class WyzeApi:
         return self.cameras
 
     def filtered_cams(self) -> list[WyzeCamera]:
-        return filter_cams(self.get_cameras()) or []
+        return filter_cams(self.get_cameras() or [])
 
     def get_camera(self, uri: str) -> Optional[WyzeCamera]:
         too_old = time() - self._last_pull > 120
@@ -215,11 +216,11 @@ class WyzeApi:
         open(f"{TOKEN_PATH}mfa_token.txt", "w").close()
         while not self.auth.access_token:
             resp = mfa_response(self.auth, TOKEN_PATH)
-            if not resp.get("code"):
-                self.mfa_req = resp["type"]
+            if not resp.get("verification_code"):
+                self.mfa_req = resp["mfa_type"]
                 code = get_mfa_code(f"{TOKEN_PATH}mfa_token.txt")
-                resp.update({"code": code})
-            logger.info(f'🔑 Using {resp["code"]} for authentication')
+                resp.update({"verification_code": code})
+            logger.info(f'🔑 Using {resp["verification_code"]} for authentication')
             try:
                 self.auth = wyzecam.login(*self.creds.creds(), self.auth.phone_id, resp)
                 if self.auth.access_token:
@@ -270,21 +271,21 @@ def mfa_response(creds: WyzeCredential, totp_path: str) -> dict:
     if "PrimaryPhone" in creds.mfa_options:
         logger.info("💬 SMS code requested")
         return {
-            "type": "PrimaryPhone",
-            "id": wyzecam.send_sms_code(creds),
+            "mfa_type": "PrimaryPhone",
+            "verification_id": wyzecam.send_sms_code(creds),
         }
     resp = {
-        "type": "TotpVerificationCode",
-        "id": creds.mfa_details["totp_apps"][0]["app_id"],
+        "mfa_type": "TotpVerificationCode",
+        "verification_id": creds.mfa_details["totp_apps"][0]["app_id"],
     }
     if env_key := env_bool("totp_key", style="original"):
         logger.info("🔏 Using TOTP_KEY to generate TOTP")
-        return resp | {"code": get_totp(env_key)}
+        return resp | {"verification_code": get_totp(env_key)}
 
     with contextlib.suppress(FileNotFoundError):
         key = Path(f"{totp_path}totp").read_text()
         if len(key) > 15:
-            resp["code"] = get_totp(key)
+            resp["verification_code"] = get_totp(key)
             logger.info(f"🔏 Using {totp_path}totp to generate TOTP")
     return resp
 
