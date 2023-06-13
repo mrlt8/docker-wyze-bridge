@@ -1,7 +1,7 @@
 ARG ARM
 ARG ARCH=${ARM:+arm32v7}
 
-FROM ${ARCH:-amd64}/python:3.11-slim-bullseye as base
+FROM ${ARCH:-amd64}/python:3.11-bullseye as base
 
 # enable non-free repo
 RUN sed -i -e's/ main/ main contrib non-free/g' /etc/apt/sources.list
