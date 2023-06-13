@@ -59,6 +59,8 @@
     "schema": {
         "WYZE_EMAIL": "email",
         "WYZE_PASSWORD": "password",
+        "API_KEY": "str?",
+        "API_ID": "str?",
         "WB_IP": "str?",
         "TOTP_KEY": "str?",
         "NET_MODE": "list(LAN|P2P|ANY)",
