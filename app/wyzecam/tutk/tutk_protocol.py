@@ -3,7 +3,7 @@ import logging
 import pathlib
 import time
 from ctypes import LittleEndianStructure, c_char, c_uint16, c_uint32
-from struct import pack
+from struct import pack, pack_into
 from typing import Any, Optional
 
 import xxtea
@@ -71,8 +71,6 @@ class TutkWyzeProtocolMessage:
     :vartype expected_response_code: int
     """
 
-    expected_response_code: Optional[int] = None
-
     def __init__(self, code: int) -> None:
         """Construct a new TutkWyzeProtocolMessage
 
@@ -81,8 +79,7 @@ class TutkWyzeProtocolMessage:
                    responses from the camera back to the client are always odd.
         """
         self.code = code
-        if not self.expected_response_code:
-            self.expected_response_code = code + 1
+        self.expected_response_code = code + 1
 
     def encode(self) -> bytes:
         """
@@ -90,7 +87,7 @@ class TutkWyzeProtocolMessage:
         including the appropriate
         [16 byte header][wyzecam.tutk.tutk_protocol.TutkWyzeProtocolHeader].
         """
-        return encode(self.code, 0, None)
+        return encode(self.code, None)
 
     def parse_response(self, resp_data: bytes) -> Any:
         """
@@ -121,7 +118,7 @@ class K10000ConnectRequest(TutkWyzeProtocolMessage):
 
     def encode(self) -> bytes:
         if not self.mac:
-            return encode(self.code, 0, bytes())
+            return encode(self.code, None)
         wake_dict = {
             "cameraInfo": {
                 "mac": self.mac,
@@ -130,10 +127,7 @@ class K10000ConnectRequest(TutkWyzeProtocolMessage):
             }
         }
         wake_json = json.dumps(wake_dict, separators=(",", ":")).encode("ascii")
-        return encode(self.code, len(wake_json), wake_json)
-
-    def parse_response(self, resp_data):
-        return resp_data
+        return encode(self.code, wake_json)
 
 
 class K10002ConnectAuth(TutkWyzeProtocolMessage):
@@ -184,7 +178,7 @@ class K10002ConnectAuth(TutkWyzeProtocolMessage):
         data[20:21] = bytes([1] if self.open_video else [0])
         data[21:22] = bytes([1] if self.open_audio else [0])
 
-        return encode(self.code, len(data), bytes(data))
+        return encode(self.code, bytes(data))
 
     def parse_response(self, resp_data):
         return json.loads(resp_data)
@@ -229,25 +223,25 @@ class K10008ConnectUserAuth(TutkWyzeProtocolMessage):
         if len(phone_id) < 4:
             phone_id += "1234"
 
-        self.challenge_response = challenge_response
-        self.username = phone_id
-        self.open_userid = open_userid
-        self.open_video = open_video
-        self.open_audio = open_audio
+        self.challenge_response: bytes = challenge_response
+        self.username: bytes = phone_id.encode("utf-8")
+        self.open_userid: bytes = open_userid.encode("utf-8")
+        self.open_video: int = 1 if open_video else 0
+        self.open_audio: int = 1 if open_audio else 0
 
     def encode(self) -> bytes:
-        data = bytearray()
-        data.extend(self.challenge_response)
+        open_userid_len = len(self.open_userid)
+        encoded_msg = pack(
+            f"<16s4sbbb{open_userid_len}s",
+            self.challenge_response,
+            self.username,
+            self.open_video,
+            self.open_audio,
+            open_userid_len,
+            self.open_userid,
+        )
 
-        data.extend(self.username.encode("utf-8")[:4])
-        data.append(0x01 if self.open_video else 0x00)
-        data.append(0x01 if self.open_audio else 0x00)
-
-        open_userid_utf8 = self.open_userid.encode("utf-8")
-        data.append(len(open_userid_utf8))
-        data.extend(open_userid_utf8)
-
-        return encode(self.code, len(data), bytes(data))
+        return encode(self.code, encoded_msg)
 
     def parse_response(self, resp_data):
         return json.loads(resp_data)
@@ -277,24 +271,26 @@ class K10010ControlChannel(TutkWyzeProtocolMessage):
         self.enabled = 1 if enabled else 2
 
     def encode(self) -> bytes:
-        return encode(self.code, 2, bytes([self.media_type, self.enabled]))
+        return encode(self.code, bytes([self.media_type, self.enabled]))
 
 
 class K10020CheckCameraInfo(TutkWyzeProtocolMessage):
     """
     A command used to read the current settings of the camera.
 
-    Not terribly well understood.
+    Parameters:
+    - count (int): The number of camera parameters to read.  Defaults to 99.
+
+    Returns:
+    - A json object with the camera parameters.
     """
 
-    def __init__(self):
+    def __init__(self, count: int = 99):
         super().__init__(10020)
+        self.count = count
 
     def encode(self) -> bytes:
-        arr = bytearray()
-        arr.append(50)
-        arr.extend(range(1, 51))
-        return encode(self.code, len(arr), arr)
+        return encode(self.code, bytes([self.count, *range(1, self.count + 1)]))
 
     def parse_response(self, resp_data):
         return json.loads(resp_data)
@@ -312,8 +308,7 @@ class K10020CheckCameraParams(TutkWyzeProtocolMessage):
         self.param_id = param_id
 
     def encode(self) -> bytes:
-        arr = bytearray([len(self.param_id), *self.param_id])
-        return encode(self.code, len(arr), arr)
+        return encode(self.code, bytes([len(self.param_id), *self.param_id]))
 
     def parse_response(self, resp_data):
         return json.loads(resp_data)
@@ -336,15 +331,18 @@ class K10032SetNetworkLightStatus(TutkWyzeProtocolMessage):
     """
     A message used to set the Camera Status Light on the camera.
 
-    :param enabled: boolean to set the camera light on/off.
+    Parameters:
+    -  value (int): 1 for on; 2 for off.
     """
 
-    def __init__(self, light_status: bool):
+    def __init__(self, value: int):
         super().__init__(10032)
-        self.light_status: int = 1 if light_status else 2
+
+        assert 0 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
 
     def encode(self) -> bytes:
-        return encode(self.code, 1, bytearray([self.light_status]))
+        return encode(self.code, bytes([self.value]))
 
 
 class K10040GetNightVisionStatus(TutkWyzeProtocolMessage):
@@ -376,7 +374,7 @@ class K10042SetNightVisionStatus(TutkWyzeProtocolMessage):
         self.status: int = status
 
     def encode(self) -> bytes:
-        return encode(self.code, 1, bytes([self.status]))
+        return encode(self.code, bytes([self.status]))
 
 
 class K10044GetIRLEDStatus(TutkWyzeProtocolMessage):
@@ -406,7 +404,7 @@ class K10046SetIRLEDStatus(TutkWyzeProtocolMessage):
         self.status: int = status
 
     def encode(self) -> bytes:
-        return encode(self.code, 1, bytes([self.status]))
+        return encode(self.code, bytes([self.status]))
 
 
 class K10056SetResolvingBit(TutkWyzeProtocolMessage):
@@ -439,14 +437,12 @@ class K10056SetResolvingBit(TutkWyzeProtocolMessage):
         :param bitrate: the bit rate, in KB/s to target in the h264/h265 encoder.
         """
         super().__init__(10056)
-        self.frame_size = frame_size
+        self.frame_size = frame_size + 1
         self.bitrate = bitrate
         self.fps = fps
 
     def encode(self) -> bytes:
-        payload = bytes([1 + self.frame_size, self.bitrate, self.fps])
-
-        return encode(self.code, 3, payload)
+        return encode(self.code, bytes([self.frame_size, self.bitrate, self.fps]))
 
     def parse_response(self, resp_data):
         return resp_data == b"\x01"
@@ -485,14 +481,14 @@ class K10052DBSetResolvingBit(TutkWyzeProtocolMessage):
         :param bitrate: the bit rate, in KB/s to target in the h264/h265 encoder.
         """
         super().__init__(10052)
-        self.frame_size = frame_size
+        self.frame_size = frame_size + 1
         self.bitrate = bitrate
         self.fps = fps
 
     def encode(self) -> bytes:
-        payload = bytes([self.bitrate, 0, 1 + self.frame_size, self.fps, 0, 0])
+        payload = bytes([self.bitrate, 0, self.frame_size, self.fps, 0, 0])
 
-        return encode(self.code, 6, payload)
+        return encode(self.code, payload)
 
     def parse_response(self, resp_data):
         return resp_data == b"\x01"
@@ -504,7 +500,7 @@ class K10052SetFPS(TutkWyzeProtocolMessage):
         self.fps = fps
 
     def encode(self) -> bytes:
-        return encode(self.code, 6, bytes([0, 0, 0, self.fps, 0, 0]))
+        return encode(self.code, bytes([0, 0, 0, self.fps, 0, 0]))
 
 
 class K10090GetCameraTime(TutkWyzeProtocolMessage):
@@ -528,11 +524,11 @@ class K10092SetCameraTime(TutkWyzeProtocolMessage):
     This will use the current time on the bridge +1 to set the time on the camera.
     """
 
-    def __init__(self):
+    def __init__(self, _=None):
         super().__init__(10092)
 
     def encode(self) -> bytes:
-        return encode(self.code, 4, int(time.time() + 1).to_bytes(4, "little"))
+        return encode(self.code, pack("<I", int(time.time() + 1)))
 
 
 class K10290GetMotionTagging(TutkWyzeProtocolMessage):
@@ -552,15 +548,18 @@ class K10292SetMotionTagging(TutkWyzeProtocolMessage):
     """
     A message used to enable/disable motion tagging (green box around motion).
 
-    :param enabled: boolean to turn on/off motion tagging.
+    Parameters:
+    -  value (int): 1 for on; 2 for off.
     """
 
-    def __init__(self, enabled: bool):
+    def __init__(self, value: int):
         super().__init__(10292)
-        self.enabled = 1 if enabled else 2
+
+        assert 0 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
 
     def encode(self) -> bytes:
-        return encode(self.code, 1, bytes([self.enabled]))
+        return encode(self.code, bytes([self.value]))
 
 
 class K10620CheckNight(TutkWyzeProtocolMessage):
@@ -601,22 +600,24 @@ class K10626SetAutoSwitchNightType(TutkWyzeProtocolMessage):
         self.type: int = type
 
     def encode(self) -> bytes:
-        return encode(self.code, 1, bytes([self.type]))
+        return encode(self.code, bytes([self.type]))
 
 
 class K10630SetAlarmFlashing(TutkWyzeProtocolMessage):
     """
-    A message used to control the alarm/siren on the camera.
+    A message used to control the alarm AND siren on the camera.
 
-    :param enabled: boolean to turn on/off alarm/siren.
+    Parameters:
+    -  value (int):  1 to turn on alarm and siren; 2 to turn off alarm and siren.
     """
 
-    def __init__(self, enabled: bool):
+    def __init__(self, value: int):
         super().__init__(10630)
-        self.enabled: int = 1 if enabled else 2
+        assert 0 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
 
     def encode(self) -> bytes:
-        return encode(self.code, 2, bytes([self.enabled, self.enabled]))
+        return encode(self.code, bytes([self.value, self.value]))
 
 
 class K10632GetAlarmFlashing(TutkWyzeProtocolMessage):
@@ -661,22 +662,71 @@ class K10148StartBoa(TutkWyzeProtocolMessage):
         super().__init__(10148)
 
     def encode(self) -> bytes:
-        return encode(self.code, 5, bytes([0, 1, 0, 0, 0]))
+        return encode(self.code, bytes([0, 1, 0, 0, 0]))
+
+
+class K10444SetDeviceState(TutkWyzeProtocolMessage):
+    """
+    Set outdoor cam wake status?
+
+    Parameters:
+    -  value (int): 1 = on; 2 = off. Defaults to on.
+    """
+
+    def __init__(self, value: int = 1):
+        super().__init__(10444)
+        assert 0 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([self.value]))
+
+
+class K10446CheckConnStatus(TutkWyzeProtocolMessage):
+    """
+    Get connection status on outdoor cam?
+
+    Returns:
+    - json: connection status.
+    """
+
+    def __init__(self):
+        super().__init__(10446)
+
+    def parse_response(self, resp_data):
+        return json.loads(resp_data)
+
+
+class K10448GetBatteryUsage(TutkWyzeProtocolMessage):
+    """
+    Get battery usage on outdoor cam?
+
+    Returns:
+    - json: battery usage.
+    """
+
+    def __init__(self):
+        super().__init__(10448)
+
+    def parse_response(self, resp_data):
+        return json.loads(resp_data)
 
 
 class K10600SetRtspSwitch(TutkWyzeProtocolMessage):
     """
     Set switch value for RTSP server on camera.
 
-    :param enable: Optional Bool. Set True for on, False for off. Defaults to True.
+    Parameters:
+    -  value (int): 1 for on; 2 for off. Defaults to True.
     """
 
-    def __init__(self, enable: bool = True):
+    def __init__(self, value: int = 1):
         super().__init__(10600)
-        self.enable = 1 if enable else 0
+        assert 0 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
 
     def encode(self) -> bytes:
-        return encode(self.code, 1, bytes([self.enable]))
+        return encode(self.code, bytes([self.value]))
 
 
 class K10604GetRtspParam(TutkWyzeProtocolMessage):
@@ -709,7 +759,7 @@ class K11000SetRotaryByDegree(TutkWyzeProtocolMessage):
 
     def encode(self) -> bytes:
         msg = pack("<hhB", self.horizontal, self.vertical, self.speed)
-        return encode(self.code, 5, msg)
+        return encode(self.code, msg)
 
 
 class K11002SetRotaryByAction(TutkWyzeProtocolMessage):
@@ -738,7 +788,7 @@ class K11002SetRotaryByAction(TutkWyzeProtocolMessage):
         self.speed = speed if 1 <= speed <= 9 else 5
 
     def encode(self) -> bytes:
-        return encode(self.code, 3, bytes([self.horizontal, self.vertical, self.speed]))
+        return encode(self.code, bytes([self.horizontal, self.vertical, self.speed]))
 
 
 class K11004ResetRotatePosition(TutkWyzeProtocolMessage):
@@ -754,7 +804,107 @@ class K11004ResetRotatePosition(TutkWyzeProtocolMessage):
         self.position = position
 
     def encode(self) -> bytes:
-        return encode(self.code, 1, bytes([self.position]))
+        return encode(self.code, bytes([self.position]))
+
+
+class K11006GetCurCruisePoint(TutkWyzeProtocolMessage):
+    """
+    Get current PTZ.
+
+    Returns:
+    - dict: current PTZ:
+        - vertical (int): vertical angle.
+        - horizontal (int): horizontal angle.
+        - time (int): wait time in seconds.
+        - blank (int): isBlankPst?.
+    """
+
+    def __init__(self):
+        super().__init__(11010)
+
+    def encode(self) -> bytes:
+        return encode(self.code, pack("<i", int(time.time())))
+
+    def parse_response(self, resp_data: bytes):
+        return {
+            "vertical": resp_data[1],
+            "horizontal": resp_data[2],
+            "time": resp_data[3],
+            "blank": resp_data[4],
+        }
+
+
+class K11010GetCruisePoints(TutkWyzeProtocolMessage):
+    """
+    Get cruise points.
+
+    Returns:
+    - list[dict]: list of cruise points as a dictionary:
+        - vertical (int): vertical angle.
+        - horizontal (int): horizontal angle.
+        - time (int): wait time in seconds.
+        - blank (int): isBlankPst?.
+    """
+
+    def __init__(self):
+        super().__init__(11010)
+
+    def parse_response(self, resp_data: bytes):
+        return [
+            {
+                "vertical": resp_data[i + 1],
+                "horizontal": resp_data[i + 2],
+                "time": resp_data[i + 3],
+                "blank": resp_data[i + 4],
+            }
+            for i in range(0, resp_data[0] * 4, 4)
+        ]
+
+
+class K11012SetCruisePoints(TutkWyzeProtocolMessage):
+    """
+    Set cruise points.
+
+    Parameters:
+    -  points (list[dict]): list of cruise points as a dictionary:
+            - vertical (int[0-40], optional): vertical angle.
+            - horizontal (int[0-350], optional): horizontal angle.
+            - time (int, optional[10-255]): wait time in seconds. Defaults to 10.
+            - blank (int, optional): isBlankPst?.
+    - wait_time(int, optional): Default wait time. Defaults to 10.
+    """
+
+    def __init__(self, points: list[dict], wait_time=10):
+        super().__init__(11012)
+
+        cruise_points = [0]
+        for count, point in enumerate(points, 1):
+            cruise_points[0] = count
+            cruise_points.extend(
+                [
+                    int(point.get("vertical", 0)),
+                    int(point.get("horizontal", 0)),
+                    int(point.get("time", wait_time)),
+                    int(point.get("blank", 0)),
+                ]
+            )
+        self.points = cruise_points
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes(self.points))
+
+
+class K11014GetCruise(TutkWyzeProtocolMessage):
+    """
+    Get switch value for Pan Scan, aka Cruise.
+
+    :return: returns the current cruise status:
+        - 1: On
+        - 2: Off
+    """
+
+    def __init__(self):
+        super().__init__(11014)
 
 
 class K11016SetCruise(TutkWyzeProtocolMessage):
@@ -762,15 +912,17 @@ class K11016SetCruise(TutkWyzeProtocolMessage):
     Set switch value for Pan Scan, aka Cruise.
 
     Parameters:
-    :param enable: Optional Bool. Set True for on, False for off. Defaults to True.
+    -  value (int): 1 for on; 2 for off. Defaults to On.
     """
 
-    def __init__(self, enable: bool = True):
+    def __init__(self, value: int):
         super().__init__(11016)
-        self.flag = 1 if enable else 2
+
+        assert 0 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
 
     def encode(self) -> bytes:
-        return encode(self.code, 1, bytes([self.enabled]))
+        return encode(self.code, bytes([self.value]))
 
 
 class K11018SetPTZPosition(TutkWyzeProtocolMessage):
@@ -778,19 +930,18 @@ class K11018SetPTZPosition(TutkWyzeProtocolMessage):
     Set PTZ Position.
 
     Parameters:
-    - ver_angle (int): vertical angle.
-    - hor_angle (int): horizontal angle.
+    - vertical (int[0-40], optional): vertical angle.
+    - horizontal (int[0-350], optional): horizontal angle.
     """
 
-    def __init__(self, ver_angle: int, hor_angle: int):
+    def __init__(self, vertical: int = 0, horizontal: int = 0):
         super().__init__(11018)
-        self.ver_angle = ver_angle
-        self.hor_angle = hor_angle
+        self.vertical = vertical
+        self.horizontal = horizontal
 
     def encode(self) -> bytes:
         time_val = int(time.time() * 1000) % 1_000_000_000
-        msg = pack("<IBH", time_val, self.ver_angle, self.hor_angle)
-        return encode(self.code, 7, msg)
+        return encode(self.code, pack("<ibh", time_val, self.vertical, self.horizontal))
 
 
 class K11020GetMotionTracking(TutkWyzeProtocolMessage):
@@ -812,30 +963,29 @@ class K11022SetMotionTracking(TutkWyzeProtocolMessage):
     A message used to enable/disable motion tracking (camera pans
     to follow detected motion).
 
-    :param enabled: boolean to turn on/off motion tracking.
+    Parameters:
+    -  value (int): 1 for on; 2 for off.
     """
 
-    def __init__(self, enabled: bool):
+    def __init__(self, value: int):
         super().__init__(11022)
-        self.enabled = 1 if enabled else 2
+
+        assert 0 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
 
     def encode(self) -> bytes:
-        return encode(self.code, 1, bytes([self.enabled]))
+        return encode(self.code, bytes([self.value]))
 
 
-def encode(code: int, data_len: int, data: Optional[bytes]) -> bytes:
-    assert (data is None and data_len == 0) or (
-        data is not None and data_len == len(data)
-    )
-
-    data_len = max(0, data_len)
+def encode(code: int, data: Optional[bytes]) -> bytes:
+    data_len = 0 if data is None else len(data)
     encoded_msg = bytearray([0] * (16 + data_len))
-    encoded_msg[0:2] = [72, 76]
-    encoded_msg[2:4] = int(1).to_bytes(2, byteorder="little", signed=False)
-    encoded_msg[4:6] = int(code).to_bytes(2, byteorder="little", signed=False)
-    encoded_msg[6:8] = int(data_len).to_bytes(2, byteorder="little", signed=False)
-    if data is not None and data_len > 0:
-        encoded_msg[16 : len(encoded_msg)] = data
+    protocol = 5
+    pack_into("<BBHHH", encoded_msg, 0, 72, 76, protocol, code, data_len)
+
+    if data:
+        encoded_msg[16:] = data
+
     return bytes(encoded_msg)
 
 

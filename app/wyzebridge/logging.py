@@ -6,11 +6,8 @@ from sys import stdout
 
 from wyzebridge.bridge_utils import env_bool
 
-DEBUG_LEVEL: int = getattr(logging, env_bool("DEBUG_LEVEL").upper(), 20)
-
-log_info = "[%(processName)s] %(message)s"
-log_debug = f"%(asctime)s [%(levelname)s]{log_info}"
-
+log_level: int = getattr(logging, env_bool("LOG_LEVEL").upper(), 20)
+log_time = "%X" if env_bool("LOG_TIME") else ""
 
 multiprocessing.current_process().name = "WyzeBridge"
 logger: logging.Logger = logging.getLogger("WyzeBridge")
@@ -20,28 +17,39 @@ warnings.formatwarning = lambda msg, *args, **kwargs: f"WARNING: {msg}"
 logging.captureWarnings(True)
 
 
-console_format = log_info if DEBUG_LEVEL >= logging.INFO else log_debug
-console_logger = logging.StreamHandler(stdout)
-console_logger.setLevel(DEBUG_LEVEL)
-console_logger.setFormatter(logging.Formatter(console_format, "%X"))
+def clear_handler(handler: logging.Handler):
+    for logger_name in ("WyzeBridge", "", "werkzeug", "py.warnings"):
+        target_logger = logging.getLogger(logger_name)
+        for existing_handler in target_logger.handlers:
+            if type(existing_handler) == type(handler):
+                target_logger.removeHandler(existing_handler)
 
 
-if DEBUG_LEVEL >= logging.INFO:
-    logger.addHandler(console_logger)
-    logging.getLogger("py.warnings").addHandler(console_logger)
-    logging.getLogger("werkzeug").addHandler(console_logger)
-else:
-    logging.getLogger().setLevel(DEBUG_LEVEL)
-    logging.getLogger().addHandler(console_logger)
-    warnings.simplefilter("always")
+def format_logging(handler: logging.Handler, level: int, date_format: str = ""):
+    clear_handler(handler)
+    log_format = "[%(processName)s] %(message)s"
+    if level < logging.INFO:
+        target_logger = logging.getLogger()
+        log_format = f"[%(levelname)s]{log_format}"
+        warnings.simplefilter("always")
+    else:
+        target_logger = logging.getLogger("WyzeBridge")
+        logging.getLogger("werkzeug").addHandler(handler)
+        logging.getLogger("py.warnings").addHandler(handler)
+
+    date_format = "%X" if not date_format and level < 20 else date_format
+    log_format = f"%(asctime)s {log_format}" if date_format else log_format
+    handler.setFormatter(logging.Formatter(log_format, date_format))
+    target_logger.addHandler(handler)
+    target_logger.setLevel(level)
+
+
+format_logging(logging.StreamHandler(stdout), log_level, log_time)
+
 
 if env_bool("LOG_FILE"):
     log_path = "/logs/"
-    log_file = "debug.log"
-    logger.info(f"Logging to file: {log_path}{log_file}")
+    log_file = f"{log_path}debug.log"
+    logger.info(f"Logging to file: {log_file}")
     makedirs(log_path, exist_ok=True)
-    file_logger = logging.FileHandler(log_path + log_file)
-    file_logger.setLevel(logging.DEBUG)
-    file_logger.setFormatter(logging.Formatter(log_debug, "%Y/%m/%d %X"))
-    logging.getLogger().setLevel(logging.DEBUG)
-    logging.getLogger().addHandler(file_logger)
+    format_logging(logging.FileHandler(log_file), logging.DEBUG, "%Y/%m/%d %X")

@@ -53,13 +53,13 @@ class RtspEvent:
             return
 
         if event.lower() == "start":
-            self.streams.start(uri)
+            self.streams.get(uri).start()
         elif event.lower() == "read":
             read_event(uri, status)
         elif event.lower() == "ready":
             ready_event(uri, status)
             if status == "0":
-                self.streams.stop(uri)
+                self.streams.get(uri).stop()
 
 
 def read_event(camera: str, status: str):

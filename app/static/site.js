@@ -240,7 +240,7 @@ function refresh_imgs() {
   console.debug("refresh_imgs " + Date.now());
   document.querySelectorAll(".refresh_img").forEach(async function (image) {
     let url = image.getAttribute("src");
-    // Skip if not enabled or battery
+    if (url === null) { return; }
     let CameraBattery = document.getElementById(image.dataset.cam).dataset.battery?.toLowerCase() == "true";
     let CameraConnected = image.classList.contains("connected");
     let CameraEnabled = image.classList.contains("enabled");
@@ -578,9 +578,11 @@ document.addEventListener("DOMContentLoaded", () => {
     document.querySelectorAll(".fs-display-none").forEach((e) => {
       if (fs) { e.classList.add("fs-mode") } else { e.classList.remove("fs-mode") }
     })
+    if (fs) { autoplay(); }
   }
+
   document.querySelector(".fullscreen button").addEventListener("click", () => {
-    let fs = !getCookie("fullscreen", false) ? "1" : "";
+    let fs = getCookie("fullscreen", false) ? "" : "1";
     setCookie("fullscreen", fs)
     toggleFullscreen(fs)
   })
@@ -612,9 +614,10 @@ document.addEventListener("DOMContentLoaded", () => {
       return;
     }
     let autoPlay = getCookie("autoplay");
+    let fullscreen = getCookie("fullscreen");
     videos.forEach(video => {
       video.classList.remove("lost");
-      if (!autoPlay) { return }
+      if (!autoPlay && !fullscreen && !video.autoplay) { return }
       if (video.classList.contains("webrtc")) {
         loadWebRTC(video);
       } else if (video.classList.contains("vjs-tech")) {
@@ -652,11 +655,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
   // cam control
   document.querySelectorAll(".cam-control").forEach((e) => {
-    let cam = e.dataset.cam;
+    let { cam } = e.dataset;
     e.querySelectorAll(".button").forEach((button) => {
       button.addEventListener("click", () => {
         button.classList.add("is-loading");
-        fetch(`api/${cam}/${button.dataset.cmd}`)
+        const { payload } = button.dataset
+        fetch(`api/${cam}/${button.dataset.cmd}${payload ? `/${payload}` : ''}`)
           .then((resp) => resp.json())
           .then((data) => { sendNotification(cam, `${button.dataset.cmd}: ${data.status}`, ["error", false].includes(data.status) ? "danger" : "primary") })
           .catch((error) => { sendNotification(cam, `${button.dataset.cmd}: ${error.message}`, "danger") })

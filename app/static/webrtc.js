@@ -97,18 +97,15 @@ class Receiver {
         fetch(this.signalJson.whep, {
             method: 'POST',
             headers: { 'Content-Type': 'application/sdp' },
-            body: JSON.stringify(desc),
+            body: desc.sdp,
         })
             .then((res) => {
-                if (res.status !== 201) {
-                    throw new Error('Bad status code');
-                }
+                if (res.status !== 201) { throw new Error('Bad status code'); }
                 this.eTag = res.headers.get('E-Tag');
-                return res.json();
+                return res.text();
             })
-            .then((answer) => this.onRemoteDescription(answer))
+            .then((sdp) => this.onRemoteDescription(sdp))
             .catch((err) => this.onClose(err));
-
     }
     sendToServer(action, payload) {
         this.ws.send(JSON.stringify({ "action": action, "messagePayload": btoa(JSON.stringify(payload)), "recipientClientId": this.signalJson.ClientId }));
@@ -156,10 +153,13 @@ class Receiver {
         }
     }
 
-    onRemoteDescription(answer) {
+    onRemoteDescription(sdp) {
         if (this.restartTimeout !== null) { return; }
 
-        this.pc.setRemoteDescription(new RTCSessionDescription(answer));
+        this.pc.setRemoteDescription(new RTCSessionDescription({
+            type: 'answer',
+            sdp,
+        }));
 
         if (this.queuedCandidates.length !== 0) {
             this.sendLocalCandidates(this.queuedCandidates);

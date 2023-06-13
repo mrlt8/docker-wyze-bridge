@@ -6,6 +6,7 @@ from urllib.parse import quote_plus, urlparse
 from flask import (
     Flask,
     Response,
+    flash,
     make_response,
     redirect,
     render_template,
@@ -37,9 +38,28 @@ def create_app():
     wb = WyzeBridge()
     wb.start()
 
+    @app.route("/login", methods=["GET", "POST"])
+    def wyze_login():
+        if not wb.api.creds.login_req:
+            return redirect("/")
+        if request.method == "GET":
+            return render_template(
+                "login.html",
+                hass=bool(config.HASS_TOKEN),
+                version=config.VERSION,
+            )
+        email = request.form.get("email")
+        password = request.form.get("password")
+        if email and password:
+            wb.api.creds.update(email, password)
+            return {"status": "success"}
+        return {"status": "missing email or password"}
+
     @app.route("/")
     @auth.login_required
     def index():
+        if wb.api.creds.login_req:
+            return redirect("/login")
         if not (columns := request.args.get("columns")):
             columns = request.cookies.get("number_of_columns", "2")
         if not (refresh := request.args.get("refresh")):
@@ -67,7 +87,7 @@ def create_app():
                 refresh_period=refresh_period,
                 hass=bool(config.HASS_TOKEN),
                 version=config.VERSION,
-                webrtc=bool(config.BRIDGE_IP) and video_format.lower() == "webrtc",
+                webrtc=bool(config.BRIDGE_IP),
                 show_video=show_video,
                 video_format=video_format.lower(),
                 autoplay=autoplay,
@@ -108,29 +128,33 @@ def create_app():
         )
 
     @app.route("/api")
-    @app.route("/api/<string:cam_name>")
-    @app.route("/api/<string:cam_name>/<string:cam_cmd>")
-    def api(cam_name=None, cam_cmd=None):
-        """JSON api endpoints."""
-        if cam_name and cam_cmd == "status":
-            return {"status": wb.streams.get_status(cam_name)}
-        if cam_name and cam_cmd == "start":
-            return {"status": wb.streams.start(cam_name)}
-        if cam_name and cam_cmd == "stop":
-            return {"status": wb.streams.stop(cam_name)}
-        if cam_name and cam_cmd == "disable":
-            return {"status": wb.streams.disable(cam_name)}
-        if cam_name and cam_cmd == "enable":
-            return {"status": wb.streams.enable(cam_name)}
-        if cam_name and cam_cmd:
-            return wb.streams.send_cmd(cam_name, cam_cmd)
-
+    def api_all_cams():
         host = urlparse(request.root_url).hostname
-        if not cam_name:
-            return web_ui.all_cams(wb.streams, wb.api.total_cams, host)
+        return web_ui.all_cams(wb.streams, wb.api.total_cams, host)
+
+    @app.route("/api/<string:cam_name>")
+    def api_cam(cam_name: str):
+        host = urlparse(request.root_url).hostname
         if cam := wb.streams.get_info(cam_name):
             return cam | web_ui.format_stream(cam_name, host)
         return {"error": f"Could not find camera [{cam_name}]"}
+
+    @app.route("/api/<cam_name>/<cam_cmd>", methods=["GET", "PUT", "POST"])
+    @app.route("/api/<cam_name>/<cam_cmd>/<payload>")
+    def api_cam_control(cam_name: str, cam_cmd: str, payload: str | dict = ""):
+        """API Endpoint to send tutk commands to the camera."""
+        if args := request.values:
+            payload = args.to_dict() if len(args) > 1 else next(args.values())
+        elif request.is_json:
+            json = request.get_json()
+            if isinstance(json, dict):
+                payload = json if len(json) > 1 else list(json.values())[0]
+            else:
+                payload = json
+        elif request.data:
+            payload = request.data.decode()
+
+        return wb.streams.send_cmd(cam_name, cam_cmd.lower(), payload)
 
     @app.route("/signaling/<string:name>")
     def webrtc_signaling(name):
@@ -195,7 +219,7 @@ def create_app():
         """
         if restart_cmd == "cameras":
             wb.streams.stop_all()
-            wb.streams.monitor_streams()
+            wb.streams.monitor_streams(wb.rtsp.health_check)
         elif restart_cmd == "rtsp_server":
             wb.rtsp.restart()
         elif restart_cmd == "all":

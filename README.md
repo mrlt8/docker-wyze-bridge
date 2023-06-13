@@ -16,84 +16,33 @@ It just works!
 
 Streams direct from camera without additional bandwidth or subscriptions.
 
-Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [aler9/mediamtx](https://github.com/aler9/mediamtx).
+Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [bluenviron/mediamtx](https://github.com/bluenviron/mediamtx).
 
 
 Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) this project if you found it useful, or use the [affiliate link](https://amzn.to/3NLnbvt) when shopping on amazon!
 
 ## Quick Start
 
-Install [docker](https://docs.docker.com/get-docker/) and use your Wyze credentials to run:
-
-(If your credentials have special characters, you must escape them)
+Install [docker](https://docs.docker.com/get-docker/) and run:
 
 ```bash
-docker run \
-  -e WYZE_EMAIL=you@email.com \
-  -e WYZE_PASSWORD=yourpassw0rd \
-  -p 1935:1935 -p 8554:8554 -p 8888:8888 -p 5000:5000 \
-  mrlt8/wyze-bridge:latest
+docker run -p 8554:8554 -p 8888:8888 -p 5000:5000 mrlt8/wyze-bridge
 ```
 
 You can then use the web interface at `http://localhost:5000` where localhost is the hostname or ip of the machine running the bridge.
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.1.7
+## What's Changed in v2.3.0
 
-* FIX: WebRTC not loading in the WebUI.
-* UPDATE: MediaMTX to v0.23.2
-
-## What's Changed in v2.1.6
-
-* UPDATE: MediaMTX to v0.23.0
-* FIXED: Error reading some events.
-* FIXED: Restart MediaMTX on exit and kill flask on cleanup which could prevent the bridge from restarting.
-
-## What's Changed in v2.1.5
-
-* FIX: set_alarm_on/set_alarm_off was inverted #795. Thanks @iferlive!
-* NEW: `URI_MAC=true` to append last 4 characters of the MAC address to the URI to avoid conflicting URIs when multiple cameras share the same name. #760
-* Home Assistant: Add RECORD_FILE_NAME option #791
-* UPDATE: base image to bullseye.
-
-## What's Changed in v2.1.4
-
-* FIX: Record option would not auto-connect. #784 Thanks @JA16122000!
-* 
-
-## What's Changed in v2.1.2/3
-
-* Increase close on-demand time to 60s to prevent reconnect messages. #643 #750 #764
-* Disable default LL-HLS for compatibility with apple. LL-HLS can still be enabled with `LLHLS=true` which will generate the necessary SSL certificates to work on Apple devices.
-* Disable MQTT if connection refused.
-* UPDATED: MediaMTX to [v0.22.2](https://github.com/aler9/mediamtx/releases/tag/v0.22.2)
-
-
-## What's Changed in v2.1.1
-
-* FIXED: WebRTC on UDP Port #772
-* UPDATED: MediaMTX to [v0.22.1](https://github.com/aler9/mediamtx/releases/tag/v0.22.1)
-* ENV Options: Re-enable `ON_DEMAND` to toggle connection mode. #643 #750 #764
-
-## What's Changed in v2.1.0
-
-⚠️ This version updates the backend rtsp-simple-server to [MediaMTX](https://github.com/aler9/mediamtx) which may cause some issues if you're using custom rtsp-simple-server related configs.
-
-* CHANGED: rtsp-simple-server to MediaMTX.
-* ENV Options:
-  * New: `SUB_QUALITY` - Specify the quality to be used for the substream. #755
-  * New: `SNAPSHOT_FORMAT` - Specify the output file format when using `SNAPSHOT` which can be used to create a timelapse/save multiple snapshots. e.g., `SNAPSHOT_FORMAT={cam_name}/%Y-%m-%d/%H-%M.jpg` #757:
-* Home Assistant/MQTT:
-  * Fixed: MQTT auto-discovery error #751
-  * New: Additional entities for each of the cameras.
-  * Changed: Default IMG_DIR to `media/wyze/img/` #660
-
-
-Known Issues/Bugs:
-
-* WebUI Audio: Limited audio compatibility between HLS and WebRTC. May need to force the audio codec to `AUDIO_CODEC=aac` for HLS and `AUDIO_CODEC=libopus` for WebRTC.
-* Substream: SD stream seems to have a stuttering issue due to the hardware encoding on the camera. May need to force a re-encode of the video using `FORCE_ENCODE=true`.
+* NEW: Optional `API_KEY` and `API_ID` config for wyze API (#837)
+  * Key/ID are optional and the bridge will continue to function without them.
+  * `WYZE_EMAIL` and `WYZE_PASSWORD` are still required, but using API key/ID will allow you to skip 2FA without disabling it.
+  * Key/ID are tied to a single account, so you will need to generate a new set for each account.
+  * See: https://support.wyze.com/hc/en-us/articles/16129834216731
+* NEW: Camera commands (#835)
+  * GET/SET `cruise_points` for Pan cams. See [cruise_points](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Commands#cruise_points)
+  * GET/SET `ptz_position` for Pan cams. See [ptz_position](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Commands#ptz_position)
 
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
@@ -136,7 +85,7 @@ Cameras from [Gwell Times](http://cloud.gwell.cc) are currently not supported:
 | Wyze Cam Doorbell             | WYZEDB3        | ✅                                                           |
 | Wyze Battery Cam Pro          | AN_RSCW        | ❓                                                           |
 | Wyze Cam Doorbell Pro 2       | AN_RDB1        | ❓                                                           |
-| Wyze Cam Flood Light Pro [2K] | LD_CFP         | ❓                                                           |
+| Wyze Cam Flood Light Pro [2K] | LD_CFP         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/822) |
 | Wyze Cam Doorbell Pro         | GW_BE1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276) |
 | Wyze Cam OG                   | GW_GC1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/677) |
 | Wyze Cam OG Telephoto 3x      | GW_GC2         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/677) |

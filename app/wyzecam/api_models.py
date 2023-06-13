@@ -21,6 +21,7 @@ MODEL_NAMES = {
     "WVOD1": "Outdoor",
     "HL_WCO2": "Outdoor V2",
     "AN_RSCW": "Battery Cam Pro",
+    "LD_CFP": "Floodlight Pro",
 }
 
 # These cameras don't seem to support WebRTC
