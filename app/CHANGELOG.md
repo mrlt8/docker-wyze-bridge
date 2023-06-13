@@ -1,3 +1,14 @@
+## What's Changed in v2.3.0
+
+* NEW: Optional `API_KEY` and `API_ID` config for wyze API (#837)
+  * Key/ID are optional and the bridge will continue to function without them.
+  * `WYZE_EMAIL` and `WYZE_PASSWORD` are still required, but using API key/ID will allow you to skip 2FA without disabling it.
+  * Key/ID are tied to a single account, so you will need to generate a new set for each account.
+  * See: https://support.wyze.com/hc/en-us/articles/16129834216731
+* NEW: Camera commands (#835)
+  * GET/SET `cruise_points` for Pan cams. See [cruise_points](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Commands#cruise_points)
+  * GET/SET `ptz_position` for Pan cams. See [ptz_position](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Commands#ptz_position)
+
 ## What's Changed in v2.2.4
 
 * NEW: Add Wyze credentials via WebUI.
