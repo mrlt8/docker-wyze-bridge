@@ -147,7 +147,10 @@ def create_app():
             payload = args.to_dict() if len(args) > 1 else next(args.values())
         elif request.is_json:
             json = request.get_json()
-            payload = json if len(json) > 1 else list(json.values())[0]
+            if isinstance(json, dict):
+                payload = json if len(json) > 1 else list(json.values())[0]
+            else:
+                payload = json
         elif request.data:
             payload = request.data.decode()
 

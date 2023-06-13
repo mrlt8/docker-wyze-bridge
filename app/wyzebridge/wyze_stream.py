@@ -249,7 +249,7 @@ class WyzeStream:
             return {}
         return self.camera.camera_info.get("boa_info", {})
 
-    def send_cmd(self, cmd: str, value: str | dict = "") -> dict:
+    def send_cmd(self, cmd: str, value: str | list | dict = "") -> dict:
         if cmd in {"status", "start", "stop", "disable", "enable"}:
             logger.info(f"[CONTROL] {self.uri}:{cmd.upper()}")
             response = getattr(self, cmd)()
@@ -259,6 +259,8 @@ class WyzeStream:
                 "value": response,
             }
 
+        if self.state < StreamStatus.STOPPED:
+            return {"response": self.status()}
         if env_bool("disable_control"):
             return {"response": "control disabled"}
         if cmd not in GET_CMDS | SET_CMDS and cmd not in {"caminfo"}:

@@ -47,7 +47,7 @@ class Stream(Protocol):
     def status(self) -> str:
         ...
 
-    def send_cmd(self, cmd: str, value: str | dict = "") -> dict:
+    def send_cmd(self, cmd: str, value: str | list | dict = "") -> dict:
         ...
 
 
@@ -146,7 +146,9 @@ class StreamManager:
     def get_sse_status(self) -> dict:
         return {uri: cam.status() for uri, cam in self.streams.items()}
 
-    def send_cmd(self, cam_name: str, cmd: str, payload: str | dict = "") -> dict:
+    def send_cmd(
+        self, cam_name: str, cmd: str, payload: str | list | dict = ""
+    ) -> dict:
         """
         Send a command directly to the camera and wait for a response.
 

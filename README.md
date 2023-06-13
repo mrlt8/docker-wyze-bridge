@@ -33,54 +33,16 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.2.4
+## What's Changed in v2.3.0
 
-* NEW: Add Wyze credentials via WebUI.
-  * This does not replace the old method, but is just an alternate way to pass your wyze credentials to the container.
-  * This should hopefully resolve the issue some users were facing when they had special characters in their docker-compose.
-  * `WYZE_EMAIL` and `WYZE_PASSWORD` are no longer required to start the bridge. #807
-* FIXED: Log wording when filtering is enabled. Thanks @cturra
-* UPDATED: MediaMTX to v0.23.5
-
-## What's Changed in v2.2.3
-
-* NEW: `LOG_TIME` config to add timestamps to the logs. #830
-* CHANGED: `DEBUG_LEVEL` is now `LOG_LEVEL`
-* FIXED: `DEBUG_LEVEL`/`LOG_LEVEL` and `LOG_FILE` were broken in Home Assistant. #830
-  * `LOG_FILE` now logs to `/config/wyze-bridge/logs/`
-    
-## What's Changed in v2.2.2
-
-* FIXED: `autoplay` URL parameter was being ignored - Thanks @stere0123! #826
-* NEW: Fullscreen mode on web-ui enables autoplay.
-* Disabled `LD_CFP` "Floodlight Pro" because it doesn't use tutk - Thanks @cryptosmasher! #822
-  * This seems to be slightly different than the Gwell cameras (OG/Doorbell Pro). Needs further investigation. 
-* UPDATED: MediaMTX to [v0.23.4](https://github.com/bluenviron/mediamtx/releases/tag/v0.23.4).
-
-
-## What's Changed in v2.2.1
-
-* FIXED: topic to set `motion_tracking` Thanks @crslen! #823
-* FIXED: additional cam info was missing from web-ui.
-* NEW: outdoor cam related tutk commands and `battery` topic for API.
-
-## What's Changed in v2.2.0
-
-⚠️ Breaking changes for MQTT/REST API 
-
-See [wiki](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Commands) for details.
-
-* CHANGED: API commands are now split into topics and payload values for more flexibility.
-* NEW: API commands will initiate connection if not connected.
-* NEW: json payload for API commands.
-* NEW: `PUT`/`POST` methods for REST API.
-* NEW: MQTT topics for each get and set command.
-* NEW: MQTT value gets updated on set command.
-* NEW: start/stop/enable/disable over MQTT.
-* FIXED: camera busy on re-connect.
-
-
-
+* NEW: Optional `API_KEY` and `API_ID` config for wyze API (#837)
+  * Key/ID are optional and the bridge will continue to function without them.
+  * `WYZE_EMAIL` and `WYZE_PASSWORD` are still required, but using API key/ID will allow you to skip 2FA without disabling it.
+  * Key/ID are tied to a single account, so you will need to generate a new set for each account.
+  * See: https://support.wyze.com/hc/en-us/articles/16129834216731
+* NEW: Camera commands (#835)
+  * GET/SET `cruise_points` for Pan cams. See [cruise_points](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Commands#cruise_points)
+  * GET/SET `ptz_position` for Pan cams. See [ptz_position](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Commands#ptz_position)
 
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
