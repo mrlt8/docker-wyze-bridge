@@ -258,6 +258,8 @@ class WyzeStream:
                 "response": response,
                 "value": response,
             }
+        if cmd in {"power_on", "power_off", "restart"}:
+            self.api.run_action(self.camera.name_uri, cmd)
 
         if self.state < StreamStatus.STOPPED:
             return {"response": self.status()}

@@ -242,6 +242,18 @@ class WyzeApi:
             logger.warning("⏰ Expired refresh token?")
             self.login(fresh_data=True)
 
+    @authenticated
+    def run_action(self, uri: str, action: str):
+        if not (cam := self.get_camera(uri)):
+            return {"status": "error", "response": f"Camera {uri} not found"}
+        try:
+            logger.info(f"[CONTROL] ☁️ Sending {uri}: {action.upper()} over WyzeAPI")
+            resp = wyzecam.api.run_action(self.auth, cam, action)
+            return {"status": "success", "response": resp["result"]}
+        except AssertionError as ex:
+            logger.error(ex)
+            return {"status": "error", "response": str(ex)}
+
     def clear_cache(self):
         logger.info("♻️ Clearing local cache...")
         self.auth = None
