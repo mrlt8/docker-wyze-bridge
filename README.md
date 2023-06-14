@@ -33,6 +33,19 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.3.1
+
+* NEW: WebUI - Power on/off/restart controls.
+  * As these commands are sent over Wyze's Cloud API, the cameras will need access to the wyze servers.
+  * These commands also suffer from the same "offline" issue as the app, and will give an error if the camera is reporting offline in the app.
+* NEW: Camera commands:
+  * Topic: `power`; payload: `on|off|restart` Sent over Wyze Cloud API. (#845) (#841)
+  * Topic: `bitrate`; payload: `1-255` Change the video bitrate/quality (#852)
+* NEW: Camera specific sub_quality option (#851)
+  * Docker: use `SUB_QUALITY_NAME=SD60`
+  * Home Assistant: use `SUB_QUALITY: SD60` in [Camera Specific Options](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant#camera-specific-options).
+* NEW: Home Assistant - add config for 8554/udp (#855)
+
 ## What's Changed in v2.3.0
 
 * NEW: Optional `API_KEY` and `API_ID` config for wyze API (#837)
