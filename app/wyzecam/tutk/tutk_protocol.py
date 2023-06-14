@@ -503,6 +503,17 @@ class K10052SetFPS(TutkWyzeProtocolMessage):
         return encode(self.code, bytes([0, 0, 0, self.fps, 0, 0]))
 
 
+class K10052SetBitrate(TutkWyzeProtocolMessage):
+    def __init__(self, value: int = 0):
+        super().__init__(10052)
+
+        assert 0 < value <= 255, "bitrate value must be 1-255"
+        self.bitrate = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([self.bitrate, 0, 0, 0, 0]))
+
+
 class K10090GetCameraTime(TutkWyzeProtocolMessage):
     """
     A message used to get the current time on the camera.

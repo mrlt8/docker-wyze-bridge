@@ -45,6 +45,7 @@ SET_CMDS = {
     "motion_tracking": "K11022SetMotionTracking",
     "motion_tagging": "K10292SetMotionTagging",
     "fps": "K10052SetFPS",
+    "bitrate": "K10052SetBitrate",
     "rtsp": "K10600SetRtspSwitch",
 }
 
