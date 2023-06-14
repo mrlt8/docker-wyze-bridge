@@ -243,11 +243,9 @@ class WyzeApi:
             self.login(fresh_data=True)
 
     @authenticated
-    def run_action(self, uri: str, action: str):
-        if not (cam := self.get_camera(uri)):
-            return {"status": "error", "response": f"Camera {uri} not found"}
+    def run_action(self, cam: WyzeCamera, action: str):
         try:
-            logger.info(f"[CONTROL] ☁️ Sending {uri}: {action.upper()} over WyzeAPI")
+            logger.info(f"[CONTROL] ☁️ Sending {action} to {cam.name_uri} via Wyze API")
             resp = wyzecam.api.run_action(self.auth, cam, action)
             return {"status": "success", "response": resp["result"]}
         except AssertionError as ex:
