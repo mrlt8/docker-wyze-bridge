@@ -70,7 +70,7 @@ class WyzeBridge(Thread):
         if env_bool(f"SUBSTREAM_{cam.name_uri}") or (
             env_bool("SUBSTREAM") and cam.can_substream
         ):
-            quality = env_bool("sub_quality", "sd30")
+            quality = env_cam("sub_quality", cam.name_uri, "sd30")
             sub_opt = replace(options, quality=quality, substream=True)
             sub = WyzeStream(cam, sub_opt)
             self.rtsp.add_path(sub.uri, not options.reconnect)

@@ -258,6 +258,11 @@ class WyzeStream:
                 "response": response,
                 "value": response,
             }
+        if cmd in {"power"}:
+            if not value:
+                return {"status": "error", "response": "invalid payload"}
+            run_cmd = value if value == "restart" else f"{cmd}_{value}"
+            return dict(self.api.run_action(self.camera, run_cmd), value=value)
 
         if self.state < StreamStatus.STOPPED:
             return {"response": self.status()}

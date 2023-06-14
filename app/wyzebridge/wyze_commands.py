@@ -27,6 +27,7 @@ SET_CMDS = {
     "stop": None,
     "disable": None,
     "enable": None,
+    "power": None,
     "irled": "K10046SetIRLEDStatus",
     "night_vision": "K10042SetNightVisionStatus",
     "status_light": "K10032SetNetworkLightStatus",
@@ -42,6 +43,7 @@ SET_CMDS = {
     "motion_tracking": "K11022SetMotionTracking",
     "motion_tagging": "K10292SetMotionTagging",
     "fps": "K10052SetFPS",
+    "bitrate": "K10052SetBitrate",
     "rtsp": "K10600SetRtspSwitch",
 }
 
