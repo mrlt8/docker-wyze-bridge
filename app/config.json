@@ -17,6 +17,7 @@
     "ports": {
         "1935/tcp": 1935,
         "8554/tcp": 8554,
+        "8554/udp": null,
         "8888/tcp": 8888,
         "8189/udp": 8189,
         "8889/tcp": 8889,
@@ -25,6 +26,7 @@
     "ports_description": {
         "1935/tcp": "RTMP streams",
         "8554/tcp": "RTSP streams",
+        "8554/udp": "RTSP streams (UDP)",
         "8888/tcp": "HLS streams",
         "8189/udp": "WebRTC ICE",
         "8889/tcp": "WebRTC streams",
