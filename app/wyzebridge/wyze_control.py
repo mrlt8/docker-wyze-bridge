@@ -180,7 +180,7 @@ def update_mqtt_values(sess: WyzeIOTCSession):
         return
     param = send_tutk_msg(sess, ("param_info", "2,50"), False).get("param_info")
 
-    if param and (resp := param.get("response")):
+    if param and param.get("status") == "success" and (resp := param.get("response")):
         send_mqtt(
             [
                 (f"wyzebridge/{sess.camera.name_uri}/night_vision", resp.get("2", 0)),
