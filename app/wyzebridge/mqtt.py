@@ -76,8 +76,8 @@ def mqtt_sub_topic(m_topics: list, callback) -> Optional[paho.mqtt.client.Client
     client.username_pw_set(MQTT_USER, MQTT_PASS or None)
     client.user_data_set(callback)
     client.on_connect = lambda mq_client, *_: (
-        [mq_client.subscribe(f"wyzebridge/{m_topic}") for m_topic in m_topics],
         mq_client.publish("wyzebridge/state", "online"),
+        [mq_client.subscribe(f"wyzebridge/{m_topic}") for m_topic in m_topics],
     )
     client.will_set("wyzebridge/state", payload="offline", qos=1, retain=True)
     client.connect(MQTT_HOST, int(MQTT_PORT or 1883), 30)
@@ -163,7 +163,7 @@ def _on_message(client, callback, msg):
 
 def get_entities(base_topic: str) -> dict:
     return {
-        "preview": {
+        "snapshot": {
             "type": "camera",
             "payload": {
                 "availability_topic": f"{base_topic}state",
@@ -197,6 +197,48 @@ def get_entities(base_topic: str) -> dict:
                 "payload_on": 3,
                 "payload_off": 2,
                 "icon": "mdi:weather-night",
+            },
+        },
+        "status_light": {
+            "type": "switch",
+            "payload": {
+                "state_topic": f"{base_topic}status_light",
+                "command_topic": f"{base_topic}status_light/set",
+                "payload_on": 1,
+                "payload_off": 2,
+                "icon": "mdi:led-on",
+                "entity_category": "diagnostic",
+            },
+        },
+        "bitrate": {
+            "type": "number",
+            "payload": {
+                "state_topic": f"{base_topic}bitrate",
+                "command_topic": f"{base_topic}bitrate/set",
+                "device_class": "data_rate",
+                "min": 1,
+                "max": 250,
+                "icon": "mdi:high-definition-box",
+                "entity_category": "diagnostic",
+            },
+        },
+        "fps": {
+            "type": "number",
+            "payload": {
+                "state_topic": f"{base_topic}fps",
+                "command_topic": f"{base_topic}fps/set",
+                "min": 1,
+                "max": 30,
+                "icon": "mdi:filmstrip",
+                "entity_category": "diagnostic",
+            },
+        },
+        "res": {
+            "type": "sensor",
+            "payload": {
+                "state_topic": f"{base_topic}res",
+                "icon": "mdi:image-size-select-large",
+                "entity_category": "diagnostic",
             },
         },
         "signal": {

@@ -178,12 +178,16 @@ def camera_control(
 def update_mqtt_values(sess: WyzeIOTCSession):
     if not MQTT_ENABLED:
         return
-    param = send_tutk_msg(sess, ("param_info", "2,50"), False).get("param_info")
+    param = send_tutk_msg(sess, ("param_info", "1,2,3,4,5,50"), False).get("param_info")
 
     if param and param.get("status") == "success" and (resp := param.get("response")):
         send_mqtt(
             [
+                (f"wyzebridge/{sess.camera.name_uri}/status_light", resp.get("1", 0)),
                 (f"wyzebridge/{sess.camera.name_uri}/night_vision", resp.get("2", 0)),
+                (f"wyzebridge/{sess.camera.name_uri}/bitrate", resp.get("3", 0)),
+                (f"wyzebridge/{sess.camera.name_uri}/res", resp.get("4", 0)),
+                (f"wyzebridge/{sess.camera.name_uri}/fps", resp.get("5", 0)),
                 (f"wyzebridge/{sess.camera.name_uri}/irled", resp.get("50", 0)),
             ]
         )
