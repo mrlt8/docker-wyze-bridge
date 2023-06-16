@@ -204,9 +204,12 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: bool = True) -> 
     Rreturns:
     - dictionary: tutk response from camera.
     """
-    tutk_msg, topic, payload, payload_str = lookup_cmd(cmd, log)
-    resp = {"command": topic, "payload": payload_str}
+    try:
+        tutk_msg, topic, payload, payload_str = lookup_cmd(cmd, log)
+    except Exception as ex:
+        return {cmd[0]: {"status": "error", "command": cmd, "response": ex}}
 
+    resp = {"command": topic, "payload": payload_str}
     if not tutk_msg:
         return {
             topic: resp | {"status": "error", "response": payload or "Invalid command"}
