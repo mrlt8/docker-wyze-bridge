@@ -248,8 +248,9 @@ class WyzeApi:
             resp = wyzecam.api.run_action(self.auth, cam, action.lower())
             return {"status": "success", "response": resp["result"]}
         except ValueError as ex:
-            logger.error(f'ERROR - {ex.get("code")}: {ex.get("msg")}')
-            return {"status": "error", "response": f'{ex.get("code")}: {ex.get("msg")}'}
+            error = f'{ex.args[0].get("code")}: {ex.args[0].get("msg")}'
+            logger.error(f"ERROR - {error}")
+            return {"status": "error", "response": f"{error}"}
 
     def clear_cache(self):
         logger.info("♻️ Clearing local cache...")
