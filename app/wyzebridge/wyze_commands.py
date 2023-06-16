@@ -1,5 +1,5 @@
 GET_CMDS = {
-    "status": None,
+    "state": None,
     "take_photo": "K10058TakePhoto",
     "irled": "K10044GetIRLEDStatus",
     "night_vision": "K10040GetNightVisionStatus",
@@ -23,10 +23,7 @@ GET_CMDS = {
 GET_PAYLOAD = {"param_info"}
 
 SET_CMDS = {
-    "start": None,
-    "stop": None,
-    "disable": None,
-    "enable": None,
+    "state": None,
     "power": None,
     "irled": "K10046SetIRLEDStatus",
     "night_vision": "K10042SetNightVisionStatus",
