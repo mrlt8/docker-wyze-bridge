@@ -122,7 +122,7 @@ def refresh_token(auth_info: WyzeCredential) -> WyzeCredential:
     resp = requests.post(
         f"{WYZE_API}/user/refresh_token",
         json=payload,
-        headers=get_headers(auth_info.phone_id),
+        headers=get_headers(),
     )
     resp.raise_for_status()
     resp_json = resp.json()
