@@ -268,9 +268,8 @@ def lookup_cmd(cmd: tuple[str, Optional[str | dict]] | str, log: bool = True) ->
     elif payload_str and (value := CMD_VALUES.get(payload_str.strip().lower())):
         payload = [value] if isinstance(value, int) else value
     elif payload_str:
-        payload = [
-            int(v) for v in payload_str.split(",") if v.strip().strip("-").isdigit()
-        ]
+        vals = payload_str.strip(""""'""").split(",")
+        payload = [int(v) for v in vals if v.strip().strip("-").isdigit()]
 
     return tutk_msg(*payload), topic, payload, payload_str
 
