@@ -29,6 +29,10 @@ SC_SV = {
 }
 
 
+class AccessTokenError(Exception):
+    pass
+
+
 def login(
     email: str,
     password: str,
@@ -157,7 +161,9 @@ def get_user_info(auth_info: WyzeCredential) -> WyzeAccount:
     resp.raise_for_status()
 
     resp_json = resp.json()
-    assert resp_json["code"] == "1", "Call failed"
+    if resp_json["code"] == "2001":
+        raise AccessTokenError()
+    assert resp_json["code"] == "1"
 
     return WyzeAccount.parse_obj(dict(resp_json["data"], phone_id=auth_info.phone_id))
 
@@ -172,7 +178,10 @@ def get_homepage_object_list(auth_info: WyzeCredential) -> dict[str, Any]:
     resp.raise_for_status()
 
     resp_json = resp.json()
+    if resp_json["code"] == "2001":
+        raise AccessTokenError()
     assert resp_json["code"] == "1"
+
     return resp_json["data"]
 
 
@@ -241,7 +250,10 @@ def run_action(auth_info: WyzeCredential, camera: WyzeCamera, action: str):
         f"{WYZE_API}/v2/auto/run_action", json=payload, headers=get_headers()
     )
     resp_json = resp.json()
-    assert resp_json["code"] == "1", f'{resp_json.get("code")}: {resp_json.get("msg")}'
+    if resp_json["code"] == "2001":
+        raise AccessTokenError()
+    if resp_json.get("code") != "1":
+        raise ValueError(resp_json)
 
     return resp_json["data"]
 
@@ -258,6 +270,8 @@ def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
     )
     resp.raise_for_status()
     resp_json = resp.json()
+    if resp_json["code"] == "2001":
+        raise AccessTokenError()
     assert resp_json["code"] == "1"
     for s in resp_json["results"]["servers"]:
         if "url" in s:
