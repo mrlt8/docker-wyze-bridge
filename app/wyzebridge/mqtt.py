@@ -26,10 +26,13 @@ def mqtt_enabled(func):
         try:
             return func(*args, **kwargs)
         except ConnectionRefusedError:
-            logger.warning("[MQTT] connection refused. Disabling MQTT.")
+            logger.error("[MQTT] connection refused. Disabling MQTT.")
+            MQTT_ENABLED = False
+        except TimeoutError:
+            logger.error("[MQTT] TimeoutError. Disabling MQTT.")
             MQTT_ENABLED = False
         except Exception as ex:
-            logger.warning(f"[MQTT] {ex}")
+            logger.error(f"[MQTT] {ex}")
 
     return wrapper
 
