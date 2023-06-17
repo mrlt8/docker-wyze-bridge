@@ -285,7 +285,7 @@ class K10020CheckCameraInfo(TutkWyzeProtocolMessage):
     - A json object with the camera parameters.
     """
 
-    def __init__(self, count: int = 99):
+    def __init__(self, count: int = 60):
         super().__init__(10020)
         self.count = count
 

@@ -1,3 +1,18 @@
+## What's Changed in v2.3.2
+
+* Camera commands:
+  * SET Topic: `state`; payload: `start|stop|enable|disable` - control the camera stream.
+  * GET Topic: `state` - get the state of the stream in the bridge.
+  * GET Topic: `power` - get the power switch state (Wyze Cloud API).
+* REST/MQTT Control:
+  * FIXED: Refresh token if needed when sending `power` commands.
+  * FIXED: Remove quotations from payload. (#857)
+  * CHANGED: Better error handling for commands.
+* MQTT:
+  * Updated discovery availability and additional entities.
+  * Publish additional topics with current settings.
+  * Disable on TimeoutError.
+  
 ## What's Changed in v2.3.1
 
 * NEW: WebUI - Power on/off/restart controls.

@@ -249,20 +249,26 @@ class WyzeStream:
             return {}
         return self.camera.camera_info.get("boa_info", {})
 
-    def send_cmd(self, cmd: str, value: str | list | dict = "") -> dict:
-        if cmd in {"status", "start", "stop", "disable", "enable"}:
-            logger.info(f"[CONTROL] {self.uri}:{cmd.upper()}")
-            response = getattr(self, cmd)()
+    def state_control(self, payload) -> dict:
+        if payload in {"start", "stop", "disable", "enable"}:
+            logger.info(f"[CONTROL] SET {self.uri} state={payload}")
+            response = getattr(self, payload)()
             return {
                 "status": "success" if response else "error",
-                "response": response,
-                "value": response,
+                "response": payload if response else self.status(),
+                "value": payload,
             }
-        if cmd in {"power"}:
-            if not value:
-                return {"status": "error", "response": "invalid payload"}
-            run_cmd = value if value == "restart" else f"{cmd}_{value}"
-            return dict(self.api.run_action(self.camera, run_cmd), value=value)
+        logger.info(f"[CONTROL] GET {self.uri} state")
+        return {"status": "success", "response": self.status()}
+
+    def send_cmd(self, cmd: str, payload: str | list | dict = "") -> dict:
+        if cmd in {"state", "start", "stop", "disable", "enable"}:
+            return self.state_control(payload or cmd)
+        if cmd == "power":
+            if payload.lower() not in {"on", "off", "restart"}:
+                return self.api.get_pid_info(self.camera, "P3")
+            run_cmd = payload if payload == "restart" else f"{cmd}_{payload}"
+            return dict(self.api.run_action(self.camera, run_cmd), value=payload)
 
         if self.state < StreamStatus.STOPPED:
             return {"response": self.status()}
@@ -277,7 +283,7 @@ class WyzeStream:
                 sleep(0.1)
         self._clear_mp_queue()
         try:
-            self.cam_cmd.put_nowait((cmd, value))
+            self.cam_cmd.put_nowait((cmd, payload))
             cam_resp = self.cam_resp.get(timeout=10)
         except Full:
             return {"response": "camera busy"}

@@ -60,10 +60,9 @@ def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
             return
         try:
             return func(self, *args, **kwargs)
-        except AssertionError:
+        except wyzecam.api.AccessTokenError:
             logger.warning("⚠️ Expired token?")
-            if func.__name__ != "refresh_token":
-                self.refresh_token()
+            self.refresh_token()
             return func(self, *args, **kwargs)
         except ConnectionError as ex:
             logger.warning(f"{ex}")
@@ -248,9 +247,24 @@ class WyzeApi:
             logger.info(f"[CONTROL] ☁️ Sending {action} to {cam.name_uri} via Wyze API")
             resp = wyzecam.api.run_action(self.auth, cam, action.lower())
             return {"status": "success", "response": resp["result"]}
-        except AssertionError as ex:
-            logger.error(ex)
-            return {"status": "error", "response": str(ex)}
+        except ValueError as ex:
+            error = f'{ex.args[0].get("code")}: {ex.args[0].get("msg")}'
+            logger.error(f"ERROR - {error}")
+            return {"status": "error", "response": f"{error}"}
+
+    @authenticated
+    def get_pid_info(self, cam: WyzeCamera, pid: str):
+        try:
+            logger.info(f"[CONTROL] ☁️ Getting info for {cam.name_uri} via Wyze API")
+            property_list = wyzecam.api.get_device_info(self.auth, cam)["property_list"]
+        except ValueError as ex:
+            error = f'{ex.args[0].get("code")}: {ex.args[0].get("msg")}'
+            logger.error(f"ERROR - {error}")
+            return {"status": "error", "response": f"{error}"}
+
+        resp = next((item for item in property_list if item["pid"] == pid))
+
+        return {"status": "success", "value": resp.get("value"), "response": resp}
 
     def clear_cache(self):
         logger.info("♻️ Clearing local cache...")

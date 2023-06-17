@@ -40,11 +40,6 @@ makedirs(IMG_PATH, exist_ok=True)
 
 
 DEPRECATED = {
-    "TAKE_PHOTO",
-    "PULL_PHOTO",
-    "PULL_ALARM",
-    "MOTION_HTTP",
-    "MOTION_COOLDOWN",
     "DEBUG_LEVEL",
 }
 

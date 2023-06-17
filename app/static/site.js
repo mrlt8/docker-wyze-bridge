@@ -538,11 +538,11 @@ document.addEventListener("DOMContentLoaded", () => {
     const uri = this.getAttribute("data-cam");
     if (icon.matches(".fa-circle-play, .fa-satellite-dish")) {
       icon.setAttribute("class", "fas fa-circle-notch fa-spin")
-      fetch(`api/${uri}/stop`)
+      fetch(`api/${uri}/state/stop`)
       console.debug("pause " + uri)
     } else if (icon.matches(".fa-circle-pause, .fa-ghost")) {
       icon.setAttribute("class", "fas fa-circle-notch fa-spin")
-      fetch(`api/${uri}/start`)
+      fetch(`api/${uri}/state/start`)
       console.debug("play " + uri)
     }
   }

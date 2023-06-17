@@ -178,18 +178,24 @@ def camera_control(
 def update_mqtt_values(sess: WyzeIOTCSession):
     if not MQTT_ENABLED:
         return
-    param = send_tutk_msg(sess, ("param_info", "2,50"), False).get("param_info")
+    param = send_tutk_msg(sess, ("param_info", "1,2,3,4,5,50"), "debug").get(
+        "param_info"
+    )
 
-    if param and (resp := param.get("response")):
+    if param and param.get("status") == "success" and (resp := param.get("response")):
         send_mqtt(
             [
+                (f"wyzebridge/{sess.camera.name_uri}/status_light", resp.get("1", 0)),
                 (f"wyzebridge/{sess.camera.name_uri}/night_vision", resp.get("2", 0)),
+                (f"wyzebridge/{sess.camera.name_uri}/bitrate", resp.get("3", 0)),
+                (f"wyzebridge/{sess.camera.name_uri}/res", resp.get("4", 0)),
+                (f"wyzebridge/{sess.camera.name_uri}/fps", resp.get("5", 0)),
                 (f"wyzebridge/{sess.camera.name_uri}/irled", resp.get("50", 0)),
             ]
         )
 
 
-def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: bool = True) -> dict:
+def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") -> dict:
     """
     Send tutk protocol message to camera.
 
@@ -200,14 +206,19 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: bool = True) -> 
     Rreturns:
     - dictionary: tutk response from camera.
     """
-    tutk_msg, topic, payload, payload_str = lookup_cmd(cmd, log)
-    resp = {"command": topic, "payload": payload_str}
+    topic, payload, tutk_topic = parse_cmd(cmd, log)
+    if not tutk_topic:
+        error = f"Invalid command: {topic=} not found {cmd=}"
+        logger.error(f"[CONTROL] ERROR - {error}")
+        return {topic: {"status": "error", "command": cmd, "response": error}}
 
-    if not tutk_msg:
-        return {
-            topic: resp | {"status": "error", "response": payload or "Invalid command"}
-        }
+    try:
+        tutk_msg, params = lookup_msg(tutk_topic, payload)
+    except Exception as ex:
+        logger.error(f"[CONTROL] ERROR - {ex} {cmd=}")
+        return {topic: {"status": "error", "command": cmd, "response": str(ex)}}
 
+    resp = {"command": topic, "payload": payload}
     try:
         with sess.iotctrl_mux() as mux:
             iotc = mux.send_ioctl(tutk_msg)
@@ -224,51 +235,44 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: bool = True) -> 
         resp |= {"response": ex, "status": "error"}
         logger.warning(f"[CONTROL] {ex}")
 
-    if payload and topic not in GET_PAYLOAD:
-        if isinstance(payload, dict):
-            resp["value"] = payload
+    if params and topic not in GET_PAYLOAD:
+        if isinstance(params, dict):
+            resp["value"] = params
         else:
-            resp["value"] = ",".join(map(str, payload))
-    if log:
-        logger.info(f"[CONTROL] Response: {resp}")
+            resp["value"] = ",".join(map(str, params))
+    getattr(logger, log)(f"[CONTROL] Response: {resp}")
     return {topic: resp}
 
 
-def lookup_cmd(cmd: tuple[str, Optional[str | dict]] | str, log: bool = True) -> tuple:
-    topic, payload_str = cmd if isinstance(cmd, tuple) else (cmd, None)
+def parse_cmd(cmd, log):
+    topic, payload = cmd if isinstance(cmd, tuple) else (cmd, None)
+    set_cmd = payload and topic not in GET_PAYLOAD
+    tutk_topic = SET_CMDS.get(topic) if set_cmd else GET_CMDS.get(topic)
 
-    should_set = payload_str and topic not in GET_PAYLOAD
-    log_msg = f"SET: {topic}={payload_str}" if should_set else f"GET: {topic}"
-    if log:
-        logger.info(f"[CONTROL] Attempting to {log_msg}")
+    log_msg = f"SET: {topic}={payload}" if set_cmd else f"GET: {topic}"
+    getattr(logger, log)(f"[CONTROL] Attempting to {log_msg}")
 
-    tutk_topic = SET_CMDS.get(topic) if should_set else GET_CMDS.get(topic)
+    return topic, payload, tutk_topic
 
-    if not tutk_topic or not (tutk_msg := getattr(tutk_protocol, tutk_topic, None)):
-        logger.error(f"[CONTROL] Invalid command: `{topic}` not found")
-        return None, topic, None, payload_str
 
-    if isinstance(payload_str, dict):
-        payload = {k: int(v) if str(v).isdigit() else v for k, v in payload_str.items()}
-        try:
-            return tutk_msg(**payload), topic, payload, payload
-        except TypeError as ex:
-            logger.error(f"[CONTROL] {ex}")
-            return None, topic, ex, payload_str
+def lookup_msg(tutk_topic: str, payload: any) -> tuple:
+    tutk_msg = getattr(tutk_protocol, tutk_topic)
+    if isinstance(payload, dict):
+        params = {k: int(v) if str(v).isdigit() else v for k, v in payload.items()}
+        return tutk_msg(**params), params
 
-    payload = []
-    if isinstance(payload_str, list):
-        payload.append(payload_str)
-    elif isinstance(payload_str, int):
-        payload.append(payload_str)
-    elif payload_str and (value := CMD_VALUES.get(payload_str.strip().lower())):
-        payload = [value] if isinstance(value, int) else value
-    elif payload_str:
-        payload = [
-            int(v) for v in payload_str.split(",") if v.strip().strip("-").isdigit()
-        ]
+    params = []
+    if isinstance(payload, list):
+        params.append(payload)
+    elif isinstance(payload, int):
+        params.append(payload)
+    elif payload and (value := CMD_VALUES.get(payload.strip().lower())):
+        params = value if isinstance(value, list) else [value]
+    elif payload:
+        vals = payload.strip().strip(""""'""").split(",")
+        params = [int(v) for v in vals if v.strip().strip("-").isdigit()]
 
-    return tutk_msg(*payload), topic, payload, payload_str
+    return tutk_msg(*params), params
 
 
 def motion_alarm(cam: dict):
