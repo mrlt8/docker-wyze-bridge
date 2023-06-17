@@ -33,6 +33,21 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.3.2
+
+* Camera commands:
+  * SET Topic: `state`; payload: `start|stop|enable|disable` - control the camera stream.
+  * GET Topic: `state` - get the state of the stream in the bridge.
+  * GET Topic: `power` - get the power switch state (Wyze Cloud API).
+* REST/MQTT Control:
+  * FIXED: Refresh token if needed when sending `power` commands.
+  * FIXED: Remove quotations from payload. (#857)
+  * CHANGED: Better error handling for commands.
+* MQTT:
+  * Updated discovery availability and additional entities.
+  * Publish additional topics with current settings.
+  * Disable on TimeoutError.
+
 ## What's Changed in v2.3.1
 
 * NEW: WebUI - Power on/off/restart controls.
@@ -124,6 +139,7 @@ The container can be run on its own, in [Portainer](https://github.com/mrlt8/doc
 ### docker-compose (recommended)
 
 This is similar to the docker run command, but will save all your options in a yaml file.
+(If your credentials have special characters, you must escape them)
 
 1. Install [Docker Compose](https://docs.docker.com/compose/install/).
 2. Use the [sample](https://raw.githubusercontent.com/mrlt8/docker-wyze-bridge/main/docker-compose.sample.yml) as a guide to create a `docker-compose.yml` file with your wyze credentials.
@@ -152,6 +168,7 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 
 ## Additional Info
 
+* [Camera Commands (MQTT/REST API)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Commands)
 * [Two-Factor Authentication (2FA/MFA)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Two-Factor-Authentication)
 * [ARM/Raspberry Pi](https://github.com/mrlt8/docker-wyze-bridge/wiki/Raspberry-Pi-(armv7-and-arm64))
 * [Network Connection Modes](https://github.com/mrlt8/docker-wyze-bridge/wiki/Network-Connection-Modes)
@@ -162,10 +179,6 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 * [HomeKit Secure Video](https://github.com/mrlt8/docker-wyze-bridge/wiki/HomeKit-Secure-Video)
 * [WebUI API](https://github.com/mrlt8/docker-wyze-bridge/wiki/WebUI-API)
 
-
-### Special Characters
-
-If your email or password contains a `%` or `$` character, you may need to escape them with an extra character. e.g., `pa$$word` should be entered as `pa$$$$word`
 
 ## Web-UI
 
