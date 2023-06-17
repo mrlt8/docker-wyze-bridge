@@ -252,6 +252,20 @@ class WyzeApi:
             logger.error(f"ERROR - {error}")
             return {"status": "error", "response": f"{error}"}
 
+    @authenticated
+    def get_pid_info(self, cam: WyzeCamera, pid: str):
+        try:
+            logger.info(f"[CONTROL] ☁️ Getting info for {cam.name_uri} via Wyze API")
+            property_list = wyzecam.api.get_device_info(self.auth, cam)["property_list"]
+        except ValueError as ex:
+            error = f'{ex.args[0].get("code")}: {ex.args[0].get("msg")}'
+            logger.error(f"ERROR - {error}")
+            return {"status": "error", "response": f"{error}"}
+
+        resp = next((item for item in property_list if item["pid"] == pid))
+
+        return {"status": "success", "value": resp.get("value"), "response": resp}
+
     def clear_cache(self):
         logger.info("♻️ Clearing local cache...")
         self.auth = None

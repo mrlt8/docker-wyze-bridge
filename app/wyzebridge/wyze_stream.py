@@ -266,7 +266,7 @@ class WyzeStream:
             return self.state_control(payload or cmd)
         if cmd == "power":
             if payload.lower() not in {"on", "off", "restart"}:
-                return {"response": "Invalid payload"}
+                return self.api.get_pid_info(self.camera, "P3")
             run_cmd = payload if payload == "restart" else f"{cmd}_{payload}"
             return dict(self.api.run_action(self.camera, run_cmd), value=payload)
 

@@ -1,5 +1,6 @@
 GET_CMDS = {
     "state": None,
+    "power": None,
     "take_photo": "K10058TakePhoto",
     "irled": "K10044GetIRLEDStatus",
     "night_vision": "K10040GetNightVisionStatus",
