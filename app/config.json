@@ -100,6 +100,7 @@
         "URI_SEPARATOR": "list(-|_|#)?",
         "QUALITY": "str?",
         "SUB_QUALITY": "str?",
+        "SUB_RECORD": "bool?",
         "FFMPEG_FLAGS": "str?",
         "FFMPEG_CMD": "str?",
         "LOG_LEVEL": "list(INFO|DEBUG)?",
@@ -125,6 +126,7 @@
                 "QUALITY": "str?",
                 "SUB_QUALITY": "bool?",
                 "RECORD": "bool?",
+                "SUB_RECORD": "bool?",
                 "SUBSTREAM": "bool?"
             }
         ],
