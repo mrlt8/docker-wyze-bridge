@@ -145,7 +145,7 @@ def camera_control(
     boa = check_boa_enabled(sess, uri)
 
     if MQTT_ENABLED:
-        params_to_update = ",".join(PARAMS.keys())
+        params_to_update = ",".join(PARAMS.values())
         send_tutk_msg(sess, ("param_info", params_to_update), "debug")
 
     while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
@@ -177,11 +177,12 @@ def camera_control(
                 camera_info.put(resp, block=False)
 
 
-def update_mqtt_values(cam_name: str, resp: dict):
-    topic = f"wyzebridge/{cam_name}"
-
-    if msgs := [(f"{topic}/{v}", resp[k]) for k, v in PARAMS.items() if k in resp]:
+def update_mqtt_values(topic: str, cam_name: str, resp: dict):
+    base = f"wyzebridge/{cam_name}"
+    if msgs := [(f"{base}/{k}", resp[v]) for k, v in PARAMS.items() if v in resp]:
         send_mqtt(msgs)
+
+    return int(resp.get(PARAMS[topic], 0)) if topic in PARAMS else resp
 
 
 def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") -> dict:
@@ -214,8 +215,9 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
             if tutk_msg.code in {11000, 11004}:
                 resp |= {"status": "success", "response": None}
             elif res := iotc.result(timeout=5):
-                if topic in {"camera_info", "param_info"} and isinstance(res, dict):
-                    update_mqtt_values(sess.camera.name_uri, res)
+                if tutk_msg.code == 10020:
+                    res = update_mqtt_values(topic, sess.camera.name_uri, res)
+                    params = None if isinstance(res, int) else params
                 value = res if isinstance(res, (dict, int)) else ",".join(map(str, res))
                 resp |= {"status": "success", "response": value, "value": value}
     except Empty:
@@ -235,13 +237,15 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
     return {topic: resp}
 
 
-def parse_cmd(cmd, log):
+def parse_cmd(cmd: tuple | str, log: str) -> tuple:
     topic, payload = cmd if isinstance(cmd, tuple) else (cmd, None)
     set_cmd = payload and topic not in GET_PAYLOAD
     tutk_topic = SET_CMDS.get(topic) if set_cmd else GET_CMDS.get(topic)
 
     log_msg = f"SET: {topic}={payload}" if set_cmd else f"GET: {topic}"
     getattr(logger, log)(f"[CONTROL] Attempting to {log_msg}")
+    if not tutk_topic and topic in PARAMS:
+        payload, tutk_topic = ",".join(PARAMS.values()), GET_CMDS["param_info"]
 
     return topic, payload, tutk_topic
 
