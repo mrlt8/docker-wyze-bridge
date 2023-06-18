@@ -124,7 +124,7 @@
                 "NET_MODE": "str?",
                 "ROTATE": "bool?",
                 "QUALITY": "str?",
-                "SUB_QUALITY": "bool?",
+                "SUB_QUALITY": "str?",
                 "RECORD": "bool?",
                 "SUB_RECORD": "bool?",
                 "SUBSTREAM": "bool?"
