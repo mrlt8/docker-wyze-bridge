@@ -276,6 +276,10 @@ class WyzeStream:
             return {"response": "control disabled"}
         if cmd not in GET_CMDS | SET_CMDS | PARAMS and cmd not in {"caminfo"}:
             return {"response": "invalid command"}
+
+        if cmd == "bitrate" and isinstance(payload, (str, int)) and payload.isdigit():
+            self.options.bitrate = int(payload)
+
         if on_demand := not self.connected:
             logger.info(f"[CONTROL] Connecting to {self.uri}")
             self.start()
