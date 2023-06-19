@@ -33,6 +33,18 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.3.3
+
+* ENV Option:
+  * NEW: Add `SUB_RECORD` config. Thanks @gtxaspec! (#861)
+  * FIX: Home Assistant `SUB_QUALITY`
+* MQTT:
+  * NEW: Update more camera parameters on connect.
+* Camera Commands:
+  * NEW: Add GET topics for camera params.
+  * FIX: Persist bitrate changes on-reconnect (#852)
+  * FIX: Limited vertical angle for `ptz_position`. Thanks @Rijswijker! (#862)
+
 ## What's Changed in v2.3.2
 
 * Camera commands:
