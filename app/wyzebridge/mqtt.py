@@ -9,7 +9,7 @@ import paho.mqtt.publish
 from wyzebridge.bridge_utils import env_bool
 from wyzebridge.config import IMG_PATH, MQTT_DISCOVERY, VERSION
 from wyzebridge.logging import logger
-from wyzebridge.wyze_commands import GET_CMDS, GET_PAYLOAD, SET_CMDS
+from wyzebridge.wyze_commands import GET_CMDS, GET_PAYLOAD, PARAMS, SET_CMDS
 from wyzecam import WyzeCamera
 
 MQTT_ENABLED = bool(env_bool("MQTT_HOST"))
@@ -136,8 +136,8 @@ def update_preview(cam_name: str):
 def mqtt_cam_control(cam_names: dict, callback):
     topics = []
     for uri in cam_names:
-        topics += [f"{uri.lower()}/{t}/set" for t in SET_CMDS.keys()]
-        topics += [f"{uri.lower()}/{t}/get" for t in GET_CMDS.keys()]
+        topics += [f"{uri.lower()}/{t}/set" for t in SET_CMDS]
+        topics += [f"{uri.lower()}/{t}/get" for t in GET_CMDS | PARAMS]
 
     if client := mqtt_sub_topic(topics, callback):
         client.on_message = _on_message

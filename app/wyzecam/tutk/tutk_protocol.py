@@ -769,7 +769,7 @@ class K11000SetRotaryByDegree(TutkWyzeProtocolMessage):
         self.speed = speed if 1 < speed < 9 else 5
 
     def encode(self) -> bytes:
-        msg = pack("<hhB", self.horizontal, self.vertical, self.speed)
+        msg = pack("<HHB", self.horizontal, self.vertical, self.speed)
         return encode(self.code, msg)
 
 
@@ -834,7 +834,7 @@ class K11006GetCurCruisePoint(TutkWyzeProtocolMessage):
         super().__init__(11010)
 
     def encode(self) -> bytes:
-        return encode(self.code, pack("<i", int(time.time())))
+        return encode(self.code, pack("<I", int(time.time())))
 
     def parse_response(self, resp_data: bytes):
         return {
@@ -952,7 +952,7 @@ class K11018SetPTZPosition(TutkWyzeProtocolMessage):
 
     def encode(self) -> bytes:
         time_val = int(time.time() * 1000) % 1_000_000_000
-        return encode(self.code, pack("<ibh", time_val, self.vertical, self.horizontal))
+        return encode(self.code, pack("<IBH", time_val, self.vertical, self.horizontal))
 
 
 class K11020GetMotionTracking(TutkWyzeProtocolMessage):

@@ -4,7 +4,7 @@
     "slug": "docker-wyze-bridge",
     "url": "https://github.com/mrlt8/docker-wyze-bridge",
     "image": "mrlt8/wyze-bridge",
-    "version": "2.3.2",
+    "version": "2.3.3",
     "arch": [
         "armv7",
         "aarch64",
@@ -100,6 +100,7 @@
         "URI_SEPARATOR": "list(-|_|#)?",
         "QUALITY": "str?",
         "SUB_QUALITY": "str?",
+        "SUB_RECORD": "bool?",
         "FFMPEG_FLAGS": "str?",
         "FFMPEG_CMD": "str?",
         "LOG_LEVEL": "list(INFO|DEBUG)?",
@@ -123,8 +124,9 @@
                 "NET_MODE": "str?",
                 "ROTATE": "bool?",
                 "QUALITY": "str?",
-                "SUB_QUALITY": "bool?",
+                "SUB_QUALITY": "str?",
                 "RECORD": "bool?",
+                "SUB_RECORD": "bool?",
                 "SUBSTREAM": "bool?"
             }
         ],

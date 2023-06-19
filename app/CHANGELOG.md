@@ -1,3 +1,15 @@
+## What's Changed in v2.3.3
+
+* ENV Option:
+  * NEW: Add `SUB_RECORD` config. Thanks @gtxaspec! (#861)
+  * FIX: Home Assistant `SUB_QUALITY`
+* MQTT:
+  * NEW: Update more camera parameters on connect.
+* Camera Commands:
+  * NEW: Add GET topics for camera params.
+  * FIX: Persist bitrate changes on-reconnect (#852)
+  * FIX: Limited vertical angle for `ptz_position`. Thanks @Rijswijker! (#862)
+
 ## What's Changed in v2.3.2
 
 * Camera commands:

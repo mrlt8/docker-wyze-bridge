@@ -11,7 +11,7 @@ from wyzebridge.bridge_utils import env_bool
 from wyzebridge.config import BOA_COOLDOWN, BOA_INTERVAL, IMG_PATH
 from wyzebridge.logging import logger
 from wyzebridge.mqtt import MQTT_ENABLED, send_mqtt
-from wyzebridge.wyze_commands import CMD_VALUES, GET_CMDS, GET_PAYLOAD, SET_CMDS
+from wyzebridge.wyze_commands import CMD_VALUES, GET_CMDS, GET_PAYLOAD, PARAMS, SET_CMDS
 from wyzecam import TutkError, WyzeIOTCSession, WyzeIOTCSessionState, tutk_protocol
 
 
@@ -144,7 +144,9 @@ def camera_control(
 
     boa = check_boa_enabled(sess, uri)
 
-    update_mqtt_values(sess)
+    if MQTT_ENABLED:
+        params_to_update = ",".join(PARAMS.values())
+        send_tutk_msg(sess, ("param_info", params_to_update), "debug")
 
     while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
         boa_control(sess, boa)
@@ -175,24 +177,12 @@ def camera_control(
                 camera_info.put(resp, block=False)
 
 
-def update_mqtt_values(sess: WyzeIOTCSession):
-    if not MQTT_ENABLED:
-        return
-    param = send_tutk_msg(sess, ("param_info", "1,2,3,4,5,50"), "debug").get(
-        "param_info"
-    )
+def update_mqtt_values(topic: str, cam_name: str, resp: dict):
+    base = f"wyzebridge/{cam_name}"
+    if msgs := [(f"{base}/{k}", resp[v]) for k, v in PARAMS.items() if v in resp]:
+        send_mqtt(msgs)
 
-    if param and param.get("status") == "success" and (resp := param.get("response")):
-        send_mqtt(
-            [
-                (f"wyzebridge/{sess.camera.name_uri}/status_light", resp.get("1", 0)),
-                (f"wyzebridge/{sess.camera.name_uri}/night_vision", resp.get("2", 0)),
-                (f"wyzebridge/{sess.camera.name_uri}/bitrate", resp.get("3", 0)),
-                (f"wyzebridge/{sess.camera.name_uri}/res", resp.get("4", 0)),
-                (f"wyzebridge/{sess.camera.name_uri}/fps", resp.get("5", 0)),
-                (f"wyzebridge/{sess.camera.name_uri}/irled", resp.get("50", 0)),
-            ]
-        )
+    return int(resp.get(PARAMS[topic], 0)) if topic in PARAMS else resp
 
 
 def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") -> dict:
@@ -225,6 +215,9 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
             if tutk_msg.code in {11000, 11004}:
                 resp |= {"status": "success", "response": None}
             elif res := iotc.result(timeout=5):
+                if tutk_msg.code == 10020:
+                    res = update_mqtt_values(topic, sess.camera.name_uri, res)
+                    params = None if isinstance(res, int) else params
                 value = res if isinstance(res, (dict, int)) else ",".join(map(str, res))
                 resp |= {"status": "success", "response": value, "value": value}
     except Empty:
@@ -244,13 +237,15 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
     return {topic: resp}
 
 
-def parse_cmd(cmd, log):
+def parse_cmd(cmd: tuple | str, log: str) -> tuple:
     topic, payload = cmd if isinstance(cmd, tuple) else (cmd, None)
     set_cmd = payload and topic not in GET_PAYLOAD
     tutk_topic = SET_CMDS.get(topic) if set_cmd else GET_CMDS.get(topic)
 
     log_msg = f"SET: {topic}={payload}" if set_cmd else f"GET: {topic}"
     getattr(logger, log)(f"[CONTROL] Attempting to {log_msg}")
+    if not tutk_topic and topic in PARAMS:
+        payload, tutk_topic = ",".join(PARAMS.values()), GET_CMDS["param_info"]
 
     return topic, payload, tutk_topic
 

@@ -56,3 +56,14 @@ CMD_VALUES = {
     "up": (0, 90),
     "down": (0, -90),
 }
+
+PARAMS = {
+    "status_light": "1",
+    "night_vision": "2",
+    "bitrate": "3",
+    "res": "4",
+    "fps": "5",
+    "motion_tagging": "21",
+    "motion_tracking": "27",
+    "irled": "50",
+}
