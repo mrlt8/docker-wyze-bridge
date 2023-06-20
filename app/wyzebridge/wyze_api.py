@@ -185,7 +185,11 @@ class WyzeApi:
             return False
         save_to = IMG_PATH + uri + ".jpg"
         logger.info(f'☁️ Pulling "{uri}" thumbnail to {save_to}')
-        if not (img := get(thumb)).ok:
+        try:
+            img = get(thumb)
+            img.raise_for_status()
+        except Exception as ex:
+            logger.warning(f"ERROR pulling thumbnail：{ex}")
             return False
         with open(save_to, "wb") as f:
             f.write(img.content)
