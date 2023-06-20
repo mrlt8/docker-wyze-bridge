@@ -222,10 +222,8 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
                 resp |= {"status": "success", "response": value, "value": value}
     except Empty:
         resp |= {"status": "success", "response": None}
-    except TutkError as ex:
-        resp |= {"status": "error", "response": ex}
     except Exception as ex:
-        resp |= {"response": ex, "status": "error"}
+        resp |= {"response": str(ex), "status": "error"}
         logger.warning(f"[CONTROL] {ex}")
 
     if params and topic not in GET_PAYLOAD:
@@ -262,7 +260,7 @@ def lookup_msg(tutk_topic: str, payload: any) -> tuple:
     elif isinstance(payload, int):
         params.append(payload)
     elif payload and (value := CMD_VALUES.get(payload.strip().lower())):
-        params = value if isinstance(value, list) else [value]
+        params = [value] if isinstance(value, int) else value
     elif payload:
         vals = payload.strip().strip(""""'""").split(",")
         params = [int(v) for v in vals if v.strip().strip("-").isdigit()]
