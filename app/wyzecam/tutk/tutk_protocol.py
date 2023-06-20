@@ -769,7 +769,7 @@ class K11000SetRotaryByDegree(TutkWyzeProtocolMessage):
         self.speed = speed if 1 < speed < 9 else 5
 
     def encode(self) -> bytes:
-        msg = pack("<HHB", self.horizontal, self.vertical, self.speed)
+        msg = pack("<hhB", self.horizontal, self.vertical, self.speed)
         return encode(self.code, msg)
 
 
