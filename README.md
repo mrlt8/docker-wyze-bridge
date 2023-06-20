@@ -33,6 +33,17 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.3.4
+
+* ENV Options:
+  * FIX: `FILTER_NAMES` would not work if camera had spaces at the end of the name. Thanks @djak250! (#868)
+* Camera Commands:
+  * FIX: Regression introduced in v2.3.3 preventing negative values for the `rotary_degree` topic. Thanks @gtxaspec! (#870) (#866)
+  * FIX: String cmd lookup for `rotary_degree` and json error response breaking web api. #870 #866
+* Other Fixes:
+  * Catch exceptions when saving thumbnail from api. (#869)
+  * Clear cache on UnpicklingError. (#867)
+
 ## What's Changed in v2.3.3
 
 * ENV Option:
