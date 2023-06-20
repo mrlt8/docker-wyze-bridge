@@ -39,7 +39,7 @@ def cached(func: Callable[..., Any]) -> Callable[..., Any]:
                 return data
             except OSError:
                 logger.info(f"🔍 Could not find local cache for '{name}'")
-            except ValueError as ex:
+            except (ValueError, pickle.UnpicklingError) as ex:
                 logger.warning(ex)
                 self.clear_cache()
         logger.info(f"☁️ Fetching '{name}' from the Wyze API...")
