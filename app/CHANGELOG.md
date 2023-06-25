@@ -1,3 +1,10 @@
+## What's Changed in v2.3.5
+
+* FIXED: response code and error handling for Wyze Web API.
+* FIXED: catch exceptions when taking a snapshot (#873)
+* CHANGED: MediaMTX versions are now pinned to avoid breaking changes.
+* UPDATED: MediaMTX to 0.23.6 and fixed `MTX_PATH`.
+
 ## What's Changed in v2.3.4
 
 * ENV Options:

@@ -33,6 +33,13 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.3.5
+
+* FIXED: response code and error handling for Wyze Web API.
+* FIXED: catch exceptions when taking a snapshot (#873)
+* CHANGED: MediaMTX versions are now pinned to avoid breaking changes.
+* UPDATED: MediaMTX to 0.23.6 and fixed `MTX_PATH`.
+
 ## What's Changed in v2.3.4
 
 * ENV Options:
