@@ -59,12 +59,12 @@ class MtxServer:
 
     def add_path(self, uri: str, on_demand: bool = True):
         for event in {"Read", "Ready"}:
-            stop_cmd = f"echo $RTSP_PATH,{event},0! > /tmp/mtx_event;exit;"
-            start_cmd = f"echo $RTSP_PATH,{event},1! > /tmp/mtx_event;"
+            stop_cmd = f"echo $MTX_PATH,{event},0! > /tmp/mtx_event;exit;"
+            start_cmd = f"echo $MTX_PATH,{event},1! > /tmp/mtx_event;"
             bash_cmd = f'trap "{stop_cmd}" INT;{start_cmd} while :; do sleep 1; done'
             self.rtsp.set(uri, f"RunOn{event}", f"bash -c '{bash_cmd}'")
         if on_demand:
-            cmd = "bash -c 'echo $RTSP_PATH,start,1! > /tmp/mtx_event'"
+            cmd = "bash -c 'echo $MTX_PATH,start,1! > /tmp/mtx_event'"
             self.rtsp.set(uri, "runOnDemand", cmd)
             self.rtsp.set(uri, "runOnDemandStartTimeout", "30s")
             self.rtsp.set(uri, "runOnDemandCloseAfter", "60s")
@@ -79,12 +79,14 @@ class MtxServer:
     def start(self):
         if self.sub_process:
             return
-        logger.info(f"starting MediaMTX {mtx_version()}")
+        logger.info(f"starting MediaMTX {getenv('MTX_TAG')}")
         self.sub_process = Popen(["/app/mediamtx", "/app/mediamtx.yml"])
 
     def stop(self):
+        if not self.sub_process:
+            return
         logger.info("Stopping MediaMTX...")
-        if self.sub_process and self.sub_process.poll() is None:
+        if self.sub_process.poll() is None:
             self.sub_process.send_signal(SIGINT)
             self.sub_process.communicate()
         self.sub_process = None

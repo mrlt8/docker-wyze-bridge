@@ -10,8 +10,8 @@ from typing import Any, Optional
 import requests
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
-IOS_VERSION = "16.5"
-APP_VERSION = "2.42.6.1"
+IOS_VERSION = getenv("IOS_VERSION")
+APP_VERSION = getenv("APP_VERSION")
 API_KEY = getenv("API_KEY")
 API_ID = getenv("API_ID")
 SCALE_USER_AGENT = f"Wyze/{APP_VERSION} (iPhone; iOS {IOS_VERSION}; Scale/3.00)"
@@ -62,12 +62,6 @@ def login(
               for passing to [get_user_info()][wyzecam.api.get_user_info], or
               [get_camera_list()][wyzecam.api.get_camera_list].
     """
-    api_version = "old"
-    if API_KEY and API_ID:
-        api_version = "api"
-    elif getenv("umgm_78ae6013d158c4a5"):
-        api_version = "v3"
-
     phone_id = phone_id or str(uuid.uuid4())
     headers = get_headers(phone_id)
     headers["content-type"] = "application/json"
@@ -75,10 +69,13 @@ def login(
     payload = sort_dict(
         {"email": email.strip(), "password": triplemd5(password), **(mfa or {})}
     )
-
-    if api_version == "v3":
+    api_version = "old"
+    if API_KEY and API_ID:
+        api_version = "api"
+    elif getenv("v3"):
+        api_version = "v3"
         headers["appid"] = "umgm_78ae6013d158c4a5"
-        headers["signature2"] = sign_msg("umgm_78ae6013d158c4a5", payload)
+        headers["signature2"] = sign_msg("v3", payload)
 
     base_url = f"{AUTH_API}/{api_version}" if api_version in {"api", "v3"} else AUTH_API
     resp = requests.post(f"{base_url}/user/login", data=payload, headers=headers)
@@ -132,9 +129,7 @@ def refresh_token(auth_info: WyzeCredential) -> WyzeCredential:
         json=payload,
         headers=get_headers(),
     )
-    resp.raise_for_status()
-    resp_json = resp.json()
-    assert resp_json["code"] == "1"
+    resp_json = validate_resp(resp)
 
     return WyzeCredential.parse_obj(
         dict(
@@ -162,12 +157,7 @@ def get_user_info(auth_info: WyzeCredential) -> WyzeAccount:
         json=_get_payload(auth_info.access_token, auth_info.phone_id),
         headers=get_headers(),
     )
-    resp.raise_for_status()
-
-    resp_json = resp.json()
-    if resp_json["code"] == "2001":
-        raise AccessTokenError()
-    assert resp_json["code"] == "1"
+    resp_json = validate_resp(resp)
 
     return WyzeAccount.parse_obj(dict(resp_json["data"], phone_id=auth_info.phone_id))
 
@@ -179,12 +169,7 @@ def get_homepage_object_list(auth_info: WyzeCredential) -> dict[str, Any]:
         json=_get_payload(auth_info.access_token, auth_info.phone_id),
         headers=get_headers(),
     )
-    resp.raise_for_status()
-
-    resp_json = resp.json()
-    if resp_json["code"] == "2001":
-        raise AccessTokenError()
-    assert resp_json["code"] == "1"
+    resp_json = validate_resp(resp)
 
     return resp_json["data"]
 
@@ -272,11 +257,7 @@ def get_device_info(auth_info: WyzeCredential, camera: WyzeCamera) -> dict:
     resp = requests.post(
         f"{WYZE_API}/v2/device/get_device_Info", json=payload, headers=get_headers()
     )
-    resp.raise_for_status()
-    resp_json = resp.json()
-    if resp_json["code"] == "2001":
-        raise AccessTokenError()
-    assert resp_json["code"] == "1"
+    resp_json = validate_resp(resp)
 
     return resp_json["data"]
 
@@ -291,11 +272,7 @@ def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
         f"https://webrtc.api.wyze.com/signaling/device/{mac_id}?use_trickle=true",
         headers=ui_headers,
     )
-    resp.raise_for_status()
-    resp_json = resp.json()
-    if resp_json["code"] == "2001":
-        raise AccessTokenError()
-    assert resp_json["code"] == "1"
+    resp_json = validate_resp(resp)
     for s in resp_json["results"]["servers"]:
         if "url" in s:
             s["urls"] = s.pop("url")
@@ -305,6 +282,17 @@ def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
         "signalingUrl": urllib.parse.unquote(resp_json["results"]["signalingUrl"]),
         "servers": resp_json["results"]["servers"],
     }
+
+
+def validate_resp(resp):
+    resp.raise_for_status()
+    resp_json = resp.json()
+    if str(resp_json.get("code", 0)) == "2001":
+        raise AccessTokenError()
+
+    assert str(resp_json.get("code", 0)) == "1", resp_json
+
+    return resp_json
 
 
 def _get_payload(access_token: str, phone_id: str, req_path: str = "default"):
@@ -329,7 +317,7 @@ def get_headers(phone_id: str = "") -> dict[str, str]:
         return {
             "apikey": API_KEY,
             "keyid": API_ID,
-            "user-agent": "docker-wyze-bridge",
+            "user-agent": f"docker-wyze-bridge-{getenv('VERSION')}",
         }
 
     return {

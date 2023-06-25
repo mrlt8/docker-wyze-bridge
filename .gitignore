@@ -7,3 +7,4 @@ totp
 .vscode
 tokens/
 *.pyc
+!/app/.env

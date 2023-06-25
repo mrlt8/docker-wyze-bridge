@@ -307,7 +307,7 @@ class FormattedStructure(Structure):
             [
                 f"{field[0]}: {getattr(self, field[0])}"
                 for field in self._fields_
-                if getattr(self, field[0])
+                # if getattr(self, field[0])
             ]
         )
         return f"{self.__class__.__name__}:\n\t{fields}"
@@ -557,17 +557,17 @@ def av_recv_frame_data(
     frame_data = create_string_buffer(frame_data_max_len)
     frame_info_actual_len = c_int32()
     frame_index = c_uint()
-    frame_info_max_len = max(sizeof(FrameInfo3Struct), sizeof(FrameInfoStruct))  # 4096
+    frame_info_max_len = 4096
     frame_info = create_string_buffer(frame_info_max_len)
 
     errno = tutk_platform_lib.avRecvFrameData2(
         av_chan_id,
         frame_data,
-        c_int32(frame_data_max_len),
+        frame_data_max_len,
         byref(frame_data_actual_len),
         byref(frame_data_expected_len),
         frame_info,
-        c_int32(frame_info_max_len),
+        frame_info_max_len,
         byref(frame_info_actual_len),
         byref(frame_index),
     )
@@ -608,10 +608,10 @@ def av_recv_audio_data(tutk_platform_lib: CDLL, av_chan_id: c_int):
 
     frame_len = tutk_platform_lib.avRecvAudioData(
         av_chan_id,
-        byref(audio_data),
-        c_int(audio_data_max_size),
+        audio_data,
+        audio_data_max_size,
         byref(frame_info),
-        c_int(frame_info_max_size),
+        frame_info_max_size,
         byref(frame_index),
     )
 

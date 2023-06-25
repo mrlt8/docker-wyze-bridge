@@ -6,7 +6,6 @@ from urllib.parse import quote_plus, urlparse
 from flask import (
     Flask,
     Response,
-    flash,
     make_response,
     redirect,
     render_template,

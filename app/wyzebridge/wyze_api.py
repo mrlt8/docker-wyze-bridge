@@ -207,11 +207,11 @@ class WyzeApi:
             logger.info("☁️ Fetching signaling data from the Wyze API...")
             wss = wyzecam.api.get_cam_webrtc(self.auth, cam.mac)
             return wss | {"result": "ok", "cam": cam_name}
-        except HTTPError as ex:
-            if ex.response.status_code == 404:
+        except (HTTPError, AssertionError) as ex:
+            if isinstance(ex, HTTPError) and ex.response.status_code == 404:
                 ex = "Camera does not support WebRTC"
             logger.warning(ex)
-            return {"result": ex, "cam": cam_name}
+            return {"result": str(ex), "cam": cam_name}
 
     def _mfa_auth(self):
         if not self.auth:
@@ -257,14 +257,17 @@ class WyzeApi:
             return {"status": "error", "response": f"{error}"}
 
     @authenticated
-    def get_pid_info(self, cam: WyzeCamera, pid: str):
+    def get_pid_info(self, cam: WyzeCamera, pid: str = ""):
         try:
-            logger.info(f"[CONTROL] ☁️ Getting info for {cam.name_uri} via Wyze API")
+            logger.info(f"[CONTROL] ☁️ Get Device Info for {cam.name_uri} via Wyze API")
             property_list = wyzecam.api.get_device_info(self.auth, cam)["property_list"]
         except ValueError as ex:
             error = f'{ex.args[0].get("code")}: {ex.args[0].get("msg")}'
             logger.error(f"ERROR - {error}")
             return {"status": "error", "response": f"{error}"}
+
+        if not pid:
+            return {"status": "success", "response": property_list}
 
         resp = next((item for item in property_list if item["pid"] == pid))
 

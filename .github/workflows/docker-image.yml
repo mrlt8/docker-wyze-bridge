@@ -15,7 +15,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     permissions:
-      contents: read
+      contents: write
       packages: write
 
     steps:
@@ -81,6 +81,14 @@ jobs:
             type=edge,branch=main,enable=${{ github.event_name == 'push' }},suffix=-hw
             type=ref,event=branch,enable=${{ contains(github.ref,'dev') }},suffix=-hw
 
+      - name: Update Release Version
+        run: |
+          if [[ ${{ steps.meta.outputs.VERSION }} =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
+            sed -i "s/^VERSION=.*/VERSION=${{ steps.meta.outputs.VERSION }}/" /app/.env
+            jq --arg VERSION "${{ steps.meta.outputs.VERSION }}" '.version = $VERSION' /app/config.json > updated.json
+            mv updated.json /app/config.json
+          fi
+
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
       - name: Build and push a multi-arch Docker image
@@ -91,7 +99,7 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           file: ./app/multi-arch.Dockerfile
           platforms: linux/amd64,linux/arm64,linux/arm
-          # build-args: SDK_KEY=${{secrets.SDK_KEY}}
+          build-args: BUILD=${{ steps.meta.outputs.VERSION }}
           labels: |
             ${{ steps.meta.outputs.labels }}
             io.hass.name=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.title'] }}
@@ -111,7 +119,7 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           file: ./app/Dockerfile.hwaccel
           platforms: linux/amd64
-          # build-args: SDK_KEY=${{secrets.SDK_KEY}}
+          build-args: BUILD=${{ steps.meta.outputs.VERSION }}
           labels: |
             ${{ steps.meta.outputs.labels }}
             io.hass.name=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.title'] }}
@@ -120,3 +128,9 @@ jobs:
             io.hass.type=addon
             io.hass.arch=amd64
           tags: ${{ steps.hwmeta.outputs.tags }}
+
+      - name: Commit and push changes
+        uses: stefanzweifel/git-auto-commit-action@v4
+        with:
+          commit_message: "Bump Version to v${{ steps.meta.outputs.VERSION }}"
+          file_pattern: "/app/.env /app/config.json"

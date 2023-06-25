@@ -1,13 +1,14 @@
-import json
 from os import environ, getenv, makedirs
 
+from dotenv import load_dotenv
 from wyzebridge.bridge_utils import env_bool, split_int_str
 from wyzebridge.hass import setup_hass
 
-with open("config.json") as f:
-    config = json.load(f)
+load_dotenv()
 
-VERSION: str = config.get("version", "DEV")
+VERSION: str = getenv("VERSION", "DEV")
+BUILD = env_bool("BUILD", "local")
+BUILD_STR = "" if BUILD == VERSION else f"[{BUILD.upper()} BUILD]"
 HASS_TOKEN: str = getenv("SUPERVISOR_TOKEN", "")
 setup_hass(HASS_TOKEN)
 MQTT_DISCOVERY = env_bool("MQTT_DTOPIC")
