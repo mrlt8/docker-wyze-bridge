@@ -207,11 +207,11 @@ class WyzeApi:
             logger.info("☁️ Fetching signaling data from the Wyze API...")
             wss = wyzecam.api.get_cam_webrtc(self.auth, cam.mac)
             return wss | {"result": "ok", "cam": cam_name}
-        except HTTPError as ex:
-            if ex.response.status_code == 404:
+        except (HTTPError, AssertionError) as ex:
+            if isinstance(ex, HTTPError) and ex.response.status_code == 404:
                 ex = "Camera does not support WebRTC"
             logger.warning(ex)
-            return {"result": ex, "cam": cam_name}
+            return {"result": str(ex), "cam": cam_name}
 
     def _mfa_auth(self):
         if not self.auth:
