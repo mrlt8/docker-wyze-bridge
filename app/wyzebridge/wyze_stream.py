@@ -264,8 +264,10 @@ class WyzeStream:
     def send_cmd(self, cmd: str, payload: str | list | dict = "") -> dict:
         if cmd in {"state", "start", "stop", "disable", "enable"}:
             return self.state_control(payload or cmd)
+        if cmd == "device_info":
+            return self.api.get_pid_info(self.camera)
         if cmd == "power":
-            if payload.lower() not in {"on", "off", "restart"}:
+            if str(payload).lower() not in {"on", "off", "restart"}:
                 return self.api.get_pid_info(self.camera, "P3")
             run_cmd = payload if payload == "restart" else f"{cmd}_{payload}"
             return dict(self.api.run_action(self.camera, run_cmd), value=payload)
