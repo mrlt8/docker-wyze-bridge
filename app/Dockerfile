@@ -9,7 +9,7 @@ ARG LIB_ARCH=${ARM:+arm}
 ARG MTX_ARCH=${ARM:+armv7}
 ARG FFMPEG_ARCH=${ARM:+armv7l}
 RUN apt-get update && \
-    apt-get install -y tar curl && \
+    apt-get install -y curl gcc tar && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 COPY requirements.txt /tmp/requirements.txt
