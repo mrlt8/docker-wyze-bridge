@@ -12,7 +12,7 @@ RUN apt-get update && \
     apt-get install -y curl gcc tar xz-utils && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-COPY requirements.txt /tmp/requirements.txtx
+COPY requirements.txt /tmp/requirements.txt
 RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local -r /tmp/requirements.txt
 COPY *.lib /tmp/lib/
 COPY . /build/app/
