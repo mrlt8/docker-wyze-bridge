@@ -10,8 +10,8 @@ from typing import Any, Optional
 import requests
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
-IOS_VERSION = "16.5"
-APP_VERSION = "2.42.6.1"
+IOS_VERSION = getenv("IOS_VERSION")
+APP_VERSION = getenv("APP_VERSION")
 API_KEY = getenv("API_KEY")
 API_ID = getenv("API_ID")
 SCALE_USER_AGENT = f"Wyze/{APP_VERSION} (iPhone; iOS {IOS_VERSION}; Scale/3.00)"
@@ -317,7 +317,7 @@ def get_headers(phone_id: str = "") -> dict[str, str]:
         return {
             "apikey": API_KEY,
             "keyid": API_ID,
-            "user-agent": "docker-wyze-bridge",
+            "user-agent": f"docker-wyze-bridge-{getenv('VERSION')}",
         }
 
     return {

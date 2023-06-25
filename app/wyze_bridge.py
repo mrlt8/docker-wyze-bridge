@@ -2,7 +2,6 @@ import signal
 import sys
 from dataclasses import replace
 from threading import Thread
-from typing import NoReturn
 
 from wyzebridge import config
 from wyzebridge.bridge_utils import env_bool, env_cam
@@ -19,8 +18,8 @@ class WyzeBridge(Thread):
     def __init__(self) -> None:
         Thread.__init__(self)
         for sig in {"SIGTERM", "SIGINT"}:
-            signal.signal(getattr(signal, sig), lambda *_: self.clean_up())
-        print(f"\n🚀 STARTING DOCKER-WYZE-BRIDGE v{config.VERSION}\n")
+            signal.signal(getattr(signal, sig), self.clean_up)
+        print(f"\n🚀 DOCKER-WYZE-BRIDGE v{config.VERSION} {config.BUILD_STR}\n")
         self.api: WyzeApi = WyzeApi()
         self.streams: StreamManager = StreamManager()
         self.rtsp: MtxServer = MtxServer(config.BRIDGE_IP)
@@ -77,8 +76,10 @@ class WyzeBridge(Thread):
             self.rtsp.add_path(sub.uri, not options.reconnect)
             self.streams.add(sub)
 
-    def clean_up(self) -> NoReturn:
+    def clean_up(self, *args):
         """Stop all streams and clean up before shutdown."""
+        if self.streams.stop_flag:
+            sys.exit(0)
         if self.streams:
             self.streams.stop_all()
         self.rtsp.stop()

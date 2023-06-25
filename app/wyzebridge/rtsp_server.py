@@ -79,12 +79,14 @@ class MtxServer:
     def start(self):
         if self.sub_process:
             return
-        logger.info(f"starting MediaMTX {mtx_version()}")
+        logger.info(f"starting MediaMTX {getenv('MTX_TAG')}")
         self.sub_process = Popen(["/app/mediamtx", "/app/mediamtx.yml"])
 
     def stop(self):
+        if not self.sub_process:
+            return
         logger.info("Stopping MediaMTX...")
-        if self.sub_process and self.sub_process.poll() is None:
+        if self.sub_process.poll() is None:
             self.sub_process.send_signal(SIGINT)
             self.sub_process.communicate()
         self.sub_process = None
