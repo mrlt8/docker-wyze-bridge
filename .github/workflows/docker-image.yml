@@ -84,9 +84,9 @@ jobs:
       - name: Update Release Version
         run: |
           if [[ ${{ steps.meta.outputs.VERSION }} =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
-            sed -i "s/^VERSION=.*/VERSION=${{ steps.meta.outputs.VERSION }}/" /app/.env
-            jq --arg VERSION "${{ steps.meta.outputs.VERSION }}" '.version = $VERSION' /app/config.json > updated.json
-            mv updated.json /app/config.json
+            sed -i "s/^VERSION=.*/VERSION=${{ steps.meta.outputs.VERSION }}/" ./app/.env
+            jq --arg VERSION "${{ steps.meta.outputs.VERSION }}" '.version = $VERSION' ./app/config.json > updated.json
+            mv updated.json ./app/config.json
           fi
 
       # Build and push Docker image with Buildx (don't push on PR)
