@@ -12,18 +12,16 @@ RUN apt-get update && \
     apt-get install -y curl gcc tar && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
-COPY requirements.txt /tmp/requirements.txt
-RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local -r /tmp/requirements.txt
-COPY *.lib /tmp/lib/
 COPY . /build/app/
-RUN mkdir -p /build/tokens /build/img && \
-    . /build/app/.env && \
+RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local -r /build/app/requirements.txt
+RUN cd /build &&\
+    . app/.env && \
     curl -L https://github.com/homebridge/ffmpeg-for-homebridge/releases/latest/download/ffmpeg-debian-${FFMPEG_ARCH:-x86_64}.tar.gz \
-    | tar xzf - -C /build && \
+    | tar xzf - -C . && \
     curl -L https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_${MTX_ARCH:-amd64}.tar.gz \
-    | tar xzf - -C /build/app && \
-    cp /tmp/lib/${LIB_ARCH:-amd}.lib /build/usr/local/lib/libIOTCAPIs_ALL.so && \
-    rm -rf /tmp/*
+    | tar xzf - -C app && \
+    cp app/${LIB_ARCH:-amd}.lib usr/local/lib/libIOTCAPIs_ALL.so && \
+    rm app/*.txt app/*.lib app/*.md
 
 FROM base
 ARG BUILD
