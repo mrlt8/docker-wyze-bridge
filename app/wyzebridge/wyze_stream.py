@@ -18,7 +18,7 @@ from wyzebridge.logging import logger
 from wyzebridge.mqtt import send_mqtt, update_mqtt_state, wyze_discovery
 from wyzebridge.webhooks import ifttt_webhook
 from wyzebridge.wyze_api import WyzeApi
-from wyzebridge.wyze_commands import GET_CMDS, SET_CMDS
+from wyzebridge.wyze_commands import GET_CMDS, PARAMS, SET_CMDS
 from wyzebridge.wyze_control import camera_control
 from wyzecam import TutkError, WyzeAccount, WyzeCamera, WyzeIOTC, WyzeIOTCSession
 
@@ -249,22 +249,39 @@ class WyzeStream:
             return {}
         return self.camera.camera_info.get("boa_info", {})
 
-    def send_cmd(self, cmd: str, value: str | list | dict = "") -> dict:
-        if cmd in {"status", "start", "stop", "disable", "enable"}:
-            logger.info(f"[CONTROL] {self.uri}:{cmd.upper()}")
-            response = getattr(self, cmd)()
+    def state_control(self, payload) -> dict:
+        if payload in {"start", "stop", "disable", "enable"}:
+            logger.info(f"[CONTROL] SET {self.uri} state={payload}")
+            response = getattr(self, payload)()
             return {
                 "status": "success" if response else "error",
-                "response": response,
-                "value": response,
+                "response": payload if response else self.status(),
+                "value": payload,
             }
+        logger.info(f"[CONTROL] GET {self.uri} state")
+        return {"status": "success", "response": self.status()}
+
+    def send_cmd(self, cmd: str, payload: str | list | dict = "") -> dict:
+        if cmd in {"state", "start", "stop", "disable", "enable"}:
+            return self.state_control(payload or cmd)
+        if cmd == "device_info":
+            return self.api.get_pid_info(self.camera)
+        if cmd == "power":
+            if str(payload).lower() not in {"on", "off", "restart"}:
+                return self.api.get_pid_info(self.camera, "P3")
+            run_cmd = payload if payload == "restart" else f"{cmd}_{payload}"
+            return dict(self.api.run_action(self.camera, run_cmd), value=payload)
 
         if self.state < StreamStatus.STOPPED:
             return {"response": self.status()}
         if env_bool("disable_control"):
             return {"response": "control disabled"}
-        if cmd not in GET_CMDS | SET_CMDS and cmd not in {"caminfo"}:
+        if cmd not in GET_CMDS | SET_CMDS | PARAMS and cmd not in {"caminfo"}:
             return {"response": "invalid command"}
+
+        if cmd == "bitrate" and isinstance(payload, (str, int)) and payload.isdigit():
+            self.options.bitrate = int(payload)
+
         if on_demand := not self.connected:
             logger.info(f"[CONTROL] Connecting to {self.uri}")
             self.start()
@@ -272,7 +289,7 @@ class WyzeStream:
                 sleep(0.1)
         self._clear_mp_queue()
         try:
-            self.cam_cmd.put_nowait((cmd, value))
+            self.cam_cmd.put_nowait((cmd, payload))
             cam_resp = self.cam_resp.get(timeout=10)
         except Full:
             return {"response": "camera busy"}

@@ -39,7 +39,7 @@ def cached(func: Callable[..., Any]) -> Callable[..., Any]:
                 return data
             except OSError:
                 logger.info(f"🔍 Could not find local cache for '{name}'")
-            except ValueError as ex:
+            except (ValueError, pickle.UnpicklingError) as ex:
                 logger.warning(ex)
                 self.clear_cache()
         logger.info(f"☁️ Fetching '{name}' from the Wyze API...")
@@ -60,10 +60,9 @@ def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
             return
         try:
             return func(self, *args, **kwargs)
-        except AssertionError:
+        except wyzecam.api.AccessTokenError:
             logger.warning("⚠️ Expired token?")
-            if func.__name__ != "refresh_token":
-                self.refresh_token()
+            self.refresh_token()
             return func(self, *args, **kwargs)
         except ConnectionError as ex:
             logger.warning(f"{ex}")
@@ -186,7 +185,11 @@ class WyzeApi:
             return False
         save_to = IMG_PATH + uri + ".jpg"
         logger.info(f'☁️ Pulling "{uri}" thumbnail to {save_to}')
-        if not (img := get(thumb)).ok:
+        try:
+            img = get(thumb)
+            img.raise_for_status()
+        except Exception as ex:
+            logger.warning(f"ERROR pulling thumbnail：{ex}")
             return False
         with open(save_to, "wb") as f:
             f.write(img.content)
@@ -204,11 +207,11 @@ class WyzeApi:
             logger.info("☁️ Fetching signaling data from the Wyze API...")
             wss = wyzecam.api.get_cam_webrtc(self.auth, cam.mac)
             return wss | {"result": "ok", "cam": cam_name}
-        except HTTPError as ex:
-            if ex.response.status_code == 404:
+        except (HTTPError, AssertionError) as ex:
+            if isinstance(ex, HTTPError) and ex.response.status_code == 404:
                 ex = "Camera does not support WebRTC"
             logger.warning(ex)
-            return {"result": ex, "cam": cam_name}
+            return {"result": str(ex), "cam": cam_name}
 
     def _mfa_auth(self):
         if not self.auth:
@@ -241,6 +244,34 @@ class WyzeApi:
         except AssertionError:
             logger.warning("⏰ Expired refresh token?")
             self.login(fresh_data=True)
+
+    @authenticated
+    def run_action(self, cam: WyzeCamera, action: str):
+        try:
+            logger.info(f"[CONTROL] ☁️ Sending {action} to {cam.name_uri} via Wyze API")
+            resp = wyzecam.api.run_action(self.auth, cam, action.lower())
+            return {"status": "success", "response": resp["result"]}
+        except ValueError as ex:
+            error = f'{ex.args[0].get("code")}: {ex.args[0].get("msg")}'
+            logger.error(f"ERROR - {error}")
+            return {"status": "error", "response": f"{error}"}
+
+    @authenticated
+    def get_pid_info(self, cam: WyzeCamera, pid: str = ""):
+        try:
+            logger.info(f"[CONTROL] ☁️ Get Device Info for {cam.name_uri} via Wyze API")
+            property_list = wyzecam.api.get_device_info(self.auth, cam)["property_list"]
+        except ValueError as ex:
+            error = f'{ex.args[0].get("code")}: {ex.args[0].get("msg")}'
+            logger.error(f"ERROR - {error}")
+            return {"status": "error", "response": f"{error}"}
+
+        if not pid:
+            return {"status": "success", "response": property_list}
+
+        resp = next((item for item in property_list if item["pid"] == pid))
+
+        return {"status": "success", "value": resp.get("value"), "response": resp}
 
     def clear_cache(self):
         logger.info("♻️ Clearing local cache...")

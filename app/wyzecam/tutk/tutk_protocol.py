@@ -285,7 +285,7 @@ class K10020CheckCameraInfo(TutkWyzeProtocolMessage):
     - A json object with the camera parameters.
     """
 
-    def __init__(self, count: int = 99):
+    def __init__(self, count: int = 60):
         super().__init__(10020)
         self.count = count
 
@@ -501,6 +501,17 @@ class K10052SetFPS(TutkWyzeProtocolMessage):
 
     def encode(self) -> bytes:
         return encode(self.code, bytes([0, 0, 0, self.fps, 0, 0]))
+
+
+class K10052SetBitrate(TutkWyzeProtocolMessage):
+    def __init__(self, value: int = 0):
+        super().__init__(10052)
+
+        assert 0 < value <= 255, "bitrate value must be 1-255"
+        self.bitrate = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([self.bitrate, 0, 0, 0, 0]))
 
 
 class K10090GetCameraTime(TutkWyzeProtocolMessage):
@@ -823,7 +834,7 @@ class K11006GetCurCruisePoint(TutkWyzeProtocolMessage):
         super().__init__(11010)
 
     def encode(self) -> bytes:
-        return encode(self.code, pack("<i", int(time.time())))
+        return encode(self.code, pack("<I", int(time.time())))
 
     def parse_response(self, resp_data: bytes):
         return {
@@ -941,7 +952,7 @@ class K11018SetPTZPosition(TutkWyzeProtocolMessage):
 
     def encode(self) -> bytes:
         time_val = int(time.time() * 1000) % 1_000_000_000
-        return encode(self.code, pack("<ibh", time_val, self.vertical, self.horizontal))
+        return encode(self.code, pack("<IBH", time_val, self.vertical, self.horizontal))
 
 
 class K11020GetMotionTracking(TutkWyzeProtocolMessage):

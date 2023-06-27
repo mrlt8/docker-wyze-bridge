@@ -38,7 +38,7 @@ def env_filter(cam: WyzeCamera) -> bool:
     if not cam.nickname:
         return False
     return (
-        cam.nickname.upper() in env_list("FILTER_NAMES")
+        cam.nickname.upper().strip() in env_list("FILTER_NAMES")
         or cam.mac in env_list("FILTER_MACS")
         or cam.product_model in env_list("FILTER_MODELS")
         or cam.model_name.upper() in env_list("FILTER_MODELS")

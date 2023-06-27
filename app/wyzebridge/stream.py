@@ -190,7 +190,8 @@ class StreamManager:
         try:
             if ffmpeg.wait(timeout=10) == 0:
                 return True
-        except TimeoutExpired:
+        except Exception as ex:
+            logger.error(ex)
             stop_subprocess(ffmpeg)
         return False
 

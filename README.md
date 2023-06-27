@@ -33,6 +33,64 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.3.5
+
+* FIXED: response code and error handling for Wyze Web API.
+* FIXED: catch exceptions when taking a snapshot (#873)
+* CHANGED: MediaMTX versions are now pinned to avoid breaking changes.
+* UPDATED: MediaMTX to 0.23.6 and fixed `MTX_PATH`.
+
+## What's Changed in v2.3.4
+
+* ENV Options:
+  * FIX: `FILTER_NAMES` would not work if camera had spaces at the end of the name. Thanks @djak250! (#868)
+* Camera Commands:
+  * FIX: Regression introduced in v2.3.3 preventing negative values for the `rotary_degree` topic. Thanks @gtxaspec! (#870) (#866)
+  * FIX: String cmd lookup for `rotary_degree` and json error response breaking web api. #870 #866
+* Other Fixes:
+  * Catch exceptions when saving thumbnail from api. (#869)
+  * Clear cache on UnpicklingError. (#867)
+
+## What's Changed in v2.3.3
+
+* ENV Option:
+  * NEW: Add `SUB_RECORD` config. Thanks @gtxaspec! (#861)
+  * FIX: Home Assistant `SUB_QUALITY`
+* MQTT:
+  * NEW: Update more camera parameters on connect.
+* Camera Commands:
+  * NEW: Add GET topics for camera params.
+  * FIX: Persist bitrate changes on-reconnect (#852)
+  * FIX: Limited vertical angle for `ptz_position`. Thanks @Rijswijker! (#862)
+
+## What's Changed in v2.3.2
+
+* Camera commands:
+  * SET Topic: `state`; payload: `start|stop|enable|disable` - control the camera stream.
+  * GET Topic: `state` - get the state of the stream in the bridge.
+  * GET Topic: `power` - get the power switch state (Wyze Cloud API).
+* REST/MQTT Control:
+  * FIXED: Refresh token if needed when sending `power` commands.
+  * FIXED: Remove quotations from payload. (#857)
+  * CHANGED: Better error handling for commands.
+* MQTT:
+  * Updated discovery availability and additional entities.
+  * Publish additional topics with current settings.
+  * Disable on TimeoutError.
+
+## What's Changed in v2.3.1
+
+* NEW: WebUI - Power on/off/restart controls.
+  * As these commands are sent over Wyze's Cloud API, the cameras will need access to the wyze servers.
+  * These commands also suffer from the same "offline" issue as the app, and will give an error if the camera is reporting offline in the app.
+* NEW: Camera commands:
+  * Topic: `power`; payload: `on|off|restart` Sent over Wyze Cloud API. (#845) (#841)
+  * Topic: `bitrate`; payload: `1-255` Change the video bitrate/quality (#852)
+* NEW: Camera specific sub_quality option (#851)
+  * Docker: use `SUB_QUALITY_NAME=SD60`
+  * Home Assistant: use `SUB_QUALITY: SD60` in [Camera Specific Options](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant#camera-specific-options).
+* NEW: Home Assistant - add config for 8554/udp (#855)
+
 ## What's Changed in v2.3.0
 
 * NEW: Optional `API_KEY` and `API_ID` config for wyze API (#837)
@@ -111,6 +169,7 @@ The container can be run on its own, in [Portainer](https://github.com/mrlt8/doc
 ### docker-compose (recommended)
 
 This is similar to the docker run command, but will save all your options in a yaml file.
+(If your credentials have special characters, you must escape them)
 
 1. Install [Docker Compose](https://docs.docker.com/compose/install/).
 2. Use the [sample](https://raw.githubusercontent.com/mrlt8/docker-wyze-bridge/main/docker-compose.sample.yml) as a guide to create a `docker-compose.yml` file with your wyze credentials.
@@ -139,6 +198,7 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 
 ## Additional Info
 
+* [Camera Commands (MQTT/REST API)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Commands)
 * [Two-Factor Authentication (2FA/MFA)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Two-Factor-Authentication)
 * [ARM/Raspberry Pi](https://github.com/mrlt8/docker-wyze-bridge/wiki/Raspberry-Pi-(armv7-and-arm64))
 * [Network Connection Modes](https://github.com/mrlt8/docker-wyze-bridge/wiki/Network-Connection-Modes)
@@ -149,10 +209,6 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 * [HomeKit Secure Video](https://github.com/mrlt8/docker-wyze-bridge/wiki/HomeKit-Secure-Video)
 * [WebUI API](https://github.com/mrlt8/docker-wyze-bridge/wiki/WebUI-API)
 
-
-### Special Characters
-
-If your email or password contains a `%` or `$` character, you may need to escape them with an extra character. e.g., `pa$$word` should be entered as `pa$$$$word`
 
 ## Web-UI
 

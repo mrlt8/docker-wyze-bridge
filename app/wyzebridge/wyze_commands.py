@@ -1,5 +1,6 @@
 GET_CMDS = {
-    "status": None,
+    "state": None,
+    "power": None,
     "take_photo": "K10058TakePhoto",
     "irled": "K10044GetIRLEDStatus",
     "night_vision": "K10040GetNightVisionStatus",
@@ -23,10 +24,8 @@ GET_CMDS = {
 GET_PAYLOAD = {"param_info"}
 
 SET_CMDS = {
-    "start": None,
-    "stop": None,
-    "disable": None,
-    "enable": None,
+    "state": None,
+    "power": None,
     "irled": "K10046SetIRLEDStatus",
     "night_vision": "K10042SetNightVisionStatus",
     "status_light": "K10032SetNetworkLightStatus",
@@ -42,6 +41,7 @@ SET_CMDS = {
     "motion_tracking": "K11022SetMotionTracking",
     "motion_tagging": "K10292SetMotionTagging",
     "fps": "K10052SetFPS",
+    "bitrate": "K10052SetBitrate",
     "rtsp": "K10600SetRtspSwitch",
 }
 
@@ -55,4 +55,15 @@ CMD_VALUES = {
     "right": (90, 0),
     "up": (0, 90),
     "down": (0, -90),
+}
+
+PARAMS = {
+    "status_light": "1",
+    "night_vision": "2",
+    "bitrate": "3",
+    "res": "4",
+    "fps": "5",
+    "motion_tagging": "21",
+    "motion_tracking": "27",
+    "irled": "50",
 }
