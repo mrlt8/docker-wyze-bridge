@@ -1,0 +1,30 @@
+ARG BUILD
+ARG QSV=1
+FROM amd64/python:3.11-slim-bullseye as base
+
+FROM base as builder
+ARG QSV
+RUN if [ -n "$QSV" ]; then sed -i 's/main$/main non-free/' /etc/apt/sources.list; fi \
+    && apt-get update \
+    && apt-get install -y curl tar xz-utils ${QSV:+intel-media-va-driver-non-free} ${QSV:+i965-va-driver} \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+COPY . /build/app/
+RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local -r /build/app/requirements.txt
+RUN cd /build \
+    && . app/.env \
+    && mkdir -p tokens img ${QSV:+usr/lib/x86_64-linux-gnu/dri} \
+    && curl -L https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz \
+    | tar --strip-components=1 -C usr/local -Jxf - --wildcards '*ffmpeg' && \
+    curl -L https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_amd64.tar.gz \
+    | tar xzf - -C app \
+    && cp app/amd.lib usr/local/lib/libIOTCAPIs_ALL.so \
+    && if [ -n "$QSV" ]; then cp -R /usr/lib/x86_64-linux-gnu/dri/ usr/lib/x86_64-linux-gnu/dri/; fi \
+    && rm app/*.txt app/*.lib app/*.md app/Dockerfile*
+
+FROM base
+ARG BUILD
+COPY --from=builder /build /
+ENV PYTHONUNBUFFERED=1 FLASK_APP=frontend BUILD=$BUILD
+WORKDIR /app
+CMD ["flask", "run", "--host=0.0.0.0"]
