@@ -299,29 +299,26 @@ def get_mfa_code(code_file: str) -> str:
     return code
 
 
-def valid_env_mfa_type(lst) -> Optional[str]:
-    """
-    Force an alternate MFA type.
+def select_mfa_type(primary: str, options: list) -> str:
+    mfa_type = env_bool("mfa_type", primary.lower())
+    if env_bool("totp_key"):
+        mfa_type = "totpverificationcode"
+    if resp := next((i for i in options if i.lower() == mfa_type), None):
+        if primary.lower() not in ["unknown", mfa_type]:
+            logger.warning(f"⚠ Forcing mfa_type={resp}")
+        return resp
 
-    Available ENV options for MFA_TYPE:
-    - TotpVerificationCode
-    - PrimaryPhone
-    - Email
-    """
-    if not (mfa_type := env_bool("mfa_type")):
-        return None
-    return next((i for i in lst if i.lower() == mfa_type), None)
+    order = ["primaryphone", "totpverificationcode"]
+
+    return next((i for i in options if i.lower() in order), "Email")
 
 
 def mfa_response(creds: WyzeCredential, totp_path: str) -> dict:
     if not creds.mfa_options or not creds.mfa_details:
         return {}
 
-    resp = {"mfa_type": creds.mfa_details.get("primary_option", "email")}
-    if mfa_type := valid_env_mfa_type(creds.mfa_options):
-        logger.info(f"Forcing {mfa_type=}")
-        resp["mfa_type"] = mfa_type
-
+    primary_option = creds.mfa_details.get("primary_option", "")
+    resp = dict(mfa_type=select_mfa_type(primary_option, creds.mfa_options))
     logger.warning(f"🔐 MFA Code Required [{resp['mfa_type']}]")
     if resp["mfa_type"].lower() == "email":
         logger.info("✉️ e-mail code requested")

@@ -81,6 +81,22 @@ jobs:
             type=edge,branch=main,enable=${{ github.event_name == 'push' }},suffix=-hw
             type=ref,event=branch,enable=${{ contains(github.ref,'dev') }},suffix=-hw
 
+      - name: Extract Docker metadata for qsv builds
+        id: qsvmeta
+        uses: docker/metadata-action@v4
+        with:
+          images: |
+            ${{ github.repository_owner }}/wyze-bridge
+            ghcr.io/${{ github.repository }}
+          flavor: |
+            latest=auto
+            suffix=-qsv,onlatest=true
+          tags: |
+            type=schedule,suffix=-qsv
+            type=semver,pattern={{ version }},suffix=-qsv
+            type=edge,branch=main,enable=${{ github.event_name == 'push' }},suffix=-qsv
+            type=ref,event=branch,enable=${{ contains(github.ref,'dev') }},suffix=-qsv
+
       - name: Update Release Version
         if: steps.meta.outputs.VERSION != ''
         run: |
@@ -93,7 +109,7 @@ jobs:
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
       - name: Build and push a multi-arch Docker image
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./app/
@@ -113,7 +129,7 @@ jobs:
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
       - name: Build and push an amd64 Docker image with hwaccel enabled
-        uses: docker/build-push-action@v3
+        uses: docker/build-push-action@v4
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./app/
@@ -129,6 +145,23 @@ jobs:
             io.hass.type=addon
             io.hass.arch=amd64
           tags: ${{ steps.hwmeta.outputs.tags }}
+
+      - name: Build and push an amd64 Docker image with QSV drivers
+        uses: docker/build-push-action@v4
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ./app/
+          push: ${{ github.event_name != 'pull_request' }}
+          file: ./app/Dockerfile.qsv
+          build-args: BUILD=${{ steps.meta.outputs.VERSION }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            io.hass.name=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.title'] }}
+            io.hass.description=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.description'] }}
+            io.hass.version=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            io.hass.type=addon
+            io.hass.arch=amd64
+          tags: ${{ steps.qsvmeta.outputs.tags }}
 
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v4

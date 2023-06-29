@@ -33,6 +33,11 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.3.7
+
+* FIX: Regression introduced in v2.3.6 if primary_option for MFA is "Unknown". Will now default to sms or totp if MFA_TYPE is not set. Thanks @Dot50Cal! (#885)
+* FIX: Reduce excess logging if rtsp snapshot times out.
+
 ## What's Changed in v2.3.6
 
 * NEW: Add support for email 2FA (#880) Thanks @foobarmeow!

@@ -188,11 +188,14 @@ class StreamManager:
         if not (ffmpeg := self.rtsp_snap_popen(cam_name)):
             return False
         try:
-            if ffmpeg.wait(timeout=10) == 0:
+            if ffmpeg.wait(timeout=15) == 0:
                 return True
+        except TimeoutExpired:
+            logger.error(f"[{cam_name}] Snapshot timed out")
         except Exception as ex:
             logger.error(ex)
-            stop_subprocess(ffmpeg)
+        stop_subprocess(ffmpeg)
+
         return False
 
 
