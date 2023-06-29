@@ -60,6 +60,7 @@ class WyzeCredential(BaseModel):
     :var mfa_options: Additional options for 2fa support
     :var mfa_details: Additional details for 2fa support
     :var sms_session_id: Additional details for SMS support
+    :var email_session_id: Additional details for email support
     :var phone_id: The phone id passed to [login()][wyzecam.api.login]
     """
 
@@ -69,6 +70,7 @@ class WyzeCredential(BaseModel):
     mfa_options: Optional[list]
     mfa_details: Optional[dict[str, Any]]
     sms_session_id: Optional[str]
+    email_session_id: Optional[str]
     phone_id: str
 
 

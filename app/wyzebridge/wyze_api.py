@@ -135,7 +135,9 @@ class WyzeApi:
             self.auth = wyzecam.login(*self.creds.creds())
         except HTTPError as ex:
             logger.error(f"⚠️ {ex}")
-            if resp := ex.response.text:
+            if ex.response.status_code == 403:
+                logger.error(f"Your IP may be blocked from {ex.request.url}")
+            elif resp := ex.response.text:
                 logger.warning(resp)
             sleep(15)
         except ValueError as ex:
@@ -145,7 +147,6 @@ class WyzeApi:
         else:
             self.creds.login_req = False
             if self.auth.mfa_options:
-                logger.warning("🔐 MFA code Required")
                 self._mfa_auth()
             return self.auth
 
@@ -216,6 +217,7 @@ class WyzeApi:
     def _mfa_auth(self):
         if not self.auth:
             return
+
         open(f"{TOKEN_PATH}mfa_token.txt", "w").close()
         while not self.auth.access_token:
             resp = mfa_response(self.auth, TOKEN_PATH)
@@ -223,6 +225,7 @@ class WyzeApi:
                 self.mfa_req = resp["mfa_type"]
                 code = get_mfa_code(f"{TOKEN_PATH}mfa_token.txt")
                 resp.update({"verification_code": code})
+
             logger.info(f'🔑 Using {resp["verification_code"]} for authentication')
             try:
                 self.auth = wyzecam.login(*self.creds.creds(), self.auth.phone_id, resp)
@@ -296,28 +299,48 @@ def get_mfa_code(code_file: str) -> str:
     return code
 
 
+def valid_env_mfa_type(lst) -> Optional[str]:
+    """
+    Force an alternate MFA type.
+
+    Available ENV options for MFA_TYPE:
+    - TotpVerificationCode
+    - PrimaryPhone
+    - Email
+    """
+    if not (mfa_type := env_bool("mfa_type")):
+        return None
+    return next((i for i in lst if i.lower() == mfa_type), None)
+
+
 def mfa_response(creds: WyzeCredential, totp_path: str) -> dict:
     if not creds.mfa_options or not creds.mfa_details:
         return {}
-    if "PrimaryPhone" in creds.mfa_options:
+
+    resp = {"mfa_type": creds.mfa_details.get("primary_option", "email")}
+    if mfa_type := valid_env_mfa_type(creds.mfa_options):
+        logger.info(f"Forcing {mfa_type=}")
+        resp["mfa_type"] = mfa_type
+
+    logger.warning(f"🔐 MFA Code Required [{resp['mfa_type']}]")
+    if resp["mfa_type"].lower() == "email":
+        logger.info("✉️ e-mail code requested")
+        return dict(resp, verification_id=wyzecam.send_email_code(creds))
+
+    if resp["mfa_type"].lower() == "primaryphone":
         logger.info("💬 SMS code requested")
-        return {
-            "mfa_type": "PrimaryPhone",
-            "verification_id": wyzecam.send_sms_code(creds),
-        }
-    resp = {
-        "mfa_type": "TotpVerificationCode",
-        "verification_id": creds.mfa_details["totp_apps"][0]["app_id"],
-    }
+        return dict(resp, verification_id=wyzecam.send_sms_code(creds))
+
+    resp["verification_id"] = creds.mfa_details["totp_apps"][0]["app_id"]
     if env_key := env_bool("totp_key", style="original"):
         logger.info("🔏 Using TOTP_KEY to generate TOTP")
-        return resp | {"verification_code": get_totp(env_key)}
+        return dict(resp, verification_code=get_totp(env_key))
 
     with contextlib.suppress(FileNotFoundError):
-        key = Path(f"{totp_path}totp").read_text()
-        if len(key) > 15:
-            resp["verification_code"] = get_totp(key)
+        if len(key := Path(f"{totp_path}totp").read_text()) > 15:
             logger.info(f"🔏 Using {totp_path}totp to generate TOTP")
+            resp["verification_code"] = get_totp(key)
+
     return resp
 
 

@@ -1,9 +1,10 @@
-ARG ARM
 ARG BUILD
-ARG ARCH=${ARM:+arm32v7}
-FROM ${ARCH:-amd64}/python:3.11-slim-bullseye as base
+FROM amd64/python:3.11-slim-bullseye as base_amd64
+FROM arm32v7/python:3.11-slim-bullseye as base_arm
+ARG ARM=1
+FROM base_arm AS base_arm64
 
-FROM base as builder
+FROM base_$TARGETARCH as builder
 ARG ARM
 ARG LIB_ARCH=${ARM:+arm}
 ARG MTX_ARCH=${ARM:+armv7}
@@ -24,7 +25,7 @@ RUN cd /build \
     && cp app/${LIB_ARCH:-amd}.lib usr/local/lib/libIOTCAPIs_ALL.so \
     && rm app/*.txt app/*.lib app/*.md app/Dockerfile*
 
-FROM base
+FROM base_$TARGETARCH
 ARG BUILD
 COPY --from=builder /build /
 ENV PYTHONUNBUFFERED=1 FLASK_APP=frontend BUILD=$BUILD
