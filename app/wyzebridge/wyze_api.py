@@ -135,7 +135,9 @@ class WyzeApi:
             self.auth = wyzecam.login(*self.creds.creds())
         except HTTPError as ex:
             logger.error(f"⚠️ {ex}")
-            if resp := ex.response.text:
+            if ex.response.status_code == 403:
+                logger.error(f"Your IP may be blocked from {ex.request.url}")
+            elif resp := ex.response.text:
                 logger.warning(resp)
             sleep(15)
         except ValueError as ex:
