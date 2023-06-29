@@ -14,9 +14,9 @@ RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local -r /build
 RUN cd /build \
     && . app/.env \
     && mkdir -p tokens img ${QSV:+usr/lib/x86_64-linux-gnu/dri} \
-    && curl -L https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz \
-    | tar --strip-components=1 -C usr/local -Jxf - --wildcards '*ffmpeg' && \
-    curl -L https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_amd64.tar.gz \
+    && curl -SL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz \
+    | tar --strip-components=1 -C usr/local -Jxf - --wildcards '*ffmpeg' \
+    && curl -SL https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_amd64.tar.gz \
     | tar xzf - -C app \
     && cp app/amd.lib usr/local/lib/libIOTCAPIs_ALL.so \
     && if [ -n "$QSV" ]; then cp -R /usr/lib/x86_64-linux-gnu/dri/ usr/lib/x86_64-linux-gnu/dri/; fi \

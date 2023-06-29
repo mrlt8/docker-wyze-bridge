@@ -130,6 +130,28 @@ jobs:
             io.hass.arch=amd64
           tags: ${{ steps.hwmeta.outputs.tags }}
 
+      - name: Create tags for QSV based on HW tags
+        id: qsvmeta
+        run: |
+          echo "::set-output name=qsv_tags::${{ steps.hwmeta.outputs.tags }}-qsv"
+
+      - name: Build and push an amd64 Docker image with QSV drivers
+        uses: docker/build-push-action@v3
+        with:
+          builder: ${{ steps.buildx.outputs.name }}
+          context: ./app/
+          push: ${{ github.event_name != 'pull_request' }}
+          file: ./app/Dockerfile.qsv
+          build-args: BUILD=${{ steps.meta.outputs.VERSION }}
+          labels: |
+            ${{ steps.meta.outputs.labels }}
+            io.hass.name=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.title'] }}
+            io.hass.description=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.description'] }}
+            io.hass.version=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.version'] }}
+            io.hass.type=addon
+            io.hass.arch=amd64
+          tags: ${{ steps.qsvmeta.outputs.qsv_tags }}
+
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v4
         with:

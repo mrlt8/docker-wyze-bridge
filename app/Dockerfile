@@ -17,9 +17,9 @@ RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local -r /build
 RUN cd /build \
     && . app/.env \
     && mkdir -p tokens img \
-    && curl -L https://github.com/homebridge/ffmpeg-for-homebridge/releases/latest/download/ffmpeg-debian-${FFMPEG_ARCH:-x86_64}.tar.gz \
+    && curl -SL https://github.com/homebridge/ffmpeg-for-homebridge/releases/latest/download/ffmpeg-debian-${FFMPEG_ARCH:-x86_64}.tar.gz \
     | tar xzf - -C . \
-    && curl -L https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_${MTX_ARCH:-amd64}.tar.gz \
+    && curl -SL https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_${MTX_ARCH:-amd64}.tar.gz \
     | tar xzf - -C app \
     && cp app/${LIB_ARCH:-amd}.lib usr/local/lib/libIOTCAPIs_ALL.so \
     && rm app/*.txt app/*.lib app/*.md app/Dockerfile*
