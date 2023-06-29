@@ -1,3 +1,11 @@
+## What's Changed in v2.3.6
+
+* NEW: Add support for email 2FA (#880) Thanks @foobarmeow!
+* NEW: ENV Option `MFA_TYPE` - allows you to specify a verification type to use when an account has multiple options enabled. Will default to the primary option from the app if not set. Valid options are:
+  * `TotpVerificationCode`
+  * `PrimaryPhone`
+  * `Email`
+
 ## What's Changed in v2.3.5
 
 * FIXED: response code and error handling for Wyze Web API.

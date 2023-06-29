@@ -82,10 +82,11 @@ jobs:
             type=ref,event=branch,enable=${{ contains(github.ref,'dev') }},suffix=-hw
 
       - name: Update Release Version
+        if: steps.meta.outputs.VERSION != ''
         run: |
           if [[ ${{ steps.meta.outputs.VERSION }} =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
             sed -i "s/^VERSION=.*/VERSION=${{ steps.meta.outputs.VERSION }}/" ./app/.env
-            jq --arg VERSION "${{ steps.meta.outputs.VERSION }}" '.version = $VERSION' ./app/config.json > updated.json
+            jq '.version = ${{ steps.meta.outputs.VERSION }}' ./app/config.json > updated.json
             mv updated.json ./app/config.json
           fi
 
@@ -97,7 +98,7 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./app/
           push: ${{ github.event_name != 'pull_request' }}
-          file: ./app/multi-arch.Dockerfile
+          file: ./app/Dockerfile.multiarch
           platforms: linux/amd64,linux/arm64,linux/arm
           build-args: BUILD=${{ steps.meta.outputs.VERSION }}
           labels: |

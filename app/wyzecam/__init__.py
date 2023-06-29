@@ -38,6 +38,7 @@ from wyzecam.api import (
     get_user_info,
     login,
     refresh_token,
+    send_email_code,
     send_sms_code,
 )
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential, clean_name

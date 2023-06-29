@@ -62,6 +62,7 @@
         "API_KEY": "str?",
         "API_ID": "str?",
         "WB_IP": "str?",
+        "MFA_TYPE": "list(TotpVerificationCode|PrimaryPhone|Email)?",
         "TOTP_KEY": "str?",
         "NET_MODE": "list(LAN|P2P|ANY)",
         "SNAPSHOT": "list(API|RTSP|RTSP15|RTSP30|RTSP60|RTSP180|RTSP300|Disable)?",
