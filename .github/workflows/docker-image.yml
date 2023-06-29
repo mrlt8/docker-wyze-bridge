@@ -133,7 +133,8 @@ jobs:
       - name: Create tags for QSV based on HW tags
         id: qsvmeta
         run: |
-          echo "::set-output name=qsv_tags::${{ steps.hwmeta.outputs.tags }}-qsv"
+          qsv_tag=$(echo "${{ steps.hwmeta.outputs.tags }}" | sed 's/ /-qsv /g')-qsv
+          echo "qsv_tags=$qsv_tag" >> "$GITHUB_OUTPUT"
 
       - name: Build and push an amd64 Docker image with QSV drivers
         uses: docker/build-push-action@v3
