@@ -12,8 +12,6 @@ from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
 IOS_VERSION = getenv("IOS_VERSION")
 APP_VERSION = getenv("APP_VERSION")
-API_KEY = getenv("API_KEY")
-API_ID = getenv("API_ID")
 SCALE_USER_AGENT = f"Wyze/{APP_VERSION} (iPhone; iOS {IOS_VERSION}; Scale/3.00)"
 AUTH_API = "https://auth-prod.api.wyze.com"
 WYZE_API = "https://api.wyzecam.com/app"
@@ -70,7 +68,7 @@ def login(
         {"email": email.strip(), "password": triplemd5(password), **(mfa or {})}
     )
     api_version = "old"
-    if API_KEY and API_ID:
+    if getenv("API_ID") and getenv("API_KEY"):
         api_version = "api"
     elif getenv("v3"):
         api_version = "v3"
@@ -336,11 +334,11 @@ def _get_payload(access_token: str, phone_id: str, req_path: str = "default"):
 def get_headers(phone_id: str = "") -> dict[str, str]:
     if not phone_id:
         return {"user-agent": SCALE_USER_AGENT}
-
-    if API_KEY and API_ID:
+    id, key = getenv("API_ID"), getenv("API_KEY")
+    if id and key:
         return {
-            "apikey": API_KEY,
-            "keyid": API_ID,
+            "apikey": key,
+            "keyid": id,
             "user-agent": f"docker-wyze-bridge-{getenv('VERSION')}",
         }
 
