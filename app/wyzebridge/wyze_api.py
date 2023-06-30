@@ -308,9 +308,10 @@ def select_mfa_type(primary: str, options: list) -> str:
             logger.warning(f"⚠ Forcing mfa_type={resp}")
         return resp
 
-    order = ["primaryphone", "totpverificationcode"]
+    prio = ["primaryphone", "totpverificationcode", "email"]
+    options.sort(key=lambda i: prio.index(i.lower()) if i.lower() in prio else 9)
 
-    return next((i for i in options if i.lower() in order), "Email")
+    return options[0]
 
 
 def mfa_response(creds: WyzeCredential, totp_path: str) -> dict:
