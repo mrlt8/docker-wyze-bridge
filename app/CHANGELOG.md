@@ -1,3 +1,9 @@
+## What's Changed in v2.3.8
+
+* FIX: Home Assistant - `API_KEY` and `API_ID` config for wyze API was broken. (#837)
+* FIX: Prioritize sms > totp > email for MFA if no MFA_TYPE or primary option is set. (#885)
+* Potential fix: Add libx11 to qsv image.
+
 ## What's Changed in v2.3.7
 
 * FIX: Regression introduced in v2.3.6 if primary_option for MFA is "Unknown". Will now default to sms or totp if MFA_TYPE is not set. Thanks @Dot50Cal! (#885)
