@@ -88,24 +88,38 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
     - ENV H264_ENC: Change default codec used for re-encode.
 
     """
-    h264_enc: str = env_bool("h264_enc", "libx264").lower()
-    rotation = []
+    h264_enc: str = env_bool("h264_enc", "libx264")
+    rotation = ""
     transpose = "clock"
     if (env_bool("ROTATE_DOOR") and is_vertical) or env_bool(f"ROTATE_CAM_{uri}"):
         if os.getenv(f"ROTATE_CAM_{uri}") in {"0", "1", "2", "3"}:
             # Numerical values are deprecated, and should be dropped
             #  in favor of symbolic constants.
             transpose = os.environ[f"ROTATE_CAM_{uri}"]
-        rotation = ["-filter:v", f"transpose={transpose}"]
+        rotation = f"transpose={transpose}"
+        if h264_enc == "h264_qsv":
+            rotation = f"format=vaapi|nv12,hwupload,transpose_vaapi={transpose}"
 
     if not env_bool("FORCE_ENCODE") and not rotation:
         return ["copy"]
+
     logger.info(
         f"Re-encoding using {h264_enc}{f' [{transpose=}]' if rotation else '' }"
     )
+    v_filter = ["-filter:v", rotation or "format=vaapi|nv12,hwupload"]
+    vaapi = [
+        "-vaapi_device",
+        "/dev/dri/renderD128",
+        "-hwaccel",
+        "vaapi",
+        "-hwaccel_output_format",
+        "vaapi",
+    ]
+
     return (
         [h264_enc]
-        + rotation
+        + (vaapi if h264_enc == "h264_qsv" else [])
+        + (v_filter if rotation or h264_enc == "h264_qsv" else [])
         + ["-b:v", "3000k", "-coder", "1", "-bufsize", "1000k"]
         + ["-profile:v", "77" if h264_enc == "h264_v4l2m2m" else "main"]
         + ["-preset", "fast" if h264_enc == "h264_nvenc" else "ultrafast"]
