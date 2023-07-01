@@ -127,9 +127,11 @@ class WyzeApi:
     def login(self, fresh_data: bool = False) -> Optional[WyzeCredential]:
         if fresh_data:
             self.clear_cache()
+
+        self.token_auth()
         if self.auth:
-            logger.info("already authenticated")
-            return
+            return self.auth
+
         self.creds.login_check()
         try:
             self.auth = wyzecam.login(*self.creds.creds())
@@ -149,6 +151,15 @@ class WyzeApi:
             if self.auth.mfa_options:
                 self._mfa_auth()
             return self.auth
+
+    def token_auth(self):
+        if len(token := env_bool("refresh_token", style="original")) > 150:
+            logger.info("⚠️ Using 'REFRESH_TOKEN' for authentication")
+            self.auth = wyzecam.refresh_token(WyzeCredential(refresh_token=token))
+
+        if len(token := env_bool("access_token", style="original")) > 150:
+            logger.info("⚠️ Using 'ACCESS_TOKEN' for authentication")
+            self.auth = WyzeCredential(access_token=token)
 
     @cached
     @authenticated
