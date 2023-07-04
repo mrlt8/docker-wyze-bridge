@@ -43,12 +43,15 @@ def get_ffmpeg_cmd(
     if env_cam("AUDIO_STREAM", uri) and audio:
         rtsp_ss += "|" + rss_cmd.format("select=a:") + "_audio"
 
+    vaapi = ["-hwaccel", "vaapi", "-hwaccel_output_format", "vaapi"]
+
     cmd = env_cam("FFMPEG_CMD", uri).format(
         cam_name=uri, CAM_NAME=uri.upper(), audio_in=audio_in
     ).split() or (
         ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "fatal"]
         + env_cam("FFMPEG_FLAGS", uri, flags).strip("'\"\n ").split()
         + ["-thread_queue_size", "64"]
+        + (vaapi if env_bool("h264_enc") == "h264_vaapi" else [])
         + ["-analyzeduration", "50", "-probesize", "50", "-f", vcodec, "-i", "pipe:"]
         + audio_in.split()
         + ["-flags", "+global_header", "-c:v"]
@@ -89,16 +92,15 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
 
     """
     h264_enc: str = env_bool("h264_enc", "libx264")
-    rotation = ""
+    rotation = []
     transpose = "clock"
     if (env_bool("ROTATE_DOOR") and is_vertical) or env_bool(f"ROTATE_CAM_{uri}"):
         if os.getenv(f"ROTATE_CAM_{uri}") in {"0", "1", "2", "3"}:
             # Numerical values are deprecated, and should be dropped
             #  in favor of symbolic constants.
             transpose = os.environ[f"ROTATE_CAM_{uri}"]
-        rotation = f"transpose={transpose}"
-        if h264_enc == "h264_qsv":
-            rotation = f"format=vaapi|nv12,hwupload,transpose_vaapi={transpose}"
+        transpose_vaapi = "_vaapi" if h264_enc == "h264_vaapi" else ""
+        rotation = ["-filter:v", f"transpose{transpose_vaapi}={transpose}"]
 
     if not env_bool("FORCE_ENCODE") and not rotation:
         return ["copy"]
@@ -106,21 +108,11 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
     logger.info(
         f"Re-encoding using {h264_enc}{f' [{transpose=}]' if rotation else '' }"
     )
-    v_filter = ["-filter:v", rotation or "format=vaapi|nv12,hwupload"]
-    vaapi = [
-        "-vaapi_device",
-        "/dev/dri/renderD128",
-        "-hwaccel",
-        "vaapi",
-        "-hwaccel_output_format",
-        "vaapi",
-    ]
 
     return (
         [h264_enc]
-        + (vaapi if h264_enc == "h264_qsv" else [])
-        + (v_filter if rotation or h264_enc == "h264_qsv" else [])
-        + ["-b:v", "3000k", "-coder", "1", "-bufsize", "1000k"]
+        + rotation
+        + ["-b:v", "2000k", "-coder", "1", "-bufsize", "2000k"]
         + ["-profile:v", "77" if h264_enc == "h264_v4l2m2m" else "main"]
         + ["-preset", "fast" if h264_enc == "h264_nvenc" else "ultrafast"]
         + ["-forced-idr", "1", "-force_key_frames", "expr:gte(t,n_forced*2)"]
