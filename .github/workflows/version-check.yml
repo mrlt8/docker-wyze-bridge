@@ -15,8 +15,8 @@ jobs:
       - name: Get Latest MediaMTX Release
         id: media_mtx
         run: |
-          release_tag=$(curl -s https://api.github.com/repos/bluenviron/mediamtx/releases/latest | jq -r '.tag_name')
-          if [[ ! $release_tag =~ ^v([0-9]+\.[0-9]+\.[0-9]+) ]]; then
+          release_tag=$(curl -s https://api.github.com/repos/bluenviron/mediamtx/releases/latest | jq -r '.tag_name' | sed 's/^v//')
+          if [[ ! $release_tag =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?$ ]]; then
             echo "Invalid version format: ${release_tag}. Exiting workflow."
             exit 1
           fi
@@ -31,10 +31,10 @@ jobs:
         with:
           title: 'Bump MediaMTX to v${{ steps.media_mtx.outputs.release_tag }}'
           commit-message: 'Update MediaMTX version from v${{ steps.media_mtx.outputs.current_tag }} to v${{ steps.media_mtx.outputs.release_tag }}'
-          branch: dependabot/update-dotenv
+          branch: mtx-version
           body: |
             This pull request updates MediaMTX to the latest version: [v${{ steps.media_mtx.outputs.release_tag }}](https://github.com/bluenviron/mediamtx/releases/tag/v${{ steps.media_mtx.outputs.release_tag }})
-          path: ./app/.env
+          add-paths: app/.env
 
   update-wyze-ios:
     runs-on: ubuntu-latest
@@ -61,7 +61,7 @@ jobs:
         with:
           title: 'Bump Wyze App version to v${{ steps.wyze_ios.outputs.release_tag }}'
           commit-message: 'Update Wyze iOS App version from v${{ steps.wyze_ios.outputs.current_tag }} to v${{ steps.wyze_ios.outputs.release_tag }}'
-          branch: dependabot/update-dotenv
+          branch: wyze-version
           body: |
             This pull request updates the Wyze iOS App version to the latest version: [v${{ steps.wyze_ios.outputs.release_tag }}](https://apps.apple.com/us/app/wyze-make-your-home-smarter/id1288415553)
-          path: ./app/.env
+          add-paths: app/.env
