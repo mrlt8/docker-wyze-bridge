@@ -35,6 +35,8 @@ jobs:
           body: |
             This pull request updates MediaMTX to the latest version: [v${{ steps.media_mtx.outputs.release_tag }}](https://github.com/bluenviron/mediamtx/releases/tag/v${{ steps.media_mtx.outputs.release_tag }})
           add-paths: app/.env
+          base: main
+          delete-branch: true
 
   update-wyze-ios:
     runs-on: ubuntu-latest
@@ -65,3 +67,5 @@ jobs:
           body: |
             This pull request updates the Wyze iOS App version to the latest version: [v${{ steps.wyze_ios.outputs.release_tag }}](https://apps.apple.com/us/app/wyze-make-your-home-smarter/id1288415553)
           add-paths: app/.env
+          base: main
+          delete-branch: true
