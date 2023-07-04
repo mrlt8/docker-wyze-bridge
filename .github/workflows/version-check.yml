@@ -21,7 +21,7 @@ jobs:
             exit 1
           fi
           current_tag=$(cat ./app/.env | grep MTX_TAG | cut -d'=' -f2)
-          sed -i "s/MTX_TAG=.*/MTX_TAG=${latest_version}/" ./app/.env
+          sed -i "s/MTX_TAG=.*/MTX_TAG=${release_tag}/" ./app/.env
           echo "release_tag=$release_tag" >> $GITHUB_OUTPUT
           echo "current_tag=$current_tag" >> $GITHUB_OUTPUT
 
@@ -51,7 +51,7 @@ jobs:
             exit 1
           fi
           current_tag=$(cat ./app/.env | grep APP_VERSION | cut -d'=' -f2)
-          sed -i "s/APP_VERSION=.*/APP_VERSION=${latest_version}/" ./app/.env
+          sed -i "s/APP_VERSION=.*/APP_VERSION=${release_tag}/" ./app/.env
           echo "release_tag=$release_tag" >> $GITHUB_OUTPUT
           echo "current_tag=$current_tag" >> $GITHUB_OUTPUT
 
