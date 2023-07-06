@@ -411,26 +411,35 @@ document.addEventListener("DOMContentLoaded", () => {
     if (e.data == "clear") {
       alertDiv.innerHTML = '<div class="columns is-centered"><div class="column is-half-desktop"><article class="message is-success container is-one-third-desktop"><div class="message-body"><span class="icon"><i class="fas fa-check-circle"></i></span><span>Verification code accepted!</div></article></div></div>'
       setTimeout(function () { location.reload(1); }, 5000);
-    } else {
-      if (alertDiv.classList.contains("is-hidden")) {
-        const mfaType = e.data == "PrimaryPhone" ? "SMS" : "TOTP"
-        console.error("MFA Required!!!!!")
-        alertDiv.classList.toggle("is-hidden");
-        alertDiv.innerHTML = '<div class="columns is-centered"><div class="column is-half-desktop"><article class="message is-dark container is-one-third-desktop"><div class="message-header">Two Factor Authentication Required</div>\
-      <div class="message-body"><form id="mfa-form" action="#"><div class="field"><label class="label" for="mfa-code">'+ mfaType + ' code required</label><p class="control has-icons-left"><input id="mfa-code" class="input is-dark is-large is-fullwidth" type="tel" placeholder="e.g. 123456" inputmode="numeric" required pattern="\\d{3}\\s?\\d{3}" maxlength="7" autocomplete="one-time-code"><span class="icon is-left"><i class="fas fa-unlock" aria-hidden="true"></i></span></div><div class="field"><div class="control"><button id="mfa-submit" type="submit" class="button is-dark is-fullwidth">Submit</button></div></p></div></form></div>\
-      </article></div></div>'
-        const mfaForm = document.getElementById("mfa-form")
-        const button = document.getElementById("mfa-submit").classList
-        mfaForm.addEventListener('submit', (e) => {
-          e.preventDefault();
-          button.add("is-loading")
-          let mfaCode = document.getElementById("mfa-code").value.replace(/\s/g, '')
-          fetch("mfa/" + mfaCode).then(resp => resp.json()).then(data => {
-            mfaForm.reset()
-            button.remove("is-loading")
-          }).catch(console.log("error"))
-        })
-      }
+    }
+    else if (alertDiv.classList.contains("is-hidden")) {
+      const mfaType = e.data === "PrimaryPhone" ? "SMS" : e.data === "Email" ? "Email" : "TOTP";
+      console.info(`${e.data} verification required`)
+      alertDiv.classList.toggle("is-hidden");
+      alertDiv.innerHTML = '<div class="columns is-centered"><div class="column is-half-desktop"><article class="message is-dark container is-one-third-desktop"><div class="message-header">Two Factor Authentication Required</div>\
+          <div class="message-body"><form id="mfa-form" action="#"><div class="field"><label class="label" for="mfa-code">'+ mfaType + ' verification code required</label><p class="control has-icons-left"><input id="mfa-code" class="input is-dark is-large is-fullwidth" type="tel" placeholder="e.g. 123456" inputmode="numeric" required pattern="\\d{3}\\s?\\d{3}" maxlength="7" autocomplete="one-time-code"><span class="icon is-left"><i class="fas fa-unlock" aria-hidden="true"></i></span></div><div class="field"><div class="control"><button id="mfa-submit" type="submit" class="button is-dark is-fullwidth">Submit</button></div></p></div></form></div>\
+          </article></div></div>'
+      const mfaForm = document.getElementById("mfa-form");
+      const button = document.getElementById("mfa-submit").classList;
+      const mfaCodeInput = document.getElementById("mfa-code");
+      const handleFormSubmit = async (e) => {
+        e.preventDefault();
+        button.add("is-loading");
+        try {
+          await fetch(`mfa/${mfaCodeInput.value.replace(/\s/g, "")}`);
+          mfaForm.reset();
+        } catch (error) {
+          console.error(error);
+        } finally {
+          button.remove("is-loading");
+        }
+      };
+      mfaForm.addEventListener("submit", handleFormSubmit);
+      mfaCodeInput.addEventListener("input", () => {
+        if (mfaCodeInput.value.replace(/\s/g, "").length == 6) {
+          mfaForm.dispatchEvent(new Event("submit"));
+        }
+      });
     }
   })
   sse.addEventListener("message", (e) => {
