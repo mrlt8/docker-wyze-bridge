@@ -59,8 +59,8 @@
   "schema": {
     "WYZE_EMAIL": "email?",
     "WYZE_PASSWORD": "password?",
-    "API_KEY": "str?",
     "API_ID": "str?",
+    "API_KEY": "str?",
     "WB_IP": "str?",
     "MFA_TYPE": "list(TotpVerificationCode|PrimaryPhone|Email)?",
     "TOTP_KEY": "str?",

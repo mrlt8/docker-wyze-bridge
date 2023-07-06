@@ -1,4 +1,10 @@
 configuration:
+  API_ID:
+    name: Key ID
+    description: Optional, but must be used in combination with the API Key.
+  API_KEY:
+    name: API Key
+    description: Optional, but must be used in combination with the Key ID.
   NET_MODE:
     name: Allowed Net Modes
   SNAPSHOT:
