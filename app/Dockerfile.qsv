@@ -4,7 +4,7 @@ FROM amd64/python:3.11-slim-bookworm as base
 
 FROM base as builder
 ARG QSV
-RUN if [ -n "$QSV" ]; then sed -i 's/main$/main non-free/' /etc/apt/sources.list; fi \
+RUN if [ -n "$QSV" ]; then echo 'deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware' >/etc/apt/sources.list.d/debian-testing.list; fi \
     && apt-get update \
     && apt-get install -y curl tar xz-utils \
     ${QSV:+i965-va-driver-shaders intel-media-va-driver-non-free libva-drm2 libx11-6} \
