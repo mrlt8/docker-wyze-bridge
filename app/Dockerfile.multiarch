@@ -1,6 +1,6 @@
 ARG BUILD
-FROM amd64/python:3.11-slim-bullseye as base_amd64
-FROM arm32v7/python:3.11-slim-bullseye as base_arm
+FROM amd64/python:3.11-slim-bookworm as base_amd64
+FROM arm32v7/python:3.11-slim-bookworm as base_arm
 ARG ARM=1
 FROM base_arm AS base_arm64
 
@@ -23,7 +23,7 @@ RUN cd /build \
     && curl -SL https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_${MTX_ARCH:-amd64}.tar.gz \
     | tar xzf - -C app \
     && cp app/${LIB_ARCH:-amd}.lib usr/local/lib/libIOTCAPIs_ALL.so \
-    && rm app/*.txt app/*.lib app/*.md app/Dockerfile*
+    && rm app/*.txt app/*.lib
 
 FROM base_$TARGETARCH
 ARG BUILD
