@@ -34,7 +34,7 @@ def get_ffmpeg_cmd(
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
     if audio and "codec" in audio:
-        audio_in = f"-thread_queue_size 96 -f {audio['codec']} -ar {audio['rate']} -i /tmp/{uri}.wav"
+        audio_in = f"-thread_queue_size 100 -f {audio['codec']} -ar {audio['rate']} -i /tmp/{uri}.wav"
         audio_out = audio["codec_out"] or "copy"
         a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
     rtsp_transport = "udp" if "udp" in env_bool("MTX_PROTOCOLS") else "tcp"
@@ -42,16 +42,15 @@ def get_ffmpeg_cmd(
     rtsp_ss = rss_cmd.format("")
     if env_cam("AUDIO_STREAM", uri) and audio:
         rtsp_ss += "|" + rss_cmd.format("select=a:") + "_audio"
-
-    vaapi = ["-hwaccel", "vaapi", "-hwaccel_output_format", "vaapi"]
+    h264_enc = env_bool("h264_enc").partition("_")[2]
 
     cmd = env_cam("FFMPEG_CMD", uri).format(
         cam_name=uri, CAM_NAME=uri.upper(), audio_in=audio_in
     ).split() or (
         ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "fatal"]
         + env_cam("FFMPEG_FLAGS", uri, flags).strip("'\"\n ").split()
-        + ["-thread_queue_size", "64"]
-        + (vaapi if env_bool("h264_enc") == "h264_vaapi" else [])
+        + ["-thread_queue_size", "100"]
+        + (["-hwaccel", h264_enc] if h264_enc in {"vaapi", "qsv"} else [])
         + ["-analyzeduration", "50", "-probesize", "50", "-f", vcodec, "-i", "pipe:"]
         + audio_in.split()
         + ["-flags", "+global_header", "-c:v"]
@@ -99,8 +98,12 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
             # Numerical values are deprecated, and should be dropped
             #  in favor of symbolic constants.
             transpose = os.environ[f"ROTATE_CAM_{uri}"]
-        transpose_vaapi = "_vaapi" if h264_enc == "h264_vaapi" else ""
-        rotation = ["-filter:v", f"transpose{transpose_vaapi}={transpose}"]
+
+        rotation = ["-filter:v", f"transpose={transpose}"]
+        if h264_enc == "h264_vaapi":
+            rotation[1] = f"transpose_vaapi={transpose}"
+        elif h264_enc == "h264_qsv":
+            rotation[1] = f"vpp_qsv=transpose={transpose}"
 
     if not env_bool("FORCE_ENCODE") and not rotation:
         return ["copy"]
