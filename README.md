@@ -33,93 +33,20 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.3.8
+## What's Changed in v2.3.9
 
-* FIX: Home Assistant - `API_KEY` and `API_ID` config for wyze API was broken. (#837)
-* FIX: Prioritize sms > totp > email for MFA if no MFA_TYPE or primary option is set. (#885)
-* Potential fix: Add libx11 to qsv image.
-
-## What's Changed in v2.3.7
-
-* FIX: Regression introduced in v2.3.6 if primary_option for MFA is "Unknown". Will now default to sms or totp if MFA_TYPE is not set. Thanks @Dot50Cal! (#885)
-* FIX: Reduce excess logging if rtsp snapshot times out.
-
-## What's Changed in v2.3.6
-
-* NEW: Add support for email 2FA (#880) Thanks @foobarmeow!
-* NEW: ENV Option `MFA_TYPE` - allows you to specify a verification type to use when an account has multiple options enabled. Will default to the primary option from the app if not set. Valid options are:
-  * `TotpVerificationCode`
-  * `PrimaryPhone`
-  * `Email`
-
-## What's Changed in v2.3.5
-
-* FIXED: response code and error handling for Wyze Web API.
-* FIXED: catch exceptions when taking a snapshot (#873)
-* CHANGED: MediaMTX versions are now pinned to avoid breaking changes.
-* UPDATED: MediaMTX to 0.23.6 and fixed `MTX_PATH`.
-
-## What's Changed in v2.3.4
-
-* ENV Options:
-  * FIX: `FILTER_NAMES` would not work if camera had spaces at the end of the name. Thanks @djak250! (#868)
-* Camera Commands:
-  * FIX: Regression introduced in v2.3.3 preventing negative values for the `rotary_degree` topic. Thanks @gtxaspec! (#870) (#866)
-  * FIX: String cmd lookup for `rotary_degree` and json error response breaking web api. #870 #866
-* Other Fixes:
-  * Catch exceptions when saving thumbnail from api. (#869)
-  * Clear cache on UnpicklingError. (#867)
-
-## What's Changed in v2.3.3
-
-* ENV Option:
-  * NEW: Add `SUB_RECORD` config. Thanks @gtxaspec! (#861)
-  * FIX: Home Assistant `SUB_QUALITY`
-* MQTT:
-  * NEW: Update more camera parameters on connect.
-* Camera Commands:
-  * NEW: Add GET topics for camera params.
-  * FIX: Persist bitrate changes on-reconnect (#852)
-  * FIX: Limited vertical angle for `ptz_position`. Thanks @Rijswijker! (#862)
-
-## What's Changed in v2.3.2
-
-* Camera commands:
-  * SET Topic: `state`; payload: `start|stop|enable|disable` - control the camera stream.
-  * GET Topic: `state` - get the state of the stream in the bridge.
-  * GET Topic: `power` - get the power switch state (Wyze Cloud API).
-* REST/MQTT Control:
-  * FIXED: Refresh token if needed when sending `power` commands.
-  * FIXED: Remove quotations from payload. (#857)
-  * CHANGED: Better error handling for commands.
-* MQTT:
-  * Updated discovery availability and additional entities.
-  * Publish additional topics with current settings.
-  * Disable on TimeoutError.
-
-## What's Changed in v2.3.1
-
-* NEW: WebUI - Power on/off/restart controls.
-  * As these commands are sent over Wyze's Cloud API, the cameras will need access to the wyze servers.
-  * These commands also suffer from the same "offline" issue as the app, and will give an error if the camera is reporting offline in the app.
-* NEW: Camera commands:
-  * Topic: `power`; payload: `on|off|restart` Sent over Wyze Cloud API. (#845) (#841)
-  * Topic: `bitrate`; payload: `1-255` Change the video bitrate/quality (#852)
-* NEW: Camera specific sub_quality option (#851)
-  * Docker: use `SUB_QUALITY_NAME=SD60`
-  * Home Assistant: use `SUB_QUALITY: SD60` in [Camera Specific Options](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant#camera-specific-options).
-* NEW: Home Assistant - add config for 8554/udp (#855)
-
-## What's Changed in v2.3.0
-
-* NEW: Optional `API_KEY` and `API_ID` config for wyze API (#837)
-  * Key/ID are optional and the bridge will continue to function without them.
-  * `WYZE_EMAIL` and `WYZE_PASSWORD` are still required, but using API key/ID will allow you to skip 2FA without disabling it.
-  * Key/ID are tied to a single account, so you will need to generate a new set for each account.
-  * See: https://support.wyze.com/hc/en-us/articles/16129834216731
-* NEW: Camera commands (#835)
-  * GET/SET `cruise_points` for Pan cams. See [cruise_points](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Commands#cruise_points)
-  * GET/SET `ptz_position` for Pan cams. See [ptz_position](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Commands#ptz_position)
+* NEW: ENV Options - token-based authentication (#876)
+  * `REFRESH_TOKEN` - Use a valid refresh token to request a *new* access token and refresh token.
+  * `ACCESS_TOKEN` - Use an existing valid access token too access the API. Will *not* be able to refresh the token once it expires.
+* NEW: Docker "QSV" Images with basic support for QSV hardware accelerated encoding. (#736) Thanks @mitchross, @392media, @chris001, and everyone who helped!
+  * Use the `latest-qsv` tag (e.g., `mrlt8/wyze-bridge:latest-qsv`) along with the `H264_ENC=h264_qsv` ENV variable. 
+* FIXES:
+  * Home Assistant: set max bitrate quality to 255 (#893) Thanks @gtxaspec!
+  * WebUI: email 2FA support.
+* UPDATES:
+  * Docker base image: bullseye -> bookworm
+  * MediaMTX: v0.23.6 -> v0.23.7
+  * Wyze App: v2.42.6.1 -> v2.43.0.12
 
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
@@ -168,7 +95,7 @@ Cameras from [Gwell Times](http://cloud.gwell.cc) are currently not supported:
 | Wyze Cam OG Telephoto 3x      | GW_GC2         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/677) |
 
 
-## Requirements
+## Compatibility
 
 ![Supports armv7 Architecture](https://img.shields.io/badge/armv7-yes-success.svg)
 ![Supports aarch64 Architecture](https://img.shields.io/badge/aarch64-yes-success.svg)
@@ -182,6 +109,12 @@ Cameras from [Gwell Times](http://cloud.gwell.cc) are currently not supported:
 Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi.
 
 The container can be run on its own, in [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer), [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236), as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant), locally or remotely in the cloud.
+
+
+
+### Ubiquiti Unifi 
+
+Some network adjustments may be needed - see [this discussion](https://github.com/mrlt8/docker-wyze-bridge/discussions/891) for more information.
 
 ## Basic Usage
 

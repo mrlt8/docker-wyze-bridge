@@ -1,7 +1,8 @@
+# Use the build args ARM=1 to build for arm.
 ARG ARM
 ARG BUILD
 ARG ARCH=${ARM:+arm32v7}
-FROM ${ARCH:-amd64}/python:3.11-slim-bullseye as base
+FROM ${ARCH:-amd64}/python:3.11-slim-bookworm as base
 
 FROM base as builder
 ARG ARM
@@ -22,7 +23,7 @@ RUN cd /build \
     && curl -SL https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_${MTX_ARCH:-amd64}.tar.gz \
     | tar xzf - -C app \
     && cp app/${LIB_ARCH:-amd}.lib usr/local/lib/libIOTCAPIs_ALL.so \
-    && rm app/*.txt app/*.lib app/*.md app/Dockerfile*
+    && rm app/*.txt app/*.lib
 
 FROM base
 ARG BUILD

@@ -1,5 +1,6 @@
 import os
 import re
+import uuid
 from typing import Any, Optional
 
 from pydantic import BaseModel
@@ -64,14 +65,14 @@ class WyzeCredential(BaseModel):
     :var phone_id: The phone id passed to [login()][wyzecam.api.login]
     """
 
-    access_token: Optional[str]
-    refresh_token: Optional[str]
-    user_id: str
-    mfa_options: Optional[list]
-    mfa_details: Optional[dict[str, Any]]
-    sms_session_id: Optional[str]
-    email_session_id: Optional[str]
-    phone_id: str
+    access_token: Optional[str] = None
+    refresh_token: Optional[str] = None
+    user_id: Optional[str] = None
+    mfa_options: Optional[list] = None
+    mfa_details: Optional[dict[str, Any]] = None
+    sms_session_id: Optional[str] = None
+    email_session_id: Optional[str] = None
+    phone_id: Optional[str] = str(uuid.uuid4())
 
 
 class WyzeAccount(BaseModel):
@@ -115,7 +116,7 @@ class WyzeCamera(BaseModel):
     enr: Optional[str]
     mac: str
     product_model: str
-    camera_info: Optional[dict[str, Any]]
+    camera_info: Optional[dict[str, Any]] = None
     nickname: Optional[str]
     timezone_name: Optional[str]
     firmware_ver: Optional[str]

@@ -220,7 +220,7 @@ def get_entities(base_topic: str) -> dict:
                 "command_topic": f"{base_topic}bitrate/set",
                 "device_class": "data_rate",
                 "min": 1,
-                "max": 250,
+                "max": 255,
                 "icon": "mdi:high-definition-box",
                 "entity_category": "diagnostic",
             },

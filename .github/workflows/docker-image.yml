@@ -2,11 +2,11 @@ name: Docker
 
 on:
   schedule:
-    - cron: "31 22 * * 0"
+    - cron: '31 22 * * 0'
   push:
     branches: [main, dev]
     # Publish semver tags as releases.
-    tags: ["v*.*.*"]
+    tags: ['v*.*.*']
   pull_request:
     branches: [main]
   workflow_dispatch:
@@ -152,8 +152,10 @@ jobs:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./app/
           push: ${{ github.event_name != 'pull_request' }}
-          file: ./app/Dockerfile.qsv
-          build-args: BUILD=${{ steps.meta.outputs.VERSION }}
+          file: ./app/Dockerfile.hwaccel
+          build-args: |
+            BUILD=${{ steps.meta.outputs.VERSION }}
+            QSV=1
           labels: |
             ${{ steps.meta.outputs.labels }}
             io.hass.name=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.title'] }}
@@ -167,5 +169,5 @@ jobs:
         uses: stefanzweifel/git-auto-commit-action@v4
         with:
           branch: main
-          commit_message: "Bump Version to v${{ steps.meta.outputs.VERSION }}"
-          file_pattern: "app/.env app/config.json"
+          commit_message: 'Bump Version to v${{ steps.meta.outputs.VERSION }}'
+          file_pattern: 'app/.env app/config.json'

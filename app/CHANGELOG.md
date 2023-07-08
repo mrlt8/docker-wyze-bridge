@@ -1,3 +1,18 @@
+## What's Changed in v2.3.9
+
+* NEW: ENV Options - token-based authentication (#876)
+  * `REFRESH_TOKEN` - Use a valid refresh token to request a *new* access token and refresh token.
+  * `ACCESS_TOKEN` - Use an existing valid access token too access the API. Will *not* be able to refresh the token once it expires.
+* NEW: Docker "QSV" Images with basic support for QSV hardware accelerated encoding. (#736) Thanks @mitchross, @392media, @chris001, and everyone who helped!
+  * Use the `latest-qsv` tag (e.g., `mrlt8/wyze-bridge:latest-qsv`) along with the `H264_ENC=h264_qsv` ENV variable. 
+* FIXES:
+  * Home Assistant: set max bitrate quality to 255 (#893) Thanks @gtxaspec!
+  * WebUI: email 2FA support.
+* UPDATES:
+  * Docker base image: bullseye -> bookworm
+  * MediaMTX: v0.23.6 -> v0.23.7
+  * Wyze App: v2.42.6.1 -> v2.43.0.12
+
 ## What's Changed in v2.3.8
 
 * FIX: Home Assistant - `API_KEY` and `API_ID` config for wyze API was broken. (#837)

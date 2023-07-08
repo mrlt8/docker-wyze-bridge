@@ -1,10 +1,10 @@
-.DS_Store
-docker-compose.yml
+**/.DS_Store
+**/docker-compose.yml
+**/mfa_token
+**/totp
+**/.vscode
+**/tokens/
 *.pickle
 *.env
-mfa_token
-totp
-.vscode
-tokens/
 *.pyc
 !/app/.env

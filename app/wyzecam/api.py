@@ -317,7 +317,7 @@ def validate_resp(resp):
     return resp_json
 
 
-def _get_payload(access_token: str, phone_id: str, req_path: str = "default"):
+def _get_payload(access_token: Optional[str], phone_id: str, req_path: str = "default"):
     return {
         "sc": SC_SV[req_path]["sc"],
         "sv": SC_SV[req_path]["sv"],
