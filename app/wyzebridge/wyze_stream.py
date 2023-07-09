@@ -12,7 +12,7 @@ from time import sleep, time
 from typing import Optional
 
 from wyzebridge.bridge_utils import env_bool, env_cam
-from wyzebridge.config import BRIDGE_IP, COOLDOWN
+from wyzebridge.config import BRIDGE_IP, COOLDOWN, MQTT_TOPIC
 from wyzebridge.ffmpeg import get_ffmpeg_cmd
 from wyzebridge.logging import logger
 from wyzebridge.mqtt import send_mqtt, update_mqtt_state, wyze_discovery
@@ -444,9 +444,9 @@ def get_cam_params(
         logger.info(f"🔊 Audio Enabled - {codec_str.upper()}/{rate:,}Hz")
 
     mqtt = [
-        (f"wyzebridge/{uri.lower()}/net_mode", net_mode),
-        (f"wyzebridge/{uri.lower()}/wifi", wifi),
-        (f"wyzebridge/{uri.lower()}/audio", json.dumps(audio) if audio else False),
+        (f"{MQTT_TOPIC}/{uri.lower()}/net_mode", net_mode),
+        (f"{MQTT_TOPIC}/{uri.lower()}/wifi", wifi),
+        (f"{MQTT_TOPIC}/{uri.lower()}/audio", json.dumps(audio) if audio else False),
     ]
     send_mqtt(mqtt)
     return v_codec, fps, audio

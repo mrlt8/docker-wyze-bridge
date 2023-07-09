@@ -8,11 +8,11 @@ from typing import Optional
 
 import requests
 from wyzebridge.bridge_utils import env_bool
-from wyzebridge.config import BOA_COOLDOWN, BOA_INTERVAL, IMG_PATH
+from wyzebridge.config import BOA_COOLDOWN, BOA_INTERVAL, IMG_PATH, MQTT_TOPIC
 from wyzebridge.logging import logger
 from wyzebridge.mqtt import MQTT_ENABLED, send_mqtt
 from wyzebridge.wyze_commands import CMD_VALUES, GET_CMDS, GET_PAYLOAD, PARAMS, SET_CMDS
-from wyzecam import TutkError, WyzeIOTCSession, WyzeIOTCSessionState, tutk_protocol
+from wyzecam import WyzeIOTCSession, WyzeIOTCSessionState, tutk_protocol
 
 
 def cam_http_alive(ip: str) -> bool:
@@ -178,7 +178,7 @@ def camera_control(
 
 
 def update_mqtt_values(topic: str, cam_name: str, resp: dict):
-    base = f"wyzebridge/{cam_name}"
+    base = f"{MQTT_TOPIC}/{cam_name}"
     if msgs := [(f"{base}/{k}", resp[v]) for k, v in PARAMS.items() if v in resp]:
         send_mqtt(msgs)
 
@@ -275,7 +275,7 @@ def motion_alarm(cam: dict):
         logger.info(f"[MOTION] Alarm file detected at {cam['last_photo'][1]}")
         cam["cooldown"] = datetime.now() + timedelta(seconds=BOA_COOLDOWN)
         cam["last_alarm"] = cam["last_photo"]
-    send_mqtt([(f"wyzebridge/{cam['uri']}/motion", motion)])
+    send_mqtt([(f"{MQTT_TOPIC}/{cam['uri']}/motion", motion)])
     if motion and (http := env_bool("boa_motion")):
         try:
             resp = requests.get(http.format(cam_name=cam["uri"]))

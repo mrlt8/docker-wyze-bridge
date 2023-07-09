@@ -7,7 +7,7 @@ from typing import Any, Callable, Optional, Protocol
 from wyzebridge.config import MQTT_DISCOVERY, SNAPSHOT_INT, SNAPSHOT_TYPE
 from wyzebridge.ffmpeg import rtsp_snap_cmd
 from wyzebridge.logging import logger
-from wyzebridge.mqtt import mqtt_cam_control, publish_message, update_preview
+from wyzebridge.mqtt import bridge_status, cam_control, publish_message, update_preview
 from wyzebridge.rtsp_event import RtspEvent
 
 
@@ -96,15 +96,16 @@ class StreamManager:
         self.stop_flag = False
         if self.thread:
             self.thread.start()
-        mqtt = mqtt_cam_control(self.streams, self.send_cmd)
+        mqtt = cam_control(self.streams, self.send_cmd)
         logger.info(f"🎬 {self.total} stream{'s'[:self.total^1]} enabled")
         event = RtspEvent(self.streams)
         while not self.stop_flag:
-            mtx_health()
             event.read(timeout=1)
             cams = self.health_check_all()
-            if cams and SNAPSHOT_TYPE == "rtsp":
-                self.snap_all(cams)
+            self.snap_all(cams)
+            if int(time.time()) % 15 == 0:
+                mtx_health()
+                bridge_status(mqtt, cams)
         if mqtt:
             mqtt.loop_stop()
         logger.info("Stream monitoring stopped")
@@ -136,6 +137,8 @@ class StreamManager:
         Parameters:
         - cams (list[str]): names of the streams to take a snapshot of.
         """
+        if SNAPSHOT_TYPE != "rtsp" or not cams:
+            return
         if time.time() - self.last_snap < SNAPSHOT_INT:
             return
         self.last_snap = time.time()
