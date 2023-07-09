@@ -33,6 +33,12 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.3.10
+
+* FIX: KeyError when upgrading with old cache data in v2.3.9 (#905) Thanks @itsamenathan!
+  * You should be able to remove or set `FRESH_DATA` back to false.
+* MQTT: Update bridge status (#907) Thanks @giorgi1324!
+
 ## What's Changed in v2.3.9
 
 * NEW: ENV Options - token-based authentication (#876)

@@ -7,7 +7,7 @@ from typing import Optional
 import paho.mqtt.client
 import paho.mqtt.publish
 from wyzebridge.bridge_utils import env_bool
-from wyzebridge.config import IMG_PATH, MQTT_DISCOVERY, VERSION
+from wyzebridge.config import IMG_PATH, MQTT_DISCOVERY, MQTT_TOPIC, VERSION
 from wyzebridge.logging import logger
 from wyzebridge.wyze_commands import GET_CMDS, GET_PAYLOAD, PARAMS, SET_CMDS
 from wyzecam import WyzeCamera
@@ -40,7 +40,7 @@ def mqtt_enabled(func):
 @mqtt_enabled
 def wyze_discovery(cam: WyzeCamera, cam_uri: str) -> None:
     """Add Wyze camera to MQTT if enabled."""
-    base = f"wyzebridge/{cam_uri or cam.name_uri}/"
+    base = f"{MQTT_TOPIC}/{cam_uri or cam.name_uri}/"
     msgs = [(f"{base}state", "stopped")]
     if MQTT_DISCOVERY:
         base_payload = {
@@ -58,7 +58,7 @@ def wyze_discovery(cam: WyzeCamera, cam_uri: str) -> None:
         for entity, data in get_entities(base).items():
             topic = f"{MQTT_DISCOVERY}/{data['type']}/{cam.mac}/{entity}/config"
             if "availability_topic" not in data["payload"]:
-                data["payload"]["availability_topic"] = "wyzebridge/state"
+                data["payload"]["availability_topic"] = f"{MQTT_TOPIC}/state"
 
             payload = dict(
                 base_payload | data["payload"],
@@ -79,13 +79,30 @@ def mqtt_sub_topic(m_topics: list, callback) -> Optional[paho.mqtt.client.Client
     client.username_pw_set(MQTT_USER, MQTT_PASS or None)
     client.user_data_set(callback)
     client.on_connect = lambda mq_client, *_: (
-        mq_client.publish("wyzebridge/state", "online"),
-        [mq_client.subscribe(f"wyzebridge/{m_topic}") for m_topic in m_topics],
+        mq_client.publish(f"{MQTT_TOPIC}/state", "online"),
+        [mq_client.subscribe(f"{MQTT_TOPIC}/{m_topic}") for m_topic in m_topics],
     )
-    client.will_set("wyzebridge/state", payload="offline", qos=1, retain=True)
+    client.will_set(f"{MQTT_TOPIC}/state", payload="offline", qos=1, retain=True)
     client.connect(MQTT_HOST, int(MQTT_PORT or 1883), 30)
+    if MQTT_DISCOVERY:
+        client.subscribe(f"{MQTT_DISCOVERY}/status")
+        client.message_callback_add(
+            f"{MQTT_DISCOVERY}/status",
+            lambda mq_client, _, msg: bridge_status(mq_client, [])
+            if msg.payload.decode().lower() == "online"
+            else None,
+        )
     client.loop_start()
     return client
+
+
+def bridge_status(client: Optional[paho.mqtt.client.Client], cams: list):
+    """Set bridge online if MQTT is enabled."""
+    if not client:
+        return
+    client.publish(f"{MQTT_TOPIC}/state", "online")
+    for cam in cams:
+        client.publish(f"{MQTT_TOPIC}/{cam}/state", "online")
 
 
 @mqtt_enabled
@@ -105,9 +122,8 @@ def send_mqtt(messages: list) -> None:
 
 @mqtt_enabled
 def publish_message(topic: str, message=None):
-    base = "wyzebridge/"
     paho.mqtt.publish.single(
-        topic=base + topic,
+        topic=f"{MQTT_TOPIC}/{topic}",
         payload=message,
         hostname=MQTT_HOST,
         port=int(MQTT_PORT or 1883),
@@ -133,7 +149,7 @@ def update_preview(cam_name: str):
 
 
 @mqtt_enabled
-def mqtt_cam_control(cam_names: dict, callback):
+def cam_control(cam_names: dict, callback):
     topics = []
     for uri in cam_names:
         topics += [f"{uri.lower()}/{t}/set" for t in SET_CMDS]
@@ -141,6 +157,7 @@ def mqtt_cam_control(cam_names: dict, callback):
 
     if client := mqtt_sub_topic(topics, callback):
         client.on_message = _on_message
+        return client
 
 
 def _on_message(client, callback, msg):

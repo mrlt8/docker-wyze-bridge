@@ -12,7 +12,7 @@ BUILD_STR = "" if BUILD == VERSION else f"[{BUILD.upper()} BUILD]"
 HASS_TOKEN: str = getenv("SUPERVISOR_TOKEN", "")
 setup_hass(HASS_TOKEN)
 MQTT_DISCOVERY = env_bool("MQTT_DTOPIC")
-
+MQTT_TOPIC = env_bool("MQTT_TOPIC", "wyzebridge").strip("/")
 ON_DEMAND = bool(env_bool("on_demand") if getenv("ON_DEMAND") else True)
 CONNECT_TIMEOUT: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
 
