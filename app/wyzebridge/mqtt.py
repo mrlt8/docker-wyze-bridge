@@ -84,6 +84,14 @@ def mqtt_sub_topic(m_topics: list, callback) -> Optional[paho.mqtt.client.Client
     )
     client.will_set(f"{MQTT_TOPIC}/state", payload="offline", qos=1, retain=True)
     client.connect(MQTT_HOST, int(MQTT_PORT or 1883), 30)
+    if MQTT_DISCOVERY:
+        client.subscribe(f"{MQTT_DISCOVERY}/status")
+        client.message_callback_add(
+            f"{MQTT_DISCOVERY}/status",
+            lambda mq_client, _, msg: bridge_status(mq_client, [])
+            if msg.payload.decode().lower() == "online"
+            else None,
+        )
     client.loop_start()
     return client
 
