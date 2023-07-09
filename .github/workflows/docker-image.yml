@@ -125,6 +125,8 @@ jobs:
             io.hass.type=addon
             io.hass.arch=amd64,armhf,aarch64
           tags: ${{ steps.meta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       # Build and push Docker image with Buildx (don't push on PR)
       # https://github.com/docker/build-push-action
@@ -145,6 +147,8 @@ jobs:
             io.hass.type=addon
             io.hass.arch=amd64
           tags: ${{ steps.hwmeta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Build and push an amd64 Docker image with QSV drivers
         uses: docker/build-push-action@v4
@@ -164,6 +168,8 @@ jobs:
             io.hass.type=addon
             io.hass.arch=amd64
           tags: ${{ steps.qsvmeta.outputs.tags }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Commit and push changes
         uses: stefanzweifel/git-auto-commit-action@v4
