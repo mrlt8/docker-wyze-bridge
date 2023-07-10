@@ -2,6 +2,7 @@ import contextlib
 import json
 from functools import wraps
 from os import getenv
+from socket import gaierror
 from typing import Optional
 
 import paho.mqtt.client
@@ -25,11 +26,8 @@ def mqtt_enabled(func):
             return
         try:
             return func(*args, **kwargs)
-        except ConnectionRefusedError:
-            logger.error("[MQTT] connection refused. Disabling MQTT.")
-            MQTT_ENABLED = False
-        except TimeoutError:
-            logger.error("[MQTT] TimeoutError. Disabling MQTT.")
+        except (ConnectionRefusedError, TimeoutError, gaierror) as ex:
+            logger.error(f"[MQTT] {ex}. Disabling MQTT.")
             MQTT_ENABLED = False
         except Exception as ex:
             logger.error(f"[MQTT] {ex}")
