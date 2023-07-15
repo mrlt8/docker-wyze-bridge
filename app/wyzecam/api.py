@@ -28,6 +28,10 @@ SC_SV = {
         "sc": "01dd431d098546f9baf5233724fa2ee2",
         "sv": "0bc2c3bedf6c4be688754c9ad42bbf2e",
     },
+    "set_device_Info": {
+        "sc": "01dd431d098546f9baf5233724fa2ee2",
+        "sv": "e8e1db44128f4e31a2047a8f5f80b2bd",
+    },
 }
 
 
@@ -279,6 +283,24 @@ def get_device_info(auth_info: WyzeCredential, camera: WyzeCamera) -> dict:
     resp = requests.post(
         f"{WYZE_API}/v2/device/get_device_Info", json=payload, headers=get_headers()
     )
+    resp_json = validate_resp(resp)
+
+    return resp_json["data"]
+
+
+def set_device_info(
+    auth_info: WyzeCredential, camera: WyzeCamera, params: dict
+) -> dict:
+    """Get device info."""
+    payload = dict(
+        _get_payload(auth_info.access_token, auth_info.phone_id, "set_device_Info"),
+        device_mac=camera.mac,
+        **params,
+    )
+    resp = requests.post(
+        f"{WYZE_API}/device/set_device_info", json=payload, headers=get_headers()
+    )
+
     resp_json = validate_resp(resp)
 
     return resp_json["data"]

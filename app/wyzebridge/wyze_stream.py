@@ -1,6 +1,7 @@
 import contextlib
 import json
 import multiprocessing as mp
+import zoneinfo
 from collections import namedtuple
 from ctypes import c_int
 from dataclasses import dataclass
@@ -271,6 +272,12 @@ class WyzeStream:
                 return self.api.get_pid_info(self.camera, "P3")
             run_cmd = payload if payload == "restart" else f"{cmd}_{payload}"
             return dict(self.api.run_action(self.camera, run_cmd), value=payload)
+        if cmd == "time_zone" and isinstance(payload, str):
+            try:
+                zone = {"device_timezone_city": zoneinfo.ZoneInfo(payload).key}
+                return dict(self.api.set_device_info(self.camera, zone), value=payload)
+            except zoneinfo.ZoneInfoNotFoundError:
+                return {"response": "invalid time zone"}
 
         if self.state < StreamStatus.STOPPED:
             return {"response": self.status()}
