@@ -43,6 +43,7 @@ SET_CMDS = {
     "fps": "K10052SetFPS",
     "bitrate": "K10052SetBitrate",
     "rtsp": "K10600SetRtspSwitch",
+    "quick_reponse": "K11635ResponseQuickMessage",
 }
 
 CMD_VALUES = {

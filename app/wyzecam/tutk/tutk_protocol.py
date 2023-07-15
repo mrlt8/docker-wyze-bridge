@@ -988,6 +988,27 @@ class K11022SetMotionTracking(TutkWyzeProtocolMessage):
         return encode(self.code, bytes([self.value]))
 
 
+class K11635ResponseQuickMessage(TutkWyzeProtocolMessage):
+    """
+    A message used to send a quick response to the camera.
+
+    Parameters:
+    -  value (int):
+        - 1: db_response_1 (Can I help you?)
+        - 2: db_response_2 (Be there shortly)
+        - 3: db_response_3 (Leave package at door)
+    """
+
+    def __init__(self, value: int):
+        super().__init__(11635)
+
+        assert 1 <= value <= 3, "value must be 1, 2 or 3"
+        self.value: int = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([self.value]))
+
+
 def encode(code: int, data: Optional[bytes]) -> bytes:
     data_len = 0 if data is None else len(data)
     encoded_msg = bytearray([0] * (16 + data_len))
