@@ -514,6 +514,68 @@ class K10052SetBitrate(TutkWyzeProtocolMessage):
         return encode(self.code, bytes([self.bitrate, 0, 0, 0, 0]))
 
 
+class K10070GetOSDStatus(TutkWyzeProtocolMessage):
+    """
+    A message used to check if the OSD timestamp is enabled.
+
+    :return: the OSD timestamp status:
+    - 1: Enabled
+    - 2: Disabled
+    """
+
+    def __init__(self):
+        super().__init__(10070)
+
+
+class K10072SetOSDStatus(TutkWyzeProtocolMessage):
+    """
+    A message used to enable/disable the OSD timestamp.
+
+    Parameters:
+    -  value (int): 1 for on; 2 for off.
+    """
+
+    def __init__(self, value):
+        super().__init__(10072)
+
+        assert 1 <= value <= 2, "value must be 1 or 2"
+        self.value = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([self.value]))
+
+
+class K10074GetOSDLogoStatus(TutkWyzeProtocolMessage):
+    """
+    A message used to check if the OSD logo is enabled.
+
+    :return: the OSD logo status:
+    - 1: Enabled
+    - 2: Disabled
+    """
+
+    def __init__(self):
+        super().__init__(10074)
+
+
+class K10076SetOSDLogoStatus(TutkWyzeProtocolMessage):
+    """
+    A message used to enable/disable the OSD logo.
+
+    Parameters:
+    -  value (int): 1 for on; 2 for off.
+    """
+
+    def __init__(self, value):
+        super().__init__(10076)
+
+        assert 1 <= value <= 2, "value must be 1 or 2"
+        self.value = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([self.value]))
+
+
 class K10090GetCameraTime(TutkWyzeProtocolMessage):
     """
     A message used to get the current time on the camera.
