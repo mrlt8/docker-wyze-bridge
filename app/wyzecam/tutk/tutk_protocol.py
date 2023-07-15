@@ -573,6 +573,24 @@ class K10292SetMotionTagging(TutkWyzeProtocolMessage):
         return encode(self.code, bytes([self.value]))
 
 
+class K10302SetTimeZone(TutkWyzeProtocolMessage):
+    """
+    A message used to set the time zone on the camera.
+
+    Parameters:
+    -  value (int): the time zone to set (-11 to 13).
+    """
+
+    def __init__(self, value: int):
+        super().__init__(10302)
+        assert -11 <= value <= 13, "value must be -11 to 13"
+        self.value: int = value
+
+    def encode(self) -> bytes:
+        print(pack("<b", self.value))
+        return encode(self.code, pack("<b", self.value))
+
+
 class K10620CheckNight(TutkWyzeProtocolMessage):
     """
     A message used to check the night mode settings of the camera.

@@ -40,6 +40,7 @@ SET_CMDS = {
     "ptz_position": "K11018SetPTZPosition",
     "motion_tracking": "K11022SetMotionTracking",
     "motion_tagging": "K10292SetMotionTagging",
+    "time_zone": "K10302SetTimeZone",
     "fps": "K10052SetFPS",
     "bitrate": "K10052SetBitrate",
     "rtsp": "K10600SetRtspSwitch",
@@ -65,6 +66,7 @@ PARAMS = {
     "res": "4",
     "fps": "5",
     "motion_tagging": "21",
+    "time_zone": "22",
     "motion_tracking": "27",
     "irled": "50",
 }
