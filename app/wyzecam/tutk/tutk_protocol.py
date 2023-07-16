@@ -184,6 +184,52 @@ class K10002ConnectAuth(TutkWyzeProtocolMessage):
         return json.loads(resp_data)
 
 
+class K10006ConnectUserAuth(TutkWyzeProtocolMessage):
+    """
+    New DB protocol version
+    """
+
+    def __init__(
+        self,
+        challenge_response: bytes,
+        phone_id: str,
+        open_userid: str,
+        open_video: bool = True,
+        open_audio: bool = True,
+    ) -> None:
+        super().__init__(10006)
+
+        assert (
+            len(challenge_response) == 16
+        ), "expected challenge response to be 16 bytes long"
+
+        if len(phone_id) < 4:
+            phone_id += "1234"
+
+        self.challenge_response: bytes = challenge_response
+        self.username: bytes = phone_id.encode("utf-8")
+        self.open_userid: bytes = open_userid.encode("utf-8")
+        self.open_video: int = 1 if open_video else 0
+        self.open_audio: int = 1 if open_audio else 0
+
+    def encode(self) -> bytes:
+        open_userid_len = len(self.open_userid)
+        encoded_msg = pack(
+            f"<16s4sbbb{open_userid_len}s",
+            self.challenge_response,
+            self.username,
+            self.open_video,
+            self.open_audio,
+            open_userid_len,
+            self.open_userid,
+        )
+
+        return encode(self.code, encoded_msg)
+
+    def parse_response(self, resp_data):
+        return json.loads(resp_data)
+
+
 class K10008ConnectUserAuth(TutkWyzeProtocolMessage):
     """
     The "challenge response" sent by a client to a camera as part of the authentication handshake when
@@ -1166,6 +1212,10 @@ def respond_to_ioctrl_10001(
 
     if supports(product_model, protocol, 10008):
         response: TutkWyzeProtocolMessage = K10008ConnectUserAuth(
+            challenge_response, phone_id, open_userid, open_audio=enable_audio
+        )
+    elif product_model == "WYZEDB3" or supports(product_model, protocol, 10006):
+        response: TutkWyzeProtocolMessage = K10006ConnectUserAuth(
             challenge_response, phone_id, open_userid, open_audio=enable_audio
         )
     else:
