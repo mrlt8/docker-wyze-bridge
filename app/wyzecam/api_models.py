@@ -117,6 +117,7 @@ class WyzeCamera(BaseModel):
     mac: str
     product_model: str
     camera_info: Optional[dict[str, Any]] = None
+    supported_commands: Optional[list[str]] = None
     nickname: Optional[str]
     timezone_name: Optional[str]
     firmware_ver: Optional[str]
@@ -126,9 +127,16 @@ class WyzeCamera(BaseModel):
     parent_mac: Optional[str]
     thumbnail: Optional[str]
 
-    def set_camera_info(self, info: dict[str, Any]) -> None:
+    def set_camera_info(self, info: dict[str, Any], commands: list[str] = None) -> None:
         # Called internally as part of WyzeIOTC.connect_and_auth()
         self.camera_info = info
+        self.supported_commands = commands
+
+    def supports_command(self, command: int) -> bool:
+        """Return whether the command is supported by this camera."""
+        if self.supported_commands:
+            return str(command) in self.supported_commands
+        return False
 
     @property
     def name_uri(self) -> str:

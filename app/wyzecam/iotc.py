@@ -35,6 +35,7 @@ from wyzecam.tutk.tutk_protocol import (
     K10020CheckCameraParams,
     K10052DBSetResolvingBit,
     K10056SetResolvingBit,
+    get_supported_commands,
     respond_to_ioctrl_10001,
 )
 
@@ -1000,7 +1001,10 @@ class WyzeIOTCSession:
                 if auth_response["connectionRes"] != "1":
                     warnings.warn(f"AUTH FAILED: {auth_response}")
                     raise ValueError("AUTH_FAILED")
-                self.camera.set_camera_info(auth_response["cameraInfo"])
+                self.camera.set_camera_info(
+                    auth_response["cameraInfo"],
+                    get_supported_commands(self.camera.product_model, challenge.resp_protocol),
+                )
                 frame_bit = self.preferred_frame_size, self.preferred_bitrate
                 if self.camera.product_model in (
                     "WYZEDB3",
