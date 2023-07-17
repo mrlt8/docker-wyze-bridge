@@ -91,7 +91,8 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
 
     """
     h264_enc: str = env_bool("h264_enc", "libx264")
-    rotation = []
+    custom_filter = env_cam("FFMPEG_FILTER", uri)
+    v_filter = []
     transpose = "clock"
     if (env_bool("ROTATE_DOOR") and is_vertical) or env_bool(f"ROTATE_CAM_{uri}"):
         if os.getenv(f"ROTATE_CAM_{uri}") in {"0", "1", "2", "3"}:
@@ -99,22 +100,27 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
             #  in favor of symbolic constants.
             transpose = os.environ[f"ROTATE_CAM_{uri}"]
 
-        rotation = ["-filter:v", f"transpose={transpose}"]
+        v_filter = ["-filter:v", f"transpose={transpose}"]
         if h264_enc == "h264_vaapi":
-            rotation[1] = f"transpose_vaapi={transpose}"
+            v_filter[1] = f"transpose_vaapi={transpose}"
         elif h264_enc == "h264_qsv":
-            rotation[1] = f"vpp_qsv=transpose={transpose}"
+            v_filter[1] = f"vpp_qsv=transpose={transpose}"
 
-    if not env_bool("FORCE_ENCODE") and not rotation:
+    if not env_bool("FORCE_ENCODE") and not v_filter and not custom_filter:
         return ["copy"]
 
     logger.info(
-        f"Re-encoding using {h264_enc}{f' [{transpose=}]' if rotation else '' }"
+        f"Re-encoding using {h264_enc}{f' [{transpose=}]' if v_filter else '' }"
     )
+    if custom_filter:
+        v_filter = [
+            "-filter:v",
+            f"{v_filter[1]},{custom_filter}" if v_filter else custom_filter,
+        ]
 
     return (
         [h264_enc]
-        + rotation
+        + v_filter
         + ["-b:v", "2000k", "-coder", "1", "-bufsize", "2000k"]
         + ["-profile:v", "77" if h264_enc == "h264_v4l2m2m" else "main"]
         + ["-preset", "fast" if h264_enc in {"h264_nvenc", "h264_qsv"} else "ultrafast"]
