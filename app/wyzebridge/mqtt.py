@@ -53,7 +53,7 @@ def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> No
             },
         }
 
-        for entity, data in get_entities(base).items():
+        for entity, data in get_entities(base, cam.is_pan_cam, cam.rtsp_fw).items():
             topic = f"{MQTT_DISCOVERY}/{data['type']}/{cam.mac}/{entity}/config"
             if "availability_topic" not in data["payload"]:
                 data["payload"]["availability_topic"] = f"{MQTT_TOPIC}/state"
@@ -188,8 +188,8 @@ def _on_message(client, callback, msg):
         logger.info(f"[MQTT] {resp}")
 
 
-def get_entities(base_topic: str) -> dict:
-    return {
+def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> dict:
+    entities = {
         "snapshot": {
             "type": "camera",
             "payload": {
@@ -226,6 +226,16 @@ def get_entities(base_topic: str) -> dict:
                 "icon": "mdi:weather-night",
             },
         },
+        "alarm": {
+            "type": "switch",
+            "payload": {
+                "state_topic": f"{base_topic}alarm",
+                "command_topic": f"{base_topic}alarm/set",
+                "payload_on": 1,
+                "payload_off": 2,
+                "icon": "mdi:alarm-bell",
+            },
+        },
         "status_light": {
             "type": "switch",
             "payload": {
@@ -234,6 +244,17 @@ def get_entities(base_topic: str) -> dict:
                 "payload_on": 1,
                 "payload_off": 2,
                 "icon": "mdi:led-on",
+                "entity_category": "diagnostic",
+            },
+        },
+        "motion_tagging": {
+            "type": "switch",
+            "payload": {
+                "state_topic": f"{base_topic}motion_tagging",
+                "command_topic": f"{base_topic}motion_tagging/set",
+                "payload_on": 1,
+                "payload_off": 2,
+                "icon": "mdi:image-filter-center-focus",
                 "entity_category": "diagnostic",
             },
         },
@@ -285,3 +306,41 @@ def get_entities(base_topic: str) -> dict:
             },
         },
     }
+    if pan_cam:
+        entities |= {
+            "pan_cruise": {
+                "type": "switch",
+                "payload": {
+                    "state_topic": f"{base_topic}pan_cruise",
+                    "command_topic": f"{base_topic}pan_cruise/set",
+                    "payload_on": 1,
+                    "payload_off": 2,
+                    "icon": "mdi:rotate-right",
+                },
+            },
+            "motion_tracking": {
+                "type": "switch",
+                "payload": {
+                    "state_topic": f"{base_topic}motion_tracking",
+                    "command_topic": f"{base_topic}motion_tracking/set",
+                    "payload_on": 1,
+                    "payload_off": 2,
+                    "icon": "mdi:motion-sensor",
+                },
+            },
+        }
+    if rtsp:
+        entities |= {
+            "rtsp": {
+                "type": "switch",
+                "payload": {
+                    "state_topic": f"{base_topic}rtsp",
+                    "command_topic": f"{base_topic}rtsp/set",
+                    "payload_on": 1,
+                    "payload_off": 2,
+                    "icon": "mdi:motion-sensor",
+                },
+            },
+        }
+
+    return entities
