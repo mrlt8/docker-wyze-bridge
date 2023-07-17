@@ -17,7 +17,7 @@ from wyzebridge.bridge_utils import env_bool, env_cam
 from wyzebridge.config import BRIDGE_IP, COOLDOWN, MQTT_TOPIC
 from wyzebridge.ffmpeg import get_ffmpeg_cmd
 from wyzebridge.logging import logger
-from wyzebridge.mqtt import send_mqtt, update_mqtt_state, wyze_discovery
+from wyzebridge.mqtt import publish_discovery, send_mqtt, update_mqtt_state
 from wyzebridge.webhooks import ifttt_webhook
 from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_commands import GET_CMDS, PARAMS, SET_CMDS
@@ -102,7 +102,7 @@ class WyzeStream:
             logger.error(f"{self.camera.nickname} may not support multiple streams!!")
             # self.state = StreamStatus.DISABLED
         self.options.update_quality(self.camera.is_2k)
-        wyze_discovery(self.camera, self.uri)
+        publish_discovery(self.uri, self.camera)
 
     @property
     def state(self):
@@ -236,7 +236,7 @@ class WyzeStream:
             self.update_cam_info()
         if self.camera.camera_info and "boa_info" in self.camera.camera_info:
             data["boa_url"] = f"http://{self.camera.ip}/cgi-bin/hello.cgi?name=/"
-        return data | self.camera.dict(exclude={"p2p_id", "enr", "parent_enr"})
+        return data | self.camera.model_dump(exclude={"p2p_id", "enr", "parent_enr"})
 
     def update_cam_info(self) -> None:
         if not self.connected:

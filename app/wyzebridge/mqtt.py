@@ -36,10 +36,10 @@ def mqtt_enabled(func):
 
 
 @mqtt_enabled
-def wyze_discovery(cam: WyzeCamera, cam_uri: str) -> None:
-    """Add Wyze camera to MQTT if enabled."""
-    base = f"{MQTT_TOPIC}/{cam_uri or cam.name_uri}/"
-    msgs = [(f"{base}state", "stopped")]
+def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> None:
+    """Publish MQTT discovery message for camera."""
+    base = f"{MQTT_TOPIC}/{cam_uri}/"
+    msgs = [(f"{base}state", "stopped")] if stopped else []
     if MQTT_DISCOVERY:
         base_payload = {
             "device": {
@@ -82,15 +82,8 @@ def mqtt_sub_topic(m_topics: list, callback) -> Optional[paho.mqtt.client.Client
     )
     client.will_set(f"{MQTT_TOPIC}/state", payload="offline", qos=1, retain=True)
     client.connect(MQTT_HOST, int(MQTT_PORT or 1883), 30)
-    if MQTT_DISCOVERY:
-        client.subscribe(f"{MQTT_DISCOVERY}/status")
-        client.message_callback_add(
-            f"{MQTT_DISCOVERY}/status",
-            lambda mq_client, _, msg: bridge_status(mq_client, [])
-            if msg.payload.decode().lower() == "online"
-            else None,
-        )
     client.loop_start()
+
     return client
 
 
@@ -147,15 +140,31 @@ def update_preview(cam_name: str):
 
 
 @mqtt_enabled
-def cam_control(cam_names: dict, callback):
+def cam_control(cams: dict, callback):
     topics = []
-    for uri in cam_names:
+    for uri in cams:
         topics += [f"{uri.lower()}/{t}/set" for t in SET_CMDS]
         topics += [f"{uri.lower()}/{t}/get" for t in GET_CMDS | PARAMS]
-
     if client := mqtt_sub_topic(topics, callback):
+        if MQTT_DISCOVERY:
+            uri_cams = {uri: cam.camera for uri, cam in cams.items()}
+            client.subscribe(f"{MQTT_DISCOVERY}/status")
+            client.message_callback_add(
+                f"{MQTT_DISCOVERY}/status",
+                lambda cc, _, msg: _mqtt_discovery(cc, uri_cams, msg),
+            )
         client.on_message = _on_message
+
         return client
+
+
+def _mqtt_discovery(client, cams, msg):
+    if msg.payload.decode().lower() != "online" or not cams:
+        return
+
+    bridge_status(client, [])
+    for uri, cam in cams.items():
+        publish_discovery(uri, cam, False)
 
 
 def _on_message(client, callback, msg):
