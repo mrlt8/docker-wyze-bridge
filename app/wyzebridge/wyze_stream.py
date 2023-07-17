@@ -278,12 +278,13 @@ class WyzeStream:
                 zone = zoneinfo.ZoneInfo(payload)
             except zoneinfo.ZoneInfoNotFoundError:
                 return {"response": "invalid time zone"}
-            return dict(
-                self.api.set_device_info(
-                    self.camera, {"device_timezone_city": zone.key}
-                ),
-                value=datetime.now(zone).utcoffset(),
-            )
+            if offset := datetime.now(zone).utcoffset():
+                return dict(
+                    self.api.set_device_info(
+                        self.camera, {"device_timezone_city": zone.key}
+                    ),
+                    value=int(offset.total_seconds() / 3600),
+                )
 
         if self.state < StreamStatus.STOPPED:
             return {"response": self.status()}
