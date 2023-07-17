@@ -859,7 +859,7 @@ class K10600SetRtspSwitch(TutkWyzeProtocolMessage):
 
     def __init__(self, value: int = 1):
         super().__init__(10600)
-        assert 0 <= value <= 2, "value must be 1 or 2"
+        assert 1 <= value <= 2, "value must be 1 or 2"
         self.value: int = value
 
     def encode(self) -> bytes:
@@ -1214,7 +1214,7 @@ def respond_to_ioctrl_10001(
         response: TutkWyzeProtocolMessage = K10008ConnectUserAuth(
             challenge_response, phone_id, open_userid, open_audio=enable_audio
         )
-    elif product_model == "WYZEDB3" or supports(product_model, protocol, 10006):
+    elif supports(product_model, protocol, 10006):
         response: TutkWyzeProtocolMessage = K10006ConnectUserAuth(
             challenge_response, phone_id, open_userid, open_audio=enable_audio
         )
