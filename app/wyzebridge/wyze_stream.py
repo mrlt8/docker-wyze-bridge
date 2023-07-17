@@ -5,6 +5,7 @@ import zoneinfo
 from collections import namedtuple
 from ctypes import c_int
 from dataclasses import dataclass
+from datetime import datetime
 from enum import IntEnum
 from queue import Empty, Full
 from subprocess import PIPE, Popen
@@ -272,12 +273,17 @@ class WyzeStream:
                 return self.api.get_pid_info(self.camera, "P3")
             run_cmd = payload if payload == "restart" else f"{cmd}_{payload}"
             return dict(self.api.run_action(self.camera, run_cmd), value=payload)
-        if cmd == "time_zone" and isinstance(payload, str):
+        if cmd == "time_zone" and payload and isinstance(payload, str):
             try:
-                zone = {"device_timezone_city": zoneinfo.ZoneInfo(payload).key}
-                return dict(self.api.set_device_info(self.camera, zone), value=payload)
+                zone = zoneinfo.ZoneInfo(payload)
             except zoneinfo.ZoneInfoNotFoundError:
                 return {"response": "invalid time zone"}
+            return dict(
+                self.api.set_device_info(
+                    self.camera, {"device_timezone_city": zone.key}
+                ),
+                value=datetime.now(zone).utcoffset(),
+            )
 
         if self.state < StreamStatus.STOPPED:
             return {"response": self.status()}
