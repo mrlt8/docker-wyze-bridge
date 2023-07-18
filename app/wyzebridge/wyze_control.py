@@ -208,7 +208,7 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
         logger.error(f"[CONTROL] ERROR - {ex} {cmd=}")
         return {topic: {"status": "error", "command": cmd, "response": str(ex)}}
 
-    resp = {"command": topic, "payload": payload}
+    resp = {"command": topic, "payload": payload, "value": None}
     try:
         with sess.iotctrl_mux() as mux:
             iotc = mux.send_ioctl(tutk_msg)
@@ -218,8 +218,11 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
                 if tutk_msg.code == 10020:
                     res = update_mqtt_values(topic, sess.camera.name_uri, res)
                     params = None if isinstance(res, int) else params
-                value = res if isinstance(res, (dict, int)) else ",".join(map(str, res))
-                resp |= {"status": "success", "response": value, "value": value}
+                if isinstance(res, bytes):
+                    res = ",".join(map(str, res))
+                if isinstance(res, str) and res.isdigit():
+                    res = int(res)
+                resp |= {"status": "success", "response": res, "value": res}
     except Empty:
         resp |= {"status": "success", "response": None}
     except Exception as ex:
@@ -232,6 +235,7 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
         else:
             resp["value"] = ",".join(map(str, params))
     getattr(logger, log)(f"[CONTROL] Response: {resp}")
+
     return {topic: resp}
 
 
