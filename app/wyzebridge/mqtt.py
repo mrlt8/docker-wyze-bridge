@@ -179,8 +179,8 @@ def _on_message(client, callback, msg):
     payload = msg.payload.decode()
     with contextlib.suppress(json.JSONDecodeError):
         json_msg = json.loads(payload)
-        if not isinstance(json_msg, dict):
-            raise json.JSONDecodeError("NOT a dictionary", payload, 0)
+        if not isinstance(json_msg, (dict, list)):
+            raise json.JSONDecodeError("NOT json", payload, 0)
         payload = json_msg if len(json_msg) > 1 else next(iter(json_msg.values()))
 
     resp = callback(cam, topic, payload if include_payload else "")
