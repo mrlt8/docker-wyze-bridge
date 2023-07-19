@@ -28,6 +28,8 @@ GET_PAYLOAD = {"param_info"}
 SET_CMDS = {
     "state": None,
     "power": None,
+    "time_zone": None,
+    "cruise_point": None,
     "irled": "K10046SetIRLEDStatus",
     "night_vision": "K10042SetNightVisionStatus",
     "status_light": "K10032SetNetworkLightStatus",
@@ -44,8 +46,6 @@ SET_CMDS = {
     "ptz_position": "K11018SetPTZPosition",
     "motion_tracking": "K11022SetMotionTracking",
     "motion_tagging": "K10292SetMotionTagging",
-    # "time_zone": "K10302SetTimeZone",
-    "time_zone": None,
     "fps": "K10052SetFPS",
     "bitrate": "K10052SetBitrate",
     "rtsp": "K10600SetRtspSwitch",
