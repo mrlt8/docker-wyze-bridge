@@ -37,17 +37,13 @@ jobs:
     outputs:
       version: ${{ steps.version_bump.outputs.tag }}
 
-  setup:
+  login:
     runs-on: ubuntu-latest
     steps:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
         with:
           platforms: linux/amd64,linux/arm64,linux/arm
-
-      - name: Set up Docker Buildx
-        id: buildx
-        uses: docker/setup-buildx-action@master
 
       - name: Login to DockerHub
         if: github.event_name != 'pull_request'
@@ -64,13 +60,14 @@ jobs:
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-    outputs:
-      builder_name: ${{ steps.buildx.outputs.name }}
-
   multiarch:
-    needs: [checkout, setup]
+    needs: [checkout, login]
     runs-on: ubuntu-latest
     steps:
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+
       - name: Extract Docker metadata
         id: meta
         uses: docker/metadata-action@v4
@@ -87,7 +84,7 @@ jobs:
       - name: Build and push a multi-arch Docker image
         uses: docker/build-push-action@v4
         with:
-          builder: ${{ needs.setup.outputs.builder_name }}
+          builder: ${{ steps.buildx.outputs.name }}
           context: ./app/
           push: ${{ github.event_name != 'pull_request' }}
           file: ./app/Dockerfile.multiarch
@@ -105,9 +102,13 @@ jobs:
           cache-to: type=gha,mode=max
 
   hwaccel:
-    needs: [checkout, setup]
+    needs: [checkout, login]
     runs-on: ubuntu-latest
     steps:
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+
       - name: Extract Docker metadata for hwaccel builds
         id: hwmeta
         uses: docker/metadata-action@v4
@@ -127,7 +128,7 @@ jobs:
       - name: Build and push an amd64 Docker image with hwaccel enabled
         uses: docker/build-push-action@v4
         with:
-          builder: ${{ needs.setup.outputs.builder_name }}
+          builder: ${{ steps.buildx.outputs.name }}
           context: ./app/
           push: ${{ github.event_name != 'pull_request' }}
           file: ./app/Dockerfile.hwaccel
@@ -145,9 +146,13 @@ jobs:
           cache-to: type=gha,mode=max
 
   qsv:
-    needs: [checkout, setup]
+    needs: [checkout, login]
     runs-on: ubuntu-latest
     steps:
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@master
+
       - name: Extract Docker metadata for qsv builds
         id: qsvmeta
         uses: docker/metadata-action@v4
@@ -167,7 +172,7 @@ jobs:
       - name: Build and push an amd64 Docker image with QSV drivers
         uses: docker/build-push-action@v4
         with:
-          builder: ${{ needs.setup.outputs.builder_name }}
+          builder: ${{ steps.buildx.outputs.name }}
           context: ./app/
           push: ${{ github.event_name != 'pull_request' }}
           file: ./app/Dockerfile.hwaccel
