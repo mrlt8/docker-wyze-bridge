@@ -2,6 +2,7 @@ import contextlib
 import json
 from functools import wraps
 from os import getenv
+from socket import gaierror
 from typing import Optional
 
 import paho.mqtt.client
@@ -25,11 +26,8 @@ def mqtt_enabled(func):
             return
         try:
             return func(*args, **kwargs)
-        except ConnectionRefusedError:
-            logger.error("[MQTT] connection refused. Disabling MQTT.")
-            MQTT_ENABLED = False
-        except TimeoutError:
-            logger.error("[MQTT] TimeoutError. Disabling MQTT.")
+        except (ConnectionRefusedError, TimeoutError, gaierror) as ex:
+            logger.error(f"[MQTT] {ex}. Disabling MQTT.")
             MQTT_ENABLED = False
         except Exception as ex:
             logger.error(f"[MQTT] {ex}")
@@ -38,10 +36,10 @@ def mqtt_enabled(func):
 
 
 @mqtt_enabled
-def wyze_discovery(cam: WyzeCamera, cam_uri: str) -> None:
-    """Add Wyze camera to MQTT if enabled."""
-    base = f"{MQTT_TOPIC}/{cam_uri or cam.name_uri}/"
-    msgs = [(f"{base}state", "stopped")]
+def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> None:
+    """Publish MQTT discovery message for camera."""
+    base = f"{MQTT_TOPIC}/{cam_uri}/"
+    msgs = [(f"{base}state", "stopped")] if stopped else []
     if MQTT_DISCOVERY:
         base_payload = {
             "device": {
@@ -55,7 +53,7 @@ def wyze_discovery(cam: WyzeCamera, cam_uri: str) -> None:
             },
         }
 
-        for entity, data in get_entities(base).items():
+        for entity, data in get_entities(base, cam.is_pan_cam, cam.rtsp_fw).items():
             topic = f"{MQTT_DISCOVERY}/{data['type']}/{cam.mac}/{entity}/config"
             if "availability_topic" not in data["payload"]:
                 data["payload"]["availability_topic"] = f"{MQTT_TOPIC}/state"
@@ -84,15 +82,8 @@ def mqtt_sub_topic(m_topics: list, callback) -> Optional[paho.mqtt.client.Client
     )
     client.will_set(f"{MQTT_TOPIC}/state", payload="offline", qos=1, retain=True)
     client.connect(MQTT_HOST, int(MQTT_PORT or 1883), 30)
-    if MQTT_DISCOVERY:
-        client.subscribe(f"{MQTT_DISCOVERY}/status")
-        client.message_callback_add(
-            f"{MQTT_DISCOVERY}/status",
-            lambda mq_client, _, msg: bridge_status(mq_client, [])
-            if msg.payload.decode().lower() == "online"
-            else None,
-        )
     client.loop_start()
+
     return client
 
 
@@ -149,15 +140,31 @@ def update_preview(cam_name: str):
 
 
 @mqtt_enabled
-def cam_control(cam_names: dict, callback):
+def cam_control(cams: dict, callback):
     topics = []
-    for uri in cam_names:
+    for uri in cams:
         topics += [f"{uri.lower()}/{t}/set" for t in SET_CMDS]
         topics += [f"{uri.lower()}/{t}/get" for t in GET_CMDS | PARAMS]
-
     if client := mqtt_sub_topic(topics, callback):
+        if MQTT_DISCOVERY:
+            uri_cams = {uri: cam.camera for uri, cam in cams.items()}
+            client.subscribe(f"{MQTT_DISCOVERY}/status")
+            client.message_callback_add(
+                f"{MQTT_DISCOVERY}/status",
+                lambda cc, _, msg: _mqtt_discovery(cc, uri_cams, msg),
+            )
         client.on_message = _on_message
+
         return client
+
+
+def _mqtt_discovery(client, cams, msg):
+    if msg.payload.decode().lower() != "online" or not cams:
+        return
+
+    bridge_status(client, [])
+    for uri, cam in cams.items():
+        publish_discovery(uri, cam, False)
 
 
 def _on_message(client, callback, msg):
@@ -172,8 +179,8 @@ def _on_message(client, callback, msg):
     payload = msg.payload.decode()
     with contextlib.suppress(json.JSONDecodeError):
         json_msg = json.loads(payload)
-        if not isinstance(json_msg, dict):
-            raise json.JSONDecodeError("NOT a dictionary", payload, 0)
+        if not isinstance(json_msg, (dict, list)):
+            raise json.JSONDecodeError("NOT json", payload, 0)
         payload = json_msg if len(json_msg) > 1 else next(iter(json_msg.values()))
 
     resp = callback(cam, topic, payload if include_payload else "")
@@ -181,8 +188,8 @@ def _on_message(client, callback, msg):
         logger.info(f"[MQTT] {resp}")
 
 
-def get_entities(base_topic: str) -> dict:
-    return {
+def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> dict:
+    entities = {
         "snapshot": {
             "type": "camera",
             "payload": {
@@ -219,6 +226,16 @@ def get_entities(base_topic: str) -> dict:
                 "icon": "mdi:weather-night",
             },
         },
+        "alarm": {
+            "type": "switch",
+            "payload": {
+                "state_topic": f"{base_topic}alarm",
+                "command_topic": f"{base_topic}alarm/set",
+                "payload_on": 1,
+                "payload_off": 2,
+                "icon": "mdi:alarm-bell",
+            },
+        },
         "status_light": {
             "type": "switch",
             "payload": {
@@ -227,6 +244,17 @@ def get_entities(base_topic: str) -> dict:
                 "payload_on": 1,
                 "payload_off": 2,
                 "icon": "mdi:led-on",
+                "entity_category": "diagnostic",
+            },
+        },
+        "motion_tagging": {
+            "type": "switch",
+            "payload": {
+                "state_topic": f"{base_topic}motion_tagging",
+                "command_topic": f"{base_topic}motion_tagging/set",
+                "payload_on": 1,
+                "payload_off": 2,
+                "icon": "mdi:image-filter-center-focus",
                 "entity_category": "diagnostic",
             },
         },
@@ -278,3 +306,41 @@ def get_entities(base_topic: str) -> dict:
             },
         },
     }
+    if pan_cam:
+        entities |= {
+            "pan_cruise": {
+                "type": "switch",
+                "payload": {
+                    "state_topic": f"{base_topic}pan_cruise",
+                    "command_topic": f"{base_topic}pan_cruise/set",
+                    "payload_on": 1,
+                    "payload_off": 2,
+                    "icon": "mdi:rotate-right",
+                },
+            },
+            "motion_tracking": {
+                "type": "switch",
+                "payload": {
+                    "state_topic": f"{base_topic}motion_tracking",
+                    "command_topic": f"{base_topic}motion_tracking/set",
+                    "payload_on": 1,
+                    "payload_off": 2,
+                    "icon": "mdi:motion-sensor",
+                },
+            },
+        }
+    if rtsp:
+        entities |= {
+            "rtsp": {
+                "type": "switch",
+                "payload": {
+                    "state_topic": f"{base_topic}rtsp",
+                    "command_topic": f"{base_topic}rtsp/set",
+                    "payload_on": 1,
+                    "payload_off": 2,
+                    "icon": "mdi:motion-sensor",
+                },
+            },
+        }
+
+    return entities

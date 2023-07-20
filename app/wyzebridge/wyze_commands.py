@@ -5,6 +5,8 @@ GET_CMDS = {
     "irled": "K10044GetIRLEDStatus",
     "night_vision": "K10040GetNightVisionStatus",
     "status_light": "K10030GetNetworkLightStatus",
+    "osd_timestamp": "K10070GetOSDStatus",
+    "osd_logo": "K10074GetOSDLogoStatus",
     "camera_time": "K10090GetCameraTime",
     "night_switch": "K10624GetAutoSwitchNightType",
     "alarm": "K10632GetAlarmFlashing",
@@ -26,9 +28,13 @@ GET_PAYLOAD = {"param_info"}
 SET_CMDS = {
     "state": None,
     "power": None,
+    "time_zone": None,
+    "cruise_point": None,
     "irled": "K10046SetIRLEDStatus",
     "night_vision": "K10042SetNightVisionStatus",
     "status_light": "K10032SetNetworkLightStatus",
+    "osd_timestamp": "K10072SetOSDStatus",
+    "osd_logo": "K10076SetOSDLogoStatus",
     "camera_time": "K10092SetCameraTime",
     "night_switch": "K10626SetAutoSwitchNightType",
     "alarm": "K10630SetAlarmFlashing",
@@ -43,6 +49,7 @@ SET_CMDS = {
     "fps": "K10052SetFPS",
     "bitrate": "K10052SetBitrate",
     "rtsp": "K10600SetRtspSwitch",
+    "quick_reponse": "K11635ResponseQuickMessage",
 }
 
 CMD_VALUES = {
@@ -64,6 +71,7 @@ PARAMS = {
     "res": "4",
     "fps": "5",
     "motion_tagging": "21",
+    "time_zone": "22",
     "motion_tracking": "27",
     "irled": "50",
 }

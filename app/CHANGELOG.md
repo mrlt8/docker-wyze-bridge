@@ -1,3 +1,24 @@
+## What's Changed in v2.3.11
+
+* NEW:
+  * Add more MQTT entities when using MQTT discovery. Thanks @jhansche! #921 #922
+  * custom video filter - Use `FFMPEG_FILTER` or `FFMPEG_FILTER_CAM-NAME` to set custom ffmpeg video filters. #919
+* NEW MQTT/REST commands:
+  * **SET** topic: `cruise_point` | payload: (int) 1-4 - Pan to predefined cruise_point/waypoint. Thanks @jhansche! (#835).
+  * **SET** topic: `time_zone` | payload: (str) `Area/Location`, e.g. `America/New_York` - Change camera timezone. Thanks @DennisGarvey! (#916)
+  * **GET/SET** topic: `osd_timestamp` | payload: (bool/int) `on/off` - toggle timestamp on video.
+  * **GET/SET** topic: `osd_logo` | payload: (bool/int) `on/off` - toggle wyze logo on video.
+  * **SET** topic: `quick_reponse` | payload: (int) 1-3 -  Doorbell quick response.
+* FIXES:
+  * Resend discovery message on HA online. Thanks @jhansche! #907 #920
+  * Return json response/value for commands. Thanks @jhansche! #835
+  * Fix threading issue on restart. Thanks @ZacTyAdams! #902
+  * Catch and disable MQTT on name resolution error.
+  * Fix SET cruise_points over MQTT.
+* Updates:
+  * Wyze iOS App version from v2.43.0.12 to v2.43.5.3 (#914)
+  * MediaMTX version from v0.23.7 to v0.23.8 (#925)
+
 ## What's Changed in v2.3.10
 
 * FIX: KeyError when upgrading with old cache data in v2.3.9 (#905) Thanks @itsamenathan!

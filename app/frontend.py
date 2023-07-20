@@ -139,7 +139,7 @@ def create_app():
         return {"error": f"Could not find camera [{cam_name}]"}
 
     @app.route("/api/<cam_name>/<cam_cmd>", methods=["GET", "PUT", "POST"])
-    @app.route("/api/<cam_name>/<cam_cmd>/<payload>")
+    @app.route("/api/<cam_name>/<cam_cmd>/<path:payload>")
     def api_cam_control(cam_name: str, cam_cmd: str, payload: str | dict = ""):
         """API Endpoint to send tutk commands to the camera."""
         if args := request.values:

@@ -287,6 +287,21 @@ class WyzeApi:
 
         return {"status": "success", "value": resp.get("value"), "response": resp}
 
+    @authenticated
+    def set_device_info(self, cam: WyzeCamera, params: dict):
+        if not isinstance(params, dict):
+            return {"status": "error", "response": f"invalid param type [{params=}]"}
+        try:
+            logger.info(
+                f"[CONTROL] ☁ Set Device Info {params} for {cam.name_uri} via Wyze API"
+            )
+            wyzecam.api.set_device_info(self.auth, cam, params)
+            return {"status": "success", "response": "success"}
+        except ValueError as ex:
+            error = f'{ex.args[0].get("code")}: {ex.args[0].get("msg")}'
+            logger.error(f"ERROR - {error}")
+            return {"status": "error", "response": f"{error}"}
+
     def clear_cache(self):
         logger.info("♻️ Clearing local cache...")
         self.auth = None

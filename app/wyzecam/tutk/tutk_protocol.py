@@ -184,6 +184,52 @@ class K10002ConnectAuth(TutkWyzeProtocolMessage):
         return json.loads(resp_data)
 
 
+class K10006ConnectUserAuth(TutkWyzeProtocolMessage):
+    """
+    New DB protocol version
+    """
+
+    def __init__(
+        self,
+        challenge_response: bytes,
+        phone_id: str,
+        open_userid: str,
+        open_video: bool = True,
+        open_audio: bool = True,
+    ) -> None:
+        super().__init__(10006)
+
+        assert (
+            len(challenge_response) == 16
+        ), "expected challenge response to be 16 bytes long"
+
+        if len(phone_id) < 4:
+            phone_id += "1234"
+
+        self.challenge_response: bytes = challenge_response
+        self.username: bytes = phone_id.encode("utf-8")
+        self.open_userid: bytes = open_userid.encode("utf-8")
+        self.open_video: int = 1 if open_video else 0
+        self.open_audio: int = 1 if open_audio else 0
+
+    def encode(self) -> bytes:
+        open_userid_len = len(self.open_userid)
+        encoded_msg = pack(
+            f"<16s4sbbb{open_userid_len}s",
+            self.challenge_response,
+            self.username,
+            self.open_video,
+            self.open_audio,
+            open_userid_len,
+            self.open_userid,
+        )
+
+        return encode(self.code, encoded_msg)
+
+    def parse_response(self, resp_data):
+        return json.loads(resp_data)
+
+
 class K10008ConnectUserAuth(TutkWyzeProtocolMessage):
     """
     The "challenge response" sent by a client to a camera as part of the authentication handshake when
@@ -514,6 +560,68 @@ class K10052SetBitrate(TutkWyzeProtocolMessage):
         return encode(self.code, bytes([self.bitrate, 0, 0, 0, 0]))
 
 
+class K10070GetOSDStatus(TutkWyzeProtocolMessage):
+    """
+    A message used to check if the OSD timestamp is enabled.
+
+    :return: the OSD timestamp status:
+    - 1: Enabled
+    - 2: Disabled
+    """
+
+    def __init__(self):
+        super().__init__(10070)
+
+
+class K10072SetOSDStatus(TutkWyzeProtocolMessage):
+    """
+    A message used to enable/disable the OSD timestamp.
+
+    Parameters:
+    -  value (int): 1 for on; 2 for off.
+    """
+
+    def __init__(self, value):
+        super().__init__(10072)
+
+        assert 1 <= value <= 2, "value must be 1 or 2"
+        self.value = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([self.value]))
+
+
+class K10074GetOSDLogoStatus(TutkWyzeProtocolMessage):
+    """
+    A message used to check if the OSD logo is enabled.
+
+    :return: the OSD logo status:
+    - 1: Enabled
+    - 2: Disabled
+    """
+
+    def __init__(self):
+        super().__init__(10074)
+
+
+class K10076SetOSDLogoStatus(TutkWyzeProtocolMessage):
+    """
+    A message used to enable/disable the OSD logo.
+
+    Parameters:
+    -  value (int): 1 for on; 2 for off.
+    """
+
+    def __init__(self, value):
+        super().__init__(10076)
+
+        assert 1 <= value <= 2, "value must be 1 or 2"
+        self.value = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([self.value]))
+
+
 class K10090GetCameraTime(TutkWyzeProtocolMessage):
     """
     A message used to get the current time on the camera.
@@ -571,6 +679,24 @@ class K10292SetMotionTagging(TutkWyzeProtocolMessage):
 
     def encode(self) -> bytes:
         return encode(self.code, bytes([self.value]))
+
+
+class K10302SetTimeZone(TutkWyzeProtocolMessage):
+    """
+    A message used to set the time zone on the camera.
+
+    Parameters:
+    -  value (int): the time zone to set (-11 to 13).
+    """
+
+    def __init__(self, value: int):
+        super().__init__(10302)
+        assert -11 <= value <= 13, "value must be -11 to 13"
+        self.value: int = value
+
+    def encode(self) -> bytes:
+        print(pack("<b", self.value))
+        return encode(self.code, pack("<b", self.value))
 
 
 class K10620CheckNight(TutkWyzeProtocolMessage):
@@ -733,7 +859,7 @@ class K10600SetRtspSwitch(TutkWyzeProtocolMessage):
 
     def __init__(self, value: int = 1):
         super().__init__(10600)
-        assert 0 <= value <= 2, "value must be 1 or 2"
+        assert 1 <= value <= 2, "value must be 1 or 2"
         self.value: int = value
 
     def encode(self) -> bytes:
@@ -988,6 +1114,27 @@ class K11022SetMotionTracking(TutkWyzeProtocolMessage):
         return encode(self.code, bytes([self.value]))
 
 
+class K11635ResponseQuickMessage(TutkWyzeProtocolMessage):
+    """
+    A message used to send a quick response to the camera.
+
+    Parameters:
+    -  value (int):
+        - 1: db_response_1 (Can I help you?)
+        - 2: db_response_2 (Be there shortly)
+        - 3: db_response_3 (Leave package at door)
+    """
+
+    def __init__(self, value: int):
+        super().__init__(11635)
+
+        assert 1 <= value <= 3, "value must be 1, 2 or 3"
+        self.value: int = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([self.value]))
+
+
 def encode(code: int, data: Optional[bytes]) -> bytes:
     data_len = 0 if data is None else len(data)
     encoded_msg = bytearray([0] * (16 + data_len))
@@ -1065,6 +1212,10 @@ def respond_to_ioctrl_10001(
 
     if supports(product_model, protocol, 10008):
         response: TutkWyzeProtocolMessage = K10008ConnectUserAuth(
+            challenge_response, phone_id, open_userid, open_audio=enable_audio
+        )
+    elif supports(product_model, protocol, 10006):
+        response: TutkWyzeProtocolMessage = K10006ConnectUserAuth(
             challenge_response, phone_id, open_userid, open_audio=enable_audio
         )
     else:

@@ -33,26 +33,26 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.3.10
+## What's Changed in v2.3.11
 
-* FIX: KeyError when upgrading with old cache data in v2.3.9 (#905) Thanks @itsamenathan!
-  * You should be able to remove or set `FRESH_DATA` back to false.
-* MQTT: Update bridge status (#907) Thanks @giorgi1324!
-
-## What's Changed in v2.3.9
-
-* NEW: ENV Options - token-based authentication (#876)
-  * `REFRESH_TOKEN` - Use a valid refresh token to request a *new* access token and refresh token.
-  * `ACCESS_TOKEN` - Use an existing valid access token too access the API. Will *not* be able to refresh the token once it expires.
-* NEW: Docker "QSV" Images with basic support for QSV hardware accelerated encoding. (#736) Thanks @mitchross, @392media, @chris001, and everyone who helped!
-  * Use the `latest-qsv` tag (e.g., `mrlt8/wyze-bridge:latest-qsv`) along with the `H264_ENC=h264_qsv` ENV variable. 
+* NEW:
+  * Add more MQTT entities when using MQTT discovery. Thanks @jhansche! #921 #922
+  * custom video filter - Use `FFMPEG_FILTER` or `FFMPEG_FILTER_CAM-NAME` to set custom ffmpeg video filters. #919
+* NEW MQTT/REST commands:
+  * **SET** topic: `cruise_point` | payload: (int) 1-4 - Pan to predefined cruise_point/waypoint. Thanks @jhansche! (#835).
+  * **SET** topic: `time_zone` | payload: (str) `Area/Location`, e.g. `America/New_York` - Change camera timezone. Thanks @DennisGarvey! (#916)
+  * **GET/SET** topic: `osd_timestamp` | payload: (bool/int) `on/off` - toggle timestamp on video.
+  * **GET/SET** topic: `osd_logo` | payload: (bool/int) `on/off` - toggle wyze logo on video.
+  * **SET** topic: `quick_reponse` | payload: (int) 1-3 -  Doorbell quick response.
 * FIXES:
-  * Home Assistant: set max bitrate quality to 255 (#893) Thanks @gtxaspec!
-  * WebUI: email 2FA support.
-* UPDATES:
-  * Docker base image: bullseye -> bookworm
-  * MediaMTX: v0.23.6 -> v0.23.7
-  * Wyze App: v2.42.6.1 -> v2.43.0.12
+  * Resend discovery message on HA online. Thanks @jhansche! #907 #920
+  * Return json response/value for commands. Thanks @jhansche! #835
+  * Fix threading issue on restart. Thanks @ZacTyAdams! #902
+  * Catch and disable MQTT on name resolution error.
+  * Fix SET cruise_points over MQTT.
+* Updates:
+  * Wyze iOS App version from v2.43.0.12 to v2.43.5.3 (#914)
+  * MediaMTX version from v0.23.7 to v0.23.8 (#925)
 
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)

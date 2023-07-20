@@ -61,9 +61,6 @@ class StreamManager:
         self.last_snap: float = 0
         self.thread: Optional[Thread] = None
 
-        if MQTT_DISCOVERY:
-            self.thread = Thread(target=self.monior_snapshots)
-
     @property
     def total(self):
         return len(self.streams)
@@ -91,10 +88,13 @@ class StreamManager:
         self.stop_flag = True
         for stream in self.streams.values():
             stream.stop()
+        if self.thread and self.thread.is_alive():
+            self.thread.join()
 
     def monitor_streams(self, mtx_health: Callable) -> None:
         self.stop_flag = False
-        if self.thread:
+        if MQTT_DISCOVERY:
+            self.thread = Thread(target=self.monior_snapshots)
             self.thread.start()
         mqtt = cam_control(self.streams, self.send_cmd)
         logger.info(f"🎬 {self.total} stream{'s'[:self.total^1]} enabled")

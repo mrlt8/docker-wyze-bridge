@@ -42,6 +42,8 @@ NO_WEBRTC = {
 # known 2k cameras
 PRO_CAMS = {"HL_CAM3P", "HL_PANP"}
 
+PAN_CAMS = {"WYZECP1_JEF", "HL_PAN2", "HL_PAN3", "HL_PANP"}
+
 BATTERY_CAMS = {"WVOD1", "HL_WCO2", "AN_RSCW"}
 
 # Doorbells
@@ -165,6 +167,10 @@ class WyzeCamera(BaseModel):
     @property
     def is_vertical(self) -> bool:
         return self.product_model in VERTICAL_CAMS
+
+    @property
+    def is_pan_cam(self) -> bool:
+        return self.product_model in PAN_CAMS
 
     @property
     def can_substream(self) -> bool:

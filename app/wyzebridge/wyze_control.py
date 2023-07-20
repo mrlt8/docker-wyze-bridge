@@ -163,6 +163,8 @@ def camera_control(
                         "last_photo": boa["last_photo"],
                     }
                 resp = {topic: cam_info}
+            if topic == "cruise_point":
+                resp = {topic: pan_to_cruise_point(sess, cmd)}
             else:
                 resp = send_tutk_msg(sess, cmd)
                 if boa and cmd == "take_photo":
@@ -175,6 +177,37 @@ def camera_control(
         if resp:
             with contextlib.suppress(Full):
                 camera_info.put(resp, block=False)
+
+
+def pan_to_cruise_point(sess: WyzeIOTCSession, cmd):
+    """
+    Pan to cruise point/waypoint.
+    """
+    resp = {"command": "cruise_point", "status": "error", "value": None}
+    if not isinstance(cmd, tuple) or not str(cmd[1]).isdigit():
+        return resp | {"response": f"Invalid cruise point: {cmd=}"}
+
+    i = int(cmd[1])
+    with sess.iotctrl_mux() as mux:
+        points = mux.send_ioctl(tutk_protocol.K11010GetCruisePoints()).result(timeout=5)
+        if not points or not isinstance(points, list):
+            return resp | {"response": f"Invalid cruise points: {points=}"}
+
+        try:
+            waypoints = (points[i]["vertical"], points[i]["horizontal"])
+        except IndexError:
+            return resp | {"response": f"Cruise point NOT found. {points=}"}
+
+        logger.info(f"Pan to cruise_point={i} ({waypoints})")
+        res = mux.send_ioctl(tutk_protocol.K11018SetPTZPosition(*waypoints)).result(
+            timeout=5
+        )
+
+    return resp | {
+        "status": "success",
+        "response": ",".join(map(str, res)) if isinstance(res, bytes) else res,
+        "value": i,
+    }
 
 
 def update_mqtt_values(topic: str, cam_name: str, resp: dict):
@@ -208,7 +241,7 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
         logger.error(f"[CONTROL] ERROR - {ex} {cmd=}")
         return {topic: {"status": "error", "command": cmd, "response": str(ex)}}
 
-    resp = {"command": topic, "payload": payload}
+    resp = {"command": topic, "payload": payload, "value": None}
     try:
         with sess.iotctrl_mux() as mux:
             iotc = mux.send_ioctl(tutk_msg)
@@ -218,8 +251,11 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
                 if tutk_msg.code == 10020:
                     res = update_mqtt_values(topic, sess.camera.name_uri, res)
                     params = None if isinstance(res, int) else params
-                value = res if isinstance(res, (dict, int)) else ",".join(map(str, res))
-                resp |= {"status": "success", "response": value, "value": value}
+                if isinstance(res, bytes):
+                    res = ",".join(map(str, res))
+                if isinstance(res, str) and res.isdigit():
+                    res = int(res)
+                resp |= {"status": "success", "response": res, "value": res}
     except Empty:
         resp |= {"status": "success", "response": None}
     except Exception as ex:
@@ -232,6 +268,7 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
         else:
             resp["value"] = ",".join(map(str, params))
     getattr(logger, log)(f"[CONTROL] Response: {resp}")
+
     return {topic: resp}
 
 
