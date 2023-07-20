@@ -64,7 +64,7 @@ jobs:
       - name: matrix image type
         id: image_type
         run: |
-          echo "suffix=${{ matrix.dockerfile == 'hwaccel' && '-hw' || matrix.dockerfile == 'qsv' && '-qsv' }}" >> $GITHUB_OUTPUT
+          echo "suffix=${{ matrix.dockerfile == 'hwaccel' && '-hw' || matrix.dockerfile == 'qsv' && '-qsv' ||'' }}" >> $GITHUB_OUTPUT
           echo "platforms=${{ matrix.dockerfile == 'multiarch' && 'linux/amd64,linux/arm64,linux/arm' || 'linux/amd64' }}" >> $GITHUB_OUTPUT
           echo "arch=${{ matrix.dockerfile == 'multiarch' && 'amd64,armhf,aarch64' || 'amd64' }}" >> $GITHUB_OUTPUT
 
