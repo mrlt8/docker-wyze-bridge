@@ -172,7 +172,17 @@ class StreamManager:
             status = cam_resp.get("value") if cam_resp.get("status") == "success" else 0
             if isinstance(status, dict):
                 status = json.dumps(status)
+
+            if "update_snapshot" in cam_resp:
+                on_demand = not stream.connected
+                snap = self.get_rtsp_snap(cam_name)
+                if on_demand:
+                    stream.stop()
+                publish_message(f"{cam_name}/{cmd}", int(time.time()) if snap else 0)
+                return dict(resp, status="success", value=snap, response=snap)
+
             publish_message(f"{cam_name}/{cmd}", status)
+
         return cam_resp if "status" in cam_resp else resp | cam_resp
 
     def rtsp_snap_popen(self, cam_name: str, interval: bool = False) -> Optional[Popen]:

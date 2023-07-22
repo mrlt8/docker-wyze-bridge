@@ -296,6 +296,9 @@ class WyzeStream:
         if cmd == "bitrate" and isinstance(payload, (str, int)) and payload.isdigit():
             self.options.bitrate = int(payload)
 
+        if cmd == "update_snapshot":
+            return {"update_snapshot": True}
+
         if on_demand := not self.connected:
             logger.info(f"[CONTROL] Connecting to {self.uri}")
             self.start()
