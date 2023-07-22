@@ -105,7 +105,7 @@ class StreamManager:
             self.snap_all(cams)
             if int(time.time()) % 15 == 0:
                 mtx_health()
-                bridge_status(mqtt, cams)
+                bridge_status(mqtt)
         if mqtt:
             mqtt.loop_stop()
         logger.info("Stream monitoring stopped")

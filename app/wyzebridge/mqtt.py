@@ -87,13 +87,11 @@ def mqtt_sub_topic(m_topics: list, callback) -> Optional[paho.mqtt.client.Client
     return client
 
 
-def bridge_status(client: Optional[paho.mqtt.client.Client], cams: list):
+def bridge_status(client: Optional[paho.mqtt.client.Client]):
     """Set bridge online if MQTT is enabled."""
     if not client:
         return
     client.publish(f"{MQTT_TOPIC}/state", "online")
-    for cam in cams:
-        client.publish(f"{MQTT_TOPIC}/{cam}/state", "online")
 
 
 @mqtt_enabled
@@ -162,7 +160,7 @@ def _mqtt_discovery(client, cams, msg):
     if msg.payload.decode().lower() != "online" or not cams:
         return
 
-    bridge_status(client, [])
+    bridge_status(client)
     for uri, cam in cams.items():
         publish_discovery(uri, cam, False)
 
