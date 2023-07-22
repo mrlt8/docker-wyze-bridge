@@ -187,7 +187,7 @@ def pan_to_cruise_point(sess: WyzeIOTCSession, cmd):
     if not isinstance(cmd, tuple) or not str(cmd[1]).isdigit():
         return resp | {"response": f"Invalid cruise point: {cmd=}"}
 
-    i = int(cmd[1])
+    i = int(cmd[1]) - 1 if int(cmd[1]) > 0 else int(cmd[1])
     with sess.iotctrl_mux() as mux:
         points = mux.send_ioctl(tutk_protocol.K11010GetCruisePoints()).result(timeout=5)
         if not points or not isinstance(points, list):
