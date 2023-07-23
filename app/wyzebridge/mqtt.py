@@ -373,7 +373,8 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
                 "payload": {
                     "state_topic": f"{base_topic}cruise_point",
                     "command_topic": f"{base_topic}cruise_point/set",
-                    "options": ["1", "2", "3", "4"],
+                    "optimistic": False,
+                    "options": ["-", "1", "2", "3", "4"],
                     "icon": "mdi:map-marker-multiple",
                 },
             },

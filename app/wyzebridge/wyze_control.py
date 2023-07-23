@@ -181,7 +181,7 @@ def pan_to_cruise_point(sess: WyzeIOTCSession, cmd):
     """
     Pan to cruise point/waypoint.
     """
-    resp = {"command": "cruise_point", "status": "error", "value": None}
+    resp = {"command": "cruise_point", "status": "error", "value": "-"}
     if not isinstance(cmd, tuple) or not str(cmd[1]).isdigit():
         return resp | {"response": f"Invalid cruise point: {cmd=}"}
 
@@ -194,9 +194,9 @@ def pan_to_cruise_point(sess: WyzeIOTCSession, cmd):
         try:
             waypoints = (points[i]["vertical"], points[i]["horizontal"])
         except IndexError:
-            return resp | {"response": f"Cruise point NOT found. {points=}"}
+            return resp | {"response": f"Cruise point {i} NOT found. {points=}"}
 
-        logger.info(f"Pan to cruise_point={i} ({waypoints})")
+        logger.info(f"Pan to cruise_point={i} {waypoints}")
         res = mux.send_ioctl(tutk_protocol.K11018SetPTZPosition(*waypoints)).result(
             timeout=5
         )
@@ -204,7 +204,6 @@ def pan_to_cruise_point(sess: WyzeIOTCSession, cmd):
     return resp | {
         "status": "success",
         "response": ",".join(map(str, res)) if isinstance(res, bytes) else res,
-        "value": int(cmd[1]),
     }
 
 

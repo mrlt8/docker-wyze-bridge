@@ -298,23 +298,26 @@ class WyzeStream:
         if cmd == "power":
             return self.power_control(str(payload).lower())
 
-        if cmd == "time_zone" and payload and isinstance(payload, str):
-            return self.tz_control(payload)
-
         if self.state < StreamStatus.STOPPED:
             return {"response": self.status()}
 
         if env_bool("disable_control"):
             return {"response": "control disabled"}
 
-        if cmd not in GET_CMDS | SET_CMDS | PARAMS and cmd not in {"caminfo"}:
-            return {"response": "invalid command"}
+        if cmd == "time_zone" and payload and isinstance(payload, str):
+            return self.tz_control(payload)
 
         if cmd == "bitrate" and isinstance(payload, (str, int)) and payload.isdigit():
             self.options.bitrate = int(payload)
 
         if cmd == "update_snapshot":
             return {"update_snapshot": True}
+
+        if cmd == "cruise_point" and payload == "-":
+            return {"status": "success", "value": "-"}
+
+        if cmd not in GET_CMDS | SET_CMDS | PARAMS and cmd not in {"caminfo"}:
+            return {"response": "invalid command"}
 
         if on_demand := not self.connected:
             logger.info(f"[CONTROL] Connecting to {self.uri}")
