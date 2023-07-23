@@ -206,7 +206,7 @@ def pan_to_cruise_point(sess: WyzeIOTCSession, cmd):
     return resp | {
         "status": "success",
         "response": ",".join(map(str, res)) if isinstance(res, bytes) else res,
-        "value": i,
+        "value": int(cmd[1]),
     }
 
 
