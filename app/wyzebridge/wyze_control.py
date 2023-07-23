@@ -144,8 +144,8 @@ def camera_control(
 
     boa = check_boa_enabled(sess, uri)
 
+    params_to_update = ",".join(PARAMS.values())
     if MQTT_ENABLED:
-        params_to_update = ",".join(PARAMS.values())
         send_tutk_msg(sess, ("param_info", params_to_update), "debug")
 
     while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
@@ -170,13 +170,11 @@ def camera_control(
                 if boa and cmd == "take_photo":
                     pull_last_image(boa, "photo")
 
-        # Check bitrate
-        # sess.update_frame_size_rate(True)
-
-        # update other cam info at same time?
         if resp:
             with contextlib.suppress(Full):
                 camera_info.put(resp, block=False)
+        elif sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
+            send_tutk_msg(sess, ("param_info", params_to_update), "debug")
 
 
 def pan_to_cruise_point(sess: WyzeIOTCSession, cmd):
@@ -249,8 +247,13 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
                 resp |= {"status": "success", "response": None}
             elif res := iotc.result(timeout=5):
                 if tutk_msg.code == 10020:
+                    if bitrate := bitrate_check(res, sess.preferred_bitrate):
+                        logger.info(f"Setting bitrate={sess.preferred_bitrate}")
+                        mux.send_ioctl(bitrate)
                     res = update_mqtt_values(topic, sess.camera.name_uri, res)
                     params = None if isinstance(res, int) else params
+                if topic == "bitrate" and payload:
+                    sess.preferred_bitrate = int(payload)
                 if isinstance(res, bytes):
                     res = ",".join(map(str, res))
                 if isinstance(res, str) and res.isdigit():
@@ -270,6 +273,22 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
     getattr(logger, log)(f"[CONTROL] Response: {resp}")
 
     return {topic: resp}
+
+
+def bitrate_check(res: dict, preferred_bitrate: int):
+    """Check if bitrate in response matches preferred bitrate.
+
+    Parameters:
+    - res (dict): response from camera.
+    - preferred_bitrate (int): preferred bitrate.
+
+    Returns:
+    - tutk_protocol.K10052SetBitrate: if bitrate does not match.
+    """
+    if (bitrate := res.get("3")) and bitrate != preferred_bitrate:
+        logger.debug(f"Wrong {bitrate=} does not match {preferred_bitrate}")
+
+        return tutk_protocol.K10052SetBitrate(preferred_bitrate)
 
 
 def parse_cmd(cmd: tuple | str, log: str) -> tuple:
