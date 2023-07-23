@@ -112,8 +112,8 @@ jobs:
             io.hass.type=addon
             io.hass.arch=${{ steps.image_type.outputs.arch }}
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.dockerfile }}
 
   version_bump:
     needs: [build]
