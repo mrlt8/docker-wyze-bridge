@@ -263,33 +263,50 @@ class WyzeStream:
         logger.info(f"[CONTROL] GET {self.uri} state")
         return {"status": "success", "response": self.status()}
 
+    def power_control(self, payload: str) -> dict:
+        if payload not in {"on", "off", "restart"}:
+            resp = self.api.get_pid_info(self.camera, "P3")
+            resp["value"] = "on" if resp["value"] == "1" else "off"
+            return resp
+        run_cmd = payload if payload == "restart" else f"power_{payload}"
+
+        return dict(
+            self.api.run_action(self.camera, run_cmd),
+            value="on" if payload == "restart" else payload,
+        )
+
+    def tz_control(self, payload: str) -> dict:
+        try:
+            zone = zoneinfo.ZoneInfo(payload)
+            offset = datetime.now(zone).utcoffset()
+            assert offset is not None
+        except (zoneinfo.ZoneInfoNotFoundError, AssertionError):
+            return {"response": "invalid time zone"}
+
+        return dict(
+            self.api.set_device_info(self.camera, {"device_timezone_city": zone.key}),
+            value=int(offset.total_seconds() / 3600),
+        )
+
     def send_cmd(self, cmd: str, payload: str | list | dict = "") -> dict:
         if cmd in {"state", "start", "stop", "disable", "enable"}:
             return self.state_control(payload or cmd)
+
         if cmd == "device_info":
             return self.api.get_pid_info(self.camera)
+
         if cmd == "power":
-            if str(payload).lower() not in {"on", "off", "restart"}:
-                return self.api.get_pid_info(self.camera, "P3")
-            run_cmd = payload if payload == "restart" else f"{cmd}_{payload}"
-            return dict(self.api.run_action(self.camera, run_cmd), value=payload)
+            return self.power_control(str(payload).lower())
+
         if cmd == "time_zone" and payload and isinstance(payload, str):
-            try:
-                zone = zoneinfo.ZoneInfo(payload)
-            except zoneinfo.ZoneInfoNotFoundError:
-                return {"response": "invalid time zone"}
-            if offset := datetime.now(zone).utcoffset():
-                return dict(
-                    self.api.set_device_info(
-                        self.camera, {"device_timezone_city": zone.key}
-                    ),
-                    value=int(offset.total_seconds() / 3600),
-                )
+            return self.tz_control(payload)
 
         if self.state < StreamStatus.STOPPED:
             return {"response": self.status()}
+
         if env_bool("disable_control"):
             return {"response": "control disabled"}
+
         if cmd not in GET_CMDS | SET_CMDS | PARAMS and cmd not in {"caminfo"}:
             return {"response": "invalid command"}
 
@@ -316,6 +333,7 @@ class WyzeStream:
             if on_demand:
                 logger.info(f"[CONTROL] Disconnecting from {self.uri}")
                 self.stop()
+
         return cam_resp.pop(cmd, None) or {"response": "could not get result"}
 
     def check_rtsp_fw(self, force: bool = False) -> Optional[str]:

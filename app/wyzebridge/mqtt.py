@@ -129,7 +129,7 @@ def publish_message(topic: str, message=None, retain=True):
 def update_mqtt_state(camera: str, state: str):
     msg = [(f"{MQTT_TOPIC}/{camera}/state", state)]
     if state == "online":
-        msg.append((f"{MQTT_TOPIC}/{camera}/power", "1"))
+        msg.append((f"{MQTT_TOPIC}/{camera}/power", "on"))
     send_mqtt(msg)
 
 
@@ -218,8 +218,8 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
             "payload": {
                 "state_topic": f"{base_topic}power",
                 "command_topic": f"{base_topic}power/set",
-                "payload_on": 1,
-                "payload_off": 2,
+                "payload_on": "on",
+                "payload_off": "off",
                 "icon": "mdi:power-plug",
             },
         },
