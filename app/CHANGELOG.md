@@ -1,3 +1,14 @@
+## What's Changed in v2.3.12
+
+* NEW:
+  * `update_snapshot` MQTT/REST API GET topic.
+  * Additional MQTT entities (#921)
+* FIXES:
+  * Monitor and set preferred bitrate if/when the wyze app changes it. Thanks @plat2on1! (#929)
+  * `cruise_point` index starts at 1 when setting via MQTT/REST API. (#835)
+  * Camera status was always online. (#907) (#920)
+  * Power status was incorrect when using MQTT discovery. (#921)
+  
 ## What's Changed in v2.3.11
 
 * NEW:

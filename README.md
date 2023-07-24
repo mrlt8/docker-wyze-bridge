@@ -33,27 +33,17 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.3.11
+## What's Changed in v2.3.12
 
 * NEW:
-  * Add more MQTT entities when using MQTT discovery. Thanks @jhansche! #921 #922
-  * custom video filter - Use `FFMPEG_FILTER` or `FFMPEG_FILTER_CAM-NAME` to set custom ffmpeg video filters. #919
-* NEW MQTT/REST commands:
-  * **SET** topic: `cruise_point` | payload: (int) 1-4 - Pan to predefined cruise_point/waypoint. Thanks @jhansche! (#835).
-  * **SET** topic: `time_zone` | payload: (str) `Area/Location`, e.g. `America/New_York` - Change camera timezone. Thanks @DennisGarvey! (#916)
-  * **GET/SET** topic: `osd_timestamp` | payload: (bool/int) `on/off` - toggle timestamp on video.
-  * **GET/SET** topic: `osd_logo` | payload: (bool/int) `on/off` - toggle wyze logo on video.
-  * **SET** topic: `quick_reponse` | payload: (int) 1-3 -  Doorbell quick response.
+  * `update_snapshot` MQTT/REST API GET topic.
+  * Additional MQTT entities (#921)
 * FIXES:
-  * Resend discovery message on HA online. Thanks @jhansche! #907 #920
-  * Return json response/value for commands. Thanks @jhansche! #835
-  * Fix threading issue on restart. Thanks @ZacTyAdams! #902
-  * Catch and disable MQTT on name resolution error.
-  * Fix SET cruise_points over MQTT.
-* Updates:
-  * Wyze iOS App version from v2.43.0.12 to v2.43.5.3 (#914)
-  * MediaMTX version from v0.23.7 to v0.23.8 (#925)
-
+  * Monitor and set preferred bitrate if/when the wyze app changes it. Thanks @plat2on1! (#929)
+  * `cruise_point` index starts at 1 when setting via MQTT/REST API. (#835)
+  * Camera status was always online. (#907) (#920)
+  * Power status was incorrect when using MQTT discovery. (#921)
+  
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
