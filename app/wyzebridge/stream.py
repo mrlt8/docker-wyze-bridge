@@ -7,7 +7,7 @@ from typing import Any, Callable, Optional, Protocol
 from wyzebridge.config import MQTT_DISCOVERY, SNAPSHOT_INT, SNAPSHOT_TYPE
 from wyzebridge.ffmpeg import rtsp_snap_cmd
 from wyzebridge.logging import logger
-from wyzebridge.mqtt import bridge_status, cam_control, publish_message, update_preview
+from wyzebridge.mqtt import bridge_status, cam_control, publish_topic, update_preview
 from wyzebridge.rtsp_event import RtspEvent
 
 
@@ -105,7 +105,7 @@ class StreamManager:
             self.snap_all(cams)
             if int(time.time()) % 15 == 0:
                 mtx_health()
-                bridge_status(mqtt, cams)
+                bridge_status(mqtt)
         if mqtt:
             mqtt.loop_stop()
         logger.info("Stream monitoring stopped")
@@ -172,7 +172,17 @@ class StreamManager:
             status = cam_resp.get("value") if cam_resp.get("status") == "success" else 0
             if isinstance(status, dict):
                 status = json.dumps(status)
-            publish_message(f"{cam_name}/{cmd}", status)
+
+            if "update_snapshot" in cam_resp:
+                on_demand = not stream.connected
+                snap = self.get_rtsp_snap(cam_name)
+                if on_demand:
+                    stream.stop()
+                publish_topic(f"{cam_name}/{cmd}", int(time.time()) if snap else 0)
+                return dict(resp, status="success", value=snap, response=snap)
+
+            publish_topic(f"{cam_name}/{cmd}", status)
+
         return cam_resp if "status" in cam_resp else resp | cam_resp
 
     def rtsp_snap_popen(self, cam_name: str, interval: bool = False) -> Optional[Popen]:

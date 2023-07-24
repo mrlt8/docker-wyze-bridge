@@ -53,6 +53,11 @@ def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> No
             },
         }
 
+        # Clear out old/renamed entities
+        REMOVE = {"alarm": "switch"}
+        for entity, type in REMOVE.items():
+            msgs.append((f"{MQTT_DISCOVERY}/{type}/{cam.mac}/{entity}/config", None))
+
         for entity, data in get_entities(base, cam.is_pan_cam, cam.rtsp_fw).items():
             topic = f"{MQTT_DISCOVERY}/{data['type']}/{cam.mac}/{entity}/config"
             if "availability_topic" not in data["payload"]:
@@ -60,13 +65,13 @@ def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> No
 
             payload = dict(
                 base_payload | data["payload"],
-                name=f"Wyze Cam {cam.nickname} {' '.join(entity.upper().split('_'))}",
+                name=f"Wyze Cam {cam.nickname} {' '.join(entity.title().split('_'))}",
                 uniq_id=f"WYZE{cam.mac}{entity.upper()}",
             )
 
             msgs.append((topic, json.dumps(payload)))
 
-    send_mqtt(msgs)
+    publish_messages(msgs)
 
 
 @mqtt_enabled
@@ -87,18 +92,16 @@ def mqtt_sub_topic(m_topics: list, callback) -> Optional[paho.mqtt.client.Client
     return client
 
 
-def bridge_status(client: Optional[paho.mqtt.client.Client], cams: list):
+def bridge_status(client: Optional[paho.mqtt.client.Client]):
     """Set bridge online if MQTT is enabled."""
     if not client:
         return
     client.publish(f"{MQTT_TOPIC}/state", "online")
-    for cam in cams:
-        client.publish(f"{MQTT_TOPIC}/{cam}/state", "online")
 
 
 @mqtt_enabled
-def send_mqtt(messages: list) -> None:
-    """Publish a message to the MQTT server."""
+def publish_messages(messages: list) -> None:
+    """Publish multiple messages to the MQTT server."""
     paho.mqtt.publish.multiple(
         messages,
         hostname=MQTT_HOST,
@@ -112,7 +115,7 @@ def send_mqtt(messages: list) -> None:
 
 
 @mqtt_enabled
-def publish_message(topic: str, message=None):
+def publish_topic(topic: str, message=None, retain=True):
     paho.mqtt.publish.single(
         topic=f"{MQTT_TOPIC}/{topic}",
         payload=message,
@@ -123,12 +126,16 @@ def publish_message(topic: str, message=None):
             if env_bool("MQTT_AUTH")
             else None
         ),
+        retain=retain,
     )
 
 
 @mqtt_enabled
 def update_mqtt_state(camera: str, state: str):
-    return publish_message(f"{camera}/state", state)
+    msg = [(f"{MQTT_TOPIC}/{camera}/state", state)]
+    if state == "online":
+        msg.append((f"{MQTT_TOPIC}/{camera}/power", "on"))
+    publish_messages(msg)
 
 
 @mqtt_enabled
@@ -136,7 +143,7 @@ def update_preview(cam_name: str):
     with contextlib.suppress(FileNotFoundError):
         img_file = f"{IMG_PATH}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
         with open(img_file, "rb") as img:
-            publish_message(f"{cam_name}/image", img.read())
+            publish_topic(f"{cam_name}/image", img.read())
 
 
 @mqtt_enabled
@@ -162,7 +169,7 @@ def _mqtt_discovery(client, cams, msg):
     if msg.payload.decode().lower() != "online" or not cams:
         return
 
-    bridge_status(client, [])
+    bridge_status(client)
     for uri, cam in cams.items():
         publish_discovery(uri, cam, False)
 
@@ -199,11 +206,33 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
                 "icon": "mdi:cctv",
             },
         },
+        "stream": {
+            "type": "switch",
+            "payload": {
+                "state_topic": f"{base_topic}state",
+                "command_topic": f"{base_topic}state/set",
+                "payload_on": "start",
+                "state_on": "online",
+                "payload_off": "stop",
+                "state_off": "stopped",
+                "icon": "mdi:play-pause",
+            },
+        },
         "power": {
             "type": "switch",
             "payload": {
+                "state_topic": f"{base_topic}power",
                 "command_topic": f"{base_topic}power/set",
+                "payload_on": "on",
+                "payload_off": "off",
                 "icon": "mdi:power-plug",
+            },
+        },
+        "update_snapshot": {
+            "type": "button",
+            "payload": {
+                "command_topic": f"{base_topic}update_snapshot/get",
+                "icon": "mdi:camera",
             },
         },
         "ir": {
@@ -227,7 +256,7 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
             },
         },
         "alarm": {
-            "type": "switch",
+            "type": "siren",
             "payload": {
                 "state_topic": f"{base_topic}alarm",
                 "command_topic": f"{base_topic}alarm/set",
@@ -305,6 +334,15 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
                 "entity_category": "diagnostic",
             },
         },
+        "reboot": {
+            "type": "button",
+            "payload": {
+                "command_topic": f"{base_topic}power/set",
+                "payload_press": "restart",
+                "icon": "mdi:restart",
+                "entity_category": "diagnostic",
+            },
+        },
     }
     if pan_cam:
         entities |= {
@@ -326,6 +364,23 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
                     "payload_on": 1,
                     "payload_off": 2,
                     "icon": "mdi:motion-sensor",
+                },
+            },
+            "reset_rotation": {
+                "type": "button",
+                "payload": {
+                    "command_topic": f"{base_topic}reset_rotation/set",
+                    "icon": "mdi:restore",
+                },
+            },
+            "cruise_point": {
+                "type": "select",
+                "payload": {
+                    "state_topic": f"{base_topic}cruise_point",
+                    "command_topic": f"{base_topic}cruise_point/set",
+                    "optimistic": False,
+                    "options": ["-", "1", "2", "3", "4"],
+                    "icon": "mdi:map-marker-multiple",
                 },
             },
         }

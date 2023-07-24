@@ -37,14 +37,23 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v3
 
+      - name: matrix image type
+        id: image_type
+        run: |
+          echo "suffix=${{ matrix.dockerfile == 'hwaccel' && '-hw' || matrix.dockerfile == 'qsv' && '-qsv' ||'' }}" >> $GITHUB_OUTPUT
+          echo "platforms=${{ matrix.dockerfile == 'multiarch' && 'linux/amd64,linux/arm64,linux/arm/v7' || 'linux/amd64' }}" >> $GITHUB_OUTPUT
+          echo "arch=${{ matrix.dockerfile == 'multiarch' && 'amd64,armhf,aarch64' || 'amd64' }}" >> $GITHUB_OUTPUT
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v2
         with:
-          platforms: linux/amd64,linux/arm64,linux/arm
+          platforms: ${{ steps.image_type.outputs.platforms }}
 
       - name: Set up Docker Buildx
         id: buildx
         uses: docker/setup-buildx-action@master
+        with:
+          platforms: ${{ steps.image_type.outputs.platforms }}
 
       - name: Login to DockerHub
         if: github.event_name != 'pull_request'
@@ -60,13 +69,6 @@ jobs:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: matrix image type
-        id: image_type
-        run: |
-          echo "suffix=${{ matrix.dockerfile == 'hwaccel' && '-hw' || matrix.dockerfile == 'qsv' && '-qsv' ||'' }}" >> $GITHUB_OUTPUT
-          echo "platforms=${{ matrix.dockerfile == 'multiarch' && 'linux/amd64,linux/arm64,linux/arm' || 'linux/amd64' }}" >> $GITHUB_OUTPUT
-          echo "arch=${{ matrix.dockerfile == 'multiarch' && 'amd64,armhf,aarch64' || 'amd64' }}" >> $GITHUB_OUTPUT
 
       - name: Extract Docker metadata
         id: meta
@@ -112,8 +114,9 @@ jobs:
             io.hass.type=addon
             io.hass.arch=${{ steps.image_type.outputs.arch }}
           tags: ${{ steps.meta.outputs.tags }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+          cache-from: type=gha,scope=${{ matrix.dockerfile }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.dockerfile }}
+          provenance: false
 
   version_bump:
     needs: [build]

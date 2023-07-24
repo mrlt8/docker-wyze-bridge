@@ -7,7 +7,7 @@ ARG QSV
 RUN if [ -n "$QSV" ]; then echo 'deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware' >/etc/apt/sources.list.d/debian-testing.list; fi \
     && apt-get update \
     && apt-get install -y curl tar xz-utils \
-    ${QSV:+i965-va-driver-shaders intel-media-va-driver-non-free libmfx1 libva-drm2 libx11-6} \
+    ${QSV:+i965-va-driver-shaders intel-media-va-driver-non-free intel-opencl-icd libmfx1 libva-drm2 libx11-6} \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 COPY . /build/app/

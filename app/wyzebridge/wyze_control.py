@@ -10,7 +10,7 @@ import requests
 from wyzebridge.bridge_utils import env_bool
 from wyzebridge.config import BOA_COOLDOWN, BOA_INTERVAL, IMG_PATH, MQTT_TOPIC
 from wyzebridge.logging import logger
-from wyzebridge.mqtt import MQTT_ENABLED, send_mqtt
+from wyzebridge.mqtt import MQTT_ENABLED, publish_messages
 from wyzebridge.wyze_commands import CMD_VALUES, GET_CMDS, GET_PAYLOAD, PARAMS, SET_CMDS
 from wyzecam import WyzeIOTCSession, WyzeIOTCSessionState, tutk_protocol
 
@@ -144,8 +144,8 @@ def camera_control(
 
     boa = check_boa_enabled(sess, uri)
 
+    params_to_update = ",".join(PARAMS.values())
     if MQTT_ENABLED:
-        params_to_update = ",".join(PARAMS.values())
         send_tutk_msg(sess, ("param_info", params_to_update), "debug")
 
     while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
@@ -170,24 +170,22 @@ def camera_control(
                 if boa and cmd == "take_photo":
                     pull_last_image(boa, "photo")
 
-        # Check bitrate
-        # sess.update_frame_size_rate(True)
-
-        # update other cam info at same time?
         if resp:
             with contextlib.suppress(Full):
                 camera_info.put(resp, block=False)
+        elif sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
+            send_tutk_msg(sess, ("param_info", params_to_update), "debug")
 
 
 def pan_to_cruise_point(sess: WyzeIOTCSession, cmd):
     """
     Pan to cruise point/waypoint.
     """
-    resp = {"command": "cruise_point", "status": "error", "value": None}
+    resp = {"command": "cruise_point", "status": "error", "value": "-"}
     if not isinstance(cmd, tuple) or not str(cmd[1]).isdigit():
         return resp | {"response": f"Invalid cruise point: {cmd=}"}
 
-    i = int(cmd[1])
+    i = int(cmd[1]) - 1 if int(cmd[1]) > 0 else int(cmd[1])
     with sess.iotctrl_mux() as mux:
         points = mux.send_ioctl(tutk_protocol.K11010GetCruisePoints()).result(timeout=5)
         if not points or not isinstance(points, list):
@@ -196,9 +194,9 @@ def pan_to_cruise_point(sess: WyzeIOTCSession, cmd):
         try:
             waypoints = (points[i]["vertical"], points[i]["horizontal"])
         except IndexError:
-            return resp | {"response": f"Cruise point NOT found. {points=}"}
+            return resp | {"response": f"Cruise point {i} NOT found. {points=}"}
 
-        logger.info(f"Pan to cruise_point={i} ({waypoints})")
+        logger.info(f"Pan to cruise_point={i} {waypoints}")
         res = mux.send_ioctl(tutk_protocol.K11018SetPTZPosition(*waypoints)).result(
             timeout=5
         )
@@ -206,14 +204,13 @@ def pan_to_cruise_point(sess: WyzeIOTCSession, cmd):
     return resp | {
         "status": "success",
         "response": ",".join(map(str, res)) if isinstance(res, bytes) else res,
-        "value": i,
     }
 
 
 def update_mqtt_values(topic: str, cam_name: str, resp: dict):
     base = f"{MQTT_TOPIC}/{cam_name}"
     if msgs := [(f"{base}/{k}", resp[v]) for k, v in PARAMS.items() if v in resp]:
-        send_mqtt(msgs)
+        publish_messages(msgs)
 
     return int(resp.get(PARAMS[topic], 0)) if topic in PARAMS else resp
 
@@ -249,8 +246,13 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
                 resp |= {"status": "success", "response": None}
             elif res := iotc.result(timeout=5):
                 if tutk_msg.code == 10020:
+                    if bitrate := bitrate_check(res, sess.preferred_bitrate):
+                        logger.info(f"Setting bitrate={sess.preferred_bitrate}")
+                        mux.send_ioctl(bitrate)
                     res = update_mqtt_values(topic, sess.camera.name_uri, res)
                     params = None if isinstance(res, int) else params
+                if topic == "bitrate" and payload:
+                    sess.preferred_bitrate = int(payload)
                 if isinstance(res, bytes):
                     res = ",".join(map(str, res))
                 if isinstance(res, str) and res.isdigit():
@@ -270,6 +272,22 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
     getattr(logger, log)(f"[CONTROL] Response: {resp}")
 
     return {topic: resp}
+
+
+def bitrate_check(res: dict, preferred_bitrate: int):
+    """Check if bitrate in response matches preferred bitrate.
+
+    Parameters:
+    - res (dict): response from camera.
+    - preferred_bitrate (int): preferred bitrate.
+
+    Returns:
+    - tutk_protocol.K10052SetBitrate: if bitrate does not match.
+    """
+    if (bitrate := res.get("3")) and bitrate != preferred_bitrate:
+        logger.debug(f"Wrong {bitrate=} does not match {preferred_bitrate}")
+
+        return tutk_protocol.K10052SetBitrate(preferred_bitrate)
 
 
 def parse_cmd(cmd: tuple | str, log: str) -> tuple:
@@ -312,7 +330,7 @@ def motion_alarm(cam: dict):
         logger.info(f"[MOTION] Alarm file detected at {cam['last_photo'][1]}")
         cam["cooldown"] = datetime.now() + timedelta(seconds=BOA_COOLDOWN)
         cam["last_alarm"] = cam["last_photo"]
-    send_mqtt([(f"{MQTT_TOPIC}/{cam['uri']}/motion", motion)])
+    publish_messages([(f"{MQTT_TOPIC}/{cam['uri']}/motion", motion)])
     if motion and (http := env_bool("boa_motion")):
         try:
             resp = requests.get(http.format(cam_name=cam["uri"]))
