@@ -10,7 +10,7 @@ import requests
 from wyzebridge.bridge_utils import env_bool
 from wyzebridge.config import BOA_COOLDOWN, BOA_INTERVAL, IMG_PATH, MQTT_TOPIC
 from wyzebridge.logging import logger
-from wyzebridge.mqtt import MQTT_ENABLED, send_mqtt
+from wyzebridge.mqtt import MQTT_ENABLED, publish_messages
 from wyzebridge.wyze_commands import CMD_VALUES, GET_CMDS, GET_PAYLOAD, PARAMS, SET_CMDS
 from wyzecam import WyzeIOTCSession, WyzeIOTCSessionState, tutk_protocol
 
@@ -210,7 +210,7 @@ def pan_to_cruise_point(sess: WyzeIOTCSession, cmd):
 def update_mqtt_values(topic: str, cam_name: str, resp: dict):
     base = f"{MQTT_TOPIC}/{cam_name}"
     if msgs := [(f"{base}/{k}", resp[v]) for k, v in PARAMS.items() if v in resp]:
-        send_mqtt(msgs)
+        publish_messages(msgs)
 
     return int(resp.get(PARAMS[topic], 0)) if topic in PARAMS else resp
 
@@ -330,7 +330,7 @@ def motion_alarm(cam: dict):
         logger.info(f"[MOTION] Alarm file detected at {cam['last_photo'][1]}")
         cam["cooldown"] = datetime.now() + timedelta(seconds=BOA_COOLDOWN)
         cam["last_alarm"] = cam["last_photo"]
-    send_mqtt([(f"{MQTT_TOPIC}/{cam['uri']}/motion", motion)])
+    publish_messages([(f"{MQTT_TOPIC}/{cam['uri']}/motion", motion)])
     if motion and (http := env_bool("boa_motion")):
         try:
             resp = requests.get(http.format(cam_name=cam["uri"]))

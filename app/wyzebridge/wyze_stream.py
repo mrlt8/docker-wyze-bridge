@@ -17,7 +17,7 @@ from wyzebridge.bridge_utils import env_bool, env_cam
 from wyzebridge.config import BRIDGE_IP, COOLDOWN, MQTT_TOPIC
 from wyzebridge.ffmpeg import get_ffmpeg_cmd
 from wyzebridge.logging import logger
-from wyzebridge.mqtt import publish_discovery, send_mqtt, update_mqtt_state
+from wyzebridge.mqtt import publish_discovery, publish_messages, update_mqtt_state
 from wyzebridge.webhooks import ifttt_webhook
 from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_commands import GET_CMDS, PARAMS, SET_CMDS
@@ -486,7 +486,7 @@ def get_cam_params(
         (f"{MQTT_TOPIC}/{uri.lower()}/wifi", wifi),
         (f"{MQTT_TOPIC}/{uri.lower()}/audio", json.dumps(audio) if audio else False),
     ]
-    send_mqtt(mqtt)
+    publish_messages(mqtt)
     return v_codec, fps, audio
 
 

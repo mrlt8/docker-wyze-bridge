@@ -53,6 +53,11 @@ def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> No
             },
         }
 
+        # Clear out old/renamed entities
+        REMOVE = {"alarm": "switch"}
+        for entity, type in REMOVE.items():
+            msgs.append((f"{MQTT_DISCOVERY}/{type}/{cam.mac}/{entity}/config", None))
+
         for entity, data in get_entities(base, cam.is_pan_cam, cam.rtsp_fw).items():
             topic = f"{MQTT_DISCOVERY}/{data['type']}/{cam.mac}/{entity}/config"
             if "availability_topic" not in data["payload"]:
@@ -60,13 +65,13 @@ def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> No
 
             payload = dict(
                 base_payload | data["payload"],
-                name=f"Wyze Cam {cam.nickname} {' '.join(entity.upper().split('_'))}",
+                name=f"Wyze Cam {cam.nickname} {' '.join(entity.title().split('_'))}",
                 uniq_id=f"WYZE{cam.mac}{entity.upper()}",
             )
 
             msgs.append((topic, json.dumps(payload)))
 
-    send_mqtt(msgs)
+    publish_messages(msgs)
 
 
 @mqtt_enabled
@@ -95,7 +100,7 @@ def bridge_status(client: Optional[paho.mqtt.client.Client]):
 
 
 @mqtt_enabled
-def send_mqtt(messages: list) -> None:
+def publish_messages(messages: list) -> None:
     """Publish multiple messages to the MQTT server."""
     paho.mqtt.publish.multiple(
         messages,
@@ -110,7 +115,7 @@ def send_mqtt(messages: list) -> None:
 
 
 @mqtt_enabled
-def publish_message(topic: str, message=None, retain=True):
+def publish_topic(topic: str, message=None, retain=True):
     paho.mqtt.publish.single(
         topic=f"{MQTT_TOPIC}/{topic}",
         payload=message,
@@ -130,7 +135,7 @@ def update_mqtt_state(camera: str, state: str):
     msg = [(f"{MQTT_TOPIC}/{camera}/state", state)]
     if state == "online":
         msg.append((f"{MQTT_TOPIC}/{camera}/power", "on"))
-    send_mqtt(msg)
+    publish_messages(msg)
 
 
 @mqtt_enabled
@@ -138,7 +143,7 @@ def update_preview(cam_name: str):
     with contextlib.suppress(FileNotFoundError):
         img_file = f"{IMG_PATH}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
         with open(img_file, "rb") as img:
-            publish_message(f"{cam_name}/image", img.read())
+            publish_topic(f"{cam_name}/image", img.read())
 
 
 @mqtt_enabled
