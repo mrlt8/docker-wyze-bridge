@@ -182,17 +182,24 @@ def _on_message(client, callback, msg):
 
     cam, topic, action = msg_topic[-3:]
     include_payload = action == "set" or topic in GET_PAYLOAD
+    resp = callback(cam, topic, parse_payload(msg) if include_payload else "")
+    if resp.get("status") != "success":
+        logger.info(f"[MQTT] {resp}")
 
+
+def parse_payload(msg):
     payload = msg.payload.decode()
+
     with contextlib.suppress(json.JSONDecodeError):
         json_msg = json.loads(payload)
         if not isinstance(json_msg, (dict, list)):
             raise json.JSONDecodeError("NOT json", payload, 0)
-        payload = json_msg if len(json_msg) > 1 else next(iter(json_msg.values()))
 
-    resp = callback(cam, topic, payload if include_payload else "")
-    if resp.get("status") != "success":
-        logger.info(f"[MQTT] {resp}")
+        payload = json_msg or ""
+        if isinstance(json_msg, dict) and len(json_msg) == 1:
+            payload = next(iter(json_msg.values()))
+
+    return payload
 
 
 def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> dict:
