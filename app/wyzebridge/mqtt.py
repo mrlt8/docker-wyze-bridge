@@ -350,6 +350,19 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
                 "entity_category": "diagnostic",
             },
         },
+        "pan_tilt": {
+            "type": "cover",
+            "payload": {
+                "command_topic": f"{base_topic}rotary_degree/set",
+                "tilt_command_topic": f"{base_topic}rotary_degree/set",
+                "payload_open": "up",
+                "payload_close": "down",
+                "payload_stop": None,
+                "tilt_opened_value": 90,
+                "tilt_closed_value": -90,
+                "icon": "mdi:rotate-orbit",
+            },
+        },
     }
     if pan_cam:
         entities |= {
