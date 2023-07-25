@@ -1,3 +1,9 @@
+## What's Changed in v2.3.13
+
+FIXES:
+  * Errors when SET/GET `bitrate`. Thanks @plat2on1! (#929)
+  * Prevent exception on empty GET/SET payload.
+
 ## What's Changed in v2.3.12
 
 * NEW:
