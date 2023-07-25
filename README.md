@@ -33,6 +33,12 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.3.13
+
+FIXES:
+  * Errors when SET/GET `bitrate`. Thanks @plat2on1! (#929)
+  * Prevent exception on empty GET/SET payload.
+
 ## What's Changed in v2.3.12
 
 * NEW:

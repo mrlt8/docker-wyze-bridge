@@ -251,7 +251,7 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
                         mux.send_ioctl(bitrate)
                     res = update_mqtt_values(topic, sess.camera.name_uri, res)
                     params = None if isinstance(res, int) else params
-                if topic == "bitrate" and payload:
+                if tutk_topic == "K10052SetBitrate" and payload:
                     sess.preferred_bitrate = int(payload)
                 if isinstance(res, bytes):
                     res = ",".join(map(str, res))
@@ -284,8 +284,8 @@ def bitrate_check(res: dict, preferred_bitrate: int):
     Returns:
     - tutk_protocol.K10052SetBitrate: if bitrate does not match.
     """
-    if (bitrate := res.get("3")) and bitrate != preferred_bitrate:
-        logger.debug(f"Wrong {bitrate=} does not match {preferred_bitrate}")
+    if (bitrate := res.get("3")) and int(bitrate) != preferred_bitrate:
+        logger.info(f"Wrong {bitrate=} does not match {preferred_bitrate}")
 
         return tutk_protocol.K10052SetBitrate(preferred_bitrate)
 
