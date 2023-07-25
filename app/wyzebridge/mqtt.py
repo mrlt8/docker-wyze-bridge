@@ -360,6 +360,8 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
                 "payload_stop": None,
                 "tilt_opened_value": 90,
                 "tilt_closed_value": -90,
+                "tilt_min": -90,
+                "tilt_max": 90,
                 "icon": "mdi:rotate-orbit",
             },
         },
