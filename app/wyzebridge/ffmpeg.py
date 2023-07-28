@@ -47,7 +47,7 @@ def get_ffmpeg_cmd(
     cmd = env_cam("FFMPEG_CMD", uri).format(
         cam_name=uri, CAM_NAME=uri.upper(), audio_in=audio_in
     ).split() or (
-        ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "fatal"]
+        ["-loglevel", get_log_level()]
         + env_cam("FFMPEG_FLAGS", uri, flags).strip("'\"\n ").split()
         + ["-thread_queue_size", "100"]
         + (["-hwaccel", h264_enc] if h264_enc in {"vaapi", "qsv"} else [])
@@ -69,6 +69,24 @@ def get_ffmpeg_cmd(
     if env_bool("DEBUG_FFMPEG"):
         logger.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
     return cmd
+
+
+def get_log_level():
+    level = env_bool("FFMPEG_LOGLEVEL", "fatal").lower()
+
+    if level in {
+        "quiet",
+        "panic",
+        "fatal",
+        "error",
+        "warning",
+        "info",
+        "verbose",
+        "debug",
+    }:
+        return level
+
+    return "verbose"
 
 
 def re_encode_video(uri: str, is_vertical: bool) -> list[str]:

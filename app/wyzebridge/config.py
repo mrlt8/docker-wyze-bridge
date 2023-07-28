@@ -41,7 +41,7 @@ makedirs(IMG_PATH, exist_ok=True)
 
 
 DEPRECATED = {
-    "DEBUG_LEVEL",
+    "DEBUG_FFMPEG",
 }
 
 for env in DEPRECATED:
