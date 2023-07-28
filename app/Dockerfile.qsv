@@ -8,8 +8,7 @@ RUN if [ -n "$QSV" ]; then echo 'deb http://deb.debian.org/debian bookworm main 
     && apt-get update \
     && apt-get install -y curl tar xz-utils \
     ${QSV:+i965-va-driver intel-gpu-tools intel-media-va-driver-non-free intel-opencl-icd libmfx1 libva-drm2 libx11-6 vainfo} \
-    # && if [ -n "$QSV" ]; then apt-get install -y i965-va-driver-shader; fi \
-    && apt-get install -y i965-va-driver-shader \
+    && if [ -n "$QSV" ]; then apt-get install -y i965-va-driver-shaders; fi \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 COPY . /build/app/
