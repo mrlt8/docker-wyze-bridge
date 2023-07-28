@@ -40,11 +40,11 @@ def get_ffmpeg_cmd(
     rtsp_transport = "udp" if "udp" in env_bool("MTX_PROTOCOLS") else "tcp"
     rss_cmd = f"[{{}}f=rtsp:{rtsp_transport=:}:bsfs/v=dump_extra=freq=keyframe]rtsp://0.0.0.0:8554/{uri}"
     rtsp_ss = rss_cmd.format("")
-    if env_cam("AUDIO_STREAM", uri) and audio:
+    if env_cam("AUDIO_STREAM", uri, style="original") and audio:
         rtsp_ss += "|" + rss_cmd.format("select=a:") + "_audio"
     h264_enc = env_bool("h264_enc").partition("_")[2]
 
-    cmd = env_cam("FFMPEG_CMD", uri).format(
+    cmd = env_cam("FFMPEG_CMD", uri, style="original").format(
         cam_name=uri, CAM_NAME=uri.upper(), audio_in=audio_in
     ).split() or (
         ["-loglevel", get_log_level()]
@@ -66,7 +66,7 @@ def get_ffmpeg_cmd(
     )
     if "ffmpeg" not in cmd[0].lower():
         cmd.insert(0, "ffmpeg")
-    if env_bool("DEBUG_FFMPEG"):
+    if env_bool("FFMPEG_LOGLEVEL") in {"info", "verbose", "debug"}:
         logger.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
     return cmd
 
