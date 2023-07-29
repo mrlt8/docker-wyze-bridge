@@ -47,7 +47,7 @@ def get_ffmpeg_cmd(
     cmd = env_cam("FFMPEG_CMD", uri, style="original").format(
         cam_name=uri, CAM_NAME=uri.upper(), audio_in=audio_in
     ).split() or (
-        ["-loglevel", get_log_level()]
+        ["-hide_banner", "-loglevel", get_log_level()]
         + env_cam("FFMPEG_FLAGS", uri, flags).strip("'\"\n ").split()
         + ["-thread_queue_size", "100"]
         + (["-hwaccel", h264_enc] if h264_enc in {"vaapi", "qsv"} else [])
@@ -110,6 +110,7 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
     """
     h264_enc: str = env_bool("h264_enc", "libx264")
     custom_filter = env_cam("FFMPEG_FILTER", uri)
+    filter_complex = env_cam("FFMPEG_FILTER_COMPLEX", uri)
     v_filter = []
     transpose = "clock"
     if (env_bool("ROTATE_DOOR") and is_vertical) or env_bool(f"ROTATE_CAM_{uri}"):
@@ -124,7 +125,7 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
         elif h264_enc == "h264_qsv":
             v_filter[1] = f"vpp_qsv=transpose={transpose}"
 
-    if not env_bool("FORCE_ENCODE") and not v_filter and not custom_filter:
+    if not (env_bool("FORCE_ENCODE") or v_filter or custom_filter or filter_complex):
         return ["copy"]
 
     logger.info(
@@ -141,6 +142,7 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
         + v_filter
         + ["-b:v", "2000k", "-coder", "1", "-bufsize", "2000k"]
         + ["-maxrate", "2000k", "-minrate", "2000k"]
+        + (["-filter_complex", filter_complex, "-map", "[v]"] if filter_complex else [])
         + ["-profile:v", "77" if h264_enc == "h264_v4l2m2m" else "main"]
         + ["-preset", "fast" if h264_enc in {"h264_nvenc", "h264_qsv"} else "ultrafast"]
         + ["-forced-idr", "1", "-force_key_frames", "expr:gte(t,n_forced*2)"]
