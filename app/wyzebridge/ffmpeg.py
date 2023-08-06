@@ -40,14 +40,14 @@ def get_ffmpeg_cmd(
     rtsp_transport = "udp" if "udp" in env_bool("MTX_PROTOCOLS") else "tcp"
     rss_cmd = f"[{{}}f=rtsp:{rtsp_transport=:}:bsfs/v=dump_extra=freq=keyframe]rtsp://0.0.0.0:8554/{uri}"
     rtsp_ss = rss_cmd.format("")
-    if env_cam("AUDIO_STREAM", uri) and audio:
+    if env_cam("AUDIO_STREAM", uri, style="original") and audio:
         rtsp_ss += "|" + rss_cmd.format("select=a:") + "_audio"
     h264_enc = env_bool("h264_enc").partition("_")[2]
 
-    cmd = env_cam("FFMPEG_CMD", uri).format(
+    cmd = env_cam("FFMPEG_CMD", uri, style="original").format(
         cam_name=uri, CAM_NAME=uri.upper(), audio_in=audio_in
     ).split() or (
-        ["-loglevel", "verbose" if env_bool("DEBUG_FFMPEG") else "fatal"]
+        ["-hide_banner", "-loglevel", get_log_level()]
         + env_cam("FFMPEG_FLAGS", uri, flags).strip("'\"\n ").split()
         + ["-thread_queue_size", "100"]
         + (["-hwaccel", h264_enc] if h264_enc in {"vaapi", "qsv"} else [])
@@ -66,9 +66,27 @@ def get_ffmpeg_cmd(
     )
     if "ffmpeg" not in cmd[0].lower():
         cmd.insert(0, "ffmpeg")
-    if env_bool("DEBUG_FFMPEG"):
+    if env_bool("FFMPEG_LOGLEVEL") in {"info", "verbose", "debug"}:
         logger.info(f"[FFMPEG_CMD] {' '.join(cmd)}")
     return cmd
+
+
+def get_log_level():
+    level = env_bool("FFMPEG_LOGLEVEL", "fatal").lower()
+
+    if level in {
+        "quiet",
+        "panic",
+        "fatal",
+        "error",
+        "warning",
+        "info",
+        "verbose",
+        "debug",
+    }:
+        return level
+
+    return "verbose"
 
 
 def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
@@ -92,6 +110,7 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
     """
     h264_enc: str = env_bool("h264_enc", "libx264")
     custom_filter = env_cam("FFMPEG_FILTER", uri)
+    filter_complex = env_cam("FFMPEG_FILTER_COMPLEX", uri)
     v_filter = []
     transpose = "clock"
     if (env_bool("ROTATE_DOOR") and is_vertical) or env_bool(f"ROTATE_CAM_{uri}"):
@@ -106,7 +125,7 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
         elif h264_enc == "h264_qsv":
             v_filter[1] = f"vpp_qsv=transpose={transpose}"
 
-    if not env_bool("FORCE_ENCODE") and not v_filter and not custom_filter:
+    if not (env_bool("FORCE_ENCODE") or v_filter or custom_filter or filter_complex):
         return ["copy"]
 
     logger.info(
@@ -121,8 +140,8 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
     return (
         [h264_enc]
         + v_filter
-        + ["-b:v", "2000k", "-coder", "1", "-bufsize", "2000k"]
-        + ["-maxrate", "2000k", "-minrate", "2000k"]
+        + (["-filter_complex", filter_complex, "-map", "[v]"] if filter_complex else [])
+        + ["-b:v", "3000k", "-coder", "1", "-bufsize", "3000k"]
         + ["-profile:v", "77" if h264_enc == "h264_v4l2m2m" else "main"]
         + ["-preset", "fast" if h264_enc in {"h264_nvenc", "h264_qsv"} else "ultrafast"]
         + ["-forced-idr", "1", "-force_key_frames", "expr:gte(t,n_forced*2)"]

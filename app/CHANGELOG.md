@@ -1,3 +1,18 @@
+## What's Changed in v2.3.14
+
+NEW: 
+* PTZ controls in MQTT discovery as "cover"
+* Add ffmpeg `filter_complex` config (#919)
+
+
+CHANGED:
+* Adjust default bitrate for re-encoding to 3000k.
+* Case sensitive FFMPEG_CMD (#736) Thanks @392media!
+* `DEBUG_FFMPEG` is now `FFMPEG_LOGLEVEL` with customizable levels:
+  * `quiet`, `panic`, `fatal`, `error`, `warning`, `info`, `verbose`, `debug`.
+  * Defaults to `fatal`.
+* Bump Wyze App version to v2.44.1.1 (#946)
+
 ## What's Changed in v2.3.13
 
 FIXES:

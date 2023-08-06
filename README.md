@@ -21,6 +21,10 @@ Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f55129
 
 Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) this project if you found it useful, or use the [affiliate link](https://amzn.to/3NLnbvt) when shopping on amazon!
 
+## API Changes
+
+As of July 2023, you will need to update your bridge to v2.3.x or newer for compatibility with the latest changes to the Wyze API.
+
 ## Quick Start
 
 Install [docker](https://docs.docker.com/get-docker/) and run:
@@ -33,23 +37,20 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.3.13
+## What's Changed in v2.3.14
 
-FIXES:
-  * Errors when SET/GET `bitrate`. Thanks @plat2on1! (#929)
-  * Prevent exception on empty GET/SET payload.
+NEW: 
+* PTZ controls in MQTT discovery as "cover"
+* Add ffmpeg `filter_complex` config (#919)
 
-## What's Changed in v2.3.12
 
-* NEW:
-  * `update_snapshot` MQTT/REST API GET topic.
-  * Additional MQTT entities (#921)
-* FIXES:
-  * Monitor and set preferred bitrate if/when the wyze app changes it. Thanks @plat2on1! (#929)
-  * `cruise_point` index starts at 1 when setting via MQTT/REST API. (#835)
-  * Camera status was always online. (#907) (#920)
-  * Power status was incorrect when using MQTT discovery. (#921)
-  
+CHANGED:
+* Adjust default bitrate for re-encoding to 3000k.
+* Case sensitive FFMPEG_CMD (#736) Thanks @392media!
+* `DEBUG_FFMPEG` is now `FFMPEG_LOGLEVEL` with customizable levels:
+  * `quiet`, `panic`, `fatal`, `error`, `warning`, `info`, `verbose`, `debug`.
+  * Defaults to `fatal`.
+* Bump Wyze App version to v2.44.1.1 (#946)
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 

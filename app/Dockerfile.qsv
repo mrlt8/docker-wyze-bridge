@@ -7,7 +7,8 @@ ARG QSV
 RUN if [ -n "$QSV" ]; then echo 'deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware' >/etc/apt/sources.list.d/debian-testing.list; fi \
     && apt-get update \
     && apt-get install -y curl tar xz-utils \
-    ${QSV:+i965-va-driver-shaders intel-media-va-driver-non-free intel-opencl-icd libmfx1 libva-drm2 libx11-6} \
+    ${QSV:+i965-va-driver intel-gpu-tools intel-media-va-driver-non-free intel-opencl-icd libmfx1 libva-drm2 libx11-6 vainfo} \
+    && if [ -n "$QSV" ]; then apt-get install -y i965-va-driver-shaders; fi \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 COPY . /build/app/
@@ -20,7 +21,7 @@ RUN cd /build \
     && curl -SL https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_amd64.tar.gz \
     | tar -xzf - -C app --wildcards 'mediamtx*' \
     && cp app/amd.lib usr/local/lib/libIOTCAPIs_ALL.so \
-    && if [ -n "$QSV" ]; then cp -R /usr/lib/x86_64-linux-gnu/ usr/lib/; fi \
+    && if [ -n "$QSV" ]; then cp -R /usr/lib/x86_64-linux-gnu/ usr/lib/ && cp -R /usr/bin/ usr/bin; fi \
     && rm app/*.txt app/*.lib
 
 FROM base

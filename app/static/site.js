@@ -305,7 +305,7 @@ document.addEventListener("DOMContentLoaded", () => {
       .then((data) => {
         let apiVersion = data.tag_name.replace(/[^0-9\.]/g, "");
         if (apiVersion.localeCompare(checkAPI.dataset.version, undefined, { numeric: true }) === 1) {
-          sendNotification('Update available!', `🎉 v.${apiVersion}`, "warning");
+          sendNotification('Update available!', `🎉 v${apiVersion}`, "warning");
         } else {
           sendNotification('All up to date!', '✅ Running the latest version!', "success");
         }

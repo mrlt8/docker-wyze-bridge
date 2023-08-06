@@ -54,7 +54,7 @@ def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> No
         }
 
         # Clear out old/renamed entities
-        REMOVE = {"alarm": "switch"}
+        REMOVE = {"alarm": "switch", "pan_tilt": "cover"}
         for entity, type in REMOVE.items():
             msgs.append((f"{MQTT_DISCOVERY}/{type}/{cam.mac}/{entity}/config", None))
 
@@ -388,6 +388,21 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
                     "optimistic": False,
                     "options": ["-", "1", "2", "3", "4"],
                     "icon": "mdi:map-marker-multiple",
+                },
+            },
+            "pan_tilt": {
+                "type": "cover",
+                "payload": {
+                    "command_topic": f"{base_topic}rotary_degree/set",
+                    "tilt_command_topic": f"{base_topic}rotary_degree/set",
+                    "payload_open": "up",
+                    "payload_close": "down",
+                    "payload_stop": None,
+                    "tilt_opened_value": 90,
+                    "tilt_closed_value": -90,
+                    "tilt_min": -90,
+                    "tilt_max": 90,
+                    "icon": "mdi:rotate-orbit",
                 },
             },
         }

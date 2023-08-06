@@ -888,7 +888,7 @@ class K11000SetRotaryByDegree(TutkWyzeProtocolMessage):
 
     """
 
-    def __init__(self, horizontal: int, vertical: int, speed: int = 5):
+    def __init__(self, horizontal: int, vertical: int = 0, speed: int = 5):
         super().__init__(11000)
         self.horizontal = horizontal
         self.vertical = vertical

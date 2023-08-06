@@ -4,8 +4,12 @@ from typing import Any
 from wyzecam.api_models import WyzeCamera
 
 
-def env_cam(env: str, uri: str, default="") -> str:
-    return env_bool(f"{env}_{uri}", env_bool(env, env_bool(f"{env}_all", default)))
+def env_cam(env: str, uri: str, default="", style="") -> str:
+    return env_bool(
+        f"{env}_{uri}",
+        env_bool(env, env_bool(f"{env}_all", default, style=style), style=style),
+        style=style,
+    )
 
 
 def env_bool(env: str, false="", true="", style="") -> Any:
