@@ -29,14 +29,14 @@ def get_ffmpeg_cmd(
     - list of str: complete ffmpeg command that is ready to run as subprocess.
     """
 
-    flags = "-fflags +genpts+flush_packets+nobuffer+bitexact -flags +low_delay"
+    flags = "-fflags +flush_packets+nobuffer -flags +low_delay+global_header -use_wallclock_as_timestamps 1"
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
     if audio and "codec" in audio:
-        audio_in = f"-thread_queue_size 100 -f {audio['codec']} -ar {audio['rate']} -i /tmp/{uri}.wav"
+        audio_in = f"-thread_queue_size 100 -f {audio['codec']} -ac 1 -ar {audio['rate']} -sample_fmt s16 -i /tmp/{uri}.wav"
         audio_out = audio["codec_out"] or "copy"
-        a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
+        a_filter = ["-filter:a", env_bool("AUDIO_FILTER", "volume=5")]
     rtsp_transport = "udp" if "udp" in env_bool("MTX_PROTOCOLS") else "tcp"
     rss_cmd = f"[{{}}f=rtsp:{rtsp_transport=:}:bsfs/v=dump_extra=freq=keyframe]rtsp://0.0.0.0:8554/{uri}"
     rtsp_ss = rss_cmd.format("")
@@ -49,18 +49,18 @@ def get_ffmpeg_cmd(
     ).split() or (
         ["-hide_banner", "-loglevel", get_log_level()]
         + env_cam("FFMPEG_FLAGS", uri, flags).strip("'\"\n ").split()
-        + ["-thread_queue_size", "100"]
+        + ["-thread_queue_size", "100", "-analyzeduration", "50", "-probesize", "50"]
         + (["-hwaccel", h264_enc] if h264_enc in {"vaapi", "qsv"} else [])
-        + ["-analyzeduration", "50", "-probesize", "50", "-f", vcodec, "-i", "pipe:"]
+        + ["-f", vcodec, "-i", "pipe:"]
         + audio_in.split()
-        + ["-flags", "+global_header", "-c:v"]
+        + ["-c:v"]
         + re_encode_video(uri, is_vertical)
         + (["-c:a", audio_out] if audio_in else [])
         + (a_filter if audio and audio_out != "copy" else [])
-        + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
-        + ["-muxdelay", "0", "-muxpreload", "0"]
+        + ["-vsync", "passthrough", "-rtbufsize", "100", "-flush_packets", "1"]
+        + ["-muxdelay", "0", "-muxpreload", "0", "-max_delay", "0"]
         + ["-map", "0:v"]
-        + (["-map", "1:a", "-async", "100"] if audio_in else [])
+        + (["-map", "1:a"] if audio_in else [])
         + ["-f", "tee"]
         + [rtsp_ss + get_record_cmd(uri, audio_out, record) + livestream]
     )

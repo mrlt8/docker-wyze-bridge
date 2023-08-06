@@ -1,6 +1,8 @@
 import base64
 import contextlib
 import enum
+import errno
+import fcntl
 import hashlib
 import logging
 import os
@@ -520,16 +522,6 @@ class WyzeIOTCSession:
                 continue
             if frame_info.is_keyframe:
                 last |= {"key_frame": frame_info.frame_no, "key_time": time.time()}
-            elif (
-                frame_info.frame_no - last["key_frame"] > fps * 3
-                and frame_info.frame_no - last["frame"] > fps
-            ):
-                warnings.warn("Waiting for keyframe")
-                time.sleep((1 / (fps)) - 0.02)
-                continue
-            elif time.time() - frame_info.timestamp > timeout:
-                warnings.warn("frame too old")
-                continue
 
             last |= {"frame": frame_info.frame_no, "time": time.time()}
             yield frame_data
@@ -578,43 +570,39 @@ class WyzeIOTCSession:
         """Write raw audio frames to a named pipe."""
         FIFO = f"/tmp/{uri.lower()}.wav"
         try:
-            os.mkfifo(FIFO, os.O_NONBLOCK)
+            os.mkfifo(FIFO)
         except OSError as e:
             if e.errno != 17:
                 raise e
         tutav = self.tutk_platform_lib, self.av_chan_id
 
-        # sample_rate = self.get_audio_sample_rate()
-        # sleep_interval = 1 / (sample_rate / (320 if sample_rate <= 8000 else 640))
-        sleep_interval = 1 / 5
+        sleep_interval = 1 / 20
         try:
-            with open(FIFO, "wb") as audio_pipe:
+            audio_fd = os.open(FIFO, os.O_RDWR | os.O_NONBLOCK | os.O_CREAT, 0o777)
+            fcntl.fcntl(audio_fd, fcntl.F_SETPIPE_SZ, 1024 * 512)
+
+            with os.fdopen(audio_fd, "wb") as audio_pipe:
                 while (
                     self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
                     and self.stream_state.value > 1
                 ):
-                    if (buf := tutk.av_check_audio_buf(*tutav)) < 1:
-                        if buf < 0:
-                            raise tutk.TutkError(buf)
+                    error_no, frame_data, _ = tutk.av_recv_audio_data(*tutav)
+                    if error_no in {
+                        tutk.AV_ER_DATA_NOREADY,
+                        tutk.AV_ER_INCOMPLETE_FRAME,
+                        tutk.AV_ER_LOSED_THIS_FRAME,
+                    }:
                         time.sleep(sleep_interval)
                         continue
-                    errno, frame_data, _ = tutk.av_recv_audio_data(*tutav)
-                    if errno < 0:
-                        if errno in (
-                            tutk.AV_ER_DATA_NOREADY,
-                            tutk.AV_ER_INCOMPLETE_FRAME,
-                            tutk.AV_ER_LOSED_THIS_FRAME,
-                        ):
-                            continue
-                        warnings.warn(f"Error: {errno=}")
-                        break
+
+                    if error_no:
+                        raise tutk.TutkError(error_no)
+
                     audio_pipe.write(frame_data)
-                audio_pipe.write(b"")
-        except tutk.TutkError as ex:
+
+            audio_pipe.write(b"")
+        except Exception as ex:
             warnings.warn(str(ex))
-        except IOError as ex:
-            if ex.errno != 32:  # Ignore errno.EPIPE - Broken pipe
-                warnings.warn(str(ex))
         finally:
             self.state = WyzeIOTCSessionState.CONNECTING_FAILED
             os.unlink(FIFO)
@@ -631,10 +619,10 @@ class WyzeIOTCSession:
         """Identify audio codec."""
         sample_rate = self.get_audio_sample_rate()
         for _ in range(limit):
-            errno, _, frame_info = tutk.av_recv_audio_data(
+            error_no, _, frame_info = tutk.av_recv_audio_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
-            if errno == 0 and (codec_id := frame_info.codec_id):
+            if not error_no and (codec_id := frame_info.codec_id):
                 codec = False
                 if codec_id == 137:  # MEDIA_CODEC_AUDIO_G711_ULAW
                     codec = "mulaw"
@@ -947,9 +935,9 @@ class WyzeIOTCSession:
             f"expected_chan={channel_id}"
         )
 
-        tutk.av_client_set_recv_buf_size(
-            self.tutk_platform_lib, self.av_chan_id, max_buf_size
-        )
+        # tutk.av_client_set_recv_buf_size(
+        #     self.tutk_platform_lib, self.av_chan_id, max_buf_size
+        # )
 
     def get_auth_key(self) -> bytes:
         """Generate authkey using enr and mac address."""
