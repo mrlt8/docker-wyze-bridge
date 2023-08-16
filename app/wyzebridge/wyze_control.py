@@ -163,7 +163,7 @@ def camera_control(
                         "last_photo": boa["last_photo"],
                     }
                 resp = {topic: cam_info}
-            if topic == "cruise_point":
+            elif topic == "cruise_point":
                 resp = {topic: pan_to_cruise_point(sess, cmd)}
             else:
                 resp = send_tutk_msg(sess, cmd)

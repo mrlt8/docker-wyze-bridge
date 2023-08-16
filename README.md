@@ -37,20 +37,11 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.3.14
+## What's Changed in v2.3.15
 
-NEW: 
-* PTZ controls in MQTT discovery as "cover"
-* Add ffmpeg `filter_complex` config (#919)
+* FIX: `caminfo` not found error.
+* Update MediaMTX version from v0.23.8 to v1.0.0 (#956)
 
-
-CHANGED:
-* Adjust default bitrate for re-encoding to 3000k.
-* Case sensitive FFMPEG_CMD (#736) Thanks @392media!
-* `DEBUG_FFMPEG` is now `FFMPEG_LOGLEVEL` with customizable levels:
-  * `quiet`, `panic`, `fatal`, `error`, `warning`, `info`, `verbose`, `debug`.
-  * Defaults to `fatal`.
-* Bump Wyze App version to v2.44.1.1 (#946)
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 

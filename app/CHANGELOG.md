@@ -1,3 +1,8 @@
+## What's Changed in v2.3.15
+
+* FIX: `caminfo` not found error.
+* Update MediaMTX version from v0.23.8 to v1.0.0 (#956)
+
 ## What's Changed in v2.3.14
 
 NEW: 
