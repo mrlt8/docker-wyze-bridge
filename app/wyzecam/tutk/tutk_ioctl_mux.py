@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import threading
 import time
@@ -259,20 +260,23 @@ class TutkIOCtrlMuxListener(threading.Thread):
         self.tutk_platform_lib = tutk_platform_lib
         self.av_chan_id = av_chan_id
         self.queues = queues
+        self.exception: Optional[tutk.TutkError] = None
+
+    def join(self, timeout=None):
+        super(TutkIOCtrlMuxListener, self).join(timeout)
+        if self.exception:
+            raise self.exception
 
     def run(self) -> None:
         timeout_ms = 1000
         logger.debug(f"Now listening on channel id {self.av_chan_id}")
 
         while True:
-            try:
+            with contextlib.suppress(Empty):
                 control_channel_command = self.queues[CONTROL_CHANNEL].get_nowait()
                 if control_channel_command == STOP_SENTINEL:
                     logger.debug(f"No longer listening on channel id {self.av_chan_id}")
                     return
-            except Empty:
-                pass
-
             actual_len, io_ctl_type, data = tutk.av_recv_io_ctrl(
                 self.tutk_platform_lib, self.av_chan_id, timeout_ms
             )
@@ -285,7 +289,8 @@ class TutkIOCtrlMuxListener(threading.Thread):
                 logger.warning("Connection closed because of no response from remote.")
                 break
             elif actual_len < 0:
-                raise tutk.TutkError(actual_len)
+                self.exception = tutk.TutkError(actual_len)
+                break
 
             header, payload = tutk_protocol.decode(data)
             logger.debug(f"RECV {header}: {repr(payload)}")
