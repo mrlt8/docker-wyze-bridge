@@ -1,3 +1,9 @@
+## What's Changed in v2.3.16
+
+* FIX: Catch exception in thread errors 
+* FIX: Other minor typos and typing errors.
+* UPDATE: Wyze App version to v2.44.1.1 (#946)
+
 ## What's Changed in v2.3.15
 
 * FIX: `caminfo` not found error.

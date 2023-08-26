@@ -47,7 +47,7 @@ class Stream(Protocol):
     def status(self) -> str:
         ...
 
-    def send_cmd(self, cmd: str, value: str | list | dict = "") -> dict:
+    def send_cmd(self, cmd: str, payload: str | list | dict = "") -> dict:
         ...
 
 
@@ -94,7 +94,7 @@ class StreamManager:
     def monitor_streams(self, mtx_health: Callable) -> None:
         self.stop_flag = False
         if MQTT_DISCOVERY:
-            self.thread = Thread(target=self.monior_snapshots)
+            self.thread = Thread(target=self.monitor_snapshots)
             self.thread.start()
         mqtt = cam_control(self.streams, self.send_cmd)
         logger.info(f"🎬 {self.total} stream{'s'[:self.total^1]} enabled")
@@ -110,7 +110,7 @@ class StreamManager:
             mqtt.loop_stop()
         logger.info("Stream monitoring stopped")
 
-    def monior_snapshots(self) -> None:
+    def monitor_snapshots(self) -> None:
         for cam in self.streams:
             update_preview(cam)
         while not self.stop_flag:
