@@ -1,6 +1,7 @@
 from os import environ, getenv, makedirs
 
 from dotenv import load_dotenv
+
 from wyzebridge.bridge_utils import env_bool, split_int_str
 from wyzebridge.hass import setup_hass
 
@@ -13,7 +14,7 @@ HASS_TOKEN: str = getenv("SUPERVISOR_TOKEN", "")
 setup_hass(HASS_TOKEN)
 MQTT_DISCOVERY = env_bool("MQTT_DTOPIC")
 MQTT_TOPIC = env_bool("MQTT_TOPIC", "wyzebridge").strip("/")
-ON_DEMAND = bool(env_bool("on_demand") if getenv("ON_DEMAND") else True)
+ON_DEMAND: bool = not env_bool("on_demand")
 CONNECT_TIMEOUT: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
 
 TOKEN_PATH: str = "/config/wyze-bridge/" if HASS_TOKEN else "/tokens/"
@@ -35,6 +36,9 @@ COOLDOWN = env_bool("OFFLINE_TIME", "10", style="int")
 BOA_INTERVAL: int = env_bool("boa_interval", "15", style="int")
 BOA_COOLDOWN: int = env_bool("boa_cooldown", "20", style="int")
 
+MOTION: bool = env_bool("motion_api", style="bool")
+MOTION_INT: int = max(env_bool("motion_int", "1.5", style="float"), 1.1)
+MOTION_START: bool = env_bool("motion_start", style="bool")
 
 makedirs(TOKEN_PATH, exist_ok=True)
 makedirs(IMG_PATH, exist_ok=True)

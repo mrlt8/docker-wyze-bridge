@@ -442,52 +442,84 @@ document.addEventListener("DOMContentLoaded", () => {
       });
     }
   })
-  sse.addEventListener("message", (e) => {
-    Object.entries(JSON.parse(e.data)).forEach(([cam, status]) => {
+  sse.addEventListener("message", (event) => {
+    const data = JSON.parse(event.data);
+
+    for (const [cam, messageData] of Object.entries(data)) {
       const card = document.getElementById(cam);
       const statusIcon = card.querySelector(".status i.fas");
-      const preview = card.querySelector(`img.refresh_img,video[data-cam='${cam}']`);
-      const connected = (card.dataset.connected.toLowerCase() === "true")
+      const preview = card.querySelector(`img.refresh_img, video[data-cam='${cam}']`);
+      const motionIcon = card.querySelector(".icon.motion");
+      const connected = card.dataset.connected.toLowerCase() === "true";
+
       card.dataset.connected = false;
-      statusIcon.setAttribute("class", "fas")
-      statusIcon.parentElement.title = ""
+      statusIcon.className = "fas";
+      statusIcon.parentElement.title = "";
+
       if (preview) {
-        if (status == "connected") { preview.classList.add("connected") } else { preview.classList.remove("connected") }
-        if (status == "disabled") { preview.classList.remove("enabled") } else { preview.classList.add("enabled") }
+        preview.classList.toggle("connected", messageData.status === "connected");
+        preview.classList.toggle("enabled", messageData.status !== "disabled");
       }
-      if (status == "connected") {
-        if (!connected) { sendNotification('Connected', `Connected to ${cam}`, "success"); }
-        card.dataset.connected = true;
-        statusIcon.classList.add("fa-circle-play", "has-text-success");
-        statusIcon.parentElement.title = "Click/tap to pause";
-        autoplay();
-        let noPreview = card.querySelector('.no-preview')
-        if (noPreview) {
-          let fig = noPreview.parentElement
-          let preview = document.createElement("img")
-          preview.classList.add("refresh_img", "loading-preview", "connected")
-          preview.dataset.cam = cam
-          preview.src = "static/loading.svg"
-          noPreview.replaceWith(preview)
-          loadPreview(fig.querySelector("img"))
-        }
-      } else if (status == "connecting") {
-        statusIcon.classList.add("fa-satellite-dish", "has-text-warning");
-        statusIcon.parentElement.title = "Click/tap to pause";
-      } else if (status == "stopped") {
-        if (connected) { sendNotification('Disconnected', `Disconnected from ${cam}`, "danger"); }
-        statusIcon.classList.add("fa-circle-pause");
-        statusIcon.parentElement.title = "Click/tap to play";
-      } else if (status == "offline") {
-        if (connected) { sendNotification('Offline', `${cam} is offline`, "danger"); }
-        statusIcon.classList.add("fa-ghost");
-        statusIcon.parentElement.title = "Camera offline";
+
+      if (messageData.motion) {
+        motionIcon.classList.remove("is-hidden");
+        sendNotification('Motion', `Motion detected on ${cam}`, "info");
       } else {
-        if (connected) { sendNotification('Disconnected', `Disconnected from ${cam}`, "danger"); }
-        statusIcon.setAttribute("class", "fas fa-circle-exclamation")
-        statusIcon.parentElement.title = "Not Connected";
+        motionIcon.classList.add("is-hidden");
       }
-    });
+
+      switch (messageData.status) {
+        case "connected":
+          if (!connected) {
+            sendNotification('Connected', `Connected to ${cam}`, "success");
+          }
+          card.dataset.connected = true;
+          statusIcon.classList.add("fa-circle-play", "has-text-success");
+          statusIcon.parentElement.title = "Click/tap to pause";
+          autoplay();
+
+          const noPreview = card.querySelector('.no-preview');
+          if (noPreview) {
+            const fig = noPreview.parentElement;
+            const newPreview = document.createElement("img");
+            newPreview.classList.add("refresh_img", "loading-preview", "connected");
+            newPreview.dataset.cam = cam;
+            newPreview.src = "static/loading.svg";
+            fig.replaceChild(newPreview, noPreview);
+            loadPreview(fig.querySelector("img"));
+          }
+          break;
+
+        case "connecting":
+          statusIcon.classList.add("fa-satellite-dish", "has-text-warning");
+          statusIcon.parentElement.title = "Click/tap to pause";
+          break;
+
+        case "stopped":
+          if (connected) {
+            sendNotification('Disconnected', `Disconnected from ${cam}`, "danger");
+          }
+          statusIcon.classList.add("fa-circle-pause");
+          statusIcon.parentElement.title = "Click/tap to play";
+          break;
+
+        case "offline":
+          if (connected) {
+            sendNotification('Offline', `${cam} is offline`, "danger");
+          }
+          statusIcon.classList.add("fa-ghost");
+          statusIcon.parentElement.title = "Camera offline";
+          break;
+
+        default:
+          if (connected) {
+            sendNotification('Disconnected', `Disconnected from ${cam}`, "danger");
+          }
+          statusIcon.className = "fas fa-circle-exclamation";
+          statusIcon.parentElement.title = "Not Connected";
+          break;
+      }
+    }
   });
 
   // Toggle Camera details

@@ -3,6 +3,7 @@ import json
 import time
 import urllib.parse
 import uuid
+from datetime import datetime
 from hashlib import md5
 from os import environ, getenv
 from typing import Any, Optional
@@ -28,6 +29,10 @@ SC_SV = {
         "sc": "01dd431d098546f9baf5233724fa2ee2",
         "sv": "0bc2c3bedf6c4be688754c9ad42bbf2e",
     },
+    "get_event_list": {
+        "sc": "9f275790cab94a72bd206c8876429f3c",
+        "sv": "782ced6909a44d92a1f70d582bbe88be",
+    },
     "set_device_Info": {
         "sc": "01dd431d098546f9baf5233724fa2ee2",
         "sv": "e8e1db44128f4e31a2047a8f5f80b2bd",
@@ -37,6 +42,28 @@ SC_SV = {
 
 class AccessTokenError(Exception):
     pass
+
+
+class RateLimitError(Exception):
+    def __init__(self, resp):
+        reset = resp.headers.get("X-RateLimit-Reset-By")
+        self.remaining = int(resp.headers.get("X-RateLimit-Remaining", 0))
+        self.reset_by = self.get_reset_time(reset)
+        super().__init__(f"{self.remaining} requests remaining until {reset}")
+
+    def get_reset_time(self, reset_by: str):
+        ts_format = "%a %b %d %H:%M:%S %Z %Y"
+        try:
+            return int(datetime.strptime(reset_by, ts_format).timestamp())
+        except Exception:
+            return 0
+
+
+class WyzeAPIError(Exception):
+    def __init__(self, code, msg: str):
+        self.code = code
+        self.msg = msg
+        super().__init__(f"{code=} {msg=}")
 
 
 def login(
@@ -267,24 +294,28 @@ def run_action(auth_info: WyzeCredential, camera: WyzeCamera, action: str):
     resp = requests.post(
         f"{WYZE_API}/v2/auto/run_action", json=payload, headers=get_headers()
     )
-    resp_json = resp.json()
-    if resp_json["code"] == "2001":
-        raise AccessTokenError()
-    if resp_json.get("code") != "1":
-        raise ValueError(resp_json)
+
+    resp_json = validate_resp(resp)
 
     return resp_json["data"]
 
 
-def get_device_info(auth_info: WyzeCredential, camera: WyzeCamera) -> dict:
-    """Get device info."""
-    payload = dict(
-        _get_payload(auth_info.access_token, auth_info.phone_id, "get_device_Info"),
-        device_mac=camera.mac,
-        device_model=camera.product_model,
-    )
+def get_device(
+    auth_info: WyzeCredential,
+    endpoint: str,
+    camera: Optional[WyzeCamera] = None,
+    params: Optional[dict] = None,
+) -> dict:
+    """Get data from the v2 device API."""
+    payload = _get_payload(auth_info.access_token, auth_info.phone_id, endpoint)
+
+    if camera:
+        payload |= {"device_mac": camera.mac, "device_model": camera.product_model}
+    if params:
+        payload |= params
+
     resp = requests.post(
-        f"{WYZE_API}/v2/device/get_device_Info", json=payload, headers=get_headers()
+        f"{WYZE_API}/v2/device/{endpoint}", json=payload, headers=get_headers()
     )
     resp_json = validate_resp(resp)
 
@@ -336,11 +367,13 @@ def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
 
 def validate_resp(resp):
     resp.raise_for_status()
+    if int(resp.headers.get("X-RateLimit-Remaining", 100)) <= 10:
+        raise RateLimitError(resp)
     resp_json = resp.json()
     if str(resp_json.get("code", 0)) == "2001":
         raise AccessTokenError()
-
-    assert str(resp_json.get("code", 0)) == "1", resp_json
+    if (resp_code := str(resp_json.get("code", 0))) != "1":
+        raise WyzeAPIError(resp_code, resp_json.get("msg"))
 
     return resp_json
 

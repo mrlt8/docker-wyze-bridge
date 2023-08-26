@@ -272,6 +272,15 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
                 "icon": "mdi:alarm-bell",
             },
         },
+        "motion": {
+            "type": "binary_sensor",
+            "payload": {
+                "state_topic": f"{base_topic}motion",
+                "payload_on": 1,
+                "payload_off": 2,
+                "icon": "mdi:motion-sensor",
+            },
+        },
         "status_light": {
             "type": "switch",
             "payload": {

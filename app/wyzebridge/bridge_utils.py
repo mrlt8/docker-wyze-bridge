@@ -22,6 +22,11 @@ def env_bool(env: str, false="", true="", style="") -> Any:
         return bool(value or false)
     if style.lower() == "int":
         return int("".join(filter(str.isdigit, value or str(false))) or 0)
+    if style.lower() == "float":
+        try:
+            return float(value) if value.replace(".", "").isdigit() else float(false)
+        except ValueError:
+            return 0
     if style.lower() == "upper" and value:
         return value.upper()
     if style.lower() == "original" and value:
