@@ -47,7 +47,7 @@ class Stream(Protocol):
     def status(self) -> str:
         ...
 
-    def send_cmd(self, cmd: str, value: str | list | dict = "") -> dict:
+    def send_cmd(self, cmd: str, payload: str | list | dict = "") -> dict:
         ...
 
 
