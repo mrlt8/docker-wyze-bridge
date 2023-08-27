@@ -180,6 +180,9 @@ class WyzeApi:
             return self.cameras
         self.cameras = wyzecam.get_camera_list(self.auth)
         self._last_pull = time()
+        logger.info(f"[API] Fetched [{len(self.cameras)}] cameras")
+        logger.debug(f"[API] cameras={[c.nickname for c in self.cameras]}")
+
         return self.cameras
 
     def filtered_cams(self) -> list[WyzeCamera]:
