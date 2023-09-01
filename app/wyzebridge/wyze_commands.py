@@ -21,6 +21,7 @@ GET_CMDS = {
     "battery": "K10448GetBatteryUsage",
     "rtsp": "K10604GetRtspParam",
     "param_info": "K10020CheckCameraParams",  # Requires a Payload
+    "_bitrate": "K10050GetVideoParam",  # Only works on newer firmware
 }
 
 # These GET_CMDS can include a payload:
@@ -31,6 +32,8 @@ SET_CMDS = {
     "power": None,
     "time_zone": None,
     "cruise_point": None,
+    "fps": None,
+    "bitrate": None,
     "irled": "K10046SetIRLEDStatus",
     "night_vision": "K10042SetNightVisionStatus",
     "status_light": "K10032SetNetworkLightStatus",
@@ -47,10 +50,8 @@ SET_CMDS = {
     "ptz_position": "K11018SetPTZPosition",
     "motion_tracking": "K11022SetMotionTracking",
     "motion_tagging": "K10292SetMotionTagging",
-    "fps": "K10052SetFPS",
-    "bitrate": "K10052SetBitrate",
     "rtsp": "K10600SetRtspSwitch",
-    "quick_reponse": "K11635ResponseQuickMessage",
+    "quick_response": "K11635ResponseQuickMessage",
 }
 
 CMD_VALUES = {
