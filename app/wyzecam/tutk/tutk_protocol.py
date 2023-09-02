@@ -453,6 +453,20 @@ class K10046SetIRLEDStatus(TutkWyzeProtocolMessage):
         return encode(self.code, bytes([self.status]))
 
 
+class K10050GetVideoParam(TutkWyzeProtocolMessage):
+    def __init__(self):
+        super().__init__(10050)
+
+    def parse_response(self, resp_data):
+        return {
+            "bitrate": resp_data[0],
+            "res": resp_data[2],
+            "fps": resp_data[3],
+            "hor_flip": resp_data[4],
+            "ver_flip": resp_data[5],
+        }
+
+
 class K10050GetPowerLevel(TutkWyzeProtocolMessage):
     def __init__(self):
         super().__init__(10050)
@@ -731,7 +745,6 @@ class K10302SetTimeZone(TutkWyzeProtocolMessage):
         self.value: int = value
 
     def encode(self) -> bytes:
-        print(pack("<b", self.value))
         return encode(self.code, pack("<b", self.value))
 
 

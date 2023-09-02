@@ -536,43 +536,23 @@ class WyzeIOTCSession:
         self.state = WyzeIOTCSessionState.CONNECTING_FAILED
         return b""
 
-    def update_frame_size_rate(
-        self, bitrate: bool = False, fps: Optional[int] = None
-    ) -> int:
+    def update_frame_size_rate(self, bitrate: Optional[int] = None, fps: int = 0):
         """Send a message to the camera to update the frame_size and bitrate."""
-        iotc_msg = self.preferred_frame_size, self.preferred_bitrate
+        if bitrate:
+            self.preferred_bitrate = bitrate
+        iotc_msg = self.preferred_frame_size, self.preferred_bitrate, fps
         with self.iotctrl_mux() as mux:
-            if bitrate:
-                param = mux.send_ioctl(K10020CheckCameraParams(3, 5)).result()
-                if fps and (cam_fps := int(param.get("5", fps))) != fps:
-                    warnings.warn(f"FPS mismatch: param FPS={cam_fps} avRecv FPS={fps}")
-                    if os.getenv("FPS_FIX"):
-                        self.change_fps(fps)
-                    return cam_fps
-                if int(param.get("3")) != self.preferred_bitrate:
-                    warnings.warn(f"Wrong bitrate (bitrate={param.get('3')})")
+            logger.warning("Requesting frame_size=%d, bitrate=%d, fps=%d" % iotc_msg)
+            with contextlib.suppress(tutk_ioctl_mux.Empty):
+                if self.camera.product_model in ("WYZEDB3", "WVOD1", "HL_WCO2"):
+                    mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result(False)
                 else:
-                    iotc_msg = False
-            if iotc_msg:
-                logger.warning("Requesting frame_size=%d and bitrate=%d" % iotc_msg)
-                with contextlib.suppress(tutk_ioctl_mux.Empty):
-                    if self.camera.product_model in ("WYZEDB3", "WVOD1", "HL_WCO2"):
-                        mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result(False)
-                    else:
-                        mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result(False)
-        return 0
+                    mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result(False)
 
     def clear_local_buffer(self) -> None:
         """Clear local buffer."""
         warnings.warn("clear buffer")
         tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
-
-    def change_fps(self, fps: int) -> None:
-        """Send a message to the camera to update the FPS."""
-        logger.warning("Requesting frame_rate=%d" % fps)
-        with self.iotctrl_mux() as mux:
-            with contextlib.suppress(tutk_ioctl_mux.Empty):
-                mux.send_ioctl(K10052DBSetResolvingBit(0, 0, fps)).result(block=False)
 
     def recv_audio_frames(self, uri: str) -> None:
         """Write raw audio frames to a named pipe."""

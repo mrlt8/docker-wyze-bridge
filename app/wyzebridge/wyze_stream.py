@@ -456,7 +456,7 @@ def get_cam_params(
                 logger.error(f"⚠️ Unusual FPS detected: {fps}")
         if force_fps := int(env_bool(f"FORCE_FPS_{uri}", 0)):
             logger.info(f"Attempting to force fps={force_fps}")
-            sess.change_fps(force_fps)
+            sess.update_frame_size_rate(fps=force_fps)
             fps = force_fps
         v_codec = video_param.get("type", "h264")
         bit_frame += f" ({v_codec}/{fps}fps)"

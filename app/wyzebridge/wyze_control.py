@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from multiprocessing import Queue
 from queue import Empty, Full
 from re import findall
-from typing import Optional
+from typing import Any, Optional
 
 import requests
 from wyzebridge.bridge_utils import env_bool
@@ -31,11 +31,11 @@ def pull_last_image(cam: dict, path: str, as_snap: bool = False):
     try:
         with requests.Session() as req:
             resp = req.get(base)  # Get Last Date
-            if not (last := findall("<h2>(\d+)<\/h2>", resp.text)):
+            if not (last := findall("<h2>(\\d+)</h2>", resp.text)):
                 return
             date = sorted(last)[-1]
             resp = req.get(base + date)  # Get Last File
-            file_name = sorted(findall("<h1>(\w+\.jpg)<\/h1>", resp.text))[-1]
+            file_name = sorted(findall("<h1>(\\w+.jpg)</h1>", resp.text))[-1]
             if file_name != cam["last_photo"][0]:
                 logger.info(f"Pulling {path} file from camera ({file_name=})")
                 resp = req.get(f"http://{ip}/SDPath/{path}/{date}/{file_name}")
@@ -130,10 +130,7 @@ def boa_control(sess: WyzeIOTCSession, boa_cam: Optional[dict]):
 
 
 def camera_control(
-    sess: WyzeIOTCSession,
-    uri: str,
-    camera_info: Queue,
-    camera_cmd: Queue,
+    sess: WyzeIOTCSession, uri: str, camera_info: Queue, camera_cmd: Queue
 ):
     """
     Listen for commands to control the camera.
@@ -141,40 +138,69 @@ def camera_control(
     :param sess: WyzeIOTCSession used to communicate with the camera.
     :param uri: URI-safe name of the camera.
     """
-
     boa = check_boa_enabled(sess, uri)
-
-    params_to_update = ",".join(PARAMS.values())
-    if MQTT_ENABLED:
-        send_tutk_msg(sess, ("param_info", params_to_update), "debug")
+    fw_11 = sess.camera.firmware_ver and sess.camera.firmware_ver.startswith("4.36.11")
 
     while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
         boa_control(sess, boa)
-        resp = {}
-        with contextlib.suppress(Empty, ValueError):
+        try:
             cmd = camera_cmd.get(timeout=BOA_INTERVAL)
-            topic = cmd[0] if isinstance(cmd, tuple) else cmd
+            topic, payload = cmd if isinstance(cmd, tuple) else (cmd, None)
+        except Empty:
+            update_params(sess, bool(fw_11))
+            continue
 
-            if topic == "caminfo":
-                cam_info = sess.camera.camera_info or {}
-                if boa:
-                    cam_info["boa_info"] = {
-                        "last_alarm": boa["last_alarm"],
-                        "last_photo": boa["last_photo"],
-                    }
-                resp = {topic: cam_info}
-            elif topic == "cruise_point":
-                resp = {topic: pan_to_cruise_point(sess, cmd)}
-            else:
-                resp = send_tutk_msg(sess, cmd)
-                if boa and cmd == "take_photo":
-                    pull_last_image(boa, "photo")
+        if topic == "caminfo":
+            resp = sess.camera.camera_info or {}
+            if boa:
+                resp["boa_info"] = {
+                    "last_alarm": boa["last_alarm"],
+                    "last_photo": boa["last_photo"],
+                }
+        elif topic == "cruise_point":
+            resp = pan_to_cruise_point(sess, cmd)
+        elif topic in {"bitrate", "fps"} and payload:
+            resp = update_bit_fps(sess, topic, payload)
+        else:
+            # Use K10050GetVideoParam if newer firmware
+            if topic == "bitrate" and fw_11:
+                cmd = "_bitrate"
+            resp = send_tutk_msg(sess, cmd)
+            if boa and cmd == "take_photo":
+                pull_last_image(boa, "photo")
 
-        if resp:
-            with contextlib.suppress(Full):
-                camera_info.put(resp, block=False)
-        elif sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
-            send_tutk_msg(sess, ("param_info", params_to_update), "debug")
+        camera_info.put({topic: resp})
+
+
+def update_params(sess: WyzeIOTCSession, fw_11: bool = False):
+    """
+    Update camera parameters.
+    """
+    if sess.state != WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
+        return
+
+    if MQTT_ENABLED or not fw_11:
+        remove = {"bitrate", "res"} if fw_11 else set()
+        params = ",".join([v for k, v in PARAMS.items() if k not in remove])
+        send_tutk_msg(sess, ("param_info", params), "debug")
+    if fw_11:
+        send_tutk_msg(sess, "_bitrate", "debug")
+
+
+def update_bit_fps(sess: WyzeIOTCSession, topic: str, payload: Any) -> dict:
+    """
+    Update bitrate or fps.
+    """
+    resp = {"command": topic, "payload": payload, "value": 0}
+    logger.info(f"[CONTROL] Attempting to SET: {topic}={payload}")
+
+    try:
+        val = int(payload[topic] if isinstance(payload, dict) else payload)
+        sess.update_frame_size_rate(**{topic: val})
+        publish_messages([(f"{MQTT_TOPIC}/{sess.camera.name_uri}/{topic}", val)])
+        return resp | {"status": "success", "value": val}
+    except Exception as ex:
+        return resp | {"status": "error", "response": str(ex)}
 
 
 def pan_to_cruise_point(sess: WyzeIOTCSession, cmd):
@@ -182,6 +208,7 @@ def pan_to_cruise_point(sess: WyzeIOTCSession, cmd):
     Pan to cruise point/waypoint.
     """
     resp = {"command": "cruise_point", "status": "error", "value": "-"}
+    logger.info(f"[CONTROL] Attempting to SET: cruise_point={cmd}")
     if not isinstance(cmd, tuple) or not str(cmd[1]).isdigit():
         return resp | {"response": f"Invalid cruise point: {cmd=}"}
 
@@ -207,12 +234,12 @@ def pan_to_cruise_point(sess: WyzeIOTCSession, cmd):
     }
 
 
-def update_mqtt_values(topic: str, cam_name: str, resp: dict):
+def update_mqtt_values(cam_name: str, res: dict):
     base = f"{MQTT_TOPIC}/{cam_name}"
-    if msgs := [(f"{base}/{k}", resp[v]) for k, v in PARAMS.items() if v in resp]:
+    if "bitrate" in res:
+        publish_messages([(f"{base}/{k}", v) for k, v in res.items()])
+    if msgs := [(f"{base}/{k}", res[v]) for k, v in PARAMS.items() if v in res]:
         publish_messages(msgs)
-
-    return int(resp.get(PARAMS[topic], 0)) if topic in PARAMS else resp
 
 
 def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") -> dict:
@@ -223,91 +250,92 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
     - sess (WyzeIOTCSession): used to communicate with the camera.
     - cmd (tuple|str): tutk command to send to the camera.
 
-    Rreturns:
-    - dictionary: tutk response from camera.
+    Returns:
+    - dict: tutk response from camera.
     """
-    topic, payload, tutk_topic = parse_cmd(cmd, log)
-    if not tutk_topic:
-        error = f"Invalid command: {topic=} not found {cmd=}"
-        logger.error(f"[CONTROL] ERROR - {error}")
-        return {topic: {"status": "error", "command": cmd, "response": error}}
+    resp, tutk_msg, params = parse_cmd(cmd, log)
+    if not tutk_msg:
+        return resp | _error_response(cmd, "invalid command")
 
-    try:
-        tutk_msg, params = lookup_msg(tutk_topic, payload)
-    except Exception as ex:
-        logger.error(f"[CONTROL] ERROR - {ex} {cmd=}")
-        return {topic: {"status": "error", "command": cmd, "response": str(ex)}}
-
-    resp = {"command": topic, "payload": payload, "value": None}
     try:
         with sess.iotctrl_mux() as mux:
             iotc = mux.send_ioctl(tutk_msg)
-            if tutk_msg.code in {11000, 11004}:
-                resp |= {"status": "success", "response": None}
-            elif res := iotc.result(timeout=5):
-                if tutk_msg.code == 10020:
-                    if bitrate := bitrate_check(res, sess.preferred_bitrate):
-                        logger.info(f"Setting bitrate={sess.preferred_bitrate}")
-                        mux.send_ioctl(bitrate)
-                    res = update_mqtt_values(topic, sess.camera.name_uri, res)
-                    params = None if isinstance(res, int) else params
-                if tutk_topic == "K10052SetBitrate" and payload:
-                    sess.preferred_bitrate = int(payload)
-                if isinstance(res, bytes):
-                    res = ",".join(map(str, res))
-                if isinstance(res, str) and res.isdigit():
-                    res = int(res)
-                resp |= {"status": "success", "response": res, "value": res}
+        if tutk_msg.code in {11000, 11004}:
+            return _response(resp, log=log)
+        elif res := iotc.result(timeout=5):
+            if tutk_msg.code in {10020, 10050}:
+                update_mqtt_values(sess.camera.name_uri, res)
+                res = bitrate_check(sess, res, resp["command"])
+                params = None
+            if isinstance(res, bytes):
+                res = ",".join(map(str, res))
+            if isinstance(res, str) and res.isdigit():
+                res = int(res)
+            return _response(resp, res, params, log)
     except Empty:
-        resp |= {"status": "success", "response": None}
+        return _response(resp, log=log)
     except Exception as ex:
-        resp |= {"response": str(ex), "status": "error"}
-        logger.warning(f"[CONTROL] {ex}")
+        return resp | _error_response(cmd, ex)
 
-    if params and topic not in GET_PAYLOAD:
+    return _response(resp, res, params, log)
+
+
+def _response(response, res=None, params=None, log="info"):
+    response |= {"status": "success", "response": res, "value": res}
+    if params and response["command"] not in GET_PAYLOAD:
         if isinstance(params, dict):
-            resp["value"] = params
+            response["value"] = params
         else:
-            resp["value"] = ",".join(map(str, params))
-    getattr(logger, log)(f"[CONTROL] Response: {resp}")
+            response["value"] = ",".join(map(str, params))
+    getattr(logger, log)(f"[CONTROL] response={res}")
 
-    return {topic: resp}
+    return response
 
 
-def bitrate_check(res: dict, preferred_bitrate: int):
-    """Check if bitrate in response matches preferred bitrate.
+def _error_response(cmd, error):
+    logger.error(f"[CONTROL] ERROR - {error=}, {cmd=}")
+    return {"status": "error", "response": str(error)}
 
-    Parameters:
-    - res (dict): response from camera.
-    - preferred_bitrate (int): preferred bitrate.
 
-    Returns:
-    - tutk_protocol.K10052SetBitrate: if bitrate does not match.
-    """
-    if (bitrate := res.get("3")) and int(bitrate) != preferred_bitrate:
-        logger.info(f"Wrong {bitrate=} does not match {preferred_bitrate}")
+def bitrate_check(sess: WyzeIOTCSession, res: dict, topic: str):
+    key = "bitrate" if topic in res else "3"
+    if (bitrate := res.get(key)) and int(bitrate) != sess.preferred_bitrate:
+        logger.info(f"{bitrate=} does not match {sess.preferred_bitrate}")
+        sess.update_frame_size_rate()
 
-        return tutk_protocol.K10052SetBitrate(preferred_bitrate)
+    if key == "bitrate":
+        return res.get(topic, res)
+
+    return int(res.get(PARAMS[topic], 0)) if topic in PARAMS else res
 
 
 def parse_cmd(cmd: tuple | str, log: str) -> tuple:
     topic, payload = cmd if isinstance(cmd, tuple) else (cmd, None)
     set_cmd = payload and topic not in GET_PAYLOAD
-    tutk_topic = SET_CMDS.get(topic) if set_cmd else GET_CMDS.get(topic)
+    proto_name = SET_CMDS.get(topic) if set_cmd else GET_CMDS.get(topic)
+    if topic == "_bitrate":
+        topic = "bitrate"
 
     log_msg = f"SET: {topic}={payload}" if set_cmd else f"GET: {topic}"
     getattr(logger, log)(f"[CONTROL] Attempting to {log_msg}")
-    if not tutk_topic and topic in PARAMS:
-        payload, tutk_topic = ",".join(PARAMS.values()), GET_CMDS["param_info"]
+    if not proto_name and topic in PARAMS:
+        payload = ",".join(PARAMS.values())
+        proto_name = GET_CMDS["param_info"]
 
-    return topic, payload, tutk_topic
+    resp = {"command": topic, "payload": payload, "value": None}
+    params = parse_payload(payload)
+
+    if not (tut_proto := getattr(tutk_protocol, proto_name or "", None)):
+        return resp, None, params
+
+    tutk_msg = tut_proto(**params) if isinstance(params, dict) else tut_proto(*params)
+
+    return resp, tutk_msg, params
 
 
-def lookup_msg(tutk_topic: str, payload: any) -> tuple:
-    tutk_msg = getattr(tutk_protocol, tutk_topic)
+def parse_payload(payload: Any) -> list | dict:
     if isinstance(payload, dict):
-        params = {k: int(v) if str(v).isdigit() else v for k, v in payload.items()}
-        return tutk_msg(**params), params
+        return {k: int(v) if str(v).isdigit() else v for k, v in payload.items()}
 
     params = []
     if isinstance(payload, list):
@@ -320,7 +348,7 @@ def lookup_msg(tutk_topic: str, payload: any) -> tuple:
         vals = payload.strip().strip(""""'""").split(",")
         params = [int(v) for v in vals if v.strip().strip("-").isdigit()]
 
-    return tutk_msg(*params), params
+    return params
 
 
 def motion_alarm(cam: dict):
