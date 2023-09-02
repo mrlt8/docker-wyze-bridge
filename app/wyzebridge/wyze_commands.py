@@ -50,6 +50,8 @@ SET_CMDS = {
     "motion_tagging": "K10292SetMotionTagging",
     "fps": "K10052SetFPS",
     "bitrate": "K10052SetBitrate",
+    "hor_flip": "K10052HorizontalFlip",
+    "ver_flip": "K10052VerticalFlip",
     "rtsp": "K10600SetRtspSwitch",
     "quick_reponse": "K11635ResponseQuickMessage",
 }
@@ -72,6 +74,8 @@ PARAMS = {
     "bitrate": "3",
     "res": "4",
     "fps": "5",
+    "hor_flip": "6",
+    "ver_flip": "7",
     "motion_tagging": "21",
     "time_zone": "22",
     "motion_tracking": "27",

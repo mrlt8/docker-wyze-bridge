@@ -572,6 +572,30 @@ class K10052SetBitrate(TutkWyzeProtocolMessage):
         return encode(self.code, bytes([self.bitrate, 0, 0, 0, 0]))
 
 
+class K10052HorizontalFlip(TutkWyzeProtocolMessage):
+    def __init__(self, value: int = 0):
+        super().__init__(10052)
+
+        assert 0 < value <= 2, "horizontal value must be 1-2"
+
+        self.horizontal = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([0, 0, 0, 0, self.horizontal, 0]))
+
+
+class K10052VerticalFlip(TutkWyzeProtocolMessage):
+    def __init__(self, value: int = 0):
+        super().__init__(10052)
+
+        assert 0 < value <= 2, "vertical value must be 1-2"
+
+        self.vertical = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([0, 0, 0, 0, 0, self.vertical]))
+
+
 class K10070GetOSDStatus(TutkWyzeProtocolMessage):
     """
     A message used to check if the OSD timestamp is enabled.
