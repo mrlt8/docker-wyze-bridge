@@ -37,11 +37,19 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.3.16
+## What's Changed in v2.3.17
 
-* FIX: Catch exception in thread errors 
-* FIX: Other minor typos and typing errors.
-* UPDATE: Wyze App version to v2.44.1.1 (#946)
+* NEW REST/MQTT Commands:
+  * `battery` GET current battery level on outdoor cams. (#864)
+  * `battery_usage` GET current battery usage times. (#864)
+  * `hor_flip` GET/SET horizontal video flip. (#976)
+  * `ver_flip` GET/SET vertical video flip. (#976)
+* FIXES:
+  * Wrong bitrate error on newer `4.36.11.x` firmware which were not returning the correct bitrate info. (#975)
+  * Typo in `quick_response` REST/MQTT topic.
+  * invalid escape sequence warning.
+* UPDATES:
+  * MediaMTX version from v1.0.0 to v1.0.3 (#979)
 
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)

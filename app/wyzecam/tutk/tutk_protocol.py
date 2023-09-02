@@ -453,6 +453,32 @@ class K10046SetIRLEDStatus(TutkWyzeProtocolMessage):
         return encode(self.code, bytes([self.status]))
 
 
+class K10050GetVideoParam(TutkWyzeProtocolMessage):
+    def __init__(self):
+        super().__init__(10050)
+
+    def parse_response(self, resp_data):
+        return {
+            "bitrate": resp_data[0],
+            "res": resp_data[2],
+            "fps": resp_data[3],
+            "hor_flip": resp_data[4],
+            "ver_flip": resp_data[5],
+        }
+
+
+class K10050GetPowerLevel(TutkWyzeProtocolMessage):
+    def __init__(self):
+        super().__init__(10050)
+
+    def parse_response(self, resp_data):
+        data = json.loads(resp_data)
+        try:
+            return data["camerainfo"]["powerlevel"]
+        except KeyError:
+            return 0
+
+
 class K10056SetResolvingBit(TutkWyzeProtocolMessage):
     """
     A message used to set the resolution and bitrate of the camera.
@@ -558,6 +584,30 @@ class K10052SetBitrate(TutkWyzeProtocolMessage):
 
     def encode(self) -> bytes:
         return encode(self.code, bytes([self.bitrate, 0, 0, 0, 0]))
+
+
+class K10052HorizontalFlip(TutkWyzeProtocolMessage):
+    def __init__(self, value: int = 0):
+        super().__init__(10052)
+
+        assert 0 < value <= 2, "horizontal value must be 1-2"
+
+        self.horizontal = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([0, 0, 0, 0, self.horizontal, 0]))
+
+
+class K10052VerticalFlip(TutkWyzeProtocolMessage):
+    def __init__(self, value: int = 0):
+        super().__init__(10052)
+
+        assert 0 < value <= 2, "vertical value must be 1-2"
+
+        self.vertical = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([0, 0, 0, 0, 0, self.vertical]))
 
 
 class K10070GetOSDStatus(TutkWyzeProtocolMessage):
@@ -695,7 +745,6 @@ class K10302SetTimeZone(TutkWyzeProtocolMessage):
         self.value: int = value
 
     def encode(self) -> bytes:
-        print(pack("<b", self.value))
         return encode(self.code, pack("<b", self.value))
 
 
@@ -846,7 +895,15 @@ class K10448GetBatteryUsage(TutkWyzeProtocolMessage):
         super().__init__(10448)
 
     def parse_response(self, resp_data):
-        return json.loads(resp_data)
+        data = json.loads(resp_data)
+        return {
+            "last_charge": data["0"],
+            "live_streaming": data["1"],
+            "events_uploaded": data["2"],
+            "events_filtered": data["3"],
+            "sd_recordings": data["4"],
+            "5": data["5"],
+        }
 
 
 class K10600SetRtspSwitch(TutkWyzeProtocolMessage):

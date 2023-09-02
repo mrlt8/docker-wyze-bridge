@@ -1,3 +1,18 @@
+## What's Changed in v2.3.17
+
+* NEW REST/MQTT Commands:
+  * `battery` GET current battery level on outdoor cams. (#864)
+  * `battery_usage` GET current battery usage times. (#864)
+  * `hor_flip` GET/SET horizontal video flip. (#976)
+  * `ver_flip` GET/SET vertical video flip. (#976)
+* FIXES:
+  * Wrong bitrate error on newer `4.36.11.x` firmware which were not returning the correct bitrate info. (#975)
+  * Typo in `quick_response` REST/MQTT topic.
+  * invalid escape sequence warning.
+* UPDATES:
+  * MediaMTX version from v1.0.0 to v1.0.3 (#979)
+
+
 ## What's Changed in v2.3.16
 
 * FIX: Catch exception in thread errors 
