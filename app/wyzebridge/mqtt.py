@@ -317,6 +317,28 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
                 "entity_category": "diagnostic",
             },
         },
+        "flip_horizontal": {
+            "type": "switch",
+            "payload": {
+                "state_topic": f"{base_topic}hor_flip",
+                "command_topic": f"{base_topic}hor_flip/set",
+                "payload_on": 1,
+                "payload_off": 2,
+                "icon": "mdi:flip-horizontal",
+                "entity_category": "diagnostic",
+            },
+        },
+        "flip_vertical": {
+            "type": "switch",
+            "payload": {
+                "state_topic": f"{base_topic}ver_flip",
+                "command_topic": f"{base_topic}ver_flip/set",
+                "payload_on": 1,
+                "payload_off": 2,
+                "icon": "mdi:flip-vertical",
+                "entity_category": "diagnostic",
+            },
+        },
         "res": {
             "type": "sensor",
             "payload": {
