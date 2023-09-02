@@ -18,7 +18,8 @@ GET_CMDS = {
     "motion_tracking": "K11020GetMotionTracking",
     "motion_tagging": "K10290GetMotionTagging",
     "camera_info": "K10020CheckCameraInfo",
-    "battery": "K10448GetBatteryUsage",
+    "battery": "K10050GetPowerLevel",
+    "battery_usage": "K10448GetBatteryUsage",
     "rtsp": "K10604GetRtspParam",
     "param_info": "K10020CheckCameraParams",  # Requires a Payload
     "_bitrate": "K10050GetVideoParam",  # Only works on newer firmware
@@ -50,6 +51,8 @@ SET_CMDS = {
     "ptz_position": "K11018SetPTZPosition",
     "motion_tracking": "K11022SetMotionTracking",
     "motion_tagging": "K10292SetMotionTagging",
+    "hor_flip": "K10052HorizontalFlip",
+    "ver_flip": "K10052VerticalFlip",
     "rtsp": "K10600SetRtspSwitch",
     "quick_response": "K11635ResponseQuickMessage",
 }
@@ -72,6 +75,8 @@ PARAMS = {
     "bitrate": "3",
     "res": "4",
     "fps": "5",
+    "hor_flip": "6",
+    "ver_flip": "7",
     "motion_tagging": "21",
     "time_zone": "22",
     "motion_tracking": "27",
