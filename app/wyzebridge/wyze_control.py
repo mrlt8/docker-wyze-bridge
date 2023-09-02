@@ -31,11 +31,11 @@ def pull_last_image(cam: dict, path: str, as_snap: bool = False):
     try:
         with requests.Session() as req:
             resp = req.get(base)  # Get Last Date
-            if not (last := findall("<h2>(\d+)<\/h2>", resp.text)):
+            if not (last := findall("<h2>(\\d+)</h2>", resp.text)):
                 return
             date = sorted(last)[-1]
             resp = req.get(base + date)  # Get Last File
-            file_name = sorted(findall("<h1>(\w+\.jpg)<\/h1>", resp.text))[-1]
+            file_name = sorted(findall("<h1>(\\w+.jpg)</h1>", resp.text))[-1]
             if file_name != cam["last_photo"][0]:
                 logger.info(f"Pulling {path} file from camera ({file_name=})")
                 resp = req.get(f"http://{ip}/SDPath/{path}/{date}/{file_name}")
