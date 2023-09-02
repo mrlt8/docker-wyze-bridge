@@ -6,16 +6,17 @@ from base64 import b32decode
 from datetime import datetime
 from functools import wraps
 from os import environ, getenv, listdir, remove, utime
-from os.path import exists, getsize
+from os.path import exists, getmtime, getsize
 from pathlib import Path
 from time import sleep, time
 from typing import Any, Callable, Optional
+from urllib.parse import parse_qs, urlparse
 
 import wyzecam
 from requests import get
 from requests.exceptions import ConnectionError, HTTPError, RequestException
 from wyzebridge.bridge_utils import env_bool, env_filter
-from wyzebridge.config import IMG_PATH, TOKEN_PATH
+from wyzebridge.config import IMG_PATH, MOTION, TOKEN_PATH
 from wyzebridge.logging import logger
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
@@ -188,7 +189,11 @@ class WyzeApi:
     def filtered_cams(self) -> list[WyzeCamera]:
         return filter_cams(self.get_cameras() or [])
 
-    def get_camera(self, uri: str) -> Optional[WyzeCamera]:
+    def get_camera(self, uri: str, existing: bool = False) -> Optional[WyzeCamera]:
+        if existing and self.cameras:
+            with contextlib.suppress(StopIteration):
+                return next((c for c in self.cameras if c.name_uri == uri))
+
         too_old = time() - self._last_pull > 120
         with contextlib.suppress(TypeError):
             for cam in self.get_cameras(fresh_data=too_old):
@@ -196,13 +201,23 @@ class WyzeApi:
                     return cam
 
     def get_thumbnail(self, uri: str) -> Optional[str]:
+        if (cam := self.get_camera(uri, MOTION)) and valid_s3_url(cam.thumbnail):
+            return cam.thumbnail
+
         if cam := self.get_camera(uri):
             return cam.thumbnail
 
     def save_thumbnail(self, uri: str) -> bool:
         if not (thumb := self.get_thumbnail(uri)):
             return False
+
         save_to = IMG_PATH + uri + ".jpg"
+        s3_timestamp = url_timestamp(thumb)
+        with contextlib.suppress(FileNotFoundError):
+            if s3_timestamp <= int(getmtime(save_to)):
+                logger.debug(f"Using existing thumbnail for {uri}")
+                return True
+
         logger.info(f'☁️ Pulling "{uri}" thumbnail to {save_to}')
         try:
             img = get(thumb)
@@ -212,15 +227,17 @@ class WyzeApi:
             return False
         with open(save_to, "wb") as f:
             f.write(img.content)
-        if modified := img.headers.get("Last-Modified"):
+        if modified := s3_timestamp or img.headers.get("Last-Modified"):
             ts_format = "%a, %d %b %Y %H:%M:%S %Z"
-            if updated := int(datetime.strptime(modified, ts_format).timestamp()):
-                utime(save_to, (updated, updated))
+            if isinstance(modified, int):
+                utime(save_to, (modified, modified))
+            elif ts := int(datetime.strptime(modified, ts_format).timestamp()):
+                utime(save_to, (ts, ts))
         return True
 
     @authenticated
     def get_kvs_signal(self, cam_name: str) -> Optional[dict]:
-        if not (cam := self.get_camera(cam_name)):
+        if not (cam := self.get_camera(cam_name, True)):
             return {"result": "cam not found", "cam": cam_name}
         try:
             logger.info("☁️ Fetching signaling data from the Wyze API...")
@@ -342,6 +359,29 @@ class WyzeApi:
 
     def get_mfa(self):
         return self.mfa_req
+
+
+def url_timestamp(url: str) -> int:
+    try:
+        url_path = urlparse(url).path.split("/")[3]
+        return int(url_path.split("_")[1]) // 1000
+    except Exception:
+        return 0
+
+
+def valid_s3_url(url: Optional[str]) -> bool:
+    if not url:
+        return False
+
+    query_parameters = parse_qs(urlparse(url).query)
+    x_amz_date = query_parameters.get("X-Amz-Date", "0")
+    x_amz_expires = query_parameters.get("X-Amz-Expires", "0")
+
+    try:
+        amz_date = datetime.strptime(x_amz_date[0], "%Y%m%dT%H%M%SZ")
+        return amz_date.timestamp() + int(x_amz_expires[0]) > time()
+    except (ValueError, TypeError):
+        return False
 
 
 def get_mfa_code(code_file: str) -> str:

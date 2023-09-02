@@ -1,6 +1,6 @@
 import time
 from collections import deque
-from typing import Any
+from typing import Any, Optional
 
 from wyzebridge.bridge_utils import env_cam
 from wyzebridge.config import MOTION_INT, MOTION_START
@@ -36,9 +36,11 @@ class WyzeEvents:
             logger.info(f"[MOTION] Triggering webhook for {uri}")
             get_http_webhook(url)
 
-    def set_motion(self, mac: str):
+    def set_motion(self, mac: str, files: list) -> None:
         for stream in self.streams.values():
             if stream.camera.mac == mac:
+                if img := next((f["url"] for f in files if f["type"] == 1), None):
+                    stream.camera.thumbnail = img
                 stream.motion = self.last_ts
                 logger.info(f"[MOTION] Motion detected on {stream.uri}")
                 self.webhook(stream.uri)
@@ -52,7 +54,7 @@ class WyzeEvents:
         self.events.append(event["event_id"])
         self.last_ts = int(event["event_ts"] / 1000)
         if time.time() - self.last_ts < 30:
-            self.set_motion(event["device_mac"])
+            self.set_motion(event["device_mac"], event["file_list"])
 
     def check_motion(self):
         if time.time() - self.last_check < MOTION_INT:
