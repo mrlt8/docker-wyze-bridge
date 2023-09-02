@@ -453,6 +453,18 @@ class K10046SetIRLEDStatus(TutkWyzeProtocolMessage):
         return encode(self.code, bytes([self.status]))
 
 
+class K10050GetPowerLevel(TutkWyzeProtocolMessage):
+    def __init__(self):
+        super().__init__(10050)
+
+    def parse_response(self, resp_data):
+        data = json.loads(resp_data)
+        try:
+            return data["camerainfo"]["powerlevel"]
+        except KeyError:
+            return 0
+
+
 class K10056SetResolvingBit(TutkWyzeProtocolMessage):
     """
     A message used to set the resolution and bitrate of the camera.
@@ -846,7 +858,15 @@ class K10448GetBatteryUsage(TutkWyzeProtocolMessage):
         super().__init__(10448)
 
     def parse_response(self, resp_data):
-        return json.loads(resp_data)
+        data = json.loads(resp_data)
+        return {
+            "last_charge": data["0"],
+            "live_streaming": data["1"],
+            "events_uploaded": data["2"],
+            "events_filtered": data["3"],
+            "sd_recordings": data["4"],
+            "5": data["5"],
+        }
 
 
 class K10600SetRtspSwitch(TutkWyzeProtocolMessage):
