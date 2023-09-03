@@ -1,8 +1,7 @@
-import contextlib
 import socket
 from datetime import datetime, timedelta
 from multiprocessing import Queue
-from queue import Empty, Full
+from queue import Empty
 from re import findall
 from typing import Any, Optional
 
@@ -274,6 +273,8 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
             return _response(resp, res, params, log)
     except Empty:
         return _response(resp, log=log)
+    except tutk_protocol.TutkWyzeProtocolError as ex:
+        return resp | _error_response(cmd, tutk_protocol.TutkWyzeProtocolError(ex))
     except Exception as ex:
         return resp | _error_response(cmd, ex)
 
