@@ -324,6 +324,13 @@ class WyzeStream:
         if cmd == "power":
             return self.power_control(str(payload).lower())
 
+        if cmd == "motion":
+            return {
+                "status": "success",
+                "response": {"motion": self.motion, "motion_ts": self.motion_ts},
+                "value": self.motion,
+            }
+
         if self.state < StreamStatus.STOPPED:
             return {"response": self.status()}
 
