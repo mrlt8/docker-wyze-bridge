@@ -1,3 +1,5 @@
+from typing import Optional
+
 import requests
 from wyzebridge.bridge_utils import env_bool
 from wyzebridge.config import VERSION
@@ -22,9 +24,10 @@ def ifttt_webhook(uri: str, error: TutkError):
         logger.info(f"[IFTTT] 📲 Sent webhook trigger to {event}")
 
 
-def get_http_webhook(url: str):
+def get_http_webhooks(url: str, msg: str, img: Optional[str] = None):
+    payload = {"X-Title": msg, "X-Attach": img}
     try:
-        resp = requests.get(url, headers=HEADERS)
+        resp = requests.get(url, headers=HEADERS | payload)
         resp.raise_for_status()
     except requests.exceptions.HTTPError as ex:
         logger.warning(f"[HTTP] {ex}")

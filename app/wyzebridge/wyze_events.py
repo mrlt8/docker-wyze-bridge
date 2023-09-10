@@ -5,7 +5,7 @@ from typing import Any, Optional
 from wyzebridge.bridge_utils import env_cam
 from wyzebridge.config import MOTION_INT, MOTION_START
 from wyzebridge.logging import logger
-from wyzebridge.webhooks import get_http_webhook
+from wyzebridge.webhooks import get_http_webhooks
 from wyzebridge.wyze_stream import WyzeStream
 
 
@@ -31,10 +31,11 @@ class WyzeEvents:
             logger.debug(f"[MOTION] Got {len(resp)} events")
         return resp
 
-    def webhook(self, uri: str) -> None:
+    def webhook(self, uri: str, img: Optional[str] = None) -> None:
         if url := env_cam("motion_webhook", uri, style="original"):
-            logger.info(f"[MOTION] Triggering webhook for {uri}")
-            get_http_webhook(url)
+            logger.debug(f"[MOTION] Triggering webhook for {uri}")
+            msg = f"Motion detected on {uri}"
+            get_http_webhooks(url.format(cam_name=uri), msg, img)
 
     def set_motion(self, mac: str, files: list) -> None:
         for stream in self.streams.values():
@@ -43,7 +44,7 @@ class WyzeEvents:
                     stream.camera.thumbnail = img
                 stream.motion = self.last_ts
                 logger.info(f"[MOTION] Motion detected on {stream.uri}")
-                self.webhook(stream.uri)
+                self.webhook(stream.uri, img)
                 if MOTION_START:
                     stream.start()
 
