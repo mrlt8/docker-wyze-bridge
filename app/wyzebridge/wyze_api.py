@@ -23,9 +23,9 @@ from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
 def cached(func: Callable[..., Any]) -> Callable[..., Any]:
     def wrapper(self, *args: Any, **kwargs: Any):
-        if self.mfa_req or self.creds.login_req:
-            return
         name = "auth" if func.__name__ == "login" else func.__name__.split("_", 1)[-1]
+        if self.mfa_req or (not self.auth and not self.creds.is_set and name != "auth"):
+            return
         if not kwargs.get("fresh_data"):
             if getattr(self, name, None):
                 return func(self, *args, **kwargs)
@@ -55,17 +55,16 @@ def cached(func: Callable[..., Any]) -> Callable[..., Any]:
 def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(func)
     def wrapper(self, *args: Any, **kwargs: Any):
-        if self.mfa_req or self.creds.login_req:
-            return
-        if not self.auth and not self.login():
+        if self.mfa_req or (not self.auth and not self.login()):
             return
         try:
             return func(self, *args, **kwargs)
         except wyzecam.api.AccessTokenError:
             logger.warning("[API] ⚠️ Expired token?")
-            self.refresh_token()
+            if not self.refresh_token():
+                return
             return func(self, *args, **kwargs)
-        except wyzecam.api.RateLimitError as ex:
+        except (wyzecam.api.RateLimitError, wyzecam.api.WyzeAPIError) as ex:
             logger.error(f"[API] {ex}")
         except ConnectionError as ex:
             logger.warning(f"[API] {ex}")
@@ -74,12 +73,11 @@ def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
 
 
 class WyzeCredentials:
-    __slots__ = "email", "password", "login_req"
+    __slots__ = "email", "password"
 
     def __init__(self) -> None:
         self.email: str = getenv("WYZE_EMAIL", "").strip()
         self.password: str = getenv("WYZE_PASSWORD", "").strip()
-        self.login_req: bool = False
 
         if not self.is_set:
             logger.warning("[WARN] Credentials are NOT set")
@@ -99,10 +97,9 @@ class WyzeCredentials:
         return (self.email, self.password)
 
     def login_check(self):
-        if self.login_req or self.is_set:
+        if self.is_set:
             return
 
-        self.login_req = True
         logger.error("Credentials required to complete login!")
         logger.info("Please visit the WebUI to enter your credentials.")
         while not self.is_set:
@@ -131,6 +128,10 @@ class WyzeApi:
         if fresh_data:
             self.clear_cache()
 
+        if self.auth_locked():
+            return
+        self._last_pull = time()
+
         self.token_auth()
         if self.auth:
             return self.auth
@@ -152,7 +153,6 @@ class WyzeApi:
         except RequestException as ex:
             logger.error(f"[API] ERROR: {ex}")
         else:
-            self.creds.login_req = False
             if self.auth.mfa_options:
                 self._mfa_auth()
             return self.auth
@@ -275,14 +275,24 @@ class WyzeApi:
 
     @authenticated
     def refresh_token(self):
+        if self.auth_locked():
+            return
+
         logger.info("♻️ Refreshing tokens")
         try:
             self.auth = wyzecam.refresh_token(self.auth)
             pickle_dump("auth", self.auth)
+            return self.auth
         except Exception as ex:
             logger.error(f"{ex}")
             logger.warning("⏰ Expired refresh token?")
-            self.login(fresh_data=True)
+            return self.login(fresh_data=True)
+
+    def auth_locked(self) -> bool:
+        if time() - self._last_pull < 15:
+            return True
+        self._last_pull = time()
+        return False
 
     @authenticated
     def run_action(self, cam: WyzeCamera, action: str):
@@ -291,7 +301,7 @@ class WyzeApi:
             resp = wyzecam.api.run_action(self.auth, cam, action.lower())
             return {"status": "success", "response": resp["result"]}
         except (ValueError, wyzecam.api.WyzeAPIError) as ex:
-            logger.error(f"[CONTROL] ERROR - {ex}")
+            logger.error(f"[CONTROL] ERROR {ex}")
             return {"status": "error", "response": str(ex)}
 
     @authenticated

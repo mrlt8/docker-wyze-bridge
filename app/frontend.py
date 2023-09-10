@@ -39,7 +39,7 @@ def create_app():
 
     @app.route("/login", methods=["GET", "POST"])
     def wyze_login():
-        if not wb.api.creds.login_req:
+        if wb.api.creds.is_set:
             return redirect("/")
         if request.method == "GET":
             return render_template(
@@ -57,7 +57,7 @@ def create_app():
     @app.route("/")
     @auth.login_required
     def index():
-        if wb.api.creds.login_req:
+        if not wb.api.creds.is_set:
             return redirect("/login")
         if not (columns := request.args.get("columns")):
             columns = request.cookies.get("number_of_columns", "2")
