@@ -339,9 +339,6 @@ class WyzeApi:
         except wyzecam.api.RateLimitError as ex:
             logger.error(f"[EVENTS] RateLimitError: {ex}, cooling down.")
             return ex.reset_by, []
-        except Exception as ex:
-            logger.error(f"[API] ERROR - {ex}")
-            return time() + 120, []
 
     @authenticated
     def set_device_info(self, cam: WyzeCamera, params: dict):
