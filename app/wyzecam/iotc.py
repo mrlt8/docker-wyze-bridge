@@ -612,6 +612,12 @@ class WyzeIOTCSession:
                     codec = "aac"
                 elif codec_id == 143:  # MEDIA_CODEC_AUDIO_G711_ALAW
                     codec = "alaw"
+                elif codec_id == 144:  # MEDIA_CODEC_AUDIO_AAC_ELD
+                    codec = "aac_eld"
+                    sample_rate = 16000
+                elif codec_id == 146:  # MEDIA_CODEC_AUDIO_OPUS
+                    codec = "opus"
+                    sample_rate = 16000
                 else:
                     raise Exception(f"\nUnknown audio codec {codec_id=}\n")
                 logger.info(f"[AUDIO] {codec=} {sample_rate=} {codec_id=}")
