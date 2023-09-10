@@ -66,6 +66,7 @@
     "ENABLE_AUDIO": "bool?",
     "MOTION_API": "bool?",
     "MOTION_INT": "float(1.1,)?",
+    "MOTION_START": "bool?",
     "SUBSTREAM": "bool?",
     "AUDIO_CODEC": "list(COPY|AAC|MP3|LIBOPUS)?",
     "AUDIO_FILTER": "str?",
