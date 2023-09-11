@@ -219,6 +219,9 @@ class WyzeStream:
         elif self.state == StreamStatus.CONNECTING and is_timedout(self.start_time, 20):
             logger.warning(f"⏰ Timed out connecting to {self.camera.nickname}.")
             self.stop()
+
+        if should_start and self.camera.is_battery and self.state == 1:
+            return 0
         return self.state if self.start_time < time() else 0
 
     def refresh_camera(self):

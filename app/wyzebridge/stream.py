@@ -107,8 +107,7 @@ class StreamManager:
         events = WyzeEvents(self.streams) if MOTION else None
         while not self.stop_flag:
             event.read(timeout=1)
-            cams = self.health_check_all()
-            self.snap_all(cams)
+            self.snap_all(self.active_streams())
             if events:
                 events.check_motion()
             if int(time.time()) % 15 == 0:
@@ -129,9 +128,10 @@ class StreamManager:
                     del self.rtsp_snapshots[cam]
             time.sleep(1)
 
-    def health_check_all(self) -> list[str]:
+    def active_streams(self) -> list[str]:
         """
-        Health check on all streams and return a list of enabled streams.
+        Health check on all streams and return a list of enabled
+        streams that are NOT battery powered.
 
         Returns:
         - list(str): uri-friendly name of streams that are enabled.
