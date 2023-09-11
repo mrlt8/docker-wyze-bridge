@@ -553,6 +553,7 @@ class K10052DBSetResolvingBit(TutkWyzeProtocolMessage):
         :param bitrate: the bit rate, in KB/s to target in the h264/h265 encoder.
         """
         super().__init__(10052)
+        assert 0 <= bitrate <= 255, "bitrate value must be 1-255"
         self.frame_size = frame_size + 1
         self.bitrate = bitrate
         self.fps = fps
@@ -583,7 +584,7 @@ class K10052SetBitrate(TutkWyzeProtocolMessage):
         self.bitrate = value
 
     def encode(self) -> bytes:
-        return encode(self.code, bytes([self.bitrate, 0, 0, 0, 0]))
+        return encode(self.code, bytes([self.bitrate, 0, 0, 0, 0, 0]))
 
 
 class K10052HorizontalFlip(TutkWyzeProtocolMessage):
