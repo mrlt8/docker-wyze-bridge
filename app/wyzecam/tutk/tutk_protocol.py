@@ -467,18 +467,6 @@ class K10050GetVideoParam(TutkWyzeProtocolMessage):
         }
 
 
-class K10050GetPowerLevel(TutkWyzeProtocolMessage):
-    def __init__(self):
-        super().__init__(10050)
-
-    def parse_response(self, resp_data):
-        data = json.loads(resp_data)
-        try:
-            return data["camerainfo"]["powerlevel"]
-        except KeyError:
-            return 0
-
-
 class K10056SetResolvingBit(TutkWyzeProtocolMessage):
     """
     A message used to set the resolution and bitrate of the camera.

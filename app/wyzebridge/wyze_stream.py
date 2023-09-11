@@ -291,7 +291,7 @@ class WyzeStream:
 
     def power_control(self, payload: str) -> dict:
         if payload not in {"on", "off", "restart"}:
-            resp = self.api.get_pid_info(self.camera, "P3")
+            resp = self.api.get_device_info(self.camera, "P3")
             resp["value"] = "on" if resp["value"] == "1" else "off"
             return resp
         run_cmd = payload if payload == "restart" else f"power_{payload}"
@@ -319,7 +319,10 @@ class WyzeStream:
             return self.state_control(payload or cmd)
 
         if cmd == "device_info":
-            return self.api.get_pid_info(self.camera)
+            return self.api.get_device_info(self.camera)
+
+        if cmd == "battery":
+            return self.api.get_device_info(self.camera, "P8")
 
         if cmd == "power":
             return self.power_control(str(payload).lower())
