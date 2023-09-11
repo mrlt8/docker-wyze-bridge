@@ -463,6 +463,7 @@ class WyzeIOTCSession:
                     # wyze doorbell has weird rotated image sizes.
                     if frame_info.frame_size - 3 != self.preferred_frame_size:
                         continue
+                self.update_frame_size_rate()
             yield frame_data, frame_info
             bad_frames = 0
             first_run = False
