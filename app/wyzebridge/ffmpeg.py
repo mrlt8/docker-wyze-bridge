@@ -34,7 +34,7 @@ def get_ffmpeg_cmd(
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
     if audio and "codec" in audio:
-        audio_in = f"-thread_queue_size 100 -f {audio['codec']} -ac 1 -ar {audio['rate']} -sample_fmt s16 -i /tmp/{uri}.wav"
+        audio_in = f"-thread_queue_size 100 -f {audio['codec']} -ac 1 -ar {audio['rate']} -sample_fmt s16 -i /tmp/{uri}_audio.pipe"
         audio_out = audio["codec_out"] or "copy"
         a_filter = ["-filter:a", env_bool("AUDIO_FILTER", "volume=5")]
     rtsp_transport = "udp" if "udp" in env_bool("MTX_PROTOCOLS") else "tcp"

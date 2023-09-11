@@ -548,7 +548,7 @@ class WyzeIOTCSession:
 
     def recv_audio_frames(self, uri: str) -> None:
         """Write raw audio frames to a named pipe."""
-        FIFO = f"/tmp/{uri.lower()}.wav"
+        FIFO = f"/tmp/{uri.lower()}_audio.pipe"
         try:
             os.mkfifo(FIFO)
         except OSError as e:
