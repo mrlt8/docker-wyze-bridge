@@ -746,21 +746,12 @@ def av_client_stop(tutk_platform_lib: CDLL, av_chan_id: c_int) -> None:
 
 
 def av_send_io_ctrl(
-    tutk_platform_lib: CDLL,
-    av_chan_id: c_int,
-    ctrl_type: int,
-    data: Optional[bytes],
-) -> c_int:
-    if data is None:
-        length = 0
-        cdata = None
-    else:
-        length = len(data)
-        cdata = c_char_p(data)
-    errcode: c_int = tutk_platform_lib.avSendIOCtrl(
-        av_chan_id, c_uint(ctrl_type), cdata, length
-    )
-    return errcode
+    tutk_platform_lib: CDLL, av_chan_id: int, ctrl_type: int, data: Optional[bytes]
+) -> int:
+    length = len(data) if data else 0
+    cdata = c_char_p(data) if data else None
+
+    return tutk_platform_lib.avSendIOCtrl(av_chan_id, c_uint(ctrl_type), cdata, length)
 
 
 def iotc_session_close(tutk_platform_lib: CDLL, session_id: c_int) -> None:
