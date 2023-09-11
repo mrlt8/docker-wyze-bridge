@@ -35,7 +35,12 @@ def verify_password(username, password):
 def create_app():
     app = Flask(__name__)
     wb = WyzeBridge()
-    wb.start()
+    try:
+        wb.start()
+    except RuntimeError as ex:
+        print(ex)
+        print("Please ensure your host is up to date.")
+        exit()
 
     @app.route("/login", methods=["GET", "POST"])
     def wyze_login():
