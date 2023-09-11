@@ -58,3 +58,9 @@ def split_int_str(env_value: str, min: int = 0, default: int = 0) -> tuple[str, 
     string_value = "".join(filter(str.isalpha, env_value))
     int_value = int("".join(filter(str.isnumeric, env_value)) or default)
     return string_value, max(int_value, min)
+
+
+def is_livestream(uri: str) -> bool:
+    services = {"youtube", "facebook", "livestream"}
+
+    return any(env_bool(f"{service}_{uri}") for service in services)
