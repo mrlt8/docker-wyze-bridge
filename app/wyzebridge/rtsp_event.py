@@ -14,11 +14,12 @@ class RtspEvent:
     """
 
     FIFO = "/tmp/mtx_event"
-    __slots__ = "pipe_fd", "streams"
+    __slots__ = "pipe_fd", "streams", "buf"
 
     def __init__(self, streams):
         self.pipe_fd: int = 0
         self.streams = streams
+        self.buf: str = ""
         self.open_pipe()
 
     def read(self, timeout: int = 1):
@@ -27,15 +28,24 @@ class RtspEvent:
             if not ready:
                 return
             data = os.read(self.pipe_fd, 128)
-            for msg in data.decode().split("!"):
-                if msg and "," in msg:
-                    self.log_event(msg.strip())
+            self.process_data(data)
+
         except OSError as ex:
             if ex.errno != 9:
                 logger.error(ex)
             self.open_pipe()
         except Exception as ex:
             logger.error(f"Error reading from pipe: {ex}")
+
+    def process_data(self, data):
+        messages = data.decode().split("!")
+        if self.buf:
+            messages[0] = self.buf + messages[0]
+            self.buf = ""
+        for msg in messages[:-1]:
+            self.log_event(msg.strip())
+
+        self.buf = messages[-1].strip()
 
     def open_pipe(self):
         try:
