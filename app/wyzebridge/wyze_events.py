@@ -32,7 +32,7 @@ class WyzeEvents:
         return resp
 
     def webhook(self, uri: str, img: Optional[str] = None) -> None:
-        if url := env_cam("motion_webhook", uri, style="original"):
+        if url := env_cam("motion_webhooks", uri, style="original"):
             logger.debug(f"[MOTION] Triggering webhook for {uri}")
             msg = f"Motion detected on {uri}"
             get_http_webhooks(url.format(cam_name=uri), msg, img)

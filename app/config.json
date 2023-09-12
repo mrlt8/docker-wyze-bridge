@@ -67,6 +67,7 @@
     "MOTION_API": "bool?",
     "MOTION_INT": "float(1.1,)?",
     "MOTION_START": "bool?",
+    "MOTION_WEBHOOKS": "str?",
     "SUBSTREAM": "bool?",
     "AUDIO_CODEC": "list(COPY|AAC|MP3|LIBOPUS)?",
     "AUDIO_FILTER": "str?",
@@ -123,7 +124,7 @@
         "RECORD": "bool?",
         "SUB_RECORD": "bool?",
         "SUBSTREAM": "bool?",
-        "MOTION_WEBHOOK": "str?"
+        "MOTION_WEBHOOKS": "str?"
       }
     ],
     "MEDIAMTX": ["match(^\\w+=.*)?"],
