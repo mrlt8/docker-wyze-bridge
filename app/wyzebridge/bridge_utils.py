@@ -1,5 +1,6 @@
+import contextlib
 import os
-from typing import Any
+from typing import Any, Optional
 
 from wyzecam.api_models import WyzeCamera
 
@@ -64,3 +65,10 @@ def is_livestream(uri: str) -> bool:
     services = {"youtube", "facebook", "livestream"}
 
     return any(env_bool(f"{service}_{uri}") for service in services)
+
+
+def is_fw11(fw_ver: Optional[str]) -> bool:
+    with contextlib.suppress(IndexError, ValueError):
+        if fw_ver and int(fw_ver.split(".")[2]) > 10:
+            return True
+    return False
