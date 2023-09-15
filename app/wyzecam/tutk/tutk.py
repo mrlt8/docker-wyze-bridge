@@ -620,7 +620,6 @@ def av_recv_audio_data(tutk_platform_lib: CDLL, av_chan_id: c_int):
     if frame_len < 0:
         return frame_len, None, None
 
-    # frame_info = FrameInfo3Struct.from_buffer_copy(frame_info_buffer)
     frame_info = cast(frame_info_buffer, POINTER(FrameInfo3Struct)).contents
     return 0, audio_data[:frame_len], frame_info
 
