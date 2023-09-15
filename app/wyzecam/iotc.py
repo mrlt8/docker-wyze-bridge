@@ -479,6 +479,7 @@ class WyzeIOTCSession:
         alt = self.preferred_frame_size + (1 if self.preferred_frame_size == 3 else 3)
         ignore_res = {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
         last = {"key_frame": 0, "key_time": 0, "frame": 0, "time": time.time()}
+        sleep_interval = (1 / fps) - 0.02
         while (
             self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
             and self.stream_state.value > 1
@@ -491,14 +492,13 @@ class WyzeIOTCSession:
                     continue
                 self.state = WyzeIOTCSessionState.CONNECTING_FAILED
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
-            if (sleep_interval := ((1 / fps) - 0.01) - delta) > 0:
-                time.sleep(sleep_interval)
+            time.sleep(max(sleep_interval - delta, 0.01))
 
             errno, frame_data, frame_info, _ = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
-                time.sleep((1 / (fps)) - 0.02)
+                time.sleep(sleep_interval)
                 if errno == tutk.AV_ER_DATA_NOREADY:
                     continue
                 if errno in (
@@ -551,24 +551,23 @@ class WyzeIOTCSession:
         """Write raw audio frames to a named pipe."""
         FIFO = f"/tmp/{uri.lower()}_audio.pipe"
         try:
-            os.mkfifo(FIFO)
+            os.mkfifo(FIFO, os.O_NONBLOCK)
         except OSError as e:
             if e.errno != 17:
                 raise e
+
         tutav = self.tutk_platform_lib, self.av_chan_id
 
         sleep_interval = 1 / 20
         try:
-            audio_fd = os.open(FIFO, os.O_RDWR | os.O_NONBLOCK | os.O_CREAT, 0o777)
-            fcntl.fcntl(audio_fd, fcntl.F_SETPIPE_SZ, 1024 * 512)
-
-            with os.fdopen(audio_fd, "wb") as audio_pipe:
+            with open(FIFO, "wb") as audio_pipe:
                 while (
                     self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
                     and self.stream_state.value > 1
                 ):
                     error_no, frame_data, _ = tutk.av_recv_audio_data(*tutav)
-                    if error_no in {
+
+                    if not frame_data or error_no in {
                         tutk.AV_ER_DATA_NOREADY,
                         tutk.AV_ER_INCOMPLETE_FRAME,
                         tutk.AV_ER_LOSED_THIS_FRAME,
@@ -578,12 +577,14 @@ class WyzeIOTCSession:
 
                     if error_no:
                         raise tutk.TutkError(error_no)
-
                     audio_pipe.write(frame_data)
 
-            audio_pipe.write(b"")
-        except Exception as ex:
+                audio_pipe.write(b"")
+        except tutk.TutkError as ex:
             warnings.warn(str(ex))
+        except IOError as ex:
+            if ex.errno != errno.EPIPE:  #  Broken pipe
+                warnings.warn(str(ex))
         finally:
             self.state = WyzeIOTCSessionState.CONNECTING_FAILED
             os.unlink(FIFO)
@@ -922,9 +923,9 @@ class WyzeIOTCSession:
             f"expected_chan={channel_id}"
         )
 
-        # tutk.av_client_set_recv_buf_size(
-        #     self.tutk_platform_lib, self.av_chan_id, max_buf_size
-        # )
+        tutk.av_client_set_recv_buf_size(
+            self.tutk_platform_lib, self.av_chan_id, max_buf_size
+        )
 
     def get_auth_key(self) -> bytes:
         """Generate authkey using enr and mac address."""
