@@ -6,7 +6,7 @@ from threading import Thread
 from wyzebridge import config
 from wyzebridge.bridge_utils import env_bool, env_cam, is_livestream
 from wyzebridge.logging import logger
-from wyzebridge.rtsp_server import MtxServer
+from wyzebridge.mtx_server import MtxServer
 from wyzebridge.stream import StreamManager
 from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_stream import WyzeStream, WyzeStreamOptions

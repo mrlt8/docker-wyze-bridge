@@ -8,7 +8,7 @@ from wyzebridge.config import MOTION, MQTT_DISCOVERY, SNAPSHOT_INT, SNAPSHOT_TYP
 from wyzebridge.ffmpeg import rtsp_snap_cmd
 from wyzebridge.logging import logger
 from wyzebridge.mqtt import bridge_status, cam_control, publish_topic, update_preview
-from wyzebridge.rtsp_event import RtspEvent
+from wyzebridge.mtx_event import RtspEvent
 from wyzebridge.wyze_events import WyzeEvents
 
 

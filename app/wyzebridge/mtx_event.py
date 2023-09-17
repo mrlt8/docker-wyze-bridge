@@ -1,5 +1,5 @@
 """
-This module handles stream and client events from rtsp-simple-server.
+This module handles stream and client events from MediaMTX.
 """
 import os
 import select
@@ -57,24 +57,26 @@ class RtspEvent:
 
     def log_event(self, event_data: str):
         try:
-            uri, event, status = event_data.split(",")
+            uri, event = event_data.split(",")
         except ValueError:
             logger.error(f"Error parsing {event_data=}")
             return
 
-        if event.lower() == "start":
+        event = event.lower().strip()
+
+        if event == "start":
             self.streams.get(uri).start()
-        elif event.lower() == "read":
-            read_event(uri, status)
-        elif event.lower() == "ready":
-            ready_event(uri, status)
-            if status == "0":
+        elif event in {"read", "unread"}:
+            read_event(uri, event)
+        elif event in {"ready", "notready"}:
+            if event == "notready":
                 self.streams.get(uri).stop()
+            ready_event(uri, event)
 
 
 def read_event(camera: str, status: str):
     msg = f"📕 Client stopped reading from {camera}"
-    if status == "1":
+    if status == "read":
         msg = f"📖 New client reading from {camera}"
     logger.info(msg)
 
@@ -82,7 +84,7 @@ def read_event(camera: str, status: str):
 def ready_event(camera: str, status: str):
     msg = f"❌ '/{camera}' stream is down"
     state = "disconnected"
-    if status == "1":
+    if status == "ready":
         msg = f"✅ '/{camera} stream is UP! (3/3)"
         state = "online"
 
