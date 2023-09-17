@@ -1,11 +1,15 @@
 {
   "name": "Docker Wyze Bridge",
   "description": "WebRTC/RTSP/RTMP/LL-HLS bridge for Wyze cams in a docker container",
-  "slug": "docker-wyze-bridge",
+  "slug": "docker_wyze_bridge",
   "url": "https://github.com/mrlt8/docker-wyze-bridge",
   "image": "mrlt8/wyze-bridge",
-  "version": "2.3.16",
-  "arch": ["armv7", "aarch64", "amd64"],
+  "version": "2.3.17",
+  "arch": [
+    "armv7",
+    "aarch64",
+    "amd64"
+  ],
   "startup": "application",
   "boot": "auto",
   "apparmor": false,
