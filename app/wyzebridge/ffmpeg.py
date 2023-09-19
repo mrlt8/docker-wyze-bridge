@@ -29,18 +29,19 @@ def get_ffmpeg_cmd(
     - list of str: complete ffmpeg command that is ready to run as subprocess.
     """
 
-    flags = "-fflags +flush_packets+nobuffer -flags +low_delay+global_header -use_wallclock_as_timestamps 1"
+    flags = "-fflags +flush_packets+nobuffer+genpts -flags +low_delay+global_header -use_wallclock_as_timestamps 1"
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
     if audio and "codec" in audio:
-        audio_in = f"-thread_queue_size 20 -f {audio['codec']} -ac 1 -ar {audio['rate']} -i /tmp/{uri}_audio.pipe"
+        audio_in = f"-thread_queue_size 8 -f {audio['codec']} -ac 1 -ar {audio['rate']} -i /tmp/{uri}_audio.pipe"
         audio_out = audio["codec_out"] or "copy"
     a_filter = env_bool("AUDIO_FILTER", "volume=5")
     a_filter += ",asetpts='max(floor(PTS/320)*320,if(N,PREV_OUTPTS+320))'"
     a_options = ["-compression_level", "4", "-filter:a", a_filter]
     rtsp_transport = "udp" if "udp" in env_bool("MTX_PROTOCOLS") else "tcp"
-    rss_cmd = f"[{{}}f=rtsp:{rtsp_transport=:}:bsfs/v=dump_extra=freq=k]rtsp://0.0.0.0:8554/{uri}"
+    rss_cmd = f"[use_fifo=1:fifo_options=drop_pkts_on_overflow=1:\
+        {{}}f=rtsp:{rtsp_transport=:}:bsfs/v=dump_extra=freq=k]rtsp://0.0.0.0:8554/{uri}"
     rtsp_ss = rss_cmd.format("")
     if env_cam("AUDIO_STREAM", uri, style="original") and audio:
         rtsp_ss += "|" + rss_cmd.format("select=a:") + "_audio"
@@ -51,7 +52,7 @@ def get_ffmpeg_cmd(
     ).split() or (
         ["-hide_banner", "-loglevel", get_log_level()]
         + env_cam("FFMPEG_FLAGS", uri, flags).strip("'\"\n ").split()
-        + ["-thread_queue_size", "20", "-analyzeduration", "50", "-probesize", "50"]
+        + ["-thread_queue_size", "8", "-analyzeduration", "50", "-probesize", "50"]
         + (["-hwaccel", h264_enc] if h264_enc in {"vaapi", "qsv"} else [])
         + ["-f", vcodec, "-r", "20", "-i", "pipe:0"]
         + audio_in.split()
@@ -60,10 +61,11 @@ def get_ffmpeg_cmd(
         + (["-c:a", audio_out] if audio_in else [])
         + (a_options if audio and audio_out != "copy" else [])
         + ["-fps_mode", "passthrough", "-flush_packets", "1"]
+        + ["-muxdelay", "0", "-muxpreload", "0", "-max_delay", "0"]
         + ["-bsf:v", "setts='max(PREV_OUTPTS+1,PTS)'"]
         + ["-map", "0:v"]
         + (["-map", "1:a"] if audio_in else [])
-        + ["-f", "tee", "-use_fifo", "1"]
+        + ["-f", "tee"]
         + [rtsp_ss + get_record_cmd(uri, audio_out, record) + livestream]
     )
     if "ffmpeg" not in cmd[0].lower():

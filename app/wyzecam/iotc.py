@@ -479,12 +479,13 @@ class WyzeIOTCSession:
         alt = self.preferred_frame_size + (1 if self.preferred_frame_size == 3 else 3)
         ignore_res = {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
         last = {"key_frame": 0, "key_time": 0, "frame": 0, "time": time.time()}
-        sleep_interval = (1 / fps) - 0.02
+        sleep_interval = 1 / (fps * 1.2)
         while (
             self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
             and self.stream_state.value > 1
         ):
-            if (delta := time.time() - last["time"]) >= timeout:
+            time.sleep(sleep_interval)
+            if (time.time() - last["time"]) >= timeout:
                 if last["key_time"] == 0:
                     warnings.warn("Still waiting for first frame. Updating frame size.")
                     last["key_time"] = last["time"] = time.time()
@@ -492,13 +493,10 @@ class WyzeIOTCSession:
                     continue
                 self.state = WyzeIOTCSessionState.CONNECTING_FAILED
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
-            time.sleep(max(sleep_interval - delta, 0.01))
-
             errno, frame_data, frame_info, _ = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
-                time.sleep(sleep_interval)
                 if errno == tutk.AV_ER_DATA_NOREADY:
                     continue
                 if errno in (
@@ -565,6 +563,7 @@ class WyzeIOTCSession:
                     self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
                     and self.stream_state.value > 1
                 ):
+                    time.sleep(sleep_interval)
                     error_no, frame_data, _ = tutk.av_recv_audio_data(*tutav)
 
                     if not frame_data or error_no in {
@@ -572,7 +571,6 @@ class WyzeIOTCSession:
                         tutk.AV_ER_INCOMPLETE_FRAME,
                         tutk.AV_ER_LOSED_THIS_FRAME,
                     }:
-                        time.sleep(sleep_interval)
                         continue
 
                     if error_no:
