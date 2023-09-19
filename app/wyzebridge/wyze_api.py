@@ -62,8 +62,7 @@ def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
             return func(self, *args, **kwargs)
         except wyzecam.api.AccessTokenError:
             logger.warning("[API] ⚠️ Expired token?")
-            if not self.refresh_token():
-                return
+            self.refresh_token()
             return func(self, *args, **kwargs)
         except (RateLimitError, wyzecam.api.WyzeAPIError) as ex:
             logger.error(f"[API] {ex}")
