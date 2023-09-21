@@ -13,9 +13,9 @@ services:
             - 5000:5000 # WEB-UI
         environment:
             # [OPTIONAL] (Can be set in the WebUI):
-            - WYZE_EMAIL=
-            - WYZE_PASSWORD= 
-            # [OPTIONAL] IP Address of the host to enable WebRTC e.g.,:
+            # - WYZE_EMAIL=
+            # - WYZE_PASSWORD= 
+            # [REQUIRED FOR UI TO DRIVE IT ALL] IP Address of the host:
             # - WB_IP=192.168.1.122
             # [OPTIONAL] Wyze API credentials:
             # - API_ID=
