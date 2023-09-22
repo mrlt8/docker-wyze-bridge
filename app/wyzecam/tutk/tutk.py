@@ -604,8 +604,8 @@ def av_recv_audio_data(tutk_platform_lib: CDLL, av_chan_id: c_int):
     audio_data_max_size = 51_200
     frame_info_max_size = 1024
 
-    audio_data = (c_char * audio_data_max_size)()
-    frame_info_buffer = (c_char * frame_info_max_size)()
+    audio_data = create_string_buffer(audio_data_max_size)
+    frame_info_buffer = create_string_buffer(frame_info_max_size)
     frame_index = c_uint32()
 
     frame_len = tutk_platform_lib.avRecvAudioData(
@@ -621,7 +621,7 @@ def av_recv_audio_data(tutk_platform_lib: CDLL, av_chan_id: c_int):
         return frame_len, None, None
 
     frame_info = cast(frame_info_buffer, POINTER(FrameInfo3Struct)).contents
-    return 0, audio_data[:frame_len], frame_info
+    return 0, audio_data.raw[:frame_len], frame_info
 
 
 def av_check_audio_buf(tutk_platform_lib: CDLL, av_chan_id: c_int) -> int:
