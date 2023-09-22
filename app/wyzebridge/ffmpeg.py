@@ -29,12 +29,13 @@ def get_ffmpeg_cmd(
     - list of str: complete ffmpeg command that is ready to run as subprocess.
     """
 
-    flags = "-fflags +flush_packets+nobuffer+genpts -flags +low_delay+global_header -use_wallclock_as_timestamps 1"
+    flags = "-fflags +flush_packets+nobuffer -flags +low_delay+global_header"
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
     if audio and "codec" in audio:
-        audio_in = f"-thread_queue_size 8 -f {audio['codec']} -ac 1 -ar {audio['rate']} -i /tmp/{uri}_audio.pipe"
+        audio_in = f"-thread_queue_size 256 -f {audio['codec']} -ac 1 -ar {audio['rate']} -i /tmp/{uri}_audio.pipe"
+        flags += " -use_wallclock_as_timestamps 1"
         audio_out = audio["codec_out"] or "copy"
     a_filter = env_bool("AUDIO_FILTER", "volume=5")
     a_filter += ",asetpts='max(floor(PTS/320)*320,if(N,PREV_OUTPTS+320))'"
@@ -51,15 +52,15 @@ def get_ffmpeg_cmd(
     ).split() or (
         ["-hide_banner", "-loglevel", get_log_level()]
         + env_cam("FFMPEG_FLAGS", uri, flags).strip("'\"\n ").split()
-        + ["-thread_queue_size", "8", "-analyzeduration", "50", "-probesize", "50"]
+        + ["-thread_queue_size", "256", "-analyzeduration", "50", "-probesize", "50"]
         + (["-hwaccel", h264_enc] if h264_enc in {"vaapi", "qsv"} else [])
-        + ["-f", vcodec, "-r", "20", "-i", "pipe:0"]
+        + ["-f", vcodec, "-i", "pipe:0"]
         + audio_in.split()
         + ["-c:v"]
         + re_encode_video(uri, is_vertical)
         + (["-c:a", audio_out] if audio_in else [])
         + (a_options if audio and audio_out != "copy" else [])
-        + ["-fps_mode", "passthrough", "-flush_packets", "1"]
+        + ["-fps_mode", "passthrough", "-flush_packets", "1", "-bufsize", "256"]
         + ["-muxdelay", "0", "-muxpreload", "0", "-max_delay", "0"]
         + ["-bsf:v", "setts='max(PREV_OUTPTS+1,PTS)'"]
         + ["-map", "0:v"]
