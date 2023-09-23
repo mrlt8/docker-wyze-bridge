@@ -6,10 +6,12 @@ from wyzebridge.bridge_utils import env_bool, split_int_str
 from wyzebridge.hass import setup_hass
 
 load_dotenv()
+load_dotenv("/.build_date")
 
 VERSION: str = getenv("VERSION", "DEV")
 BUILD = env_bool("BUILD", "local")
-BUILD_STR = "" if BUILD == VERSION else f"[{BUILD.upper()} BUILD]"
+BUILD_DATE = env_bool("BUILD_DATE")
+BUILD_STR = "" if BUILD == VERSION else f"[{BUILD.upper()} BUILD] {BUILD_DATE}"
 HASS_TOKEN: str = getenv("SUPERVISOR_TOKEN", "")
 setup_hass(HASS_TOKEN)
 MQTT_DISCOVERY = env_bool("MQTT_DTOPIC")

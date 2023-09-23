@@ -23,7 +23,9 @@ RUN cd /build \
     && curl -SL https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_${MTX_ARCH:-amd64}.tar.gz \
     | tar xzf - -C app \
     && cp app/${LIB_ARCH:-amd}.lib usr/local/lib/libIOTCAPIs_ALL.so \
-    && rm app/*.txt app/*.lib
+    && rm app/*.txt app/*.lib  \ 
+    && echo BUILD_DATE=$(date) > .build_date
+
 
 FROM base
 ARG BUILD
