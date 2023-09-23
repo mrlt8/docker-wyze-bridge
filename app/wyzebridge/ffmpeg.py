@@ -60,8 +60,8 @@ def get_ffmpeg_cmd(
         + re_encode_video(uri, is_vertical)
         + (["-c:a", audio_out] if audio_in else [])
         + (a_options if audio and audio_out != "copy" else [])
-        + ["-fps_mode", "passthrough", "-flush_packets", "1", "-bufsize", "256"]
-        + ["-muxdelay", "0", "-muxpreload", "0", "-max_delay", "0"]
+        + ["-fps_mode", "passthrough", "-flush_packets", "1"]
+        + ["-muxpreload", "0"]
         + ["-bsf:v", "setts='max(PREV_OUTPTS+1,PTS)'"]
         + ["-map", "0:v"]
         + (["-map", "1:a"] if audio_in else [])
