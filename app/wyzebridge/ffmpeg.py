@@ -33,15 +33,15 @@ def get_ffmpeg_cmd(
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
+    thread_queue = "-thread_queue_size 1k -analyzeduration 32 -probesize 32"
     if audio and "codec" in audio:
-        audio_in = f"-thread_queue_size 1k -f {audio['codec']} -ac 1 -ar {audio['rate']} -i /tmp/{uri}_audio.pipe"
-        flags += " -use_wallclock_as_timestamps 1"
+        audio_in += f"{thread_queue} -f {audio['codec']} -ac 1 -ar {audio['rate']} -i /tmp/{uri}_audio.pipe"
         audio_out = audio["codec_out"] or "copy"
     a_filter = env_bool("AUDIO_FILTER", "volume=5")
     a_filter += ",asetpts='max(floor(PTS/320)*320,if(N,PREV_OUTPTS+320))'"
     a_options = ["-compression_level", "4", "-filter:a", a_filter]
     rtsp_transport = "udp" if "udp" in env_bool("MTX_PROTOCOLS") else "tcp"
-    fio_cmd = "use_fifo=1:fifo_options=queue_size=1k\\\:attempt_recovery=1\\\:drop_pkts_on_overflow=1"
+    fio_cmd = "use_fifo=1:fifo_options=queue_size=250\\\:attempt_recovery=1\\\:drop_pkts_on_overflow=1"
     rss_cmd = f"[{fio_cmd}:{{}}f=rtsp:{rtsp_transport=:}:bsfs/v=dump_extra=freq=k]rtsp://0.0.0.0:8554/{uri}"
     rtsp_ss = rss_cmd.format("")
     if env_cam("AUDIO_STREAM", uri, style="original") and audio:
@@ -53,7 +53,7 @@ def get_ffmpeg_cmd(
     ).split() or (
         ["-hide_banner", "-loglevel", get_log_level()]
         + env_cam("FFMPEG_FLAGS", uri, flags).strip("'\"\n ").split()
-        + ["-thread_queue_size", "1k", "-analyzeduration", "32", "-probesize", "32"]
+        + thread_queue.split()
         + (["-hwaccel", h264_enc] if h264_enc in {"vaapi", "qsv"} else [])
         + ["-f", vcodec, "-i", "pipe:0"]
         + audio_in.split()
@@ -62,8 +62,8 @@ def get_ffmpeg_cmd(
         + (["-c:a", audio_out] if audio_in else [])
         + (a_options if audio and audio_out != "copy" else [])
         + ["-fps_mode", "passthrough", "-flush_packets", "1"]
-        + ["-muxpreload", "0", "-bufsize", "3000k"]
-        + ["-bsf:v", "setts='max(PREV_OUTPTS+1,PTS)'"]
+        + ["-copyts", "-copytb", "0", "-async", "1"]
+        + ["-bsf:a", "setts='TS-STARTPTS'"]
         + ["-map", "0:v"]
         + (["-map", "1:a"] if audio_in else [])
         + ["-f", "tee"]
@@ -146,7 +146,7 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
         [h264_enc]
         + v_filter
         + (["-filter_complex", filter_complex, "-map", "[v]"] if filter_complex else [])
-        + ["-b:v", "3000k", "-coder", "1"]
+        + ["-b:v", "3000k", "-coder", "1", "-bufsize", "3000k"]
         + ["-profile:v", "77" if h264_enc == "h264_v4l2m2m" else "main"]
         + ["-preset", "fast" if h264_enc in {"h264_nvenc", "h264_qsv"} else "ultrafast"]
         + ["-forced-idr", "1", "-force_key_frames", "expr:gte(t,n_forced*2)"]
