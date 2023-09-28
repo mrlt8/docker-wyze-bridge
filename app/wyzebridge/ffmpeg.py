@@ -38,7 +38,6 @@ def get_ffmpeg_cmd(
         audio_in += f"{thread_queue} -f {audio['codec']} -ac 1 -ar {audio['rate']} -i /tmp/{uri}_audio.pipe"
         audio_out = audio["codec_out"] or "copy"
     a_filter = env_bool("AUDIO_FILTER", "volume=5")
-    a_filter += ",asetpts='max(floor(PTS/320)*320,if(N,PREV_OUTPTS+320))'"
     a_options = ["-compression_level", "4", "-filter:a", a_filter]
     rtsp_transport = "udp" if "udp" in env_bool("MTX_PROTOCOLS") else "tcp"
     fio_cmd = "use_fifo=1:fifo_options=queue_size=250\\\:attempt_recovery=1\\\:drop_pkts_on_overflow=1"
