@@ -489,6 +489,7 @@ class WyzeIOTCSession:
                     warnings.warn("Still waiting for first frame. Updating frame size.")
                     last["key_time"] = last["time"] = time.time()
                     self.update_frame_size_rate()
+                    yield b""
                     continue
                 self.state = WyzeIOTCSessionState.CONNECTING_FAILED
                 raise Exception(f"Stream did not receive a frame for over {timeout}s")
@@ -500,15 +501,18 @@ class WyzeIOTCSession:
             if errno < 0:
                 time.sleep(sleep_interval)
                 if errno == tutk.AV_ER_DATA_NOREADY:
+                    yield b""
                     continue
                 if errno in (
                     tutk.AV_ER_INCOMPLETE_FRAME,
                     tutk.AV_ER_LOSED_THIS_FRAME,
                 ):
                     warnings.warn(str(tutk.TutkError(errno).name))
+                    yield b""
                     continue
                 raise tutk.TutkError(errno)
             if not frame_data:
+                yield b""
                 continue
             assert frame_info is not None, "Got no frame info without an error!"
             if frame_info.frame_size not in ignore_res:
@@ -516,10 +520,12 @@ class WyzeIOTCSession:
                     warnings.warn(
                         f"Skipping smaller frame at start of stream (frame_size={frame_info.frame_size})"
                     )
+                    yield b""
                     continue
                 warnings.warn(f"Wrong resolution (frame_size={frame_info.frame_size})")
                 self.update_frame_size_rate()
                 last |= {"key_frame": 0, "key_time": 0, "time": time.time()}
+                yield b""
                 continue
             if frame_info.is_keyframe:
                 last |= {"key_frame": frame_info.frame_no, "key_time": time.time()}
