@@ -29,11 +29,11 @@ def get_ffmpeg_cmd(
     - list of str: complete ffmpeg command that is ready to run as subprocess.
     """
 
-    flags = "-fflags +flush_packets+nobuffer+genpts -flags +low_delay+global_header"
+    flags = "-fflags +flush_packets+nobuffer -flags +low_delay"
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
-    thread_queue = "-thread_queue_size 64 -analyzeduration 32 -probesize 32"
+    thread_queue = "-thread_queue_size 1k -analyzeduration 32 -probesize 32"
     if audio and "codec" in audio:
         audio_in = f"{thread_queue} -f {audio['codec']} -ac 1 -ar {audio['rate']} -i /tmp/{uri}_audio.pipe"
         audio_out = audio["codec_out"] or "copy"
@@ -41,7 +41,7 @@ def get_ffmpeg_cmd(
     a_options = ["-compression_level", "4", "-filter:a", a_filter]
     rtsp_transport = "udp" if "udp" in env_bool("MTX_PROTOCOLS") else "tcp"
     fio_cmd = "use_fifo=1:fifo_options=attempt_recovery=1\\\:drop_pkts_on_overflow=1:"
-    rss_cmd = f"[{fio_cmd}{{}}f=rtsp:{rtsp_transport=:}:bsfs=dump_extra=freq=e]rtsp://0.0.0.0:8554/{uri}"
+    rss_cmd = f"[{fio_cmd}{{}}f=rtsp:{rtsp_transport=:}]rtsp://0.0.0.0:8554/{uri}"
     rtsp_ss = rss_cmd.format("")
     if env_cam("AUDIO_STREAM", uri, style="original") and audio:
         rtsp_ss += "|" + rss_cmd.format("select=a:") + "_audio"
@@ -60,8 +60,9 @@ def get_ffmpeg_cmd(
         + re_encode_video(uri, is_vertical)
         + (["-map", "1:a", "-c:a", audio_out] if audio_in else [])
         + (a_options if audio and audio_out != "copy" else [])
-        + ["-fps_mode", "drop", "-async", "0", "-flush_packets", "1"]
+        + ["-fps_mode", "drop", "-async", "1", "-flush_packets", "1"]
         + ["-muxdelay", "0", "-copytb", "1"]
+        + ["-rtbufsize", "1", "-max_interleave_delta", "10"]
         + ["-f", "tee"]
         + [rtsp_ss + get_record_cmd(uri, audio_out, record) + livestream]
     )
