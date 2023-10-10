@@ -1,3 +1,33 @@
+## What's Changed in v2.4.0
+
+* Motion Events! 
+  * Pulls events from the wyze API, so it doesn't require an active connection to the camera to detect motion - great for battery cams.
+  * Motion status and timestamp available via MQTT and REST API:
+    * MQTT topics: `wyzebridge/{cam-name}/motion` or `wyzebridge/{cam-name}/motion_ts`
+    * REST endpoint: `/api/{cam-name}/motion` or `/api/{cam-name}/motion_ts`
+  * Webhooks ready and works with ntfy.sh `triggers`. 
+  * See [Camera Motion wiki](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Motion) for more information.
+* Other fixes and changes:
+  * Potential improvements for audio sync. Audio will still lag on frame drops. (#388)
+    * Using **wallclock** seems to help in some situations: 
+    `- FFMPEG_FLAGS=-use_wallclock_as_timestamps 1`
+  * UPDATE FFmpeg to [v6.0](https://github.com/homebridge/ffmpeg-for-homebridge/releases/tag/v2.1.0) 
+  * UPDATE MediaMTX version from v1.0.3 to v1.1.0 (#1002)
+  * Store and reuse s3 thumbnail from events to reduce calls to the wyze api (#970)
+  * Increase default `MTX_WRITEQUEUESIZE` (#984)
+  * keep stream alive if livestream enabled (#985)
+  * Catch RuntimeError if libseccomp2 is missing (#994)
+  * Refactored API client to better handle exceptions and limit connections.
+  * Check bitrate from videoParams for all 11.x or newer firmware (#975)
+  * buffer mtx event data (#990)
+  * Exclude battery cams from scheduled RTSP snapshots (#970)
+* New ENV/Options:
+  * `MOTION_API=True`  to enable motion events. (Default: False)
+  * `MOTION_INT=<float>` number of seconds between motion checks. (Default: 1.5) 
+  * `MOTION_START=True` to have the bridge initiate a connection to the camera on a motion event. (Default: False)
+  * `MOTION_WEBHOOK=<str>` webhooks url. Can use `{cam_name}` in the url to make a request to a url with the camera name. Image url and title are available in the request header.
+  * `MOTION_WEBHOOK_<CAM-NAME>=<str>` Same as `MOTION_WEBHOOK` but for a specific camera. 
+
 ## What's Changed in v2.3.17
 
 * NEW REST/MQTT Commands:
