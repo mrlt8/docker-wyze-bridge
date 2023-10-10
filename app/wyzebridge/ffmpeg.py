@@ -61,7 +61,7 @@ def get_ffmpeg_cmd(
         + (["-map", "1:a", "-c:a", audio_out] if audio_in else [])
         + (a_options if audio and audio_out != "copy" else [])
         + ["-fps_mode", "drop", "-async", "1", "-flush_packets", "1"]
-        + ["-muxdelay", "0", "-copytb", "1"]
+        + ["-muxdelay", "0"]
         + ["-rtbufsize", "1", "-max_interleave_delta", "10"]
         + ["-f", "tee"]
         + [rtsp_ss + get_record_cmd(uri, audio_out, record) + livestream]
