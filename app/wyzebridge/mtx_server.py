@@ -58,13 +58,11 @@ class MtxServer:
             self.setup_webrtc(bridge_ip)
 
     def add_path(self, uri: str, on_demand: bool = True):
-        for event in {"Read", "Ready"}:
-            stop_cmd = f"echo $MTX_PATH,{event},0! > /tmp/mtx_event;exit;"
-            start_cmd = f"echo $MTX_PATH,{event},1! > /tmp/mtx_event;"
-            bash_cmd = f'trap "{stop_cmd}" INT;{start_cmd} while :; do sleep 1; done'
+        for event in {"Read", "Unread", "Ready", "NotReady"}:
+            bash_cmd = f"echo $MTX_PATH,{event}! > /tmp/mtx_event;"
             self.rtsp.set(uri, f"RunOn{event}", f"bash -c '{bash_cmd}'")
         if on_demand:
-            cmd = "bash -c 'echo $MTX_PATH,start,1! > /tmp/mtx_event'"
+            cmd = "bash -c 'echo $MTX_PATH,start! > /tmp/mtx_event'"
             self.rtsp.set(uri, "runOnDemand", cmd)
             self.rtsp.set(uri, "runOnDemandStartTimeout", "30s")
             self.rtsp.set(uri, "runOnDemandCloseAfter", "60s")

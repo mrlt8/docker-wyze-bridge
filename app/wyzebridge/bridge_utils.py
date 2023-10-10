@@ -1,5 +1,6 @@
+import contextlib
 import os
-from typing import Any
+from typing import Any, Optional
 
 from wyzecam.api_models import WyzeCamera
 
@@ -22,6 +23,11 @@ def env_bool(env: str, false="", true="", style="") -> Any:
         return bool(value or false)
     if style.lower() == "int":
         return int("".join(filter(str.isdigit, value or str(false))) or 0)
+    if style.lower() == "float":
+        try:
+            return float(value) if value.replace(".", "").isdigit() else float(false)
+        except ValueError:
+            return 0
     if style.lower() == "upper" and value:
         return value.upper()
     if style.lower() == "original" and value:
@@ -53,3 +59,16 @@ def split_int_str(env_value: str, min: int = 0, default: int = 0) -> tuple[str, 
     string_value = "".join(filter(str.isalpha, env_value))
     int_value = int("".join(filter(str.isnumeric, env_value)) or default)
     return string_value, max(int_value, min)
+
+
+def is_livestream(uri: str) -> bool:
+    services = {"youtube", "facebook", "livestream"}
+
+    return any(env_bool(f"{service}_{uri}") for service in services)
+
+
+def is_fw11(fw_ver: Optional[str]) -> bool:
+    with contextlib.suppress(IndexError, ValueError):
+        if fw_ver and int(fw_ver.split(".")[2]) > 10:
+            return True
+    return False

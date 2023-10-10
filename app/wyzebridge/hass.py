@@ -60,6 +60,8 @@ def setup_hass(hass_token: Optional[str]) -> None:
                 environ[f"SUB_RECORD_{cam_name}"] = str(cam["SUB_RECORD"])
             if "SUBSTREAM" in cam:
                 environ[f"SUBSTREAM_{cam_name}"] = str(cam["SUBSTREAM"])
+            if "MOTION_WEBHOOKS" in cam:
+                environ[f"MOTION_WEBHOOKS_{cam_name}"] = str(cam["MOTION_WEBHOOKS"])
 
     if mtx_options := conf.pop("MEDIAMTX", None):
         for opt in mtx_options:

@@ -467,18 +467,6 @@ class K10050GetVideoParam(TutkWyzeProtocolMessage):
         }
 
 
-class K10050GetPowerLevel(TutkWyzeProtocolMessage):
-    def __init__(self):
-        super().__init__(10050)
-
-    def parse_response(self, resp_data):
-        data = json.loads(resp_data)
-        try:
-            return data["camerainfo"]["powerlevel"]
-        except KeyError:
-            return 0
-
-
 class K10056SetResolvingBit(TutkWyzeProtocolMessage):
     """
     A message used to set the resolution and bitrate of the camera.
@@ -553,6 +541,7 @@ class K10052DBSetResolvingBit(TutkWyzeProtocolMessage):
         :param bitrate: the bit rate, in KB/s to target in the h264/h265 encoder.
         """
         super().__init__(10052)
+        assert 0 <= bitrate <= 255, "bitrate value must be 1-255"
         self.frame_size = frame_size + 1
         self.bitrate = bitrate
         self.fps = fps
@@ -583,7 +572,7 @@ class K10052SetBitrate(TutkWyzeProtocolMessage):
         self.bitrate = value
 
     def encode(self) -> bytes:
-        return encode(self.code, bytes([self.bitrate, 0, 0, 0, 0]))
+        return encode(self.code, bytes([self.bitrate, 0, 0, 0, 0, 0]))
 
 
 class K10052HorizontalFlip(TutkWyzeProtocolMessage):

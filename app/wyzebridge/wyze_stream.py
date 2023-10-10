@@ -77,6 +77,8 @@ class WyzeStream:
         "cam_cmd",
         "process",
         "rtsp_fw_enabled",
+        "_motion",
+        "motion_ts",
     )
 
     def __init__(self, camera: WyzeCamera, options: WyzeStreamOptions) -> None:
@@ -90,6 +92,8 @@ class WyzeStream:
         self.cam_cmd: mp.Queue
         self.process: Optional[mp.Process] = None
         self._state: c_int = mp.Value("i", StreamStatus.STOPPED, lock=False)
+        self._motion: bool = False
+        self.motion_ts: float = 0
         self.setup()
 
     def setup(self):
@@ -105,13 +109,32 @@ class WyzeStream:
         publish_discovery(self.uri, self.camera)
 
     @property
-    def state(self):
+    def state(self) -> int:
         return self._state.value
 
     @state.setter
-    def state(self, value):
+    def state(self, value) -> None:
         self._state.value = value.value if isinstance(value, StreamStatus) else value
         update_mqtt_state(self.uri, self.status())
+
+    @property
+    def motion(self) -> bool:
+        state = time() - self.motion_ts < 20
+        if self._motion and not state:
+            self._motion = state
+            publish_messages([(f"{MQTT_TOPIC}/{self.uri}/motion", 2)])
+        return state
+
+    @motion.setter
+    def motion(self, value: float):
+        self._motion = True
+        self.motion_ts = value
+        publish_messages(
+            [
+                (f"{MQTT_TOPIC}/{self.uri}/motion", 1),
+                (f"{MQTT_TOPIC}/{self.uri}/motion_ts", value),
+            ]
+        )
 
     @property
     def connected(self) -> bool:
@@ -172,6 +195,7 @@ class WyzeStream:
         return True
 
     def health_check(self, should_start: bool = True) -> int:
+        self.motion
         if self.state == StreamStatus.OFFLINE:
             if env_bool("IGNORE_OFFLINE"):
                 logger.info(f"🪦 {self.uri} is offline. WILL ignore.")
@@ -195,6 +219,9 @@ class WyzeStream:
         elif self.state == StreamStatus.CONNECTING and is_timedout(self.start_time, 20):
             logger.warning(f"⏰ Timed out connecting to {self.camera.nickname}.")
             self.stop()
+
+        if should_start and self.camera.is_battery and self.state == 1:
+            return 0
         return self.state if self.start_time < time() else 0
 
     def refresh_camera(self):
@@ -218,6 +245,8 @@ class WyzeStream:
             "status": self.state,
             "connected": self.connected,
             "enabled": self.enabled,
+            "motion": self.motion,
+            "motion_ts": self.motion_ts,
             "on_demand": not self.options.reconnect,
             "audio": self.options.audio,
             "record": self.options.record,
@@ -265,7 +294,7 @@ class WyzeStream:
 
     def power_control(self, payload: str) -> dict:
         if payload not in {"on", "off", "restart"}:
-            resp = self.api.get_pid_info(self.camera, "P3")
+            resp = self.api.get_device_info(self.camera, "P3")
             resp["value"] = "on" if resp["value"] == "1" else "off"
             return resp
         run_cmd = payload if payload == "restart" else f"power_{payload}"
@@ -293,10 +322,20 @@ class WyzeStream:
             return self.state_control(payload or cmd)
 
         if cmd == "device_info":
-            return self.api.get_pid_info(self.camera)
+            return self.api.get_device_info(self.camera)
+
+        if cmd == "battery":
+            return self.api.get_device_info(self.camera, "P8")
 
         if cmd == "power":
             return self.power_control(str(payload).lower())
+
+        if cmd in {"motion", "motion_ts"}:
+            return {
+                "status": "success",
+                "response": {"motion": self.motion, "motion_ts": self.motion_ts},
+                "value": self.motion if cmd == "motion" else self.motion_ts,
+            }
 
         if self.state < StreamStatus.STOPPED:
             return {"response": self.status()}
@@ -485,6 +524,7 @@ def get_cam_params(
         (f"{MQTT_TOPIC}/{uri.lower()}/net_mode", net_mode),
         (f"{MQTT_TOPIC}/{uri.lower()}/wifi", wifi),
         (f"{MQTT_TOPIC}/{uri.lower()}/audio", json.dumps(audio) if audio else False),
+        (f"{MQTT_TOPIC}/{uri.lower()}/ip", sess.camera.ip),
     ]
     publish_messages(mqtt)
     return v_codec, fps, audio

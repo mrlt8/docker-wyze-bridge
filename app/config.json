@@ -34,14 +34,8 @@
     "IMG_DIR": "media/wyze/img/",
     "RECORD_PATH": "media/wyze/{CAM_NAME}"
   },
-  "map": [
-    "config:rw",
-    "media:rw",
-    "ssl:ro"
-  ],
-  "services": [
-    "mqtt:want"
-  ],
+  "map": ["config:rw", "media:rw", "ssl:ro"],
+  "services": ["mqtt:want"],
   "ingress": true,
   "ingress_port": 5000,
   "panel_icon": "mdi:bridge",
@@ -52,6 +46,7 @@
     "SNAPSHOT": "Disable",
     "MQTT_DTOPIC": "homeassistant",
     "ENABLE_AUDIO": false,
+    "MOTION_API": false,
     "ON_DEMAND": true,
     "SUBSTREAM": false,
     "CAM_OPTIONS": []
@@ -73,6 +68,10 @@
     "IMG_DIR": "str?",
     "ON_DEMAND": "bool?",
     "ENABLE_AUDIO": "bool?",
+    "MOTION_API": "bool?",
+    "MOTION_INT": "float(1.1,)?",
+    "MOTION_START": "bool?",
+    "MOTION_WEBHOOKS": "str?",
     "SUBSTREAM": "bool?",
     "AUDIO_CODEC": "list(COPY|AAC|MP3|LIBOPUS)?",
     "AUDIO_FILTER": "str?",
@@ -128,12 +127,11 @@
         "SUB_QUALITY": "str?",
         "RECORD": "bool?",
         "SUB_RECORD": "bool?",
-        "SUBSTREAM": "bool?"
+        "SUBSTREAM": "bool?",
+        "MOTION_WEBHOOKS": "str?"
       }
     ],
-    "MEDIAMTX": [
-      "match(^\\w+=.*)?"
-    ],
+    "MEDIAMTX": ["match(^\\w+=.*)?"],
     "WB_HLS_URL": "str?",
     "WB_RTMP_URL": "str?",
     "WB_RTSP_URL": "str?",

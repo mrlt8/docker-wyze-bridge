@@ -3,11 +3,12 @@ import json
 import time
 import urllib.parse
 import uuid
+from datetime import datetime
 from hashlib import md5
 from os import environ, getenv
 from typing import Any, Optional
 
-import requests
+from requests import Response, get, post
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
 IOS_VERSION = getenv("IOS_VERSION")
@@ -28,6 +29,10 @@ SC_SV = {
         "sc": "01dd431d098546f9baf5233724fa2ee2",
         "sv": "0bc2c3bedf6c4be688754c9ad42bbf2e",
     },
+    "get_event_list": {
+        "sc": "9f275790cab94a72bd206c8876429f3c",
+        "sv": "782ced6909a44d92a1f70d582bbe88be",
+    },
     "set_device_Info": {
         "sc": "01dd431d098546f9baf5233724fa2ee2",
         "sv": "e8e1db44128f4e31a2047a8f5f80b2bd",
@@ -37,6 +42,28 @@ SC_SV = {
 
 class AccessTokenError(Exception):
     pass
+
+
+class RateLimitError(Exception):
+    def __init__(self, resp):
+        reset = resp.headers.get("X-RateLimit-Reset-By")
+        self.remaining = int(resp.headers.get("X-RateLimit-Remaining", 0))
+        self.reset_by = self.get_reset_time(reset)
+        super().__init__(f"{self.remaining} requests remaining until {reset}")
+
+    def get_reset_time(self, reset_by: str):
+        ts_format = "%a %b %d %H:%M:%S %Z %Y"
+        try:
+            return int(datetime.strptime(reset_by, ts_format).timestamp())
+        except Exception:
+            return 0
+
+
+class WyzeAPIError(Exception):
+    def __init__(self, code, msg: str):
+        self.code = code
+        self.msg = msg
+        super().__init__(f"{code=} {msg=}")
 
 
 def login(
@@ -65,11 +92,11 @@ def login(
               [get_camera_list()][wyzecam.api.get_camera_list].
     """
     phone_id = phone_id or str(uuid.uuid4())
-    headers = get_headers(phone_id)
+    headers = _headers(phone_id)
     headers["content-type"] = "application/json"
 
     payload = sort_dict(
-        {"email": email.strip(), "password": triplemd5(password), **(mfa or {})}
+        {"email": email.strip(), "password": hash_password(password), **(mfa or {})}
     )
     api_version = "v2"
     if getenv("API_ID") and getenv("API_KEY"):
@@ -79,9 +106,7 @@ def login(
         headers["appid"] = "umgm_78ae6013d158c4a5"
         headers["signature2"] = sign_msg("v3", payload)
 
-    resp = requests.post(
-        f"{AUTH_API}/{api_version}/user/login", data=payload, headers=headers
-    )
+    resp = post(f"{AUTH_API}/{api_version}/user/login", data=payload, headers=headers)
     resp.raise_for_status()
 
     return WyzeCredential.model_validate(dict(resp.json(), phone_id=phone_id))
@@ -97,7 +122,7 @@ def send_sms_code(auth_info: WyzeCredential, phone: str = "Primary") -> str:
     :param auth_info: the result of a [`login()`][wyzecam.api.login] call.
     :returns: verification_id required to logging in with SMS verification.
     """
-    resp = requests.post(
+    resp = post(
         f"{AUTH_API}/user/login/sendSmsCode",
         json={},
         params={
@@ -105,7 +130,7 @@ def send_sms_code(auth_info: WyzeCredential, phone: str = "Primary") -> str:
             "sessionId": auth_info.sms_session_id,
             "userId": auth_info.user_id,
         },
-        headers=get_headers(auth_info.phone_id),
+        headers=_headers(auth_info.phone_id),
     )
     resp.raise_for_status()
 
@@ -122,14 +147,14 @@ def send_email_code(auth_info: WyzeCredential) -> str:
     :param auth_info: the result of a [`login()`][wyzecam.api.login] call.
     :returns: verification_id required to logging in with SMS verification.
     """
-    resp = requests.post(
+    resp = post(
         f"{AUTH_API}/v2/user/login/sendEmailCode",
         json={},
         params={
             "userId": auth_info.user_id,
             "sessionId": auth_info.email_session_id,
         },
-        headers=get_headers(auth_info.phone_id),
+        headers=_headers(auth_info.phone_id),
     )
     resp.raise_for_status()
 
@@ -149,18 +174,17 @@ def refresh_token(auth_info: WyzeCredential) -> WyzeCredential:
               [get_camera_list()][wyzecam.api.get_camera_list].
 
     """
-    payload = _get_payload(auth_info.access_token, auth_info.phone_id)
+    payload = _payload(auth_info.access_token, auth_info.phone_id)
     payload["refresh_token"] = auth_info.refresh_token
-    resp = requests.post(
+    resp = post(
         f"{WYZE_API}/user/refresh_token",
         json=payload,
-        headers=get_headers(),
+        headers=_headers(),
     )
-    resp_json = validate_resp(resp)
 
     return WyzeCredential.model_validate(
         dict(
-            resp_json["data"],
+            validate_resp(resp)["data"],
             user_id=auth_info.user_id,
             phone_id=auth_info.phone_id,
         )
@@ -179,28 +203,26 @@ def get_user_info(auth_info: WyzeCredential) -> WyzeAccount:
           for passing to [`WyzeIOTC.connect_and_auth()`][wyzecam.iotc.WyzeIOTC.connect_and_auth].
 
     """
-    resp = requests.post(
+    resp = post(
         f"{WYZE_API}/user/get_user_info",
-        json=_get_payload(auth_info.access_token, auth_info.phone_id),
-        headers=get_headers(),
+        json=_payload(auth_info.access_token, auth_info.phone_id),
+        headers=_headers(),
     )
-    resp_json = validate_resp(resp)
 
     return WyzeAccount.model_validate(
-        dict(resp_json["data"], phone_id=auth_info.phone_id)
+        dict(validate_resp(resp)["data"], phone_id=auth_info.phone_id)
     )
 
 
 def get_homepage_object_list(auth_info: WyzeCredential) -> dict[str, Any]:
     """Get all homepage objects."""
-    resp = requests.post(
+    resp = post(
         f"{WYZE_API}/v2/home_page/get_object_list",
-        json=_get_payload(auth_info.access_token, auth_info.phone_id),
-        headers=get_headers(),
+        json=_payload(auth_info.access_token, auth_info.phone_id),
+        headers=_headers(),
     )
-    resp_json = validate_resp(resp)
 
-    return resp_json["data"]
+    return validate_resp(resp)["data"]
 
 
 def get_camera_list(auth_info: WyzeCredential) -> list[WyzeCamera]:
@@ -258,55 +280,31 @@ def get_camera_list(auth_info: WyzeCredential) -> list[WyzeCamera]:
 def run_action(auth_info: WyzeCredential, camera: WyzeCamera, action: str):
     """Send run_action commands to the camera."""
     payload = dict(
-        _get_payload(auth_info.access_token, auth_info.phone_id, "run_action"),
+        _payload(auth_info.access_token, auth_info.phone_id, "run_action"),
         action_params={},
         action_key=action,
         instance_id=camera.mac,
         provider_key=camera.product_model,
     )
-    resp = requests.post(
-        f"{WYZE_API}/v2/auto/run_action", json=payload, headers=get_headers()
-    )
-    resp_json = resp.json()
-    if resp_json["code"] == "2001":
-        raise AccessTokenError()
-    if resp_json.get("code") != "1":
-        raise ValueError(resp_json)
+    resp = post(f"{WYZE_API}/v2/auto/run_action", json=payload, headers=_headers())
 
-    return resp_json["data"]
+    return validate_resp(resp)["data"]
 
 
-def get_device_info(auth_info: WyzeCredential, camera: WyzeCamera) -> dict:
-    """Get device info."""
-    payload = dict(
-        _get_payload(auth_info.access_token, auth_info.phone_id, "get_device_Info"),
-        device_mac=camera.mac,
-        device_model=camera.product_model,
-    )
-    resp = requests.post(
-        f"{WYZE_API}/v2/device/get_device_Info", json=payload, headers=get_headers()
-    )
-    resp_json = validate_resp(resp)
+def post_v2_device(auth_info: WyzeCredential, endpoint: str, params: dict) -> dict:
+    """Post data to the v2 device API."""
+    params |= _payload(auth_info.access_token, auth_info.phone_id, endpoint)
+    resp = post(f"{WYZE_API}/v2/device/{endpoint}", json=params, headers=_headers())
 
-    return resp_json["data"]
+    return validate_resp(resp)["data"]
 
 
-def set_device_info(
-    auth_info: WyzeCredential, camera: WyzeCamera, params: dict
-) -> dict:
-    """Get device info."""
-    payload = dict(
-        _get_payload(auth_info.access_token, auth_info.phone_id, "set_device_Info"),
-        device_mac=camera.mac,
-        **params,
-    )
-    resp = requests.post(
-        f"{WYZE_API}/device/set_device_info", json=payload, headers=get_headers()
-    )
+def post_device(auth_info: WyzeCredential, endpoint: str, params: dict) -> dict:
+    """Post data to the v1 device API."""
+    params |= _payload(auth_info.access_token, auth_info.phone_id, endpoint)
+    resp = post(f"{WYZE_API}/device/{endpoint}", json=params, headers=_headers())
 
-    resp_json = validate_resp(resp)
-
-    return resp_json["data"]
+    return validate_resp(resp)["data"]
 
 
 def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
@@ -314,11 +312,11 @@ def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
     if not auth_info.access_token:
         raise AccessTokenError()
 
-    ui_headers = get_headers()
+    ui_headers = _headers()
     ui_headers["content-type"] = "application/json"
     ui_headers["authorization"] = auth_info.access_token
 
-    resp = requests.get(
+    resp = get(
         f"https://webrtc.api.wyze.com/signaling/device/{mac_id}?use_trickle=true",
         headers=ui_headers,
     )
@@ -334,23 +332,25 @@ def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
     }
 
 
-def validate_resp(resp):
+def validate_resp(resp: Response) -> dict:
     resp.raise_for_status()
+    if int(resp.headers.get("X-RateLimit-Remaining", 100)) <= 10:
+        raise RateLimitError(resp)
     resp_json = resp.json()
     if str(resp_json.get("code", 0)) == "2001":
         raise AccessTokenError()
-
-    assert str(resp_json.get("code", 0)) == "1", resp_json
+    if (resp_code := str(resp_json.get("code", 0))) != "1":
+        raise WyzeAPIError(resp_code, resp_json.get("msg"))
 
     return resp_json
 
 
-def _get_payload(
-    access_token: Optional[str], phone_id: Optional[str] = "", req_path: str = "default"
-):
+def _payload(
+    access_token: Optional[str], phone_id: Optional[str] = "", endpoint: str = "default"
+) -> dict:
     return {
-        "sc": SC_SV[req_path]["sc"],
-        "sv": SC_SV[req_path]["sv"],
+        "sc": SC_SV[endpoint]["sc"],
+        "sv": SC_SV[endpoint]["sv"],
         "app_ver": f"com.hualai.WyzeCam___{APP_VERSION}",
         "app_version": APP_VERSION,
         "app_name": "com.hualai.WyzeCam",
@@ -361,7 +361,7 @@ def _get_payload(
     }
 
 
-def get_headers(phone_id: Optional[str] = "") -> dict[str, str]:
+def _headers(phone_id: Optional[str] = None) -> dict[str, str]:
     if not phone_id:
         return {"user-agent": SCALE_USER_AGENT}
     id, key = getenv("API_ID"), getenv("API_KEY")
@@ -369,7 +369,7 @@ def get_headers(phone_id: Optional[str] = "") -> dict[str, str]:
         return {
             "apikey": key,
             "keyid": id,
-            "user-agent": f"docker-wyze-bridge-{getenv('VERSION')}",
+            "user-agent": f"docker-wyze-bridge/{getenv('VERSION')}",
         }
 
     return {
@@ -379,7 +379,7 @@ def get_headers(phone_id: Optional[str] = "") -> dict[str, str]:
     }
 
 
-def triplemd5(password: str) -> str:
+def hash_password(password: str) -> str:
     """Run hashlib.md5() algorithm 3 times."""
     encoded = password.strip()
     for _ in range(3):

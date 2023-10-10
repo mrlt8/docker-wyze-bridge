@@ -1,6 +1,7 @@
 import pathlib
 from ctypes import (
     CDLL,
+    POINTER,
     Structure,
     byref,
     c_char,
@@ -12,6 +13,7 @@ from ctypes import (
     c_uint8,
     c_uint16,
     c_uint32,
+    cast,
     cdll,
     create_string_buffer,
     sizeof,
@@ -602,22 +604,24 @@ def av_recv_audio_data(tutk_platform_lib: CDLL, av_chan_id: c_int):
     audio_data_max_size = 51_200
     frame_info_max_size = 1024
 
-    audio_data = (c_char * audio_data_max_size)()
-    frame_info = FrameInfo3Struct()
-    frame_index = c_uint()
+    audio_data = create_string_buffer(audio_data_max_size)
+    frame_info_buffer = create_string_buffer(frame_info_max_size)
+    frame_index = c_uint32()
 
     frame_len = tutk_platform_lib.avRecvAudioData(
         av_chan_id,
         audio_data,
         audio_data_max_size,
-        byref(frame_info),
+        frame_info_buffer,
         frame_info_max_size,
         byref(frame_index),
     )
 
     if frame_len < 0:
         return frame_len, None, None
-    return 0, audio_data[:frame_len], frame_info
+
+    frame_info = cast(frame_info_buffer, POINTER(FrameInfo3Struct)).contents
+    return 0, audio_data.raw[:frame_len], frame_info
 
 
 def av_check_audio_buf(tutk_platform_lib: CDLL, av_chan_id: c_int) -> int:
@@ -741,21 +745,12 @@ def av_client_stop(tutk_platform_lib: CDLL, av_chan_id: c_int) -> None:
 
 
 def av_send_io_ctrl(
-    tutk_platform_lib: CDLL,
-    av_chan_id: c_int,
-    ctrl_type: int,
-    data: Optional[bytes],
-) -> c_int:
-    if data is None:
-        length = 0
-        cdata = None
-    else:
-        length = len(data)
-        cdata = c_char_p(data)
-    errcode: c_int = tutk_platform_lib.avSendIOCtrl(
-        av_chan_id, c_uint(ctrl_type), cdata, length
-    )
-    return errcode
+    tutk_platform_lib: CDLL, av_chan_id: int, ctrl_type: int, data: Optional[bytes]
+) -> int:
+    length = len(data) if data else 0
+    cdata = c_char_p(data) if data else None
+
+    return tutk_platform_lib.avSendIOCtrl(av_chan_id, c_uint(ctrl_type), cdata, length)
 
 
 def iotc_session_close(tutk_platform_lib: CDLL, session_id: c_int) -> None:

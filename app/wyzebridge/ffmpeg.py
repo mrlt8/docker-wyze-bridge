@@ -29,16 +29,19 @@ def get_ffmpeg_cmd(
     - list of str: complete ffmpeg command that is ready to run as subprocess.
     """
 
-    flags = "-fflags +genpts+flush_packets+nobuffer+bitexact -flags +low_delay"
+    flags = "-fflags +flush_packets+nobuffer -flags +low_delay"
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
+    thread_queue = "-thread_queue_size 1k -analyzeduration 32 -probesize 32"
     if audio and "codec" in audio:
-        audio_in = f"-thread_queue_size 100 -f {audio['codec']} -ar {audio['rate']} -i /tmp/{uri}.wav"
+        audio_in = f"{thread_queue} -f {audio['codec']} -ac 1 -ar {audio['rate']} -i /tmp/{uri}_audio.pipe"
         audio_out = audio["codec_out"] or "copy"
-        a_filter = ["-filter:a"] + env_bool("AUDIO_FILTER", "volume=5").split()
+    a_filter = env_bool("AUDIO_FILTER", "volume=5") + ",adelay=0|0"
+    a_options = ["-compression_level", "4", "-filter:a", a_filter]
     rtsp_transport = "udp" if "udp" in env_bool("MTX_PROTOCOLS") else "tcp"
-    rss_cmd = f"[{{}}f=rtsp:{rtsp_transport=:}:bsfs/v=dump_extra=freq=keyframe]rtsp://0.0.0.0:8554/{uri}"
+    fio_cmd = "use_fifo=1:fifo_options=attempt_recovery=1\\\:drop_pkts_on_overflow=1:"
+    rss_cmd = f"[{fio_cmd}{{}}f=rtsp:{rtsp_transport=:}]rtsp://0.0.0.0:8554/{uri}"
     rtsp_ss = rss_cmd.format("")
     if env_cam("AUDIO_STREAM", uri, style="original") and audio:
         rtsp_ss += "|" + rss_cmd.format("select=a:") + "_audio"
@@ -49,18 +52,17 @@ def get_ffmpeg_cmd(
     ).split() or (
         ["-hide_banner", "-loglevel", get_log_level()]
         + env_cam("FFMPEG_FLAGS", uri, flags).strip("'\"\n ").split()
-        + ["-thread_queue_size", "100"]
+        + thread_queue.split()
         + (["-hwaccel", h264_enc] if h264_enc in {"vaapi", "qsv"} else [])
-        + ["-analyzeduration", "50", "-probesize", "50", "-f", vcodec, "-i", "pipe:"]
+        + ["-f", vcodec, "-i", "pipe:0"]
         + audio_in.split()
-        + ["-flags", "+global_header", "-c:v"]
+        + ["-map", "0:v", "-c:v"]
         + re_encode_video(uri, is_vertical)
-        + (["-c:a", audio_out] if audio_in else [])
-        + (a_filter if audio and audio_out != "copy" else [])
-        + ["-movflags", "+empty_moov+default_base_moof+frag_keyframe"]
-        + ["-muxdelay", "0", "-muxpreload", "0"]
-        + ["-map", "0:v"]
-        + (["-map", "1:a", "-async", "100"] if audio_in else [])
+        + (["-map", "1:a", "-c:a", audio_out] if audio_in else [])
+        + (a_options if audio and audio_out != "copy" else [])
+        + ["-fps_mode", "drop", "-async", "1", "-flush_packets", "1"]
+        + ["-muxdelay", "0"]
+        + ["-rtbufsize", "1", "-max_interleave_delta", "10"]
         + ["-f", "tee"]
         + [rtsp_ss + get_record_cmd(uri, audio_out, record) + livestream]
     )

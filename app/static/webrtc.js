@@ -101,7 +101,7 @@ class Receiver {
         })
             .then((res) => {
                 if (res.status !== 201) { throw new Error('Bad status code'); }
-                this.eTag = res.headers.get('E-Tag');
+                this.eTag = res.headers.get('ETag');
                 return res.text();
             })
             .then((sdp) => this.onRemoteDescription(sdp))

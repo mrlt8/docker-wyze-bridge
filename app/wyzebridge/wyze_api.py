@@ -6,25 +6,27 @@ from base64 import b32decode
 from datetime import datetime
 from functools import wraps
 from os import environ, getenv, listdir, remove, utime
-from os.path import exists, getsize
+from os.path import exists, getmtime, getsize
 from pathlib import Path
 from time import sleep, time
 from typing import Any, Callable, Optional
+from urllib.parse import parse_qs, urlparse
 
 import wyzecam
 from requests import get
 from requests.exceptions import ConnectionError, HTTPError, RequestException
 from wyzebridge.bridge_utils import env_bool, env_filter
-from wyzebridge.config import IMG_PATH, TOKEN_PATH
+from wyzebridge.config import IMG_PATH, MOTION, TOKEN_PATH
 from wyzebridge.logging import logger
+from wyzecam.api import RateLimitError, WyzeAPIError, post_v2_device
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
 
 def cached(func: Callable[..., Any]) -> Callable[..., Any]:
     def wrapper(self, *args: Any, **kwargs: Any):
-        if self.mfa_req or self.creds.login_req:
-            return
         name = "auth" if func.__name__ == "login" else func.__name__.split("_", 1)[-1]
+        if self.mfa_req or (not self.auth and not self.creds.is_set and name != "auth"):
+            return
         if not kwargs.get("fresh_data"):
             if getattr(self, name, None):
                 return func(self, *args, **kwargs)
@@ -54,29 +56,28 @@ def cached(func: Callable[..., Any]) -> Callable[..., Any]:
 def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(func)
     def wrapper(self, *args: Any, **kwargs: Any):
-        if self.mfa_req or self.creds.login_req:
-            return
-        if not self.auth and not self.login():
+        if self.mfa_req or (not self.auth and not self.login()):
             return
         try:
             return func(self, *args, **kwargs)
         except wyzecam.api.AccessTokenError:
-            logger.warning("⚠️ Expired token?")
+            logger.warning("[API] ⚠️ Expired token?")
             self.refresh_token()
             return func(self, *args, **kwargs)
+        except (RateLimitError, wyzecam.api.WyzeAPIError) as ex:
+            logger.error(f"[API] {ex}")
         except ConnectionError as ex:
-            logger.warning(f"{ex}")
+            logger.warning(f"[API] {ex}")
 
     return wrapper
 
 
 class WyzeCredentials:
-    __slots__ = "email", "password", "login_req"
+    __slots__ = "email", "password"
 
     def __init__(self) -> None:
         self.email: str = getenv("WYZE_EMAIL", "").strip()
         self.password: str = getenv("WYZE_PASSWORD", "").strip()
-        self.login_req: bool = False
 
         if not self.is_set:
             logger.warning("[WARN] Credentials are NOT set")
@@ -96,10 +97,9 @@ class WyzeCredentials:
         return (self.email, self.password)
 
     def login_check(self):
-        if self.login_req or self.is_set:
+        if self.is_set:
             return
 
-        self.login_req = True
         logger.error("Credentials required to complete login!")
         logger.info("Please visit the WebUI to enter your credentials.")
         while not self.is_set:
@@ -128,6 +128,10 @@ class WyzeApi:
         if fresh_data:
             self.clear_cache()
 
+        if self.auth_locked():
+            return
+        self._last_pull = time()
+
         self.token_auth()
         if self.auth:
             return self.auth
@@ -143,11 +147,12 @@ class WyzeApi:
                 logger.warning(resp)
             sleep(15)
         except ValueError as ex:
-            logger.error(ex)
+            logger.error(f"[API] {ex}")
+        except RateLimitError as ex:
+            logger.error(f"[API] {ex}")
         except RequestException as ex:
-            logger.error(f"⚠️ ERROR: {ex}")
+            logger.error(f"[API] ERROR: {ex}")
         else:
-            self.creds.login_req = False
             if self.auth.mfa_options:
                 self._mfa_auth()
             return self.auth
@@ -176,12 +181,19 @@ class WyzeApi:
             return self.cameras
         self.cameras = wyzecam.get_camera_list(self.auth)
         self._last_pull = time()
+        logger.info(f"[API] Fetched [{len(self.cameras)}] cameras")
+        logger.debug(f"[API] cameras={[c.nickname for c in self.cameras]}")
+
         return self.cameras
 
     def filtered_cams(self) -> list[WyzeCamera]:
         return filter_cams(self.get_cameras() or [])
 
-    def get_camera(self, uri: str) -> Optional[WyzeCamera]:
+    def get_camera(self, uri: str, existing: bool = False) -> Optional[WyzeCamera]:
+        if existing and self.cameras:
+            with contextlib.suppress(StopIteration):
+                return next((c for c in self.cameras if c.name_uri == uri))
+
         too_old = time() - self._last_pull > 120
         with contextlib.suppress(TypeError):
             for cam in self.get_cameras(fresh_data=too_old):
@@ -189,13 +201,23 @@ class WyzeApi:
                     return cam
 
     def get_thumbnail(self, uri: str) -> Optional[str]:
+        if (cam := self.get_camera(uri, MOTION)) and valid_s3_url(cam.thumbnail):
+            return cam.thumbnail
+
         if cam := self.get_camera(uri):
             return cam.thumbnail
 
     def save_thumbnail(self, uri: str) -> bool:
         if not (thumb := self.get_thumbnail(uri)):
             return False
+
         save_to = IMG_PATH + uri + ".jpg"
+        s3_timestamp = url_timestamp(thumb)
+        with contextlib.suppress(FileNotFoundError):
+            if s3_timestamp <= int(getmtime(save_to)):
+                logger.debug(f"Using existing thumbnail for {uri}")
+                return True
+
         logger.info(f'☁️ Pulling "{uri}" thumbnail to {save_to}')
         try:
             img = get(thumb)
@@ -205,21 +227,23 @@ class WyzeApi:
             return False
         with open(save_to, "wb") as f:
             f.write(img.content)
-        if modified := img.headers.get("Last-Modified"):
+        if modified := s3_timestamp or img.headers.get("Last-Modified"):
             ts_format = "%a, %d %b %Y %H:%M:%S %Z"
-            if updated := int(datetime.strptime(modified, ts_format).timestamp()):
-                utime(save_to, (updated, updated))
+            if isinstance(modified, int):
+                utime(save_to, (modified, modified))
+            elif ts := int(datetime.strptime(modified, ts_format).timestamp()):
+                utime(save_to, (ts, ts))
         return True
 
     @authenticated
     def get_kvs_signal(self, cam_name: str) -> Optional[dict]:
-        if not (cam := self.get_camera(cam_name)):
+        if not (cam := self.get_camera(cam_name, True)):
             return {"result": "cam not found", "cam": cam_name}
         try:
             logger.info("☁️ Fetching signaling data from the Wyze API...")
             wss = wyzecam.api.get_cam_webrtc(self.auth, cam.mac)
             return wss | {"result": "ok", "cam": cam_name}
-        except (HTTPError, AssertionError) as ex:
+        except (HTTPError, WyzeAPIError) as ex:
             if isinstance(ex, HTTPError) and ex.response.status_code == 404:
                 ex = "Camera does not support WebRTC"
             logger.warning(ex)
@@ -251,51 +275,97 @@ class WyzeApi:
 
     @authenticated
     def refresh_token(self):
+        if self.auth_locked():
+            return
+
         logger.info("♻️ Refreshing tokens")
         try:
             self.auth = wyzecam.refresh_token(self.auth)
             pickle_dump("auth", self.auth)
-        except AssertionError:
+            return self.auth
+        except Exception as ex:
+            logger.error(f"{ex}")
             logger.warning("⏰ Expired refresh token?")
-            self.login(fresh_data=True)
+            return self.login(fresh_data=True)
+
+    def auth_locked(self) -> bool:
+        if time() - self._last_pull < 15:
+            return True
+        self._last_pull = time()
+        return False
 
     @authenticated
     def run_action(self, cam: WyzeCamera, action: str):
+        logger.info(f"[CONTROL] ☁️ Sending {action} to {cam.name_uri} via Wyze API")
         try:
-            logger.info(f"[CONTROL] ☁️ Sending {action} to {cam.name_uri} via Wyze API")
             resp = wyzecam.api.run_action(self.auth, cam, action.lower())
             return {"status": "success", "response": resp["result"]}
-        except ValueError as ex:
-            error = f'{ex.args[0].get("code")}: {ex.args[0].get("msg")}'
-            logger.error(f"ERROR - {error}")
-            return {"status": "error", "response": f"{error}"}
+        except (ValueError, WyzeAPIError) as ex:
+            logger.error(f"[CONTROL] ERROR {ex}")
+            return {"status": "error", "response": str(ex)}
 
     @authenticated
-    def get_pid_info(self, cam: WyzeCamera, pid: str = ""):
+    def get_device_info(self, cam: WyzeCamera, pid: str = ""):
+        logger.info(f"[CONTROL] ☁️ get_device_Info for {cam.name_uri} via Wyze API")
+        params = {"device_mac": cam.mac, "device_model": cam.product_model}
         try:
-            logger.info(f"[CONTROL] ☁️ Get Device Info for {cam.name_uri} via Wyze API")
-            property_list = wyzecam.api.get_device_info(self.auth, cam)["property_list"]
-        except ValueError as ex:
-            error = f'{ex.args[0].get("code")}: {ex.args[0].get("msg")}'
-            logger.error(f"ERROR - {error}")
-            return {"status": "error", "response": f"{error}"}
+            res = post_v2_device(self.auth, "get_device_Info", params)["property_list"]
+        except (ValueError, WyzeAPIError) as ex:
+            logger.error(f"[CONTROL] ERROR - {ex}")
+            return {"status": "error", "response": str(ex)}
 
         if not pid:
-            return {"status": "success", "response": property_list}
+            return {"status": "success", "response": res}
 
-        resp = next((item for item in property_list if item["pid"] == pid))
+        if not (item := next((i for i in res if i["pid"] == pid), None)):
+            logger.error(f"[CONTROL] ERROR - {pid} not found")
+            return {"status": "error", "response": f"{pid} not found"}
 
-        return {"status": "success", "value": resp.get("value"), "response": resp}
+        return {"status": "success", "value": item.get("value"), "response": item}
+
+    @authenticated
+    def set_property(self, cam: WyzeCamera, pid: str = ""):
+        logger.info(f"[CONTROL] ☁️ set_property for {cam.name_uri} via Wyze API")
+        params = {"device_mac": cam.mac, "device_model": cam.product_model}
+        try:
+            res = post_v2_device(self.auth, "set_property", params)["property_list"]
+        except (ValueError, WyzeAPIError) as ex:
+            logger.error(f"[CONTROL] ERROR - {ex}")
+            return {"status": "error", "response": str(ex)}
+
+        return {"status": "success", "response": res}
+
+    @authenticated
+    def get_events(self, macs: Optional[list] = None, last_ts: int = 0):
+        current_ms = int(time() + 60) * 1000
+        params = {
+            "count": 20,
+            "order_by": 1,
+            "begin_time": max((last_ts + 1) * 1_000, (current_ms - 1_000_000)),
+            "end_time": current_ms,
+            "device_mac_list": macs or [],
+        }
+
+        try:
+            resp = post_v2_device(self.auth, "get_event_list", params)
+            return time(), resp["event_list"]
+        except RateLimitError as ex:
+            logger.error(f"[EVENTS] RateLimitError: {ex}, cooling down.")
+            return ex.reset_by, []
+        except (HTTPError, RequestException) as ex:
+            logger.error(f"[EVENTS] HTTPError: {ex}, cooling down.")
+            return time() + 60, []
 
     @authenticated
     def set_device_info(self, cam: WyzeCamera, params: dict):
         if not isinstance(params, dict):
-            return {"status": "error", "response": f"invalid param type [{params=}]"}
+            return {"status": "error", "response": f"Invalid params [{params=}]"}
+        logger.info(
+            f"[CONTROL] ☁ set_device_Info {params} for {cam.name_uri} via Wyze API"
+        )
+        params |= {"device_mac": cam.mac}
         try:
-            logger.info(
-                f"[CONTROL] ☁ Set Device Info {params} for {cam.name_uri} via Wyze API"
-            )
-            wyzecam.api.set_device_info(self.auth, cam, params)
+            wyzecam.api.post_device(self.auth, "set_device_Info", params)
             return {"status": "success", "response": "success"}
         except ValueError as ex:
             error = f'{ex.args[0].get("code")}: {ex.args[0].get("msg")}'
@@ -313,6 +383,29 @@ class WyzeApi:
 
     def get_mfa(self):
         return self.mfa_req
+
+
+def url_timestamp(url: str) -> int:
+    try:
+        url_path = urlparse(url).path.split("/")[3]
+        return int(url_path.split("_")[1]) // 1000
+    except Exception:
+        return 0
+
+
+def valid_s3_url(url: Optional[str]) -> bool:
+    if not url:
+        return False
+
+    query_parameters = parse_qs(urlparse(url).query)
+    x_amz_date = query_parameters.get("X-Amz-Date", "0")
+    x_amz_expires = query_parameters.get("X-Amz-Expires", "0")
+
+    try:
+        amz_date = datetime.strptime(x_amz_date[0], "%Y%m%dT%H%M%SZ")
+        return amz_date.timestamp() + int(x_amz_expires[0]) > time()
+    except (ValueError, TypeError):
+        return False
 
 
 def get_mfa_code(code_file: str) -> str:

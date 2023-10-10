@@ -4,11 +4,12 @@ from subprocess import Popen, TimeoutExpired
 from threading import Thread
 from typing import Any, Callable, Optional, Protocol
 
-from wyzebridge.config import MQTT_DISCOVERY, SNAPSHOT_INT, SNAPSHOT_TYPE
+from wyzebridge.config import MOTION, MQTT_DISCOVERY, SNAPSHOT_INT, SNAPSHOT_TYPE
 from wyzebridge.ffmpeg import rtsp_snap_cmd
 from wyzebridge.logging import logger
 from wyzebridge.mqtt import bridge_status, cam_control, publish_topic, update_preview
-from wyzebridge.rtsp_event import RtspEvent
+from wyzebridge.mtx_event import RtspEvent
+from wyzebridge.wyze_events import WyzeEvents
 
 
 class Stream(Protocol):
@@ -24,6 +25,10 @@ class Stream(Protocol):
 
     @property
     def enabled(self) -> bool:
+        ...
+
+    @property
+    def motion(self) -> bool:
         ...
 
     def start(self) -> bool:
@@ -99,10 +104,12 @@ class StreamManager:
         mqtt = cam_control(self.streams, self.send_cmd)
         logger.info(f"🎬 {self.total} stream{'s'[:self.total^1]} enabled")
         event = RtspEvent(self.streams)
+        events = WyzeEvents(self.streams) if MOTION else None
         while not self.stop_flag:
             event.read(timeout=1)
-            cams = self.health_check_all()
-            self.snap_all(cams)
+            self.snap_all(self.active_streams())
+            if events:
+                events.check_motion()
             if int(time.time()) % 15 == 0:
                 mtx_health()
                 bridge_status(mqtt)
@@ -121,9 +128,10 @@ class StreamManager:
                     del self.rtsp_snapshots[cam]
             time.sleep(1)
 
-    def health_check_all(self) -> list[str]:
+    def active_streams(self) -> list[str]:
         """
-        Health check on all streams and return a list of enabled streams.
+        Health check on all streams and return a list of enabled
+        streams that are NOT battery powered.
 
         Returns:
         - list(str): uri-friendly name of streams that are enabled.
@@ -147,7 +155,10 @@ class StreamManager:
             self.rtsp_snap_popen(cam, True)
 
     def get_sse_status(self) -> dict:
-        return {uri: cam.status() for uri, cam in self.streams.items()}
+        return {
+            uri: {"status": cam.status(), "motion": cam.motion}
+            for uri, cam in self.streams.items()
+        }
 
     def send_cmd(
         self, cam_name: str, cmd: str, payload: str | list | dict = ""

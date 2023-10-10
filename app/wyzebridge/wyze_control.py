@@ -1,13 +1,12 @@
-import contextlib
 import socket
 from datetime import datetime, timedelta
 from multiprocessing import Queue
-from queue import Empty, Full
+from queue import Empty
 from re import findall
 from typing import Any, Optional
 
 import requests
-from wyzebridge.bridge_utils import env_bool
+from wyzebridge.bridge_utils import env_bool, is_fw11
 from wyzebridge.config import BOA_COOLDOWN, BOA_INTERVAL, IMG_PATH, MQTT_TOPIC
 from wyzebridge.logging import logger
 from wyzebridge.mqtt import MQTT_ENABLED, publish_messages
@@ -139,7 +138,6 @@ def camera_control(
     :param uri: URI-safe name of the camera.
     """
     boa = check_boa_enabled(sess, uri)
-    fw_11 = sess.camera.firmware_ver and sess.camera.firmware_ver.startswith("4.36.11")
 
     while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
         boa_control(sess, boa)
@@ -147,7 +145,7 @@ def camera_control(
             cmd = camera_cmd.get(timeout=BOA_INTERVAL)
             topic, payload = cmd if isinstance(cmd, tuple) else (cmd, None)
         except Empty:
-            update_params(sess, bool(fw_11))
+            update_params(sess)
             continue
 
         if topic == "caminfo":
@@ -163,7 +161,7 @@ def camera_control(
             resp = update_bit_fps(sess, topic, payload)
         else:
             # Use K10050GetVideoParam if newer firmware
-            if topic == "bitrate" and fw_11:
+            if topic == "bitrate" and is_fw11(sess.camera.firmware_ver):
                 cmd = "_bitrate"
             resp = send_tutk_msg(sess, cmd)
             if boa and cmd == "take_photo":
@@ -172,12 +170,13 @@ def camera_control(
         camera_info.put({topic: resp})
 
 
-def update_params(sess: WyzeIOTCSession, fw_11: bool = False):
+def update_params(sess: WyzeIOTCSession):
     """
     Update camera parameters.
     """
     if sess.state != WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
         return
+    fw_11 = is_fw11(sess.camera.firmware_ver)
 
     if MQTT_ENABLED or not fw_11:
         remove = {"bitrate", "res"} if fw_11 else set()
@@ -274,6 +273,8 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
             return _response(resp, res, params, log)
     except Empty:
         return _response(resp, log=log)
+    except tutk_protocol.TutkWyzeProtocolError as ex:
+        return resp | _error_response(cmd, tutk_protocol.TutkWyzeProtocolError(ex))
     except Exception as ex:
         return resp | _error_response(cmd, ex)
 

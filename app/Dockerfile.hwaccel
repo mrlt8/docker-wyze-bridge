@@ -22,7 +22,8 @@ RUN cd /build \
     | tar -xzf - -C app --wildcards 'mediamtx*' \
     && cp app/amd.lib usr/local/lib/libIOTCAPIs_ALL.so \
     && if [ -n "$QSV" ]; then cp -R /usr/lib/x86_64-linux-gnu/ usr/lib/; fi \
-    && rm app/*.txt app/*.lib
+    && rm app/*.txt app/*.lib  \ 
+    && echo BUILD_DATE=$(date) > .build_date
 
 FROM base
 ARG BUILD

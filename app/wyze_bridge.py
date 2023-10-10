@@ -4,9 +4,9 @@ from dataclasses import replace
 from threading import Thread
 
 from wyzebridge import config
-from wyzebridge.bridge_utils import env_bool, env_cam
+from wyzebridge.bridge_utils import env_bool, env_cam, is_livestream
 from wyzebridge.logging import logger
-from wyzebridge.rtsp_server import MtxServer
+from wyzebridge.mtx_server import MtxServer
 from wyzebridge.stream import StreamManager
 from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_stream import WyzeStream, WyzeStreamOptions
@@ -48,7 +48,7 @@ class WyzeBridge(Thread):
                 quality=env_cam("quality", cam.name_uri),
                 audio=bool(env_cam("enable_audio", cam.name_uri)),
                 record=bool(env_cam("record", cam.name_uri)),
-                reconnect=not config.ON_DEMAND,
+                reconnect=is_livestream(cam.name_uri) or not config.ON_DEMAND,
             )
             self.add_substream(cam, options)
             stream = WyzeStream(cam, options)

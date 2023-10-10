@@ -18,7 +18,6 @@ GET_CMDS = {
     "motion_tracking": "K11020GetMotionTracking",
     "motion_tagging": "K10290GetMotionTagging",
     "camera_info": "K10020CheckCameraInfo",
-    "battery": "K10050GetPowerLevel",
     "battery_usage": "K10448GetBatteryUsage",
     "rtsp": "K10604GetRtspParam",
     "param_info": "K10020CheckCameraParams",  # Requires a Payload
