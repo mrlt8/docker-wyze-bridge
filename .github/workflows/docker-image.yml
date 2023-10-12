@@ -41,7 +41,7 @@ jobs:
         id: image_type
         run: |
           echo "suffix=${{ matrix.dockerfile == 'hwaccel' && '-hw' || matrix.dockerfile == 'qsv' && '-qsv' ||'' }}" >> $GITHUB_OUTPUT
-          echo "platforms=${{ matrix.dockerfile == 'multiarch' && 'linux/amd64,linux/arm64,linux/arm/v7' || 'linux/amd64' }}" >> $GITHUB_OUTPUT
+          echo "platforms=${{ matrix.dockerfile == 'multiarch' && 'linux/amd64,linux/arm64,linux/arm/v7,linux/arm/v8' || 'linux/amd64' }}" >> $GITHUB_OUTPUT
           echo "arch=${{ matrix.dockerfile == 'multiarch' && 'amd64,armhf,aarch64' || 'amd64' }}" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
