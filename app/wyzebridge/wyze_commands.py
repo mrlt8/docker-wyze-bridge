@@ -20,6 +20,9 @@ GET_CMDS = {
     "camera_info": "K10020CheckCameraInfo",
     "battery_usage": "K10448GetBatteryUsage",
     "rtsp": "K10604GetRtspParam",
+    "accessories": "K10720GetAccessoriesInfo",
+    "floodlight": "K10788GetIntegratedFloodlightInfo",
+    "whitelight": "K10820GetWhiteLightInfo",
     "param_info": "K10020CheckCameraParams",  # Requires a Payload
     "_bitrate": "K10050GetVideoParam",  # Only works on newer firmware
 }
@@ -54,6 +57,7 @@ SET_CMDS = {
     "ver_flip": "K10052VerticalFlip",
     "rtsp": "K10600SetRtspSwitch",
     "quick_response": "K11635ResponseQuickMessage",
+    "spotlight": "K10646SetSpotlightStatus",
 }
 
 CMD_VALUES = {

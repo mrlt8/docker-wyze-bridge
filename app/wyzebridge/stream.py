@@ -107,7 +107,7 @@ class StreamManager:
         events = WyzeEvents(self.streams) if MOTION else None
         while not self.stop_flag:
             event.read(timeout=1)
-            self.snap_all(self.active_streams())
+            self.snap_all()
             if events:
                 events.check_motion()
             if int(time.time()) % 15 == 0:
@@ -138,21 +138,21 @@ class StreamManager:
         """
         return [cam for cam, s in self.streams.items() if s.health_check() > 0]
 
-    def snap_all(self, cams: list[str]):
+    def snap_all(self, force: bool = False):
         """
-        Take an rtsp snapshot of the streams in the list.
+        Take an rtsp snapshot of active_streams.
 
-        Parameters:
-        - cams (list[str]): names of the streams to take a snapshot of.
+        Args:
+        - force (bool, optional): Ignore interval and force snapshot. Defaults to False.
+
         """
-        if SNAPSHOT_TYPE != "rtsp" or not cams:
-            return
-        if time.time() - self.last_snap < SNAPSHOT_INT:
-            return
-        self.last_snap = time.time()
-        for cam in cams:
-            stop_subprocess(self.rtsp_snapshots.get(cam))
-            self.rtsp_snap_popen(cam, True)
+        if force or (
+            SNAPSHOT_TYPE == "rtsp" and time.time() - self.last_snap >= SNAPSHOT_INT
+        ):
+            self.last_snap = time.time()
+            for cam in self.active_streams():
+                stop_subprocess(self.rtsp_snapshots.get(cam))
+                self.rtsp_snap_popen(cam, True)
 
     def get_sse_status(self) -> dict:
         return {
@@ -175,6 +175,10 @@ class StreamManager:
         - dictionary: Results that can be converted to JSON.
         """
         resp = {"status": "error", "command": cmd, "payload": payload}
+
+        if cam_name == "all" and cmd == "update_snapshot":
+            self.snap_all(True)
+            return resp | {"status": "success"}
 
         if not (stream := self.get(cam_name)):
             return resp | {"response": "Camera not found"}

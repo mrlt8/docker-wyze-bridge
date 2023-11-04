@@ -1181,6 +1181,51 @@ class K11635ResponseQuickMessage(TutkWyzeProtocolMessage):
         return encode(self.code, bytes([self.value]))
 
 
+class K10646SetSpotlightStatus(TutkWyzeProtocolMessage):
+    """
+    A message used to set the spotlight (WYZEC3L) status.
+
+    Args:
+    - value (int): 1 for on; 2 for off.
+    """
+
+    def __init__(self, value):
+        super().__init__(10646)
+
+        assert 1 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([self.value]))
+
+
+class K10720GetAccessoriesInfo(TutkWyzeProtocolMessage):
+    """
+    A message used to get the accessories info.
+    """
+
+    def __init__(self):
+        super().__init__(10720)
+
+
+class K10788GetIntegratedFloodlightInfo(TutkWyzeProtocolMessage):
+    """
+    A message used to get the integrated floodlight info.
+    """
+
+    def __init__(self):
+        super().__init__(10788)
+
+
+class K10820GetWhiteLightInfo(TutkWyzeProtocolMessage):
+    """
+    A message used to get the white light info.
+    """
+
+    def __init__(self):
+        super().__init__(10820)
+
+
 def encode(code: int, data: Optional[bytes]) -> bytes:
     data_len = 0 if data is None else len(data)
     encoded_msg = bytearray([0] * (16 + data_len))
