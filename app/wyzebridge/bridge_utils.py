@@ -69,6 +69,8 @@ def is_livestream(uri: str) -> bool:
 
 def is_fw11(fw_ver: Optional[str]) -> bool:
     with contextlib.suppress(IndexError, ValueError):
+        if fw_ver and (fw_ver.startswith("4.51") or fw_ver.startswith("4.52")):
+            return True
         if fw_ver and int(fw_ver.split(".")[2]) > 10:
             return True
     return False
