@@ -1,3 +1,12 @@
+## What's Changed in v2.5.0
+
+* NEW camera support:
+  * HL_DB2: Wyze Cam Doorbell v2 - thanks @hoveeman!
+  * HL_CAM4: Wyze Cam V4
+* NEW API Endpoint:
+  * `/api/all/update_snapshot` - trigger interval snapshots via web API #1030
+
+
 ## What's Changed in v2.4.0
 
 * Motion Events! 

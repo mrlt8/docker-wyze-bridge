@@ -37,6 +37,14 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.5.0
+
+* NEW camera support:
+  * HL_DB2: Wyze Cam Doorbell v2 - thanks @hoveeman!
+  * HL_CAM4: Wyze Cam V4
+* NEW API Endpoint:
+  * `/api/all/update_snapshot` - trigger interval snapshots via web API #1030
+
 ## What's Changed in v2.4.0
 
 * Motion Events! 
@@ -84,6 +92,7 @@ See [basic usage](#basic-usage) for additional information or visit the [wiki pa
 ![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-yes-success.svg)
 ![Wyze Cam Outdoor V2](https://img.shields.io/badge/wyze_outdoor_v2-yes-success.svg)
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
+![Wyze Cam Doorbell V2](https://img.shields.io/badge/wyze_doorbell_v2-yes-success.svg)
 
 Cameras from [Gwell Times](http://cloud.gwell.cc) are currently not supported:
 
