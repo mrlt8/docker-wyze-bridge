@@ -9,12 +9,14 @@ MODEL_NAMES = {
     "WYZEC1": "V1",
     "WYZEC1-JZ": "V2",
     "WYZE_CAKP2JFUS": "V3",
+    "HL_CAM4": "V4",
     "HL_CAM3P": "V3 Pro",
     "WYZECP1_JEF": "Pan",
     "HL_PAN2": "Pan V2",
     "HL_PAN3": "Pan V3",
     "HL_PANP": "Pan Pro",
     "WYZEDB3": "Doorbell",
+    "HL_DB2": "Doorbell V2",
     "GW_BE1": "Doorbell Pro",
     "AN_RDB1": "Doorbell Pro 2",
     "GW_GC1": "OG",
@@ -40,7 +42,7 @@ NO_WEBRTC = {
 
 
 # known 2k cameras
-PRO_CAMS = {"HL_CAM3P", "HL_PANP"}
+PRO_CAMS = {"HL_CAM3P", "HL_PANP", "HL_CAM4", "HL_DB2"}
 
 PAN_CAMS = {"WYZECP1_JEF", "HL_PAN2", "HL_PAN3", "HL_PANP"}
 
