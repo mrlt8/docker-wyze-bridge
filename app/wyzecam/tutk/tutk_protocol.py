@@ -1207,6 +1207,9 @@ class K10720GetAccessoriesInfo(TutkWyzeProtocolMessage):
     def __init__(self):
         super().__init__(10720)
 
+    def parse_response(self, resp_data):
+        return json.loads(resp_data)
+
 
 class K10788GetIntegratedFloodlightInfo(TutkWyzeProtocolMessage):
     """
@@ -1224,6 +1227,21 @@ class K10820GetWhiteLightInfo(TutkWyzeProtocolMessage):
 
     def __init__(self):
         super().__init__(10820)
+
+
+class K12060SetFloodLightSwitch(TutkWyzeProtocolMessage):
+    """
+    A message used to set the flood light switch.
+    """
+
+    def __init__(self, value):
+        super().__init__(12060)
+
+        assert 1 <= value <= 2, "value must be 1 or 2"
+        self.value: int = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([self.value]))
 
 
 def encode(code: int, data: Optional[bytes]) -> bytes:

@@ -1,3 +1,10 @@
+## What's Changed in v2.5.1
+
+* FIX `ON_DEMAND=False` option was broken in v2.5.0 #1036 #1037
+* NEW API/MQTT commands Thanks @ralacher! #921:
+  * GET: `/api/<cam-name>/accessories` | MQTT: `wyzebridge/<cam-name>/accessories/get`
+  * SET: `/api/<cam-name>/spotlight` | MQTT: `wyzebridge/<cam-name>/spotlight/set`
+
 ## What's Changed in v2.5.0
 
 * NEW camera support:
