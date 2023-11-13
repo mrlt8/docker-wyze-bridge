@@ -37,6 +37,13 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.5.1
+
+* FIX `ON_DEMAND=False` option was broken in v2.5.0 #1036 #1037
+* NEW API/MQTT commands Thanks @ralacher! #921:
+  * GET: `/api/<cam-name>/accessories` | MQTT: `wyzebridge/<cam-name>/accessories/get`
+  * SET: `/api/<cam-name>/spotlight` | MQTT: `wyzebridge/<cam-name>/spotlight/set`
+
 ## What's Changed in v2.5.0
 
 * NEW camera support:
