@@ -58,6 +58,7 @@ SET_CMDS = {
     "rtsp": "K10600SetRtspSwitch",
     "quick_response": "K11635ResponseQuickMessage",
     "spotlight": "K10646SetSpotlightStatus",
+    "floodlight": "K12060SetFloodLightSwitch",
 }
 
 CMD_VALUES = {
