@@ -1207,6 +1207,9 @@ class K10720GetAccessoriesInfo(TutkWyzeProtocolMessage):
     def __init__(self):
         super().__init__(10720)
 
+    def parse_response(self, resp_data):
+        return json.loads(resp_data)
+
 
 class K10788GetIntegratedFloodlightInfo(TutkWyzeProtocolMessage):
     """
