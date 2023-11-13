@@ -107,7 +107,7 @@ class StreamManager:
         events = WyzeEvents(self.streams) if MOTION else None
         while not self.stop_flag:
             event.read(timeout=1)
-            self.snap_all()
+            self.snap_all(self.active_streams())
             if events:
                 events.check_motion()
             if int(time.time()) % 15 == 0:
@@ -138,21 +138,22 @@ class StreamManager:
         """
         return [cam for cam, s in self.streams.items() if s.health_check() > 0]
 
-    def snap_all(self, force: bool = False):
+    def snap_all(self, cams: Optional[list[str]] = None, force: bool = False):
         """
-        Take an rtsp snapshot of active_streams.
+        Take an rtsp snapshot of the streams in the list.
 
         Args:
+        - cams (list[str], optional): names of the streams to take a snapshot of.
         - force (bool, optional): Ignore interval and force snapshot. Defaults to False.
-
         """
-        if force or (
-            SNAPSHOT_TYPE == "rtsp" and time.time() - self.last_snap >= SNAPSHOT_INT
-        ):
+        if force or self._should_snap():
             self.last_snap = time.time()
-            for cam in self.active_streams():
+            for cam in cams or self.active_streams():
                 stop_subprocess(self.rtsp_snapshots.get(cam))
                 self.rtsp_snap_popen(cam, True)
+
+    def _should_snap(self):
+        return SNAPSHOT_TYPE == "rtsp" and time.time() - self.last_snap >= SNAPSHOT_INT
 
     def get_sse_status(self) -> dict:
         return {
@@ -177,7 +178,7 @@ class StreamManager:
         resp = {"status": "error", "command": cmd, "payload": payload}
 
         if cam_name == "all" and cmd == "update_snapshot":
-            self.snap_all(True)
+            self.snap_all(force=True)
             return resp | {"status": "success"}
 
         if not (stream := self.get(cam_name)):
