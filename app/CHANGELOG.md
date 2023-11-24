@@ -1,3 +1,9 @@
+## What's Changed in v2.5.2
+
+* FIX: MQTT Naming Warning in Home Assistant #1046 Thanks @ejpenney!
+* NEW: `{img}` variable for `motion_webhooks` #1044
+  * e.g., `MOTION_WEBHOOKS: http://0.0.0.0:123/webhooks/endpoint?camera={cam_name}&snapshot={img}`
+
 ## What's Changed in v2.5.1
 
 * FIX `ON_DEMAND=False` option was broken in v2.5.0 #1036 #1037

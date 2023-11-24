@@ -65,7 +65,7 @@ def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> No
 
             payload = dict(
                 base_payload | data["payload"],
-                name=f"Wyze Cam {cam.nickname} {' '.join(entity.title().split('_'))}",
+                name=" ".join(entity.title().split("_")),
                 uniq_id=f"WYZE{cam.mac}{entity.upper()}",
             )
 
