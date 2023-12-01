@@ -59,6 +59,7 @@ SET_CMDS = {
     "quick_response": "K11635ResponseQuickMessage",
     "spotlight": "K10646SetSpotlightStatus",
     "floodlight": "K12060SetFloodLightSwitch",
+    "format_sd" : "K10242FormatSDCard",
 }
 
 CMD_VALUES = {
