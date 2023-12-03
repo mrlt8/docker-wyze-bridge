@@ -3,6 +3,7 @@ import json
 from functools import wraps
 from os import getenv
 from socket import gaierror
+from time import sleep
 from typing import Optional
 
 import paho.mqtt.client
@@ -16,6 +17,7 @@ from wyzecam import WyzeCamera
 MQTT_ENABLED = bool(env_bool("MQTT_HOST"))
 MQTT_USER, _, MQTT_PASS = getenv("MQTT_AUTH", ":").partition(":")
 MQTT_HOST, _, MQTT_PORT = getenv("MQTT_HOST", ":").partition(":")
+RETRIES = int(getenv("MQTT_RETRIES", "3"))
 
 
 def mqtt_enabled(func):
@@ -24,13 +26,18 @@ def mqtt_enabled(func):
         global MQTT_ENABLED
         if not MQTT_ENABLED:
             return
-        try:
-            return func(*args, **kwargs)
-        except (ConnectionRefusedError, TimeoutError, gaierror) as ex:
-            logger.error(f"[MQTT] {ex}. Disabling MQTT.")
-            MQTT_ENABLED = False
-        except Exception as ex:
-            logger.error(f"[MQTT] {ex}")
+
+        for retry in range(1, RETRIES + 1):
+            try:
+                return func(*args, **kwargs)
+            except (ConnectionRefusedError, TimeoutError, gaierror) as ex:
+                logger.error(f"[MQTT] {ex}. Retrying {retry}/{RETRIES}...")
+            except Exception as ex:
+                logger.error(f"[MQTT] {ex}")
+            sleep(1)
+
+        logger.error(f"[MQTT] {RETRIES}/{RETRIES} retries failed. Disabling MQTT.")
+        MQTT_ENABLED = False
 
     return wrapper
 
