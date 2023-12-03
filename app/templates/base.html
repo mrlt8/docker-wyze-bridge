@@ -5,9 +5,9 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Wyze-Bridge</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css" />
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
+    <link rel="stylesheet" href="{{ 'static/bulma.css' if hass else url_for('static',filename='bulma.css') }}" />
     <link rel="stylesheet" href="{{ 'static/site.css' if hass else url_for('static',filename='site.css') }}" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
     {% block stylesheet %}
     {% endblock %}
 </head>
@@ -32,7 +32,7 @@
             </p>
         </div>
     </footer>
-    <script src="https://cdn.jsdelivr.net/npm/bulma-toast@2.4.2/dist/bulma-toast.min.js"></script>
+    <script src="{{ 'static/bulma-toast.js' if hass else url_for('static',filename='bulma-toast.js') }}"></script>
     {% block javascript %}
     {% endblock %}
 </body>
