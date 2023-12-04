@@ -45,7 +45,7 @@ jobs:
           echo "arch=${{ matrix.dockerfile == 'multiarch' && 'amd64,armhf,aarch64' || 'amd64' }}" >> $GITHUB_OUTPUT
 
       - name: Set up QEMU
-        uses: docker/setup-qemu-action@v2
+        uses: docker/setup-qemu-action@v3
         with:
           platforms: ${{ steps.image_type.outputs.platforms }}
 
@@ -57,7 +57,7 @@ jobs:
 
       - name: Login to DockerHub
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v2
+        uses: docker/login-action@v3
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
@@ -72,7 +72,7 @@ jobs:
 
       - name: Extract Docker metadata
         id: meta
-        uses: docker/metadata-action@v4
+        uses: docker/metadata-action@v5
         with:
           images: |
             ${{ github.repository_owner }}/wyze-bridge
@@ -98,7 +98,7 @@ jobs:
           fi
 
       - name: Build and push a Docker image
-        uses: docker/build-push-action@v4
+        uses: docker/build-push-action@v5
         with:
           builder: ${{ steps.buildx.outputs.name }}
           context: ./app/

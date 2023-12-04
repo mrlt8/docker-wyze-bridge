@@ -18,12 +18,28 @@ Streams direct from camera without additional bandwidth or subscriptions.
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [bluenviron/mediamtx](https://github.com/bluenviron/mediamtx).
 
-
 Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) this project if you found it useful, or use the [affiliate link](https://amzn.to/3NLnbvt) when shopping on amazon!
 
-## API Changes
 
-As of July 2023, you will need to update your bridge to v2.3.x or newer for compatibility with the latest changes to the Wyze API.
+> [!IMPORTANT]
+> As of July 2023, you will need to **update your bridge to v2.3.x or newer** for compatibility with the latest changes to the Wyze API.
+
+![Wyze Cam V1](https://img.shields.io/badge/wyze_v1-yes-success.svg)
+![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
+![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
+![Wyze Cam V3 Pro](https://img.shields.io/badge/wyze_v3_pro-yes-success.svg)
+![Wyze Cam Floodlight](https://img.shields.io/badge/wyze_floodlight-yes-success.svg)
+![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-yes-success.svg)
+![Wyze Cam Pan V2](https://img.shields.io/badge/wyze_pan_v2-yes-success.svg)
+![Wyze Cam Pan V3](https://img.shields.io/badge/wyze_pan_v3-yes-success.svg)
+![Wyze Cam Pan Pro](https://img.shields.io/badge/wyze_pan_pro-yes-success.svg)
+![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-yes-success.svg)
+![Wyze Cam Outdoor V2](https://img.shields.io/badge/wyze_outdoor_v2-yes-success.svg)
+![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
+![Wyze Cam Doorbell V2](https://img.shields.io/badge/wyze_doorbell_v2-yes-success.svg)
+
+See the [supported cameras](#supported-cameras) section for additional information.
+
 
 ## Quick Start
 
@@ -36,6 +52,12 @@ docker run -p 8554:8554 -p 8888:8888 -p 5000:5000 mrlt8/wyze-bridge
 You can then use the web interface at `http://localhost:5000` where localhost is the hostname or ip of the machine running the bridge.
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
+
+## What's Changed in v2.5.3
+
+* FIXED: use static bulma for Pi-Hole compatibility Thanks @MetalliMyers! #1054
+* NEW: MQTT/API - Format SD Card using the topic/endpoint `format_sd` Thanks @iferlive! #1053
+* NEW: `MQTT_RETRIES` to adjust the number of retires on exception. Defaults to 3 before disabling MQTT. Thanks @rmaes4! #1047
 
 ## What's Changed in v2.5.2
 
@@ -64,25 +86,6 @@ See [basic usage](#basic-usage) for additional information or visit the [wiki pa
 
 ## Supported Cameras
 
-![Wyze Cam V1](https://img.shields.io/badge/wyze_v1-yes-success.svg)
-![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
-![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
-![Wyze Cam V3 Pro](https://img.shields.io/badge/wyze_v3_pro-yes-success.svg)
-![Wyze Cam Floodlight](https://img.shields.io/badge/wyze_floodlight-yes-success.svg)
-![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-yes-success.svg)
-![Wyze Cam Pan V2](https://img.shields.io/badge/wyze_pan_v2-yes-success.svg)
-![Wyze Cam Pan V3](https://img.shields.io/badge/wyze_pan_v3-yes-success.svg)
-![Wyze Cam Pan Pro](https://img.shields.io/badge/wyze_pan_pro-yes-success.svg)
-![Wyze Cam Outdoor](https://img.shields.io/badge/wyze_outdoor-yes-success.svg)
-![Wyze Cam Outdoor V2](https://img.shields.io/badge/wyze_outdoor_v2-yes-success.svg)
-![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
-![Wyze Cam Doorbell V2](https://img.shields.io/badge/wyze_doorbell_v2-yes-success.svg)
-
-Cameras from [Gwell Times](http://cloud.gwell.cc) are currently not supported:
-
-![Wyze Cam Doorbell Pro](https://img.shields.io/badge/wyze_doorbell_pro-no-inactive.svg)
-![Wyze Cam OG](https://img.shields.io/badge/wyze_og-no-inactive.svg)
-![Wyze Cam OG 3x](https://img.shields.io/badge/wyze_og_3x-no-inactive.svg)
 
 | Camera                        | Model          | Tutk Support                                                 | Latest FW |
 | ----------------------------- | -------------- | ------------------------------------------------------------ | --------- |
@@ -128,14 +131,14 @@ The container can be run on its own, in [Portainer](https://github.com/mrlt8/doc
 
 ### Ubiquiti Unifi 
 
-Some network adjustments may be needed - see [this discussion](https://github.com/mrlt8/docker-wyze-bridge/discussions/891) for more information.
+> [!NOTE]  
+> Some network adjustments may be needed - see [this discussion](https://github.com/mrlt8/docker-wyze-bridge/discussions/891) for more information.
 
 ## Basic Usage
 
 ### docker-compose (recommended)
 
 This is similar to the docker run command, but will save all your options in a yaml file.
-(If your credentials have special characters, you must escape them)
 
 1. Install [Docker Compose](https://docs.docker.com/compose/install/).
 2. Use the [sample](https://raw.githubusercontent.com/mrlt8/docker-wyze-bridge/main/docker-compose.sample.yml) as a guide to create a `docker-compose.yml` file with your wyze credentials.
@@ -143,7 +146,12 @@ This is similar to the docker run command, but will save all your options in a y
 
 Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
 
-NOTE: You may need to [update the WebUI links](https://github.com/mrlt8/docker-wyze-bridge/wiki/WebUI#custom-ports) if you're changing the ports or using a reverse proxy.
+> [!CAUTION]
+> If your credentials have special characters, you must escape them or leave your credentials blank and use the webUI to login.
+
+> [!NOTE] 
+> You may need to [update the WebUI links](https://github.com/mrlt8/docker-wyze-bridge/wiki/WebUI#custom-ports) if you're changing the ports or using a reverse proxy.
+
 
 #### Updating your container
 

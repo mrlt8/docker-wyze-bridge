@@ -838,6 +838,18 @@ class K10148StartBoa(TutkWyzeProtocolMessage):
 
     def encode(self) -> bytes:
         return encode(self.code, bytes([0, 1, 0, 0, 0]))
+    
+class K10242FormatSDCard(TutkWyzeProtocolMessage):
+    """
+    Format SD Card.
+
+    Parameters:
+    -  value (int): 1 to confirm format.
+    """
+
+    def __init__(self, value: int = 0):
+        super().__init__(10242)
+        assert value == 1, "value must be 1 to confirm format!"
 
 
 class K10444SetDeviceState(TutkWyzeProtocolMessage):

@@ -1,3 +1,9 @@
+## What's Changed in v2.5.3
+
+* FIXED: use static bulma for Pi-Hole compatibility Thanks @MetalliMyers! #1054
+* NEW: MQTT/API - Format SD Card using the topic/endpoint `format_sd` Thanks @iferlive! #1053
+* NEW: `MQTT_RETRIES` to adjust the number of retires on exception. Defaults to 3 before disabling MQTT. Thanks @rmaes4! #1047
+
 ## What's Changed in v2.5.2
 
 * FIX: MQTT Naming Warning in Home Assistant #1046 Thanks @ejpenney!
