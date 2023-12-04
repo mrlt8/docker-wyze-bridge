@@ -18,8 +18,11 @@ Streams direct from camera without additional bandwidth or subscriptions.
 
 Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [bluenviron/mediamtx](https://github.com/bluenviron/mediamtx).
 
-
 Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) this project if you found it useful, or use the [affiliate link](https://amzn.to/3NLnbvt) when shopping on amazon!
+
+
+> [!IMPORTANT]
+> As of July 2023, you will need to **update your bridge to v2.3.x or newer** for compatibility with the latest changes to the Wyze API.
 
 ![Wyze Cam V1](https://img.shields.io/badge/wyze_v1-yes-success.svg)
 ![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
@@ -38,9 +41,6 @@ Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) 
 See the [supported cameras](#supported-cameras) section for additional information.
 
 
-> [!IMPORTANT] 
-> As of July 2023, you will need to **update your bridge to v2.3.x or newer** for compatibility with the latest changes to the Wyze API.
-
 ## Quick Start
 
 Install [docker](https://docs.docker.com/get-docker/) and run:
@@ -52,6 +52,12 @@ docker run -p 8554:8554 -p 8888:8888 -p 5000:5000 mrlt8/wyze-bridge
 You can then use the web interface at `http://localhost:5000` where localhost is the hostname or ip of the machine running the bridge.
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
+
+## What's Changed in v2.5.3
+
+* FIXED: use static bulma for Pi-Hole compatibility Thanks @MetalliMyers! #1054
+* NEW: MQTT/API - Format SD Card using the topic/endpoint `format_sd` Thanks @iferlive! #1053
+* NEW: `MQTT_RETRIES` to adjust the number of retires on exception. Defaults to 3 before disabling MQTT. Thanks @rmaes4! #1047
 
 ## What's Changed in v2.5.2
 
