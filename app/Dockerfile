@@ -3,7 +3,7 @@ FROM python:3.12-slim-bookworm as base
 
 FROM base as builder
 RUN apt-get update \
-    && apt-get install -y curl tar \
+    && apt-get install -y curl tar gcc \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 COPY . /build/app/
