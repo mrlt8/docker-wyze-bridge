@@ -1,5 +1,5 @@
 ARG BUILD
-FROM python:3.11-slim-bookworm as base
+FROM python:3.12-slim-bookworm as base
 
 FROM base as builder
 RUN apt-get update \
