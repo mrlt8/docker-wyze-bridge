@@ -13,7 +13,7 @@ COPY . /build/app/
 RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local -r /build/app/requirements.txt
 RUN echo "BUILDING IMAGE FOR ${TARGETARCH}" && \
     if [ "${TARGETARCH}" = "arm" ]; \
-    then FFMPEG_ARCH=armv7; MTX_ARCH=armv7; \
+    then FFMPEG_ARCH=arm32v7; MTX_ARCH=armv7; \
     elif [ "${TARGETARCH}" = "arm64" ]; \
     then FFMPEG_ARCH=aarch64; MTX_ARCH=arm64v8; \
     else FFMPEG_ARCH=x86_64; MTX_ARCH=amd64; \
