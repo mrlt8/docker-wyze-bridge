@@ -1,8 +1,13 @@
 ## What's Changed in v2.6.0
 
-* NEW: ARM 64-bit native library. #529 #604 #664 #871 #998 #1004
-  * Prior versions of the arm64 container were running in 32-bit mode which caused some issues especially when trying to run the Home Assistant Add-on on Apple Silicon M1/M2/M3.
-* UPDATED: Python 3.11 -> Python 3.12
+* **NEW**: ARM 64-bit native library (#529 #604 #664 #871 #998 #1004)
+  
+  The arm64 container now runs in 64-bit mode, addressing compatibility issues, particularly on Apple Silicon M1/M2/M3, when using the Home Assistant Add-on.
+
+  Resolves issues on the Raspberry Pi 4/5 running the 64-bit version of Raspbian.
+
+* **Update**: Python 3.11 -> Python 3.12
+
 
 ## What's Changed in v2.5.3
 

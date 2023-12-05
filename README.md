@@ -55,21 +55,27 @@ See [basic usage](#basic-usage) for additional information or visit the [wiki pa
 
 ## What's Changed in v2.6.0
 
-* NEW: ARM 64-bit native library. #529 #604 #664 #871 #998 #1004
-  * Prior versions of the arm64 container were running in 32-bit mode which caused some issues especially when trying to run the Home Assistant Add-on on Apple Silicon M1/M2/M3.
-* UPDATED: Python 3.11 -> Python 3.12
+* **NEW**: ARM 64-bit native library (#529 #604 #664 #871 #998 #1004)
+  
+  The arm64 container now runs in 64-bit mode, addressing compatibility issues, particularly on Apple Silicon M1/M2/M3, when using the Home Assistant Add-on.
+
+  Resolves issues on the Raspberry Pi 4/5 running the 64-bit version of Raspbian.
+
+* **Update**: Python 3.11 -> Python 3.12
 
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
 ## FAQ
 
-- How does this work?
-  - It uses the same SDK as the app to communicate directly with the cameras. See [kroo/wyzecam](https://github.com/kroo/wyzecam) for details.
-- Does it use internet bandwidth when streaming?
-  - Not in most cases. The bridge will attempt to stream locally if possible but will fallback to streaming over the internet if you're trying to stream from a different location or from a shared camera. See the [wiki](https://github.com/mrlt8/docker-wyze-bridge/wiki/Network-Connection-Modes) for more details.
-- Can this work offline/can I block all wyze services?
-  - No. Streaming should continue to work without an active internet connection, but will probably stop working after some time as the cameras were not designed to be used without the cloud. Some camera commands also depend on the cloud an may not function with an active connection. See [gtxaspec/wz_mini_hacks](https://github.com/gtxaspec/wz_mini_hacks/wiki/Configuration-File#self-hosted--isolated-mode) for firmware level modification to run the camera offline.
+* How does this work?
+  * It uses the same SDK as the app to communicate directly with the cameras. See [kroo/wyzecam](https://github.com/kroo/wyzecam) for details.
+* Does it use internet bandwidth when streaming?
+  * Not in most cases. The bridge will attempt to stream locally if possible but will fallback to streaming over the internet if you're trying to stream from a different location or from a shared camera. See the [wiki](https://github.com/mrlt8/docker-wyze-bridge/wiki/Network-Connection-Modes) for more details.
+* Can this work offline/can I block all wyze services?
+  * No. Streaming should continue to work without an active internet connection, but will probably stop working after some time as the cameras were not designed to be used without the cloud. Some camera commands also depend on the cloud and may not function without an active connection. See [wz_mini_hacks](https://github.com/gtxaspec/wz_mini_hacks/wiki/Configuration-File#self-hosted--isolated-mode) for firmware level modification to run the camera offline.
+* Why aren't all wyze cams supported yet (OG/Doorbell Pro)?
+  * These cameras are using a different SDK and will require a different method to connect and stream.
 
 ## Compatibility
 
