@@ -8,11 +8,14 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 COPY . /build/app/
 RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local -r /build/app/requirements.txt
-RUN case $(uname -m) in \
-    armv7l) LIB_ARCH=arm; FFMPEG_ARCH=arm32v7; MTX_ARCH=armv7;; \
-    aarch64) LIB_ARCH=arm64; FFMPEG_ARCH=aarch64; MTX_ARCH=arm64v8;; \
-    *) LIB_ARCH=amd64; FFMPEG_ARCH=x86_64; MTX_ARCH=amd64;; \
-    esac && \
+RUN echo "BUILDING IMAGE FOR $(uname -m)" && \
+    if [ "$(uname -m)" = "armv7l" ]; then \
+    LIB_ARCH=arm; FFMPEG_ARCH=arm32v7; MTX_ARCH=armv7; \
+    elif [ "$(uname -m)" = "aarch64" ]; then \
+    LIB_ARCH=arm64; FFMPEG_ARCH=aarch64; MTX_ARCH=arm64v8; \
+    else \
+    LIB_ARCH=amd64; FFMPEG_ARCH=x86_64; MTX_ARCH=amd64; \
+    fi && \
     cd /build \
     && . app/.env \
     && mkdir -p tokens img \
