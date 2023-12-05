@@ -1,7 +1,7 @@
 ARG BUILD
 FROM amd64/python:3.12-slim-bookworm as base_amd64
 FROM arm32v7/python:3.12-slim-bookworm as base_arm
-FROM arm64v8/python:3.112-slim-bookworm as base_arm64
+FROM arm64v8/python:3.12-slim-bookworm as base_arm64
 
 FROM base_$TARGETARCH as builder
 ARG TARGETARCH
