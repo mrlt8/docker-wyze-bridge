@@ -1,7 +1,7 @@
 # Use the build args QSV=1 to build with intel drivers.
 ARG BUILD
 ARG QSV
-FROM amd64/python:3.11-slim-bookworm as base
+FROM amd64/python:3.12-slim-bookworm as base
 
 FROM base as builder
 ARG QSV
@@ -20,9 +20,9 @@ RUN cd /build \
     | tar -Jxf - --strip-components=1 -C usr/local --wildcards '*ffmpeg' \
     && curl -SL https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_amd64.tar.gz \
     | tar -xzf - -C app --wildcards 'mediamtx*' \
-    && cp app/amd.lib usr/local/lib/libIOTCAPIs_ALL.so \
+    && cp app/lib.amd64 usr/local/lib/libIOTCAPIs_ALL.so \
     && if [ -n "$QSV" ]; then cp -R /usr/lib/x86_64-linux-gnu/ usr/lib/; fi \
-    && rm app/*.txt app/*.lib  \ 
+    && rm app/*.txt app/lib.*  \ 
     && echo BUILD_DATE=$(date) > .build_date
 
 FROM base

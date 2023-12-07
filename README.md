@@ -10,7 +10,7 @@
 
 Create a local WebRTC, RTSP, RTMP, or HLS/Low-Latency HLS stream for most of your Wyze cameras including the outdoor, doorbell, and 2K cams. 
 
-No third-party or special firmware required.
+No modifications, third-party, or special firmware required.
 
 It just works!
 
@@ -53,39 +53,54 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.5.3
+## What's Changed in v2.6.0
 
-* FIXED: use static bulma for Pi-Hole compatibility Thanks @MetalliMyers! #1054
-* NEW: MQTT/API - Format SD Card using the topic/endpoint `format_sd` Thanks @iferlive! #1053
-* NEW: `MQTT_RETRIES` to adjust the number of retires on exception. Defaults to 3 before disabling MQTT. Thanks @rmaes4! #1047
+* **NEW**: ARM 64-bit native library (#529 #604 #664 #871 #998 #1004)
+  
+  The arm64 container now runs in 64-bit mode, addressing compatibility issues, particularly on Apple Silicon M1/M2/M3, when using the Home Assistant Add-on.
 
-## What's Changed in v2.5.2
+  Resolves issues on the Raspberry Pi 4/5 running the 64-bit version of Raspbian.
 
-* FIX: MQTT Naming Warning in Home Assistant #1046 Thanks @ejpenney!
-* NEW: `{img}` variable for `motion_webhooks` #1044
-  * e.g., `MOTION_WEBHOOKS: http://0.0.0.0:123/webhooks/endpoint?camera={cam_name}&snapshot={img}`
-
-## What's Changed in v2.5.1
-
-* FIX `ON_DEMAND=False` option was broken in v2.5.0 #1036 #1037
-* NEW API/MQTT commands Thanks @ralacher! #921:
-  * GET: `/api/<cam-name>/accessories` | MQTT: `wyzebridge/<cam-name>/accessories/get`
-  * SET: `/api/<cam-name>/spotlight` | MQTT: `wyzebridge/<cam-name>/spotlight/set`
-
-## What's Changed in v2.5.0
-
-* NEW camera support:
-  * HL_DB2: Wyze Cam Doorbell v2 - thanks @hoveeman!
-  * HL_CAM4: Wyze Cam V4
-* NEW API Endpoint:
-  * `/api/all/update_snapshot` - trigger interval snapshots via web API #1030
+* **Update**: Python 3.11 -> Python 3.12
 
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
+## FAQ
+
+* How does this work?
+  * It uses the same SDK as the app to communicate directly with the cameras. See [kroo/wyzecam](https://github.com/kroo/wyzecam) for details.
+* Does it use internet bandwidth when streaming?
+  * Not in most cases. The bridge will attempt to stream locally if possible but will fallback to streaming over the internet if you're trying to stream from a different location or from a shared camera. See the [wiki](https://github.com/mrlt8/docker-wyze-bridge/wiki/Network-Connection-Modes) for more details.
+* Can this work offline/can I block all wyze services?
+  * No. Streaming should continue to work without an active internet connection, but will probably stop working after some time as the cameras were not designed to be used without the cloud. Some camera commands also depend on the cloud and may not function without an active connection. See [wz_mini_hacks](https://github.com/gtxaspec/wz_mini_hacks/wiki/Configuration-File#self-hosted--isolated-mode) for firmware level modification to run the camera offline.
+* Why aren't all wyze cams supported yet (OG/Doorbell Pro)?
+  * These cameras are using a different SDK and will require a different method to connect and stream.
+
+## Compatibility
+
+![Supports arm32v7 Architecture](https://img.shields.io/badge/arm32v7-yes-success.svg)
+![Supports arm64v8 Architecture](https://img.shields.io/badge/arm64v8-yes-success.svg)
+![Supports amd64 Architecture](https://img.shields.io/badge/amd64-yes-success.svg)
+![Supports Apple Silicon Architecture](https://img.shields.io/badge/apple_silicon-yes-success.svg)
+
+[![Home Assistant Add-on](https://img.shields.io/badge/home_assistant-add--on-blue.svg?logo=homeassistant&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
+[![Homebridge](https://img.shields.io/badge/homebridge-camera--ffmpeg-blue.svg?logo=homebridge&logoColor=white)](https://sunoo.github.io/homebridge-camera-ffmpeg/configs/WyzeCam.html)
+[![Portainer stack](https://img.shields.io/badge/portainer-stack-blue.svg?logo=portainer&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
+[![Unraid Community App](https://img.shields.io/badge/unraid-community--app-blue.svg?logo=unraid&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/issues/236)
+
+Should work on most x64 systems as well as on most modern arm-based systems like the Raspberry Pi 3/4/5 or Apple Silicon M1/M2/M3.
+
+The container can be run on its own, in [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer), [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236), as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant), locally or remotely in the cloud.
+
+
+
+### Ubiquiti Unifi 
+
+> [!NOTE]  
+> Some network adjustments may be needed - see [this discussion](https://github.com/mrlt8/docker-wyze-bridge/discussions/891) for more information.
 
 ## Supported Cameras
-
 
 | Camera                        | Model          | Tutk Support                                                 | Latest FW |
 | ----------------------------- | -------------- | ------------------------------------------------------------ | --------- |
@@ -110,29 +125,6 @@ See [basic usage](#basic-usage) for additional information or visit the [wiki pa
 | Wyze Cam Doorbell Pro         | GW_BE1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276)  | -         |
 | Wyze Cam OG                   | GW_GC1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/677)  | -         |
 | Wyze Cam OG Telephoto 3x      | GW_GC2         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/677)  | -         |
-
-
-## Compatibility
-
-![Supports armv7 Architecture](https://img.shields.io/badge/armv7-yes-success.svg)
-![Supports aarch64 Architecture](https://img.shields.io/badge/aarch64-yes-success.svg)
-![Supports amd64 Architecture](https://img.shields.io/badge/amd64-yes-success.svg)
-
-[![Home Assistant Add-on](https://img.shields.io/badge/home_assistant-add--on-blue.svg?logo=homeassistant&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
-[![Homebridge](https://img.shields.io/badge/homebridge-camera--ffmpeg-blue.svg?logo=homebridge&logoColor=white)](https://sunoo.github.io/homebridge-camera-ffmpeg/configs/WyzeCam.html)
-[![Portainer stack](https://img.shields.io/badge/portainer-stack-blue.svg?logo=portainer&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
-[![Unraid Community App](https://img.shields.io/badge/unraid-community--app-blue.svg?logo=unraid&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/issues/236)
-
-Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi.
-
-The container can be run on its own, in [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer), [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236), as a [Home Assistant Add-on](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant), locally or remotely in the cloud.
-
-
-
-### Ubiquiti Unifi 
-
-> [!NOTE]  
-> Some network adjustments may be needed - see [this discussion](https://github.com/mrlt8/docker-wyze-bridge/discussions/891) for more information.
 
 ## Basic Usage
 
@@ -174,7 +166,7 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 
 * [Camera Commands (MQTT/REST API)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Commands)
 * [Two-Factor Authentication (2FA/MFA)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Two-Factor-Authentication)
-* [ARM/Raspberry Pi](https://github.com/mrlt8/docker-wyze-bridge/wiki/Raspberry-Pi-(armv7-and-arm64))
+* [ARM/Apple Silicon/Raspberry Pi](https://github.com/mrlt8/docker-wyze-bridge/wiki/Raspberry-Pi-and-Apple-Silicon-(arm-arm64-m1-m2-m3))
 * [Network Connection Modes](https://github.com/mrlt8/docker-wyze-bridge/wiki/Network-Connection-Modes)
 * [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
 * [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236)
@@ -236,3 +228,9 @@ WebRTC should work automatically in Home Assistant mode, however, some additiona
 * [Proxy Stream from RTSP Firmware](https://github.com/mrlt8/docker-wyze-bridge/wiki/Advanced-Option#proxy-stream-from-rtsp-firmware)
 * [BOA HTTP Server/Motion Alerts](https://github.com/mrlt8/docker-wyze-bridge/wiki/Boa-HTTP-Server)
 * [Debugging Options](https://github.com/mrlt8/docker-wyze-bridge/wiki/Advanced-Option#debugging-options)
+
+## Other Wyze Projects
+
+* [gtxaspec/wz_mini_hacks](https://github.com/gtxaspec/wz_mini_hacks) - firmware level modification with a [self-hosted mode](https://github.com/gtxaspec/wz_mini_hacks/wiki/Configuration-File#self-hosted--isolated-mode) to use the cameras without the wyze services.
+* [jfarmer08/homebridge-wyze-smart-home](https://github.com/jfarmer08/homebridge-wyze-smart-home) - homebridge plugin to interact with other wyze devices over the cloud.
+* [shauntarves/wyze-sdk](https://github.com/shauntarves/wyze-sdk) - python library to interact with wyze devices over the cloud.
