@@ -414,7 +414,7 @@ def start_tutk_stream(
     try:
         with WyzeIOTC() as iotc, iotc.session(stream, state) as sess:
             assert state.value >= StreamStatus.CONNECTING, "Stream Stopped"
-            v_codec, fps, audio = get_cam_params(sess, uri, stream.options.audio)
+            v_codec, audio = get_cam_params(sess, uri, stream.options.audio)
             if not stream.options.substream:
                 control_thread = setup_control(sess, uri, queue)
             if audio:
@@ -430,7 +430,7 @@ def start_tutk_stream(
             assert state.value >= StreamStatus.CONNECTING, "Stream Stopped"
             state.value = StreamStatus.CONNECTED
             with Popen(ffmpeg_cmd, stdin=PIPE) as ffmpeg:
-                for frame in sess.recv_bridge_data(fps=fps):
+                for frame in sess.recv_bridge_data():
                     ffmpeg.stdin.write(frame)
 
     except TutkError as ex:
@@ -483,7 +483,7 @@ def setup_control(sess: WyzeIOTCSession, uri, queue: QueueTuple) -> Thread:
 
 def get_cam_params(
     sess: WyzeIOTCSession, uri: str, enable_audio: bool = False
-) -> tuple[str, int, dict]:
+) -> tuple[str, dict]:
     """Check session and return fps and audio codec from camera."""
     net_mode = check_net_mode(sess.session_check().mode, uri)
     bit_frame = f"{sess.preferred_bitrate}kb/s {sess.resolution} stream"
@@ -500,6 +500,7 @@ def get_cam_params(
         v_codec = video_param.get("type", "h264")
         bit_frame += f" ({v_codec}/{fps}fps)"
         logger.debug(f"[videoParm] {video_param}")
+    sess.preferred_frame_rate = fps
     firmware = sess.camera.camera_info["basicInfo"].get("firmware", "NA")
     if sess.camera.dtls or sess.camera.parent_dtls:
         firmware += " 🔒 (DTLS)"
@@ -527,7 +528,7 @@ def get_cam_params(
         (f"{MQTT_TOPIC}/{uri.lower()}/ip", sess.camera.ip),
     ]
     publish_messages(mqtt)
-    return v_codec, fps, audio
+    return v_codec, audio
 
 
 def check_net_mode(session_mode: int, uri: str) -> str:
