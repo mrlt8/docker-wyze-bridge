@@ -12,6 +12,7 @@ from wyzebridge.logging import logger
 from wyzebridge.mqtt import MQTT_ENABLED, publish_messages
 from wyzebridge.wyze_commands import CMD_VALUES, GET_CMDS, GET_PAYLOAD, PARAMS, SET_CMDS
 from wyzecam import WyzeIOTCSession, WyzeIOTCSessionState, tutk_protocol
+from wyzecam.tutk.tutk import TutkError
 
 
 def cam_http_alive(ip: str) -> bool:
@@ -275,6 +276,9 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
         return _response(resp, log=log)
     except tutk_protocol.TutkWyzeProtocolError as ex:
         return resp | _error_response(cmd, tutk_protocol.TutkWyzeProtocolError(ex))
+    except TutkError as ex:
+        connected = sess.should_stream()
+        return resp | _error_response(cmd, f"[{ex.code}] {ex.name}", connected)
     except Exception as ex:
         return resp | _error_response(cmd, ex)
 
@@ -293,8 +297,9 @@ def _response(response, res=None, params=None, log="info"):
     return response
 
 
-def _error_response(cmd, error):
-    logger.error(f"[CONTROL] ERROR - {error=}, {cmd=}")
+def _error_response(cmd, error, log=True):
+    if log:
+        logger.error(f"[CONTROL] ERROR - {error=}, {cmd=}")
     return {"status": "error", "response": str(error)}
 
 
