@@ -288,7 +288,7 @@ class WyzeIOTCSession:
         self.av_chan_id: Optional[c_int] = None
         self.state: WyzeIOTCSessionState = WyzeIOTCSessionState.DISCONNECTED
 
-        self.preferred_frame_rate: int = 15
+        self.preferred_frame_rate: int = 20
         self.preferred_frame_size: int = frame_size
         self.preferred_bitrate: int = bitrate
         self.connect_timeout: int = connect_timeout
@@ -390,7 +390,7 @@ class WyzeIOTCSession:
         if len(decoded_url := resp.decode().split("rtsp://")) > 1:
             return f"rtsp://{decoded_url[1]}"
 
-    def recv_bridge_data(self, fps: int = 15) -> Iterator[bytes]:
+    def recv_bridge_data(self) -> Iterator[bytes]:
         """A generator for returning raw video frames for the bridge.
 
         Note that the format of this data is either raw h264 or HVEC H265 video. You will
@@ -399,15 +399,15 @@ class WyzeIOTCSession:
         assert self.av_chan_id is not None, "Please call _connect() first!"
         self.sync_camera_time()
 
-        key_frame = False
+        have_key_frame = False
         last_frame = time.time()
         sleep_interval = (1 / self.preferred_frame_rate) - 0.02
         while self.should_stream():
             if (delta := time.time() - last_frame) >= self.connect_timeout:
-                if not key_frame:
+                if not have_key_frame:
                     warnings.warn("Still waiting for first frame. Updating frame size.")
                     self.update_frame_size_rate()
-                    key_frame = True
+                    have_key_frame = True
                     last_frame = time.time()
                     continue
                 self.state = WyzeIOTCSessionState.CONNECTING_FAILED
@@ -418,62 +418,69 @@ class WyzeIOTCSession:
             errno, frame_data, frame_info, _ = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
-            if errno < 0:
-                time.sleep(sleep_interval)
-                self.flush_pipe("audio")
 
-                if errno == tutk.AV_ER_DATA_NOREADY:
-                    continue
-
-                if errno in {tutk.AV_ER_INCOMPLETE_FRAME, tutk.AV_ER_LOSED_THIS_FRAME}:
-                    warnings.warn(str(tutk.TutkError(errno).name))
-                    continue
-
-                raise tutk.TutkError(errno)
-
-            if not frame_data:
-                self.flush_pipe("audio")
+            if not frame_data or errno < 0:
+                self._handle_frame_error(errno, sleep_interval, True)
                 continue
 
-            assert frame_info is not None, "Got empty frame_info without an error!"
+            assert frame_info is not None, "Empty frame_info without an error!"
 
             if frame_info.frame_size not in self.valid_frame_size():
                 self.flush_pipe("audio")
-                if not key_frame:
+                if not have_key_frame:
                     warnings.warn(
-                        f"Skipping wrong {frame_info.frame_size=} at start of stream"
+                        f"Skipping wrong frame_size at start of stream [{frame_info.frame_size}]"
                     )
                     continue
                 warnings.warn(f"Wrong ({frame_info.frame_size=})")
                 self.update_frame_size_rate()
-                key_frame = False
+                have_key_frame = False
                 last_frame = time.time()
                 continue
 
-            gap = time.time() - frame_info.timestamp
-
-            # Some cams can't sync
-            if frame_info.timestamp > 1591069888 and gap >= 0.5:
-                self.flush_pipe("audio")
-                logger.info(f"slow {gap=} [{frame_info.timestamp}]")
+            if self._video_frame_slow(frame_info):
                 continue
 
-            if frame_info.is_keyframe:
-                key_frame = True
-
-            if frame_info.timestamp > 1591069888:
-                self.frame_ts = float(
-                    f"{frame_info.timestamp}.{frame_info.timestamp_ms}"
-                )
-            else:
-                self.frame_ts = time.time()
-
             last_frame = time.time()
+            if frame_info.is_keyframe:
+                have_key_frame = True
 
             yield frame_data
 
         self.state = WyzeIOTCSessionState.CONNECTING_FAILED
         return b""
+
+    def _video_frame_slow(self, frame_info) -> Optional[bool]:
+        # Some cams can't sync
+        if frame_info.timestamp < 1591069888:
+            self.frame_ts = time.time()
+            return
+
+        frame_ts = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
+
+        if (gap := time.time() - frame_ts) > 0.5:
+            self.flush_pipe("audio")
+            logger.info(f"[video] slow {gap=} [{frame_ts=}]")
+            return True
+
+        self.frame_ts = frame_ts
+
+    def _handle_frame_error(
+        self, errno: int, sleep_interval: float, flush_audio: bool = False
+    ):
+        """Handle errors that occur when receiving frame data."""
+        time.sleep(sleep_interval)
+        if flush_audio:
+            self.flush_pipe("audio")
+
+        if errno == tutk.AV_ER_DATA_NOREADY or errno >= 0:
+            return
+
+        if errno in {tutk.AV_ER_INCOMPLETE_FRAME, tutk.AV_ER_LOSED_THIS_FRAME}:
+            warnings.warn(str(tutk.TutkError(errno).name))
+            return
+
+        raise tutk.TutkError(errno)
 
     def should_stream(self) -> bool:
         return (
@@ -533,6 +540,7 @@ class WyzeIOTCSession:
 
     def recv_audio_data(self, uri: str) -> None:
         """Write raw audio frames to a named pipe."""
+        assert self.av_chan_id is not None, "Please call _connect() first!"
         FIFO = f"/tmp/{uri.lower()}_audio.pipe"
         try:
             os.mkfifo(FIFO, os.O_NONBLOCK)
@@ -540,32 +548,31 @@ class WyzeIOTCSession:
             if e.errno != 17:
                 raise e
 
-        tutav = self.tutk_platform_lib, self.av_chan_id
         sleep_interval = 1 / 30
         try:
             with open(FIFO, "wb") as audio_pipe:
                 self.audio_pipe_ready = True
                 while self.should_stream():
-                    error_no, frame_data, frame_info = tutk.av_recv_audio_data(*tutav)
-                    if not frame_data or error_no in {
-                        tutk.AV_ER_DATA_NOREADY,
-                        tutk.AV_ER_INCOMPLETE_FRAME,
-                        tutk.AV_ER_LOSED_THIS_FRAME,
-                    }:
-                        time.sleep(sleep_interval)
-                        continue
-                    if error_no:
-                        raise tutk.TutkError(error_no)
+                    error_no, frame_data, frame_info = tutk.av_recv_audio_data(
+                        self.tutk_platform_lib, self.av_chan_id
+                    )
 
-                    gap = self.frame_ts - frame_info.timestamp
-
-                    if self.frame_ts and gap < -1:
-                        logger.info(f"rushing.. {gap=}")
-                        # time.sleep(abs(gap))
-                    elif self.frame_ts and gap > 1:
-                        self.flush_pipe("audio")
-                        logger.info(f"dragging.. {gap=}")
+                    if not frame_data or error_no < 0:
+                        self._handle_frame_error(error_no, sleep_interval)
                         continue
+
+                    assert frame_info is not None, "Empty frame_info without an error!"
+
+                    # Some cams can't sync
+                    if self.frame_ts and frame_info.timestamp > 1591069888:
+                        gap = self.frame_ts - frame_info.timestamp
+                        if gap < -1:
+                            logger.info(f"[audio] rushing.. {gap=}")
+                            time.sleep(abs(gap) - 1)
+                        if gap > 1:
+                            self.flush_pipe("audio")
+                            logger.info(f"[audio] dragging.. {gap=}")
+                            continue
 
                     audio_pipe.write(frame_data)
 
