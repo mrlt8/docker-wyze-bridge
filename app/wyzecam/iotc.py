@@ -2,7 +2,6 @@ import base64
 import contextlib
 import enum
 import errno
-import fcntl
 import hashlib
 import logging
 import os
@@ -10,6 +9,7 @@ import pathlib
 import time
 import warnings
 from ctypes import CDLL, c_int
+from fcntl import F_GETFL, F_SETFL, fcntl
 from typing import Any, Iterator, Optional, Union
 
 from wyzecam.api_models import WyzeAccount, WyzeCamera
@@ -34,7 +34,6 @@ from wyzecam.tutk import tutk, tutk_ioctl_mux, tutk_protocol
 from wyzecam.tutk.tutk_ioctl_mux import TutkIOCtrlMux
 from wyzecam.tutk.tutk_protocol import (
     K10000ConnectRequest,
-    K10020CheckCameraParams,
     K10052DBSetResolvingBit,
     K10056SetResolvingBit,
     respond_to_ioctrl_10001,
@@ -289,15 +288,18 @@ class WyzeIOTCSession:
         self.av_chan_id: Optional[c_int] = None
         self.state: WyzeIOTCSessionState = WyzeIOTCSessionState.DISCONNECTED
 
+        self.preferred_frame_rate: int = 15
         self.preferred_frame_size: int = frame_size
         self.preferred_bitrate: int = bitrate
         self.connect_timeout: int = connect_timeout
         self.enable_audio: bool = enable_audio
         self.stream_state: c_int = stream_state
+        self.audio_pipe_ready: bool = False
+        self.frame_ts: float = 0.0
 
     @property
     def resolution(self) -> str:
-        return FRAME_SIZE.get(self.preferred_frame_size, self.preferred_frame_size)
+        return FRAME_SIZE.get(self.preferred_frame_size, str(self.preferred_frame_size))
 
     def session_check(self) -> tutk.SInfoStructEx:
         """Used by a device or a client to check the IOTC session info.
@@ -388,111 +390,29 @@ class WyzeIOTCSession:
         if len(decoded_url := resp.decode().split("rtsp://")) > 1:
             return f"rtsp://{decoded_url[1]}"
 
-    def recv_video_data(
-        self,
-    ) -> Iterator[
-        tuple[Optional[bytes], Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
-    ]:
-        """A generator for returning raw video frames!
-
-        By iterating over the return value of this function, you will
-        get raw video frame data in the form of a bytes object.  This
-        is convenient for accessing the raw video data without doing
-        the work of decoding or transcoding the actual video feed.  If
-        you want to save the video to disk, display it, or otherwise process
-        the video, I highly recommend using `recv_video_frame` or
-        `recv_video_frame_nparray` instead of this function.
-
-        The second item in the tuple returned by this function, 'frame_info', is a useful
-        set of metadata about the frame as returned by the camera.  See
-        [tutk.FrameInfoStruct][wyzecam.tutk.tutk.FrameInfoStruct] for more details about
-        the contents of this object.
-
-        Note that the format of this data is either raw h264 or HVEC H265 video. You will
-        have to introspect the frame_info object to determine the format!
-
-
-        ```python
-        with wyzecam.WyzeIOTC() as wyze_iotc:
-            with wyze_iotc.connect_and_auth(account, camera) as sess:
-                for (frame, frame_info) in sess.recv_video_data():
-                    # do something with the video data! :)
-        ```
-
-        In order to use this, you will need to install [PyAV](https://pyav.org/docs/stable/).
-
-        :returns: A generator, which when iterated over, yields a tuple containing the decoded image
-                 (as a [PyAV VideoFrame](https://pyav.org/docs/stable/api/video.html#av.video.frame.VideoFrame)),
-                 as well as metadata about the frame (in the form of a
-                 [tutk.FrameInfoStruct][wyzecam.tutk.tutk.FrameInfoStruct]).
-
-
-        """
-        assert self.av_chan_id is not None, "Please call _connect() first!"
-        first_run = True
-        bad_frames = 0
-        max_noready = int(os.getenv("MAX_NOREADY", 500))
-        while True:
-            errno, frame_data, frame_info = tutk.av_recv_frame_data(
-                self.tutk_platform_lib, self.av_chan_id
-            )
-            if errno < 0:
-                if errno == tutk.AV_ER_DATA_NOREADY:
-                    if bad_frames > max_noready and not first_run:
-                        raise tutk.TutkError(errno)
-                    time.sleep(1.0 / 40)
-                    bad_frames += 1
-                    warnings.warn(f"Frame not available [{bad_frames}/{max_noready}]")
-                    continue
-                elif errno == tutk.AV_ER_INCOMPLETE_FRAME:
-                    warnings.warn("Received incomplete frame")
-                    continue
-                elif errno == tutk.AV_ER_LOSED_THIS_FRAME:
-                    warnings.warn("Lost frame")
-                    continue
-                else:
-                    raise tutk.TutkError(errno)
-            assert frame_info is not None, "Got no frame info without an error!"
-            if frame_info.frame_size != self.preferred_frame_size:
-                if frame_info.frame_size < 2:
-                    logger.debug(
-                        f"skipping smaller frame at start of stream (frame_size={frame_info.frame_size})"
-                    )
-                    continue
-                else:
-                    # wyze doorbell has weird rotated image sizes.
-                    if frame_info.frame_size - 3 != self.preferred_frame_size:
-                        continue
-                self.update_frame_size_rate()
-            yield frame_data, frame_info
-            bad_frames = 0
-            first_run = False
-
-    def recv_bridge_frame(self, timeout: int = 15, fps: int = 15) -> Iterator[bytes]:
+    def recv_bridge_data(self, fps: int = 15) -> Iterator[bytes]:
         """A generator for returning raw video frames for the bridge.
 
         Note that the format of this data is either raw h264 or HVEC H265 video. You will
         have to introspect the frame_info object to determine the format!
         """
         assert self.av_chan_id is not None, "Please call _connect() first!"
-        # Doorbell returns frame_size 3 or 4; 2K returns frame_size=4
-        alt = self.preferred_frame_size + (1 if self.preferred_frame_size == 3 else 3)
-        ignore_res = {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
-        last = {"key_frame": 0, "key_time": 0, "frame": 0, "time": time.time()}
-        sleep_interval = (1 / fps) - 0.02
-        while (
-            self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
-            and self.stream_state.value > 1
-        ):
-            if (delta := time.time() - last["time"]) >= timeout:
-                if last["key_time"] == 0:
+        self.sync_camera_time()
+
+        key_frame = False
+        last_frame = time.time()
+        sleep_interval = (1 / self.preferred_frame_rate) - 0.02
+        while self.should_stream():
+            if (delta := time.time() - last_frame) >= self.connect_timeout:
+                if not key_frame:
                     warnings.warn("Still waiting for first frame. Updating frame size.")
-                    last["key_time"] = last["time"] = time.time()
                     self.update_frame_size_rate()
-                    yield b""
+                    key_frame = True
+                    last_frame = time.time()
                     continue
                 self.state = WyzeIOTCSessionState.CONNECTING_FAILED
-                raise Exception(f"Stream did not receive a frame for over {timeout}s")
+                raise Exception(f"Did not receive a frame for {self.connect_timeout}s")
+
             time.sleep(max(sleep_interval - delta, 0.01))
 
             errno, frame_data, frame_info, _ = tutk.av_recv_frame_data(
@@ -500,40 +420,81 @@ class WyzeIOTCSession:
             )
             if errno < 0:
                 time.sleep(sleep_interval)
-                if errno == tutk.AV_ER_DATA_NOREADY:
-                    yield b""
-                    continue
-                if errno in (
-                    tutk.AV_ER_INCOMPLETE_FRAME,
-                    tutk.AV_ER_LOSED_THIS_FRAME,
-                ):
-                    warnings.warn(str(tutk.TutkError(errno).name))
-                    yield b""
-                    continue
-                raise tutk.TutkError(errno)
-            if not frame_data:
-                yield b""
-                continue
-            assert frame_info is not None, "Got no frame info without an error!"
-            if frame_info.frame_size not in ignore_res:
-                if last["key_frame"] == 0:
-                    warnings.warn(
-                        f"Skipping smaller frame at start of stream (frame_size={frame_info.frame_size})"
-                    )
-                    yield b""
-                    continue
-                warnings.warn(f"Wrong resolution (frame_size={frame_info.frame_size})")
-                self.update_frame_size_rate()
-                last |= {"key_frame": 0, "key_time": 0, "time": time.time()}
-                yield b""
-                continue
-            if frame_info.is_keyframe:
-                last |= {"key_frame": frame_info.frame_no, "key_time": time.time()}
+                self.flush_pipe("audio")
 
-            last |= {"frame": frame_info.frame_no, "time": time.time()}
+                if errno == tutk.AV_ER_DATA_NOREADY:
+                    continue
+
+                if errno in {tutk.AV_ER_INCOMPLETE_FRAME, tutk.AV_ER_LOSED_THIS_FRAME}:
+                    warnings.warn(str(tutk.TutkError(errno).name))
+                    continue
+
+                raise tutk.TutkError(errno)
+
+            if not frame_data:
+                self.flush_pipe("audio")
+                continue
+
+            assert frame_info is not None, "Got empty frame_info without an error!"
+
+            if frame_info.frame_size not in self.valid_frame_size():
+                self.flush_pipe("audio")
+                if not key_frame:
+                    warnings.warn(
+                        f"Skipping wrong {frame_info.frame_size=} at start of stream"
+                    )
+                    continue
+                warnings.warn(f"Wrong ({frame_info.frame_size=})")
+                self.update_frame_size_rate()
+                key_frame = False
+                last_frame = time.time()
+                continue
+
+            gap = time.time() - frame_info.timestamp
+
+            # Some cams can't sync
+            if frame_info.timestamp > 1591069888 and gap >= 0.5:
+                self.flush_pipe("audio")
+                logger.info(f"slow {gap=} [{frame_info.timestamp}]")
+                continue
+
+            if frame_info.is_keyframe:
+                key_frame = True
+
+            if frame_info.timestamp > 1591069888:
+                self.frame_ts = float(
+                    f"{frame_info.timestamp}.{frame_info.timestamp_ms}"
+                )
+            else:
+                self.frame_ts = time.time()
+
+            last_frame = time.time()
+
             yield frame_data
+
         self.state = WyzeIOTCSessionState.CONNECTING_FAILED
         return b""
+
+    def should_stream(self) -> bool:
+        return (
+            self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
+            and self.stream_state.value > 1
+        )
+
+    def valid_frame_size(self) -> set[int]:
+        """
+        Valid frame_size for camera.
+
+        Doorbell returns frame_size 3 or 4;
+        2K returns frame_size=4
+        """
+        alt = self.preferred_frame_size + (1 if self.preferred_frame_size == 3 else 3)
+
+        return {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
+
+    def sync_camera_time(self):
+        with self.iotctrl_mux() as mux:
+            mux.send_ioctl(tutk_protocol.K10092SetCameraTime())
 
     def update_frame_size_rate(self, bitrate: Optional[int] = None, fps: int = 0):
         """Send a message to the camera to update the frame_size and bitrate."""
@@ -553,7 +514,24 @@ class WyzeIOTCSession:
         warnings.warn("clear buffer")
         tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
 
-    def recv_audio_frames(self, uri: str) -> None:
+    def flush_pipe(self, pipe_type: str = "audio"):
+        if not self.enable_audio or not self.audio_pipe_ready:
+            return
+
+        fifo = f"/tmp/{self.camera.name_uri.lower()}_{pipe_type}.pipe"
+        logger.info(f"flushing {pipe_type}")
+        try:
+            with open(fifo, "rb") as pipe:
+                flags = fcntl(pipe.fileno(), F_GETFL)
+                fcntl(pipe.fileno(), F_SETFL, flags | os.O_NONBLOCK)
+                while pipe.read(8):
+                    continue
+        except FileNotFoundError:
+            logger.warning(f"Flushing Error: The named pipe '{fifo}' does not exist.")
+        except Exception as e:
+            logger.warning(f"Flushing Error: {e}")
+
+    def recv_audio_data(self, uri: str) -> None:
         """Write raw audio frames to a named pipe."""
         FIFO = f"/tmp/{uri.lower()}_audio.pipe"
         try:
@@ -563,16 +541,12 @@ class WyzeIOTCSession:
                 raise e
 
         tutav = self.tutk_platform_lib, self.av_chan_id
-
-        sleep_interval = 1 / 20
+        sleep_interval = 1 / 30
         try:
             with open(FIFO, "wb") as audio_pipe:
-                while (
-                    self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
-                    and self.stream_state.value > 1
-                ):
-                    error_no, frame_data, _ = tutk.av_recv_audio_data(*tutav)
-
+                self.audio_pipe_ready = True
+                while self.should_stream():
+                    error_no, frame_data, frame_info = tutk.av_recv_audio_data(*tutav)
                     if not frame_data or error_no in {
                         tutk.AV_ER_DATA_NOREADY,
                         tutk.AV_ER_INCOMPLETE_FRAME,
@@ -580,9 +554,19 @@ class WyzeIOTCSession:
                     }:
                         time.sleep(sleep_interval)
                         continue
-
                     if error_no:
                         raise tutk.TutkError(error_no)
+
+                    gap = self.frame_ts - frame_info.timestamp
+
+                    if self.frame_ts and gap < -1:
+                        logger.info(f"rushing.. {gap=}")
+                        # time.sleep(abs(gap))
+                    elif self.frame_ts and gap > 1:
+                        self.flush_pipe("audio")
+                        logger.info(f"dragging.. {gap=}")
+                        continue
+
                     audio_pipe.write(frame_data)
 
                 audio_pipe.write(b"")
@@ -593,6 +577,7 @@ class WyzeIOTCSession:
                 warnings.warn(str(ex))
         finally:
             self.state = WyzeIOTCSessionState.CONNECTING_FAILED
+            self.audio_pipe_ready = False
             os.unlink(FIFO)
             warnings.warn("Audio pipe closed")
 

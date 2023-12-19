@@ -430,7 +430,7 @@ def start_tutk_stream(
             assert state.value >= StreamStatus.CONNECTING, "Stream Stopped"
             state.value = StreamStatus.CONNECTED
             with Popen(ffmpeg_cmd, stdin=PIPE) as ffmpeg:
-                for frame in sess.recv_bridge_frame(fps=fps):
+                for frame in sess.recv_bridge_data(fps=fps):
                     ffmpeg.stdin.write(frame)
 
     except TutkError as ex:
@@ -463,7 +463,7 @@ def stop_and_wait(thread: Optional[Thread]):
 
 def setup_audio(sess: WyzeIOTCSession, uri: str) -> Thread:
     audio_thread = Thread(
-        target=sess.recv_audio_frames,
+        target=sess.recv_audio_data,
         args=(uri,),
         name=f"{uri}_audio",
     )

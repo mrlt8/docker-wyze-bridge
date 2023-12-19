@@ -33,7 +33,7 @@ def get_ffmpeg_cmd(
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
-    thread_queue = "-thread_queue_size 1k -analyzeduration 32 -probesize 32"
+    thread_queue = "-thread_queue_size 8 -analyzeduration 32 -probesize 32"
     if audio and "codec" in audio:
         audio_in = f"{thread_queue} -f {audio['codec']} -ac 1 -ar {audio['rate']} -i /tmp/{uri}_audio.pipe"
         audio_out = audio["codec_out"] or "copy"
@@ -60,9 +60,12 @@ def get_ffmpeg_cmd(
         + re_encode_video(uri, is_vertical)
         + (["-map", "1:a", "-c:a", audio_out] if audio_in else [])
         + (a_options if audio and audio_out != "copy" else [])
-        + ["-fps_mode", "drop", "-async", "1", "-flush_packets", "1"]
-        + ["-muxdelay", "0"]
-        + ["-rtbufsize", "1", "-max_interleave_delta", "10"]
+        + ["-fps_mode", "cfr"]
+        # + ["-fps_mode", "drop", "-async", "0", "-flush_packets", "1"]
+        # + ["-max_delay", "100"]
+        # + ["-rtbufsize", "32"]
+        # + ["-rtbufsize", "512", "-max_interleave_delta", "1000000"]
+        + ["-movflags", "frag_keyframe+empty_moov"]
         + ["-f", "tee"]
         + [rtsp_ss + get_record_cmd(uri, audio_out, record) + livestream]
     )
