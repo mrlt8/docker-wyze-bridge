@@ -301,6 +301,10 @@ class WyzeIOTCSession:
     def resolution(self) -> str:
         return FRAME_SIZE.get(self.preferred_frame_size, str(self.preferred_frame_size))
 
+    @property
+    def sleep_interval(self) -> float:
+        return 1 / (self.preferred_frame_rate * 2)
+
     def session_check(self) -> tutk.SInfoStructEx:
         """Used by a device or a client to check the IOTC session info.
 
@@ -401,44 +405,29 @@ class WyzeIOTCSession:
 
         have_key_frame = False
         last_frame = time.time()
-        sleep_interval = (1 / self.preferred_frame_rate) - 0.02
         while self.should_stream():
-            if (delta := time.time() - last_frame) >= self.connect_timeout:
-                if not have_key_frame:
-                    warnings.warn("Still waiting for first frame. Updating frame size.")
-                    self.update_frame_size_rate()
-                    have_key_frame = True
-                    last_frame = time.time()
-                    continue
-                self.state = WyzeIOTCSessionState.CONNECTING_FAILED
-                raise Exception(f"Did not receive a frame for {self.connect_timeout}s")
-
-            time.sleep(max(sleep_interval - delta, 0.01))
+            if not self._received_first_frame(last_frame, have_key_frame):
+                have_key_frame = True
+                last_frame = time.time()
+                continue
 
             errno, frame_data, frame_info, _ = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
 
             if not frame_data or errno < 0:
-                self._handle_frame_error(errno, sleep_interval, True)
+                self._handle_frame_error(errno)
                 continue
 
             assert frame_info is not None, "Empty frame_info without an error!"
 
-            if frame_info.frame_size not in self.valid_frame_size():
-                self.flush_pipe("audio")
-                if not have_key_frame:
-                    warnings.warn(
-                        f"Skipping wrong frame_size at start of stream [{frame_info.frame_size}]"
-                    )
-                    continue
-                warnings.warn(f"Wrong ({frame_info.frame_size=})")
-                self.update_frame_size_rate()
-                have_key_frame = False
-                last_frame = time.time()
+            if self._invalid_frame_size(frame_info, have_key_frame):
+                if have_key_frame:
+                    have_key_frame = False
+                    last_frame = time.time()
                 continue
 
-            if self._video_frame_slow(frame_info):
+            if have_key_frame and self._video_frame_slow(frame_info):
                 continue
 
             last_frame = time.time()
@@ -450,6 +439,36 @@ class WyzeIOTCSession:
         self.state = WyzeIOTCSessionState.CONNECTING_FAILED
         return b""
 
+    def _received_first_frame(self, last_frame: float, have_key_frame: bool) -> bool:
+        """Check if the first frame is received and update frame size."""
+        delta = time.time() - last_frame
+        if delta < self.connect_timeout:
+            time.sleep(max(self.sleep_interval - delta, 0.01))
+            return True
+
+        if have_key_frame:
+            self.state = WyzeIOTCSessionState.CONNECTING_FAILED
+            raise Exception(f"Did not receive a frame for {self.connect_timeout}s")
+
+        warnings.warn("Still waiting for first frame. Updating frame size.")
+        self.update_frame_size_rate()
+        return False
+
+    def _invalid_frame_size(self, frame_info, have_key_frame) -> bool:
+        if frame_info.frame_size in self.valid_frame_size():
+            return False
+
+        self.flush_pipe("audio")
+        if not have_key_frame:
+            warnings.warn(
+                f"Skipping wrong frame_size at start of stream [frame_size={frame_info.frame_size}]"
+            )
+            return True
+
+        warnings.warn(f"Wrong ({frame_info.frame_size=})")
+        self.update_frame_size_rate()
+        return True
+
     def _video_frame_slow(self, frame_info) -> Optional[bool]:
         # Some cams can't sync
         if frame_info.timestamp < 1591069888:
@@ -457,27 +476,27 @@ class WyzeIOTCSession:
             return
 
         frame_ts = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
+        gap = time.time() - frame_ts
+        if gap > 10:
+            print("\n\nsuper slow\n\n")
+            self.clear_local_buffer()
 
-        if (gap := time.time() - frame_ts) > 0.5:
+        if gap > 0.5:
             self.flush_pipe("audio")
             logger.info(f"[video] slow {gap=} [{frame_ts=}]")
             return True
 
         self.frame_ts = frame_ts
 
-    def _handle_frame_error(
-        self, errno: int, sleep_interval: float, flush_audio: bool = False
-    ):
+    def _handle_frame_error(self, errno: int):
         """Handle errors that occur when receiving frame data."""
-        time.sleep(sleep_interval)
-        if flush_audio:
-            self.flush_pipe("audio")
+        time.sleep(self.sleep_interval)
 
         if errno == tutk.AV_ER_DATA_NOREADY or errno >= 0:
             return
 
         if errno in {tutk.AV_ER_INCOMPLETE_FRAME, tutk.AV_ER_LOSED_THIS_FRAME}:
-            warnings.warn(str(tutk.TutkError(errno).name))
+            warnings.warn(tutk.TutkError(errno).name)
             return
 
         raise tutk.TutkError(errno)
@@ -548,17 +567,15 @@ class WyzeIOTCSession:
             if e.errno != 17:
                 raise e
 
-        sleep_interval = 1 / 30
         try:
             with open(FIFO, "wb") as audio_pipe:
-                self.audio_pipe_ready = True
                 while self.should_stream():
                     error_no, frame_data, frame_info = tutk.av_recv_audio_data(
                         self.tutk_platform_lib, self.av_chan_id
                     )
 
                     if not frame_data or error_no < 0:
-                        self._handle_frame_error(error_no, sleep_interval)
+                        self._handle_frame_error(error_no)
                         continue
 
                     assert frame_info is not None, "Empty frame_info without an error!"
@@ -566,15 +583,18 @@ class WyzeIOTCSession:
                     # Some cams can't sync
                     if self.frame_ts and frame_info.timestamp > 1591069888:
                         gap = self.frame_ts - frame_info.timestamp
+                        if gap < -10 or gap > 10:
+                            ...
                         if gap < -1:
                             logger.info(f"[audio] rushing.. {gap=}")
-                            time.sleep(abs(gap) - 1)
-                        if gap > 1:
-                            self.flush_pipe("audio")
+                            time.sleep(abs(gap) % 1)
+                        elif gap > 1:
                             logger.info(f"[audio] dragging.. {gap=}")
+                            self.flush_pipe("audio")
                             continue
 
                     audio_pipe.write(frame_data)
+                    self.audio_pipe_ready = True
 
                 audio_pipe.write(b"")
         except tutk.TutkError as ex:
@@ -921,9 +941,9 @@ class WyzeIOTCSession:
             f"expected_chan={channel_id}"
         )
 
-        tutk.av_client_set_recv_buf_size(
-            self.tutk_platform_lib, self.av_chan_id, max_buf_size
-        )
+        # tutk.av_client_set_recv_buf_size(
+        #     self.tutk_platform_lib, self.av_chan_id, max_buf_size
+        # )
 
     def get_auth_key(self) -> bytes:
         """Generate authkey using enr and mac address."""
