@@ -5,6 +5,7 @@ import time
 from ctypes import LittleEndianStructure, c_char, c_uint16, c_uint32
 from struct import pack, pack_into
 from typing import Any, Optional
+import os
 
 import xxtea
 
@@ -1346,7 +1347,9 @@ def respond_to_ioctrl_10001(
 
 
 def supports(product_model, protocol, command):
-    with open(project_root / "device_config.json") as f:
+    env_root = os.environ['TUTK_PROJECT_ROOT']
+    proot = pathlib.Path(env_root) if env_root else project_root
+    with open(proot / "device_config.json") as f:
         device_config = json.load(f)
     commands_db = device_config["supportedCommands"]
     supported_commands = []

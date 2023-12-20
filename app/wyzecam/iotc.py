@@ -433,7 +433,7 @@ class WyzeIOTCSession:
         bad_frames = 0
         max_noready = int(os.getenv("MAX_NOREADY", 500))
         while True:
-            errno, frame_data, frame_info = tutk.av_recv_frame_data(
+            errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
