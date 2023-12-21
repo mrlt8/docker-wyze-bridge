@@ -553,6 +553,41 @@ class WyzeIOTCSession:
         warnings.warn("clear buffer")
         tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
 
+    def recv_audio_data(self) -> Iterator[
+        tuple[bytes, Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
+    ]:
+        tutav = self.tutk_platform_lib, self.av_chan_id
+
+        sleep_interval = 1 / 20
+        try:
+            while (
+                self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
+                and self.stream_state.value > 1
+            ):
+                error_no, frame_data, frame_info = tutk.av_recv_audio_data(*tutav)
+
+                if not frame_data or error_no in {
+                    tutk.AV_ER_DATA_NOREADY,
+                    tutk.AV_ER_INCOMPLETE_FRAME,
+                    tutk.AV_ER_LOSED_THIS_FRAME,
+                }:
+                    time.sleep(sleep_interval)
+                    continue
+
+                if error_no:
+                    raise tutk.TutkError(error_no)
+                yield frame_data, frame_info
+
+            yield b"", None
+        except tutk.TutkError as ex:
+            warnings.warn(str(ex))
+        except IOError as ex:
+            if ex.errno != errno.EPIPE:  #  Broken pipe
+                warnings.warn(str(ex))
+        finally:
+            self.state = WyzeIOTCSessionState.CONNECTING_FAILED
+            warnings.warn("Audio pipe closed")
+
     def recv_audio_frames(self, uri: str) -> None:
         """Write raw audio frames to a named pipe."""
         FIFO = f"/tmp/{uri.lower()}_audio.pipe"
