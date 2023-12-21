@@ -44,6 +44,12 @@ BITRATE_SUPER_SUPER_HD = 0xF0
 A bitrate higher than the "HD" setting in the app.  Approx 240 KB/s.
 """
 
+FRAME_SIZE_2K = 3
+"""
+Represents the size of the video stream sent back from the server; 2K
+or 2560x1440 pixels.
+"""
+
 FRAME_SIZE_1080P = 0
 """
 Represents the size of the video stream sent back from the server; 1080P
