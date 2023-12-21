@@ -941,9 +941,9 @@ class WyzeIOTCSession:
             f"expected_chan={channel_id}"
         )
 
-        # tutk.av_client_set_recv_buf_size(
-        #     self.tutk_platform_lib, self.av_chan_id, max_buf_size
-        # )
+        tutk.av_client_set_recv_buf_size(
+            self.tutk_platform_lib, self.av_chan_id, max_buf_size
+        )
 
     def get_auth_key(self) -> bytes:
         """Generate authkey using enr and mac address."""
