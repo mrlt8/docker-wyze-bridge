@@ -303,7 +303,7 @@ class WyzeIOTCSession:
 
     @property
     def sleep_interval(self) -> float:
-        return 1 / (self.preferred_frame_rate * 2)
+        return 1 / (self.preferred_frame_rate * 1.5)
 
     def session_check(self) -> tutk.SInfoStructEx:
         """Used by a device or a client to check the IOTC session info.
@@ -477,7 +477,7 @@ class WyzeIOTCSession:
 
         frame_ts = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
         gap = time.time() - frame_ts
-        if gap > 10:
+        if gap > 20:
             print("\n\nsuper slow\n\n")
             self.clear_local_buffer()
 
