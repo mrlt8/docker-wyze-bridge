@@ -218,7 +218,6 @@ class WyzeIOTCSessionState(enum.IntEnum):
 
 FRAME_SIZE = {0: "HD", 1: "SD", 3: "2K"}
 
-
 class WyzeIOTCSession:
     """An IOTC session object, used for communicating with Wyze cameras.
 
@@ -638,33 +637,36 @@ class WyzeIOTCSession:
             sample_rate = int(audio_param.get("sampleRate", sample_rate))
         return sample_rate
 
+    def get_audio_codec_from_codec_id(self, codec_id: int):
+        sample_rate = self.get_audio_sample_rate()
+        codec = False
+        if codec_id == 137:  # MEDIA_CODEC_AUDIO_G711_ULAW
+            codec = "mulaw"
+        elif codec_id == 140:  # MEDIA_CODEC_AUDIO_PCM
+            codec = "s16le"
+        elif codec_id == 141:  # MEDIA_CODEC_AUDIO_AAC
+            codec = "aac"
+        elif codec_id == 143:  # MEDIA_CODEC_AUDIO_G711_ALAW
+            codec = "alaw"
+        elif codec_id == 144:  # MEDIA_CODEC_AUDIO_AAC_ELD
+            codec = "aac_eld"
+            sample_rate = 16000
+        elif codec_id == 146:  # MEDIA_CODEC_AUDIO_OPUS
+            codec = "opus"
+            sample_rate = 16000
+        else:
+            raise Exception(f"\nUnknown audio codec {codec_id=}\n")
+        logger.info(f"[AUDIO] {codec=} {sample_rate=} {codec_id=}")
+        return codec, sample_rate
+
     def get_audio_codec(self, limit: int = 25) -> tuple[str, int]:
         """Identify audio codec."""
-        sample_rate = self.get_audio_sample_rate()
         for _ in range(limit):
             error_no, _, frame_info = tutk.av_recv_audio_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if not error_no and (codec_id := frame_info.codec_id):
-                codec = False
-                if codec_id == 137:  # MEDIA_CODEC_AUDIO_G711_ULAW
-                    codec = "mulaw"
-                elif codec_id == 140:  # MEDIA_CODEC_AUDIO_PCM
-                    codec = "s16le"
-                elif codec_id == 141:  # MEDIA_CODEC_AUDIO_AAC
-                    codec = "aac"
-                elif codec_id == 143:  # MEDIA_CODEC_AUDIO_G711_ALAW
-                    codec = "alaw"
-                elif codec_id == 144:  # MEDIA_CODEC_AUDIO_AAC_ELD
-                    codec = "aac_eld"
-                    sample_rate = 16000
-                elif codec_id == 146:  # MEDIA_CODEC_AUDIO_OPUS
-                    codec = "opus"
-                    sample_rate = 16000
-                else:
-                    raise Exception(f"\nUnknown audio codec {codec_id=}\n")
-                logger.info(f"[AUDIO] {codec=} {sample_rate=} {codec_id=}")
-                return codec, sample_rate
+                return self.get_audio_codec_from_codec_id(codec_id)
             time.sleep(0.5)
         raise Exception("Unable to identify audio.")
 
