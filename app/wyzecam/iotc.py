@@ -303,6 +303,8 @@ class WyzeIOTCSession:
 
     @property
     def sleep_interval(self) -> float:
+        if sleep_int_fps := os.getenv("SLEEP_INTERVAL_FPS"):
+            return 1 / int(sleep_int_fps)
         return 1 / (self.preferred_frame_rate * 1.5)
 
     def session_check(self) -> tutk.SInfoStructEx:
@@ -416,6 +418,7 @@ class WyzeIOTCSession:
             )
 
             if not frame_data or errno < 0:
+                # self.flush_pipe("audio")
                 self._handle_frame_error(errno)
                 continue
 
@@ -477,8 +480,8 @@ class WyzeIOTCSession:
 
         frame_ts = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
         gap = time.time() - frame_ts
-        if gap > 20:
-            print("\n\nsuper slow\n\n")
+        if gap > 15:
+            print("\n\n[video] super slow\n\n")
             self.clear_local_buffer()
 
         if gap > 0.5:
@@ -583,8 +586,10 @@ class WyzeIOTCSession:
                     # Some cams can't sync
                     if self.frame_ts and frame_info.timestamp > 1591069888:
                         gap = self.frame_ts - frame_info.timestamp
-                        if gap < -10 or gap > 10:
-                            ...
+                        if gap < -15 or gap > 15:
+                            print("\n\n[audio] super slow\n\n")
+                            self.flush_pipe("audio")
+                            self.clear_local_buffer()
                         if gap < -1:
                             logger.info(f"[audio] rushing.. {gap=}")
                             time.sleep(abs(gap) % 1)
