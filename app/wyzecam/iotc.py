@@ -596,39 +596,13 @@ class WyzeIOTCSession:
             if e.errno != 17:
                 raise e
 
-        tutav = self.tutk_platform_lib, self.av_chan_id
-
-        sleep_interval = 1 / 20
         try:
             with open(FIFO, "wb") as audio_pipe:
-                while (
-                    self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
-                    and self.stream_state.value > 1
-                ):
-                    error_no, frame_data, _ = tutk.av_recv_audio_data(*tutav)
-
-                    if not frame_data or error_no in {
-                        tutk.AV_ER_DATA_NOREADY,
-                        tutk.AV_ER_INCOMPLETE_FRAME,
-                        tutk.AV_ER_LOSED_THIS_FRAME,
-                    }:
-                        time.sleep(sleep_interval)
-                        continue
-
-                    if error_no:
-                        raise tutk.TutkError(error_no)
+                for frame_data, _ in self.recv_audio_data():
                     audio_pipe.write(frame_data)
-
                 audio_pipe.write(b"")
-        except tutk.TutkError as ex:
-            warnings.warn(str(ex))
-        except IOError as ex:
-            if ex.errno != errno.EPIPE:  #  Broken pipe
-                warnings.warn(str(ex))
         finally:
-            self.state = WyzeIOTCSessionState.CONNECTING_FAILED
             os.unlink(FIFO)
-            warnings.warn("Audio pipe closed")
 
     def get_audio_sample_rate(self) -> int:
         """Attempt to get the audio sample rate."""
