@@ -3,6 +3,7 @@ import contextlib
 import enum
 import errno
 import hashlib
+import io
 import logging
 import os
 import pathlib
@@ -288,7 +289,7 @@ class WyzeIOTCSession:
         self.av_chan_id: Optional[c_int] = None
         self.state: WyzeIOTCSessionState = WyzeIOTCSessionState.DISCONNECTED
 
-        self.preferred_frame_rate: int = 20
+        self.preferred_frame_rate: int = 15
         self.preferred_frame_size: int = frame_size
         self.preferred_bitrate: int = bitrate
         self.connect_timeout: int = connect_timeout
@@ -303,9 +304,12 @@ class WyzeIOTCSession:
 
     @property
     def sleep_interval(self) -> float:
-        if sleep_int_fps := os.getenv("SLEEP_INTERVAL_FPS"):
-            return 1 / int(sleep_int_fps)
-        return 1 / (self.preferred_frame_rate * 1.5)
+        if not self.frame_ts:
+            return 0.01
+
+        sleep_fps = int(os.getenv("SLEEP_INTERVAL_FPS", self.preferred_frame_rate))
+        delta = max(time.time() - self.frame_ts, 0.0)
+        return max((1 / sleep_fps) - delta, 0.01)
 
     def session_check(self) -> tutk.SInfoStructEx:
         """Used by a device or a client to check the IOTC session info.
@@ -406,11 +410,10 @@ class WyzeIOTCSession:
         self.sync_camera_time()
 
         have_key_frame = False
-        last_frame = time.time()
+        self.frame_ts = time.time()
         while self.should_stream():
-            if not self._received_first_frame(last_frame, have_key_frame):
+            if not self._received_first_frame(have_key_frame):
                 have_key_frame = True
-                last_frame = time.time()
                 continue
 
             errno, frame_data, frame_info, _ = tutk.av_recv_frame_data(
@@ -418,22 +421,18 @@ class WyzeIOTCSession:
             )
 
             if not frame_data or errno < 0:
-                # self.flush_pipe("audio")
                 self._handle_frame_error(errno)
                 continue
 
             assert frame_info is not None, "Empty frame_info without an error!"
 
             if self._invalid_frame_size(frame_info, have_key_frame):
-                if have_key_frame:
-                    have_key_frame = False
-                    last_frame = time.time()
+                have_key_frame = False
                 continue
 
-            if have_key_frame and self._video_frame_slow(frame_info):
+            if self._video_frame_slow(frame_info) and have_key_frame:
                 continue
 
-            last_frame = time.time()
             if frame_info.is_keyframe:
                 have_key_frame = True
 
@@ -442,16 +441,14 @@ class WyzeIOTCSession:
         self.state = WyzeIOTCSessionState.CONNECTING_FAILED
         return b""
 
-    def _received_first_frame(self, last_frame: float, have_key_frame: bool) -> bool:
+    def _received_first_frame(self, have_key_frame: bool) -> bool:
         """Check if the first frame is received and update frame size."""
-        delta = time.time() - last_frame
-        if delta < self.connect_timeout:
-            time.sleep(max(self.sleep_interval - delta, 0.01))
+        if time.time() - self.frame_ts < self.connect_timeout:
             return True
 
         if have_key_frame:
             self.state = WyzeIOTCSessionState.CONNECTING_FAILED
-            raise Exception(f"Did not receive a frame for {self.connect_timeout}s")
+            raise Exception(f"Did not receive a frame for {int(delta)}s")
 
         warnings.warn("Still waiting for first frame. Updating frame size.")
         self.update_frame_size_rate()
@@ -480,31 +477,32 @@ class WyzeIOTCSession:
 
         frame_ts = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
         gap = time.time() - frame_ts
-        if gap > 15:
+        if gap > 10:
             print("\n\n[video] super slow\n\n")
             self.clear_local_buffer()
 
-        if gap > 0.5:
+        if gap >= 0.5:
+            logger.info(f"[video] slow {gap=}")
             self.flush_pipe("audio")
-            logger.info(f"[video] slow {gap=} [{frame_ts=}]")
             return True
 
         self.frame_ts = frame_ts
 
-    def _handle_frame_error(self, errno: int):
+    def _handle_frame_error(self, errno: int) -> None:
         """Handle errors that occur when receiving frame data."""
-        time.sleep(self.sleep_interval)
-
+        # time.sleep(self.sleep_interval)
+        time.sleep(0.05)
         if errno == tutk.AV_ER_DATA_NOREADY or errno >= 0:
             return
 
         if errno in {tutk.AV_ER_INCOMPLETE_FRAME, tutk.AV_ER_LOSED_THIS_FRAME}:
             warnings.warn(tutk.TutkError(errno).name)
-            return
 
         raise tutk.TutkError(errno)
 
     def should_stream(self) -> bool:
+        time.sleep(self.sleep_interval)
+
         return (
             self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
             and self.stream_state.value > 1
@@ -541,6 +539,7 @@ class WyzeIOTCSession:
     def clear_local_buffer(self) -> None:
         """Clear local buffer."""
         warnings.warn("clear buffer")
+        self.sync_camera_time()
         tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
 
     def flush_pipe(self, pipe_type: str = "audio"):
@@ -549,14 +548,12 @@ class WyzeIOTCSession:
 
         fifo = f"/tmp/{self.camera.name_uri.lower()}_{pipe_type}.pipe"
         logger.info(f"flushing {pipe_type}")
+
         try:
-            with open(fifo, "rb") as pipe:
+            with io.open(fifo, "rb", buffering=8192) as pipe:
                 flags = fcntl(pipe.fileno(), F_GETFL)
                 fcntl(pipe.fileno(), F_SETFL, flags | os.O_NONBLOCK)
-                while pipe.read(8):
-                    continue
-        except FileNotFoundError:
-            logger.warning(f"Flushing Error: The named pipe '{fifo}' does not exist.")
+                pipe.read(8192)
         except Exception as e:
             logger.warning(f"Flushing Error: {e}")
 
@@ -584,21 +581,22 @@ class WyzeIOTCSession:
                     assert frame_info is not None, "Empty frame_info without an error!"
 
                     # Some cams can't sync
-                    if self.frame_ts and frame_info.timestamp > 1591069888:
+                    if frame_info.timestamp > 1591069888:
                         gap = self.frame_ts - frame_info.timestamp
-                        if gap < -15 or gap > 15:
+                        if gap < -10 or gap > 10:
                             print("\n\n[audio] super slow\n\n")
-                            self.flush_pipe("audio")
                             self.clear_local_buffer()
-                        if gap < -1:
+                            self.flush_pipe("audio")
+                        if gap <= -1:
                             logger.info(f"[audio] rushing.. {gap=}")
                             time.sleep(abs(gap) % 1)
-                        elif gap > 1:
+                        elif gap >= 1:
                             logger.info(f"[audio] dragging.. {gap=}")
                             self.flush_pipe("audio")
                             continue
 
                     audio_pipe.write(frame_data)
+
                     self.audio_pipe_ready = True
 
                 audio_pipe.write(b"")
@@ -861,9 +859,7 @@ class WyzeIOTCSession:
             yield frame_ndarray, frame_info, stats
 
     def _av_codec_from_frameinfo(self, frame_info):
-        if frame_info.codec_id == 75:
-            codec_name = "h264"
-        elif frame_info.codec_id == 78:
+        if frame_info.codec_id in {75, 78}:
             codec_name = "h264"
         elif frame_info.codec_id == 80:
             codec_name = "hevc"
