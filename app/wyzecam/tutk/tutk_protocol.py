@@ -1,8 +1,9 @@
 import json
 import logging
-import pathlib
 import time
 from ctypes import LittleEndianStructure, c_char, c_uint16, c_uint32
+from os import getenv
+from pathlib import Path
 from struct import pack, pack_into
 from typing import Any, Optional
 
@@ -10,7 +11,8 @@ import xxtea
 
 from . import tutk
 
-project_root = pathlib.Path(__file__).parent
+PROJECT_ROOT = Path(getenv("TUTK_PROJECT_ROOT", Path(__file__).parent))
+
 
 logger = logging.getLogger(__name__)
 
@@ -838,7 +840,8 @@ class K10148StartBoa(TutkWyzeProtocolMessage):
 
     def encode(self) -> bytes:
         return encode(self.code, bytes([0, 1, 0, 0, 0]))
-    
+
+
 class K10242FormatSDCard(TutkWyzeProtocolMessage):
     """
     Format SD Card.
@@ -1346,7 +1349,7 @@ def respond_to_ioctrl_10001(
 
 
 def supports(product_model, protocol, command):
-    with open(project_root / "device_config.json") as f:
+    with open(PROJECT_ROOT / "device_config.json") as f:
         device_config = json.load(f)
     commands_db = device_config["supportedCommands"]
     supported_commands = []

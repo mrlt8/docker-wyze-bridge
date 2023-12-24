@@ -77,6 +77,8 @@ class WyzeCredential(BaseModel):
     sms_session_id: Optional[str] = None
     email_session_id: Optional[str] = None
     phone_id: Optional[str] = str(uuid.uuid4())
+    key_id: Optional[str] = None
+    api_key: Optional[str] = None
 
 
 class WyzeAccount(BaseModel):

@@ -218,7 +218,6 @@ class WyzeIOTCSessionState(enum.IntEnum):
 
 FRAME_SIZE = {0: "HD", 1: "SD", 3: "2K"}
 
-
 class WyzeIOTCSession:
     """An IOTC session object, used for communicating with Wyze cameras.
 
@@ -433,7 +432,7 @@ class WyzeIOTCSession:
         bad_frames = 0
         max_noready = int(os.getenv("MAX_NOREADY", 500))
         while True:
-            errno, frame_data, frame_info = tutk.av_recv_frame_data(
+            errno, frame_data, frame_info, frame_index = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if errno < 0:
@@ -553,6 +552,41 @@ class WyzeIOTCSession:
         warnings.warn("clear buffer")
         tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
 
+    def recv_audio_data(self) -> Iterator[
+        tuple[bytes, Union[tutk.FrameInfoStruct, tutk.FrameInfo3Struct]]
+    ]:
+        tutav = self.tutk_platform_lib, self.av_chan_id
+
+        sleep_interval = 1 / 20
+        try:
+            while (
+                self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
+                and self.stream_state.value > 1
+            ):
+                error_no, frame_data, frame_info = tutk.av_recv_audio_data(*tutav)
+
+                if not frame_data or error_no in {
+                    tutk.AV_ER_DATA_NOREADY,
+                    tutk.AV_ER_INCOMPLETE_FRAME,
+                    tutk.AV_ER_LOSED_THIS_FRAME,
+                }:
+                    time.sleep(sleep_interval)
+                    continue
+
+                if error_no:
+                    raise tutk.TutkError(error_no)
+                yield frame_data, frame_info
+
+            yield b"", None
+        except tutk.TutkError as ex:
+            warnings.warn(str(ex))
+        except IOError as ex:
+            if ex.errno != errno.EPIPE:  #  Broken pipe
+                warnings.warn(str(ex))
+        finally:
+            self.state = WyzeIOTCSessionState.CONNECTING_FAILED
+            warnings.warn("Audio pipe closed")
+
     def recv_audio_frames(self, uri: str) -> None:
         """Write raw audio frames to a named pipe."""
         FIFO = f"/tmp/{uri.lower()}_audio.pipe"
@@ -562,39 +596,13 @@ class WyzeIOTCSession:
             if e.errno != 17:
                 raise e
 
-        tutav = self.tutk_platform_lib, self.av_chan_id
-
-        sleep_interval = 1 / 20
         try:
             with open(FIFO, "wb") as audio_pipe:
-                while (
-                    self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
-                    and self.stream_state.value > 1
-                ):
-                    error_no, frame_data, _ = tutk.av_recv_audio_data(*tutav)
-
-                    if not frame_data or error_no in {
-                        tutk.AV_ER_DATA_NOREADY,
-                        tutk.AV_ER_INCOMPLETE_FRAME,
-                        tutk.AV_ER_LOSED_THIS_FRAME,
-                    }:
-                        time.sleep(sleep_interval)
-                        continue
-
-                    if error_no:
-                        raise tutk.TutkError(error_no)
+                for frame_data, _ in self.recv_audio_data():
                     audio_pipe.write(frame_data)
-
                 audio_pipe.write(b"")
-        except tutk.TutkError as ex:
-            warnings.warn(str(ex))
-        except IOError as ex:
-            if ex.errno != errno.EPIPE:  #  Broken pipe
-                warnings.warn(str(ex))
         finally:
-            self.state = WyzeIOTCSessionState.CONNECTING_FAILED
             os.unlink(FIFO)
-            warnings.warn("Audio pipe closed")
 
     def get_audio_sample_rate(self) -> int:
         """Attempt to get the audio sample rate."""
@@ -603,33 +611,36 @@ class WyzeIOTCSession:
             sample_rate = int(audio_param.get("sampleRate", sample_rate))
         return sample_rate
 
+    def get_audio_codec_from_codec_id(self, codec_id: int):
+        sample_rate = self.get_audio_sample_rate()
+        codec = False
+        if codec_id == 137:  # MEDIA_CODEC_AUDIO_G711_ULAW
+            codec = "mulaw"
+        elif codec_id == 140:  # MEDIA_CODEC_AUDIO_PCM
+            codec = "s16le"
+        elif codec_id == 141:  # MEDIA_CODEC_AUDIO_AAC
+            codec = "aac"
+        elif codec_id == 143:  # MEDIA_CODEC_AUDIO_G711_ALAW
+            codec = "alaw"
+        elif codec_id == 144:  # MEDIA_CODEC_AUDIO_AAC_ELD
+            codec = "aac_eld"
+            sample_rate = 16000
+        elif codec_id == 146:  # MEDIA_CODEC_AUDIO_OPUS
+            codec = "opus"
+            sample_rate = 16000
+        else:
+            raise Exception(f"\nUnknown audio codec {codec_id=}\n")
+        logger.info(f"[AUDIO] {codec=} {sample_rate=} {codec_id=}")
+        return codec, sample_rate
+
     def get_audio_codec(self, limit: int = 25) -> tuple[str, int]:
         """Identify audio codec."""
-        sample_rate = self.get_audio_sample_rate()
         for _ in range(limit):
             error_no, _, frame_info = tutk.av_recv_audio_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
             if not error_no and (codec_id := frame_info.codec_id):
-                codec = False
-                if codec_id == 137:  # MEDIA_CODEC_AUDIO_G711_ULAW
-                    codec = "mulaw"
-                elif codec_id == 140:  # MEDIA_CODEC_AUDIO_PCM
-                    codec = "s16le"
-                elif codec_id == 141:  # MEDIA_CODEC_AUDIO_AAC
-                    codec = "aac"
-                elif codec_id == 143:  # MEDIA_CODEC_AUDIO_G711_ALAW
-                    codec = "alaw"
-                elif codec_id == 144:  # MEDIA_CODEC_AUDIO_AAC_ELD
-                    codec = "aac_eld"
-                    sample_rate = 16000
-                elif codec_id == 146:  # MEDIA_CODEC_AUDIO_OPUS
-                    codec = "opus"
-                    sample_rate = 16000
-                else:
-                    raise Exception(f"\nUnknown audio codec {codec_id=}\n")
-                logger.info(f"[AUDIO] {codec=} {sample_rate=} {codec_id=}")
-                return codec, sample_rate
+                return self.get_audio_codec_from_codec_id(codec_id)
             time.sleep(0.5)
         raise Exception("Unable to identify audio.")
 
