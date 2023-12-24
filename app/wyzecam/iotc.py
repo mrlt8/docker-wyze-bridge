@@ -1,7 +1,6 @@
 import base64
 import contextlib
 import enum
-import errno
 import hashlib
 import io
 import logging
@@ -10,6 +9,7 @@ import pathlib
 import time
 import warnings
 from ctypes import CDLL, c_int
+from errno import EPIPE
 from fcntl import F_GETFL, F_SETFL, fcntl
 from typing import Any, Iterator, Optional, Union
 
@@ -120,15 +120,15 @@ class WyzeIOTC:
         if self.initd:
             return
         self.initd = True
-        errno = tutk.iotc_initialize(self.tutk_platform_lib, udp_port=self.udp_port)
-        if errno < 0:
-            raise tutk.TutkError(errno)
+        err_no = tutk.iotc_initialize(self.tutk_platform_lib, udp_port=self.udp_port)
+        if err_no < 0:
+            raise tutk.TutkError(err_no)
 
         actual_num_chans = tutk.av_initialize(
             self.tutk_platform_lib, max_num_channels=self.max_num_av_channels
         )
         if actual_num_chans < 0:
-            raise tutk.TutkError(errno)
+            raise tutk.TutkError(err_no)
 
         self.max_num_av_channels = actual_num_chans
 
@@ -416,12 +416,12 @@ class WyzeIOTCSession:
                 have_key_frame = True
                 continue
 
-            errno, frame_data, frame_info, _ = tutk.av_recv_frame_data(
+            err_no, frame_data, frame_info, _ = tutk.av_recv_frame_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
 
-            if not frame_data or errno < 0:
-                self._handle_frame_error(errno)
+            if not frame_data or err_no < 0:
+                self._handle_frame_error(err_no)
                 continue
 
             assert frame_info is not None, "Empty frame_info without an error!"
@@ -478,27 +478,27 @@ class WyzeIOTCSession:
         frame_ts = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
         gap = time.time() - frame_ts
         if gap > 10:
-            print("\n\n[video] super slow\n\n")
+            logger.warning("\n\n[video] super slow\n\n")
             self.clear_local_buffer()
 
         if gap >= 0.5:
-            logger.info(f"[video] slow {gap=}")
+            logger.debug(f"[video] slow {gap=}")
             self.flush_pipe("audio")
             return True
 
         self.frame_ts = frame_ts
 
-    def _handle_frame_error(self, errno: int) -> None:
+    def _handle_frame_error(self, err_no: int) -> None:
         """Handle errors that occur when receiving frame data."""
         # time.sleep(self.sleep_interval)
         time.sleep(0.05)
-        if errno == tutk.AV_ER_DATA_NOREADY or errno >= 0:
+        if err_no == tutk.AV_ER_DATA_NOREADY or err_no >= 0:
             return
 
-        if errno in {tutk.AV_ER_INCOMPLETE_FRAME, tutk.AV_ER_LOSED_THIS_FRAME}:
-            warnings.warn(tutk.TutkError(errno).name)
+        if err_no in {tutk.AV_ER_INCOMPLETE_FRAME, tutk.AV_ER_LOSED_THIS_FRAME}:
+            warnings.warn(tutk.TutkError(err_no).name)
 
-        raise tutk.TutkError(errno)
+        raise tutk.TutkError(err_no)
 
     def should_stream(self) -> bool:
         time.sleep(self.sleep_interval)
@@ -570,12 +570,12 @@ class WyzeIOTCSession:
         try:
             with open(FIFO, "wb") as audio_pipe:
                 while self.should_stream():
-                    error_no, frame_data, frame_info = tutk.av_recv_audio_data(
+                    err_no, frame_data, frame_info = tutk.av_recv_audio_data(
                         self.tutk_platform_lib, self.av_chan_id
                     )
 
-                    if not frame_data or error_no < 0:
-                        self._handle_frame_error(error_no)
+                    if not frame_data or err_no < 0:
+                        self._handle_frame_error(err_no)
                         continue
 
                     assert frame_info is not None, "Empty frame_info without an error!"
@@ -584,14 +584,14 @@ class WyzeIOTCSession:
                     if frame_info.timestamp > 1591069888:
                         gap = self.frame_ts - frame_info.timestamp
                         if gap < -10 or gap > 10:
-                            print("\n\n[audio] super slow\n\n")
+                            logger.warning("\n\n[audio] super slow\n\n")
                             self.clear_local_buffer()
                             self.flush_pipe("audio")
                         if gap <= -1:
-                            logger.info(f"[audio] rushing.. {gap=}")
+                            logger.debug(f"[audio] rushing.. {gap=}")
                             time.sleep(abs(gap) % 1)
                         elif gap >= 1:
-                            logger.info(f"[audio] dragging.. {gap=}")
+                            logger.debug(f"[audio] dragging.. {gap=}")
                             self.flush_pipe("audio")
                             continue
 
@@ -603,7 +603,7 @@ class WyzeIOTCSession:
         except tutk.TutkError as ex:
             warnings.warn(str(ex))
         except IOError as ex:
-            if ex.errno != errno.EPIPE:  #  Broken pipe
+            if ex.errno != EPIPE:  #  Broken pipe
                 warnings.warn(str(ex))
         finally:
             self.state = WyzeIOTCSessionState.CONNECTING_FAILED
@@ -622,10 +622,10 @@ class WyzeIOTCSession:
         """Identify audio codec."""
         sample_rate = self.get_audio_sample_rate()
         for _ in range(limit):
-            error_no, _, frame_info = tutk.av_recv_audio_data(
+            err_no, _, frame_info = tutk.av_recv_audio_data(
                 self.tutk_platform_lib, self.av_chan_id
             )
-            if not error_no and (codec_id := frame_info.codec_id):
+            if not err_no and (codec_id := frame_info.codec_id):
                 codec = False
                 if codec_id == 137:  # MEDIA_CODEC_AUDIO_G711_ULAW
                     codec = "mulaw"
@@ -1021,11 +1021,11 @@ class WyzeIOTCSession:
             tutk.av_client_stop(self.tutk_platform_lib, self.av_chan_id)
         self.av_chan_id = None
         if self.session_id is not None:
-            errno = tutk.iotc_connect_stop_by_session_id(
+            err_no = tutk.iotc_connect_stop_by_session_id(
                 self.tutk_platform_lib, self.session_id
             )
-            if errno < 0:
-                warnings.warn(tutk.TutkError(errno))
+            if err_no < 0:
+                warnings.warn(tutk.TutkError(err_no))
             tutk.iotc_session_close(self.tutk_platform_lib, self.session_id)
         self.session_id = None
         self.state = WyzeIOTCSessionState.DISCONNECTED
