@@ -304,12 +304,14 @@ class WyzeIOTCSession:
 
     @property
     def sleep_interval(self) -> float:
+        if os.getenv("LOW_LATENCY"):  # May cause CPU to spike
+            return 0
+
         if not self.frame_ts:
             return 0.01
 
-        sleep_fps = int(os.getenv("SLEEP_INTERVAL_FPS", self.preferred_frame_rate))
         delta = max(time.time() - self.frame_ts, 0.0)
-        return max((1 / sleep_fps) - delta, 0.01)
+        return max((1 / self.preferred_frame_rate) - delta, 0.01)
 
     def session_check(self) -> tutk.SInfoStructEx:
         """Used by a device or a client to check the IOTC session info.
