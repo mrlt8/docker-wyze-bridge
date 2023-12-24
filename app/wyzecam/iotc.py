@@ -9,7 +9,7 @@ import pathlib
 import time
 import warnings
 from ctypes import CDLL, c_int
-from errno import EPIPE
+from errno import EEXIST, EPIPE
 from fcntl import F_GETFL, F_SETFL, fcntl
 from typing import Any, Iterator, Optional, Union
 
@@ -560,15 +560,15 @@ class WyzeIOTCSession:
     def recv_audio_data(self, uri: str) -> None:
         """Write raw audio frames to a named pipe."""
         assert self.av_chan_id is not None, "Please call _connect() first!"
-        FIFO = f"/tmp/{uri.lower()}_audio.pipe"
+        fifo_path = f"/tmp/{uri.lower()}_audio.pipe"
         try:
-            os.mkfifo(FIFO, os.O_NONBLOCK)
+            os.mkfifo(fifo_path, os.O_NONBLOCK)
         except OSError as e:
-            if e.errno != 17:
+            if e.errno != EEXIST:  # pipe already exists
                 raise e
 
         try:
-            with open(FIFO, "wb") as audio_pipe:
+            with open(fifo_path, "wb") as audio_pipe:
                 while self.should_stream():
                     err_no, frame_data, frame_info = tutk.av_recv_audio_data(
                         self.tutk_platform_lib, self.av_chan_id
@@ -579,21 +579,8 @@ class WyzeIOTCSession:
                         continue
 
                     assert frame_info is not None, "Empty frame_info without an error!"
-
-                    # Some cams can't sync
-                    if frame_info.timestamp > 1591069888:
-                        gap = self.frame_ts - frame_info.timestamp
-                        if gap < -10 or gap > 10:
-                            logger.warning("\n\n[audio] super slow\n\n")
-                            self.clear_local_buffer()
-                            self.flush_pipe("audio")
-                        if gap <= -1:
-                            logger.debug(f"[audio] rushing.. {gap=}")
-                            time.sleep(abs(gap) % 1)
-                        elif gap >= 1:
-                            logger.debug(f"[audio] dragging.. {gap=}")
-                            self.flush_pipe("audio")
-                            continue
+                    if self._audio_frame_slow(frame_info):
+                        continue
 
                     audio_pipe.write(frame_data)
 
@@ -608,8 +595,26 @@ class WyzeIOTCSession:
         finally:
             self.state = WyzeIOTCSessionState.CONNECTING_FAILED
             self.audio_pipe_ready = False
-            os.unlink(FIFO)
+            os.unlink(fifo_path)
             warnings.warn("Audio pipe closed")
+
+    def _audio_frame_slow(self, frame_info) -> Optional[bool]:
+        # Some cams can't sync
+        if frame_info.timestamp < 1591069888:
+            return
+
+        gap = self.frame_ts - frame_info.timestamp
+        if gap < -10 or gap > 10:
+            logger.warning("[audio] out of sync")
+            self.clear_local_buffer()
+            self.flush_pipe("audio")
+        if gap <= -1:
+            print(f"[audio] rushing ahead of video.. {gap=}")
+            time.sleep(abs(gap) % 1)
+        elif gap >= 1:
+            print(f"[audio] dragging behind video.. {gap=}")
+            self.flush_pipe("audio")
+            return True
 
     def get_audio_sample_rate(self) -> int:
         """Attempt to get the audio sample rate."""
