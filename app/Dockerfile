@@ -1,7 +1,10 @@
 ARG BUILD
+ARG BUILD_DATE
+ARG GITHUB_SHA
 FROM python:3.12-slim-bookworm as base
 
 FROM base as builder
+ARG BUILD_DATE
 RUN apt-get update \
     && apt-get install -y curl tar gcc \
     && apt-get clean \
@@ -25,12 +28,13 @@ RUN echo "BUILDING IMAGE FOR $(uname -m)" && \
     | tar xzf - -C app \
     && cp app/lib.${LIB_ARCH} usr/local/lib/libIOTCAPIs_ALL.so \
     && rm app/*.txt app/lib.*  \ 
-    && echo BUILD_DATE=$(date) > .build_date
+    && if [ -z "${BUILD_DATE}" ]; then echo BUILD_DATE=$(date) > .build_date; else echo BUILD_DATE=${BUILD_DATE} > .build_date; fi
 
 
 FROM base
 ARG BUILD
+ARG GITHUB_SHA
 COPY --from=builder /build /
-ENV PYTHONUNBUFFERED=1 FLASK_APP=frontend BUILD=$BUILD
+ENV PYTHONUNBUFFERED=1 FLASK_APP=frontend BUILD=$BUILD GITHUB_SHA=$GITHUB_SHA
 WORKDIR /app
 CMD ["flask", "run", "--host=0.0.0.0"]

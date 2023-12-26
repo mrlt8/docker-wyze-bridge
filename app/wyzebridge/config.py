@@ -12,7 +12,11 @@ load_dotenv("/.build_date")
 VERSION: str = f'{getenv("VERSION", "DEV")} [{machine()}]'
 BUILD = env_bool("BUILD", "local")
 BUILD_DATE = env_bool("BUILD_DATE")
-BUILD_STR = "" if BUILD == VERSION else f"[{BUILD.upper()} BUILD] {BUILD_DATE}"
+GITHUB_SHA = env_bool("GITHUB_SHA")
+BUILD_STR = ""
+if BUILD != VERSION:
+    BUILD_STR = f"{BUILD.upper()} BUILD [{BUILD_DATE}] {GITHUB_SHA:.7}"
+
 HASS_TOKEN: str = getenv("SUPERVISOR_TOKEN", "")
 setup_hass(HASS_TOKEN)
 MQTT_DISCOVERY = env_bool("MQTT_DTOPIC")

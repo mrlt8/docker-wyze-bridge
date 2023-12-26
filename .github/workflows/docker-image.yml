@@ -105,7 +105,10 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           file: ./app/Dockerfile.${{ matrix.dockerfile }}
           platforms: ${{ steps.image_type.outputs.platforms }}
-          build-args: BUILD=${{ steps.meta.outputs.VERSION }}
+          build-args: |
+            BUILD=${{ steps.meta.outputs.VERSION }}
+            BUILD_DATE=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.created'] }}
+            GITHUB_SHA=${{ github.sha }}
           labels: |
             ${{ steps.meta.outputs.labels }}
             io.hass.name=${{ fromJSON(steps.meta.outputs.json).labels['org.opencontainers.image.title'] }}
