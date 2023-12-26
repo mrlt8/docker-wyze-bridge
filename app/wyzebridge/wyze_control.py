@@ -129,16 +129,14 @@ def boa_control(sess: WyzeIOTCSession, boa_cam: Optional[dict]):
         pull_last_image(boa_cam, "photo", True)
 
 
-def camera_control(
-    sess: WyzeIOTCSession, uri: str, camera_info: Queue, camera_cmd: Queue
-):
+def camera_control(sess: WyzeIOTCSession, camera_info: Queue, camera_cmd: Queue):
     """
     Listen for commands to control the camera.
 
     :param sess: WyzeIOTCSession used to communicate with the camera.
     :param uri: URI-safe name of the camera.
     """
-    boa = check_boa_enabled(sess, uri)
+    boa = check_boa_enabled(sess, sess.camera.name_uri)
 
     while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
         boa_control(sess, boa)
