@@ -420,7 +420,7 @@ class WyzeIOTCSession:
 
         have_key_frame = False
         self.frame_ts = time.time()
-        while self.should_stream():
+        while self.should_stream(sleep=self.sleep_interval):
             if not self._received_first_frame(have_key_frame):
                 have_key_frame = True
                 continue
@@ -487,7 +487,7 @@ class WyzeIOTCSession:
         frame_ts = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
         gap = time.time() - frame_ts
         if gap > 10:
-            logger.warning("\n\n[video] super slow\n\n")
+            logger.warning("[video] super slow")
             self.clear_local_buffer()
 
         if gap >= 0.5:
@@ -509,9 +509,8 @@ class WyzeIOTCSession:
 
         raise tutk.TutkError(err_no)
 
-    def should_stream(self) -> bool:
-        time.sleep(self.sleep_interval)
-
+    def should_stream(self, sleep: float = 0.01) -> bool:
+        time.sleep(sleep)
         return (
             self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
             and self.stream_state.value > 1
@@ -529,9 +528,6 @@ class WyzeIOTCSession:
         return {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
 
     def sync_camera_time(self):
-        if self.substream:
-            return
-
         with self.iotctrl_mux() as mux:
             mux.send_ioctl(tutk_protocol.K10092SetCameraTime())
 
