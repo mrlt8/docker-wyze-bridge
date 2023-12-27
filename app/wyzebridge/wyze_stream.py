@@ -548,7 +548,11 @@ def get_audio_params(sess: WyzeIOTCSession) -> dict[str, str | int]:
     codec_str = codec.replace("s16le", "PCM")
     web_audio = "libopus" if BRIDGE_IP else "aac"
 
-    if codec_out := env_bool("AUDIO_CODEC", web_audio if "s16le" in codec else ""):
+    if codec_out := env_bool("AUDIO_CODEC", web_audio if codec == "s16le" else ""):
+        codec_str += f" > {codec_out}"
+    elif BRIDGE_IP and rate > 8000:
+        logger.info("Re-encoding audio for compatibility with WebRTC in MTX")
+        codec_out = "libopus"
         codec_str += f" > {codec_out}"
 
     logger.info(f"🔊 Audio Enabled - {codec_str.upper()}/{rate:,}Hz")
