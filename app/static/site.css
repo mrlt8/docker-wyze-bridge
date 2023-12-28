@@ -263,3 +263,14 @@ nav.fs-mode,
 footer.fs-mode {
   display: none;
 }
+
+/* Fix for Jittery Video in Firefox #1025 */
+@-moz-document url-prefix() {
+  body::after {
+    width: 1px;
+    height: 1px;
+    position: fixed;
+    backdrop-filter: blur(0.01rem);
+    content: "";
+  }
+}
