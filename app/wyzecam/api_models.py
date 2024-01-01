@@ -49,6 +49,7 @@ PAN_CAMS = {"WYZECP1_JEF", "HL_PAN2", "HL_PAN3", "HL_PANP"}
 BATTERY_CAMS = {"WVOD1", "HL_WCO2", "AN_RSCW"}
 
 # Doorbells
+DOORBELL = {"WYZEDB3", "HL_DB2"}
 VERTICAL_CAMS = {"WYZEDB3", "GW_BE1", "AN_RDB1"}
 # Minimum known firmware version that supports multiple streams
 SUBSTREAM_FW = {"WYZEC1-JZ": "4.9.9", "WYZE_CAKP2JFUS": "4.36.10", "HL_CAM3P": "4.58.0"}

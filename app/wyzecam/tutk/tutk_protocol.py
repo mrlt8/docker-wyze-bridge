@@ -3,10 +3,11 @@ import logging
 import pathlib
 import time
 from ctypes import LittleEndianStructure, c_char, c_uint16, c_uint32
-from struct import pack, pack_into
+from struct import pack, unpack
 from typing import Any, Optional
 
 import xxtea
+from wyzecam.api_models import DOORBELL
 
 from . import tutk
 
@@ -119,6 +120,7 @@ class K10000ConnectRequest(TutkWyzeProtocolMessage):
     def encode(self) -> bytes:
         if not self.mac:
             return encode(self.code, None)
+
         wake_dict = {
             "cameraInfo": {
                 "mac": self.mac,
@@ -127,6 +129,7 @@ class K10000ConnectRequest(TutkWyzeProtocolMessage):
             }
         }
         wake_json = json.dumps(wake_dict, separators=(",", ":")).encode("ascii")
+
         return encode(self.code, wake_json)
 
 
@@ -145,8 +148,8 @@ class K10002ConnectAuth(TutkWyzeProtocolMessage):
         self,
         challenge_response: bytes,
         mac: str,
-        open_video: bool = True,
-        open_audio: bool = True,
+        video: bool = True,
+        audio: bool = True,
     ) -> None:
         """
         Constructs a new K10002ConnectAuth message
@@ -154,8 +157,8 @@ class K10002ConnectAuth(TutkWyzeProtocolMessage):
         :param challenge_response: the xxtea-encrypted response to the challenge bytes
                                    recieved as part of message 10001.
         :param mac: the mac address of the camera
-        :param open_video: True if we wish to start streaming video after authentication is successful.
-        :param open_audio: True if we wish to start streaming audio after authentication is successful.
+        :param video: True if we wish to start streaming video after authentication is successful.
+        :param audio: True if we wish to start streaming audio after authentication is successful.
         """
         super().__init__(10002)
 
@@ -168,15 +171,15 @@ class K10002ConnectAuth(TutkWyzeProtocolMessage):
 
         self.challenge_response = challenge_response
         self.username = mac
-        self.open_video = open_video
-        self.open_audio = open_audio
+        self.video = video
+        self.audio = audio
 
     def encode(self) -> bytes:
         data = bytearray([0] * 22)
         data[0:16] = self.challenge_response
         data[16:20] = self.username.encode("ascii")[0:4]
-        data[20:21] = bytes([1] if self.open_video else [0])
-        data[21:22] = bytes([1] if self.open_audio else [0])
+        data[20:21] = bytes([1] if self.video else [0])
+        data[21:22] = bytes([1] if self.audio else [0])
 
         return encode(self.code, bytes(data))
 
@@ -194,8 +197,8 @@ class K10006ConnectUserAuth(TutkWyzeProtocolMessage):
         challenge_response: bytes,
         phone_id: str,
         open_userid: str,
-        open_video: bool = True,
-        open_audio: bool = True,
+        video: bool = True,
+        audio: bool = True,
     ) -> None:
         super().__init__(10006)
 
@@ -209,8 +212,8 @@ class K10006ConnectUserAuth(TutkWyzeProtocolMessage):
         self.challenge_response: bytes = challenge_response
         self.username: bytes = phone_id.encode("utf-8")
         self.open_userid: bytes = open_userid.encode("utf-8")
-        self.open_video: int = 1 if open_video else 0
-        self.open_audio: int = 1 if open_audio else 0
+        self.video: int = 1 if video else 0
+        self.audio: int = 1 if audio else 0
 
     def encode(self) -> bytes:
         open_userid_len = len(self.open_userid)
@@ -218,8 +221,8 @@ class K10006ConnectUserAuth(TutkWyzeProtocolMessage):
             f"<16s4sbbb{open_userid_len}s",
             self.challenge_response,
             self.username,
-            self.open_video,
-            self.open_audio,
+            self.video,
+            self.audio,
             open_userid_len,
             self.open_userid,
         )
@@ -247,8 +250,8 @@ class K10008ConnectUserAuth(TutkWyzeProtocolMessage):
         challenge_response: bytes,
         phone_id: str,
         open_userid: str,
-        open_video: bool = True,
-        open_audio: bool = True,
+        video: bool = True,
+        audio: bool = True,
     ) -> None:
         """
         Constructs a new K10008ConnectAuth message
@@ -257,8 +260,8 @@ class K10008ConnectUserAuth(TutkWyzeProtocolMessage):
                                    recieved as part of message 10001.
         :param phone_id: the phone id of the client
         :param open_userid: the open_user_id associated with the user authenticating.
-        :param open_video: True if we wish to start streaming video after authentication is successful.
-        :param open_audio: True if we wish to start streaming audio after authentication is successful.
+        :param video: True if we wish to start streaming video after authentication is successful.
+        :param audio: True if we wish to start streaming audio after authentication is successful.
         """
         super().__init__(10008)
 
@@ -272,8 +275,8 @@ class K10008ConnectUserAuth(TutkWyzeProtocolMessage):
         self.challenge_response: bytes = challenge_response
         self.username: bytes = phone_id.encode("utf-8")
         self.open_userid: bytes = open_userid.encode("utf-8")
-        self.open_video: int = 1 if open_video else 0
-        self.open_audio: int = 1 if open_audio else 0
+        self.video: int = 1 if video else 0
+        self.audio: int = 1 if audio else 0
 
     def encode(self) -> bytes:
         open_userid_len = len(self.open_userid)
@@ -281,8 +284,8 @@ class K10008ConnectUserAuth(TutkWyzeProtocolMessage):
             f"<16s4sbbb{open_userid_len}s",
             self.challenge_response,
             self.username,
-            self.open_video,
-            self.open_audio,
+            self.video,
+            self.audio,
             open_userid_len,
             self.open_userid,
         )
@@ -838,7 +841,8 @@ class K10148StartBoa(TutkWyzeProtocolMessage):
 
     def encode(self) -> bytes:
         return encode(self.code, bytes([0, 1, 0, 0, 0]))
-    
+
+
 class K10242FormatSDCard(TutkWyzeProtocolMessage):
     """
     Format SD Card.
@@ -1257,15 +1261,15 @@ class K12060SetFloodLightSwitch(TutkWyzeProtocolMessage):
 
 
 def encode(code: int, data: Optional[bytes]) -> bytes:
-    data_len = 0 if data is None else len(data)
-    encoded_msg = bytearray([0] * (16 + data_len))
-    protocol = 5
-    pack_into("<BBHHH", encoded_msg, 0, 72, 76, protocol, code, data_len)
+    """
+    Encode message
 
-    if data:
-        encoded_msg[16:] = data
+    Note: this uses the standard header of `72, 76, 5`
+    See CamProtocolUtils for additional headers.
+    """
+    data = data or b""
 
-    return bytes(encoded_msg)
+    return pack(f"<BBHHH8x{len(data)}s", 72, 76, 5, code, len(data), data)
 
 
 def decode(buf):
@@ -1275,21 +1279,19 @@ def decode(buf):
     header = TutkWyzeProtocolHeader.from_buffer_copy(buf)
 
     if header.prefix != b"HL":
-        raise TutkWyzeProtocolError(
-            "IOCtrl message begin with the prefix (Expected 'HL')"
-        )
+        raise TutkWyzeProtocolError("IOCtrl message should begin with the prefix 'HL'")
 
-    if header.txt_len + 16 != len(buf):
+    expected_size = header.txt_len + 16
+    if len(buf) != expected_size:
         raise TutkWyzeProtocolError(
             f"Encoded length doesn't match message size "
-            f"(header says {header.txt_len + 16}, "
-            f"got message of len {len(buf)}"
+            f"(header says {expected_size}, got message of len {len(buf)}"
         )
 
-    data = None
-    if header.txt_len > 0:
-        data = buf[16 : header.txt_len + 16]
-    return header, data
+    return header, buf[16:expected_size] if header.txt_len > 0 else None
+
+
+STATUS_MESSAGES = {2: "updating", 4: "checking enr", 5: "off"}
 
 
 def respond_to_ioctrl_10001(
@@ -1300,49 +1302,46 @@ def respond_to_ioctrl_10001(
     mac: str,
     phone_id: str,
     open_userid: str,
-    enable_audio: bool = True,
+    audio: bool = False,
 ) -> Optional[TutkWyzeProtocolMessage]:
-    camera_status = data[0]
-    if camera_status == 2:
-        logger.warning("Camera is updating, can't auth.")
+    camera_status, camera_enr_b = unpack("<B16s", data[:17])
+
+    if camera_status in STATUS_MESSAGES:
+        logger.warning(f"Camera is {STATUS_MESSAGES[camera_status]}, can't auth.")
         return
-    elif camera_status == 4:
-        logger.warning("Camera is checking enr, can't auth.")
-        return
-    elif camera_status == 5:
-        logger.warning("Camera is off, can't auth.")
-        return
-    elif camera_status not in {1, 3, 6}:
+
+    if camera_status not in {1, 3, 6}:
         logger.warning(
             f"Unexpected mode for connect challenge response (10001): {camera_status}"
         )
         return
 
-    camera_enr_b = data[1:17]
-    camera_secret_key = b"FFFFFFFFFFFFFFFF"
-    if camera_status == 3:
-        assert len(enr.encode("ascii")) >= 16, "Enr expected to be 16 bytes"
-        camera_secret_key = enr.encode("ascii")[0:16]
-    if camera_status == 6:
-        assert len(enr.encode("ascii")) >= 32, "Enr expected to be 32 bytes"
-        secret_key = enr.encode("ascii")[0:16]
-        camera_enr_b = xxtea.decrypt(camera_enr_b, secret_key, padding=False)
-        camera_secret_key = enr.encode("ascii")[16:32]
+    resp = generate_challenge_response(camera_enr_b, enr, camera_status)
 
-    challenge_response = xxtea.decrypt(camera_enr_b, camera_secret_key, padding=False)
-
-    if supports(product_model, protocol, 10008):
-        response: TutkWyzeProtocolMessage = K10008ConnectUserAuth(
-            challenge_response, phone_id, open_userid, open_audio=enable_audio
-        )
-    elif supports(product_model, protocol, 10006):
-        response: TutkWyzeProtocolMessage = K10006ConnectUserAuth(
-            challenge_response, phone_id, open_userid, open_audio=enable_audio
-        )
+    if product_model in DOORBELL and supports(product_model, protocol, 10006):
+        response = K10006ConnectUserAuth(resp, phone_id, open_userid, audio=audio)
+    elif supports(product_model, protocol, 10008):
+        response = K10008ConnectUserAuth(resp, phone_id, open_userid, audio=audio)
     else:
-        response = K10002ConnectAuth(challenge_response, mac, open_audio=enable_audio)
+        response = K10002ConnectAuth(resp, mac, audio=audio)
+
     logger.debug(f"Sending response: {response}")
     return response
+
+
+def generate_challenge_response(camera_enr_b, enr, camera_status):
+    if camera_status == 3:
+        assert len(enr.encode("ascii")) >= 16, "Enr expected to be 16 bytes"
+        camera_secret_key = enr.encode("ascii")[:16]
+    elif camera_status == 6:
+        assert len(enr.encode("ascii")) >= 32, "Enr expected to be 32 bytes"
+        secret_key = enr.encode("ascii")[:16]
+        camera_enr_b = xxtea.decrypt(camera_enr_b, secret_key, padding=False)
+        camera_secret_key = enr.encode("ascii")[16:32]
+    else:
+        camera_secret_key = b"FFFFFFFFFFFFFFFF"
+
+    return xxtea.decrypt(camera_enr_b, camera_secret_key, padding=False)
 
 
 def supports(product_model, protocol, command):
@@ -1350,9 +1349,6 @@ def supports(product_model, protocol, command):
         device_config = json.load(f)
     commands_db = device_config["supportedCommands"]
     supported_commands = []
-
-    if product_model == "WYZEDB3":
-        return False
 
     for k in commands_db["default"]:
         if int(k) <= int(protocol):
