@@ -622,9 +622,8 @@ class WyzeIOTCSession:
 
         gap = self.frame_ts - frame_info.timestamp
         if gap < -10 or gap > 10:
-            logger.warning("[audio] out of sync")
+            logger.warning(f"[audio] out of sync {gap=}")
             self.clear_local_buffer()
-            self.flush_pipe("audio")
 
         if gap <= -1:
             logger.debug(f"[audio] rushing ahead of video.. {gap=}")
