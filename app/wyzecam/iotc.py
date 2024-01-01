@@ -551,7 +551,7 @@ class WyzeIOTCSession:
         tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
 
     def flush_pipe(self, pipe_type: str = "audio"):
-        if not self.audio_pipe_ready:
+        if pipe_type == "audio" and not self.audio_pipe_ready:
             return
 
         fifo = f"/tmp/{self.pipe_name}_{pipe_type}.pipe"
@@ -562,6 +562,8 @@ class WyzeIOTCSession:
                 flags = fcntl(pipe.fileno(), F_GETFL)
                 fcntl(pipe.fileno(), F_SETFL, flags | os.O_NONBLOCK)
                 pipe.read(8192)
+            if pipe_type == "audio":
+                self.audio_pipe_ready = False
         except Exception as e:
             logger.warning(f"Flushing Error: {e}")
 
@@ -623,6 +625,7 @@ class WyzeIOTCSession:
             logger.warning("[audio] out of sync")
             self.clear_local_buffer()
             self.flush_pipe("audio")
+
         if gap <= -1:
             logger.debug(f"[audio] rushing ahead of video.. {gap=}")
             time.sleep(abs(gap) % 1)
