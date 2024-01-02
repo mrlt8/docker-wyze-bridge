@@ -479,8 +479,8 @@ class WyzeIOTCSession:
         return True
 
     def _video_frame_slow(self, frame_info) -> Optional[bool]:
-        # Some cams can't sync
-        if frame_info.timestamp < 1591069888:
+        # Some cams can't sync and don't sync on no audio
+        if not self.enable_audio or frame_info.timestamp < 1591069888:
             self.frame_ts = time.time()
             return
 
