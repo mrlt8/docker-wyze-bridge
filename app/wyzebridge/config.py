@@ -9,13 +9,14 @@ from wyzebridge.hass import setup_hass
 load_dotenv()
 load_dotenv("/.build_date")
 
-VERSION: str = f'{getenv("VERSION", "DEV")} [{machine()}]'
+VERSION: str = f'{getenv("VERSION", "DEV")}'
+ARCH = machine().upper()
 BUILD = env_bool("BUILD", "local")
 BUILD_DATE = env_bool("BUILD_DATE")
 GITHUB_SHA = env_bool("GITHUB_SHA")
-BUILD_STR = ""
+BUILD_STR = ARCH
 if BUILD != VERSION:
-    BUILD_STR = f"{BUILD.upper()} BUILD [{BUILD_DATE}] {GITHUB_SHA:.7}"
+    BUILD_STR += f" {BUILD.upper()} BUILD [{BUILD_DATE}] {GITHUB_SHA:.7}"
 
 HASS_TOKEN: str = getenv("SUPERVISOR_TOKEN", "")
 setup_hass(HASS_TOKEN)
