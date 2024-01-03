@@ -419,7 +419,6 @@ class WyzeIOTCSession:
         self.sync_camera_time()
 
         have_key_frame = False
-        self.frame_ts = time.time()
         while self.should_stream(sleep=self.sleep_interval):
             if not self._received_first_frame(have_key_frame):
                 have_key_frame = True
@@ -530,6 +529,7 @@ class WyzeIOTCSession:
     def sync_camera_time(self):
         with self.iotctrl_mux() as mux:
             mux.send_ioctl(tutk_protocol.K10092SetCameraTime())
+        self.frame_ts = time.time()
 
     def update_frame_size_rate(self, bitrate: Optional[int] = None, fps: int = 0):
         """Send a message to the camera to update the frame_size and bitrate."""
