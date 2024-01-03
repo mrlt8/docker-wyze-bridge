@@ -1,8 +1,9 @@
 import json
 import logging
-import pathlib
 import time
 from ctypes import LittleEndianStructure, c_char, c_uint16, c_uint32
+from os import getenv
+from pathlib import Path
 from struct import pack, unpack
 from typing import Any, Optional
 
@@ -11,7 +12,8 @@ from wyzecam.api_models import DOORBELL
 
 from . import tutk
 
-project_root = pathlib.Path(__file__).parent
+PROJECT_ROOT = Path(getenv("TUTK_PROJECT_ROOT", Path(__file__).parent))
+
 
 logger = logging.getLogger(__name__)
 
@@ -1345,7 +1347,7 @@ def generate_challenge_response(camera_enr_b, enr, camera_status):
 
 
 def supports(product_model, protocol, command):
-    with open(project_root / "device_config.json") as f:
+    with open(PROJECT_ROOT / "device_config.json") as f:
         device_config = json.load(f)
     commands_db = device_config["supportedCommands"]
     supported_commands = []
