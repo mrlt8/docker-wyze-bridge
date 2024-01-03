@@ -73,11 +73,13 @@ def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
 
 
 class WyzeCredentials:
-    __slots__ = "email", "password"
+    __slots__ = "email", "password", "key_id", "api_key"
 
     def __init__(self) -> None:
         self.email: str = getenv("WYZE_EMAIL", "").strip()
         self.password: str = getenv("WYZE_PASSWORD", "").strip()
+        self.key_id: str = getenv("API_ID", "").strip()
+        self.api_key: str = getenv("API_KEY", "").strip()
 
         if not self.is_set:
             logger.warning("[WARN] Credentials are NOT set")
@@ -92,9 +94,6 @@ class WyzeCredentials:
 
     def same_email(self, email: str) -> bool:
         return self.email.lower() == email.lower() if self.is_set else True
-
-    def creds(self) -> tuple[str, str]:
-        return (self.email, self.password)
 
     def login_check(self):
         if self.is_set:
@@ -138,7 +137,12 @@ class WyzeApi:
 
         self.creds.login_check()
         try:
-            self.auth = wyzecam.login(*self.creds.creds())
+            self.auth = wyzecam.login(
+                email=self.creds.email,
+                password=self.creds.password,
+                api_key=self.creds.api_key,
+                key_id=self.creds.key_id,
+            )
         except HTTPError as ex:
             logger.error(f"⚠️ {ex}")
             if ex.response.status_code == 403:
@@ -263,7 +267,12 @@ class WyzeApi:
 
             logger.info(f'🔑 Using {resp["verification_code"]} for authentication')
             try:
-                self.auth = wyzecam.login(*self.creds.creds(), self.auth.phone_id, resp)
+                self.auth = wyzecam.login(
+                    email=self.creds.email,
+                    password=self.creds.password,
+                    phone_id=self.auth.phone_id,
+                    mfa=resp,
+                )
                 if self.auth.access_token:
                     logger.info("✅ Verification code accepted!")
             except HTTPError as ex:
