@@ -25,7 +25,7 @@ RUN cd /build \
     | tar -xzf - -C app --wildcards 'mediamtx*' \
     && cp app/lib.amd64 usr/local/lib/libIOTCAPIs_ALL.so \
     && if [ -n "$QSV" ]; then cp -R /usr/lib/x86_64-linux-gnu/ usr/lib/; fi \
-    && rm -rf app/lib  \ 
+    && rm -rf app/*.txt app/lib/  \ 
     && if [ -z "${BUILD_DATE}" ]; then echo BUILD_DATE=$(date) > .build_date; else echo BUILD_DATE=${BUILD_DATE} > .build_date; fi
 
 FROM base

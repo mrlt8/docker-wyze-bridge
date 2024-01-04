@@ -27,7 +27,7 @@ RUN echo "BUILDING IMAGE FOR $(uname -m)" && \
     && curl -SL https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_${MTX_ARCH}.tar.gz \
     | tar xzf - -C app \
     && cp app/lib/lib.${LIB_ARCH} usr/local/lib/libIOTCAPIs_ALL.so \
-    && rm -rf app/lib/  \ 
+    && rm -rf app/*.txt app/lib/  \ 
     && if [ -z "${BUILD_DATE}" ]; then echo BUILD_DATE=$(date) > .build_date; else echo BUILD_DATE=${BUILD_DATE} > .build_date; fi
 
 
