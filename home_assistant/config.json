@@ -30,7 +30,7 @@
     "IMG_DIR": "media/wyze/img/",
     "RECORD_PATH": "media/wyze/{CAM_NAME}"
   },
-  "map": ["config:rw", "media:rw", "ssl:ro"],
+  "map": ["addon_config:rw", "media:rw", "ssl:ro"],
   "services": ["mqtt:want"],
   "ingress": true,
   "ingress_port": 5000,
