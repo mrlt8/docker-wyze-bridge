@@ -9,7 +9,7 @@ RUN apt-get update \
     && apt-get install -y curl tar gcc \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-COPY . /build/app/
+COPY ../app/ /build/app/
 RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local -r /build/app/requirements.txt
 RUN echo "BUILDING IMAGE FOR $(uname -m)" && \
     if [ "$(uname -m)" = "armv7l" ]; then \
@@ -26,8 +26,8 @@ RUN echo "BUILDING IMAGE FOR $(uname -m)" && \
     | tar xzf - -C . \
     && curl -SL https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_${MTX_ARCH}.tar.gz \
     | tar xzf - -C app \
-    && cp app/lib.${LIB_ARCH} usr/local/lib/libIOTCAPIs_ALL.so \
-    && rm app/*.txt app/lib.*  \ 
+    && cp app/lib/lib.${LIB_ARCH} usr/local/lib/libIOTCAPIs_ALL.so \
+    && rm -rf app/lib/  \ 
     && if [ -z "${BUILD_DATE}" ]; then echo BUILD_DATE=$(date) > .build_date; else echo BUILD_DATE=${BUILD_DATE} > .build_date; fi
 
 
