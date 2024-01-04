@@ -23,7 +23,7 @@ RUN cd /build \
     | tar -Jxf - --strip-components=1 -C usr/local --wildcards '*ffmpeg' \
     && curl -SL https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_amd64.tar.gz \
     | tar -xzf - -C app --wildcards 'mediamtx*' \
-    && cp app/lib.amd64 usr/local/lib/libIOTCAPIs_ALL.so \
+    && cp app/lib/lib.amd64 usr/local/lib/libIOTCAPIs_ALL.so \
     && if [ -n "$QSV" ]; then cp -R /usr/lib/x86_64-linux-gnu/ usr/lib/; fi \
     && rm -rf app/*.txt app/lib/  \ 
     && if [ -z "${BUILD_DATE}" ]; then echo BUILD_DATE=$(date) > .build_date; else echo BUILD_DATE=${BUILD_DATE} > .build_date; fi
