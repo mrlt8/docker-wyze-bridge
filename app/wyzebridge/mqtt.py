@@ -276,6 +276,7 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
                 "command_topic": f"{base_topic}alarm/set",
                 "payload_on": 1,
                 "payload_off": 2,
+                "optimistic": False,
                 "icon": "mdi:alarm-bell",
             },
         },
