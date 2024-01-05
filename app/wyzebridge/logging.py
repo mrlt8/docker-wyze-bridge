@@ -35,6 +35,7 @@ def format_logging(handler: logging.Handler, level: int, date_format: str = ""):
     else:
         target_logger = logging.getLogger("WyzeBridge")
         logging.getLogger("werkzeug").addHandler(handler)
+        logging.getLogger("wyzecam.iotc").addHandler(handler)
         logging.getLogger("py.warnings").addHandler(handler)
 
     date_format = "%X" if not date_format and level < 20 else date_format
