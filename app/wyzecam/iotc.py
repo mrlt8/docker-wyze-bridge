@@ -628,7 +628,7 @@ class WyzeIOTCSession:
 
         if gap <= -1:
             logger.debug(f"[audio] rushing ahead of video.. {gap=}")
-            time.sleep(abs(gap) % 1)
+            time.sleep((abs(gap) % 1) + 1)
         elif gap >= 1:
             logger.debug(f"[audio] dragging behind video.. {gap=}")
             self.flush_pipe("audio")
