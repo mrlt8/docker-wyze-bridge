@@ -489,7 +489,7 @@ class WyzeIOTCSession:
             logger.warning("[video] super slow")
             self.clear_buffer()
 
-        if not frame_info.is_keyframe and gap >= 1:
+        if not frame_info.is_keyframe and gap >= 0.5:
             logger.debug(f"[video] slow {gap=}")
             self.flush_pipe("audio")
             return True
@@ -628,7 +628,7 @@ class WyzeIOTCSession:
 
         if gap <= -1:
             logger.debug(f"[audio] rushing ahead of video.. {gap=}")
-            time.sleep((abs(gap) % 1) + 1)
+            time.sleep(abs(gap) % 1)
         elif gap >= 1:
             logger.debug(f"[audio] dragging behind video.. {gap=}")
             self.flush_pipe("audio")

@@ -52,9 +52,7 @@ makedirs(TOKEN_PATH, exist_ok=True)
 makedirs(IMG_PATH, exist_ok=True)
 
 
-DEPRECATED = {
-    "DEBUG_FFMPEG",
-}
+DEPRECATED = {"DEBUG_FFMPEG"}
 
 for env in DEPRECATED:
     if getenv(env):
