@@ -15,6 +15,7 @@ MODEL_NAMES = {
     "HL_PAN2": "Pan V2",
     "HL_PAN3": "Pan V3",
     "HL_PANP": "Pan Pro",
+    "HL_CFL2": "Floodlight V2",
     "WYZEDB3": "Doorbell",
     "HL_DB2": "Doorbell V2",
     "GW_BE1": "Doorbell Pro",
