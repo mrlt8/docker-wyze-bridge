@@ -636,13 +636,11 @@ class WyzeIOTCSession:
 
     def get_audio_sample_rate(self) -> int:
         """Attempt to get the audio sample rate."""
-        default_rate = 16000 if self.camera.product_model == "WYZE_CAKP2JFUS" else 8000
-
         if self.camera.camera_info and "audioParm" in self.camera.camera_info:
             audio_param = self.camera.camera_info["audioParm"]
-            return int(audio_param.get("sampleRate", default_rate))
+            return int(audio_param.get("sampleRate", self.camera.default_sample_rate))
 
-        return default_rate
+        return self.camera.default_sample_rate
 
     def get_audio_codec_from_codec_id(self, codec_id: int) -> tuple[str, int]:
         sample_rate = self.get_audio_sample_rate()

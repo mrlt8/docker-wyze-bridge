@@ -43,12 +43,13 @@ NO_WEBRTC = {
 
 
 # known 2k cameras
-PRO_CAMS = {"HL_CAM3P", "HL_PANP", "HL_CAM4", "HL_DB2"}
+PRO_CAMS = {"HL_CAM3P", "HL_PANP", "HL_CAM4", "HL_DB2", "HL_CFL2"}
 
 PAN_CAMS = {"WYZECP1_JEF", "HL_PAN2", "HL_PAN3", "HL_PANP"}
 
 BATTERY_CAMS = {"WVOD1", "HL_WCO2", "AN_RSCW"}
 
+AUDIO_16k = {"WYZE_CAKP2JFUS", "HL_CAM3P", "MODEL_HL_PANP"}
 # Doorbells
 DOORBELL = {"WYZEDB3", "HL_DB2"}
 VERTICAL_CAMS = {"WYZEDB3", "GW_BE1", "AN_RDB1"}
@@ -159,6 +160,10 @@ class WyzeCamera(BaseModel):
     @property
     def is_2k(self) -> bool:
         return self.product_model in PRO_CAMS or self.model_name.endswith("Pro")
+
+    @property
+    def default_sample_rate(self) -> int:
+        return 16000 if self.product_model in AUDIO_16k else 8000
 
     @property
     def is_gwell(self) -> bool:
