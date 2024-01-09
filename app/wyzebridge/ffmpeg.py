@@ -60,6 +60,7 @@ def get_ffmpeg_cmd(
         + re_encode_video(uri, is_vertical)
         + (["-map", "1:a", "-c:a", audio_out] if audio_in else [])
         + (a_options if audio and audio_out != "copy" else [])
+        + ["-max_muxing_queue_size", "1", "-max_delay", "0.1", "-rtbufsize", "32"]
         + ["-f", "tee"]
         + [rtsp_ss + get_record_cmd(uri, audio_out, record) + livestream]
     )
