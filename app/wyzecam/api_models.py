@@ -15,6 +15,7 @@ MODEL_NAMES = {
     "HL_PAN2": "Pan V2",
     "HL_PAN3": "Pan V3",
     "HL_PANP": "Pan Pro",
+    "HL_CFL2": "Floodlight V2",
     "WYZEDB3": "Doorbell",
     "HL_DB2": "Doorbell V2",
     "GW_BE1": "Doorbell Pro",
@@ -42,13 +43,15 @@ NO_WEBRTC = {
 
 
 # known 2k cameras
-PRO_CAMS = {"HL_CAM3P", "HL_PANP", "HL_CAM4", "HL_DB2"}
+PRO_CAMS = {"HL_CAM3P", "HL_PANP", "HL_CAM4", "HL_DB2", "HL_CFL2"}
 
 PAN_CAMS = {"WYZECP1_JEF", "HL_PAN2", "HL_PAN3", "HL_PANP"}
 
 BATTERY_CAMS = {"WVOD1", "HL_WCO2", "AN_RSCW"}
 
+AUDIO_16k = {"WYZE_CAKP2JFUS", "HL_CAM3P", "MODEL_HL_PANP"}
 # Doorbells
+DOORBELL = {"WYZEDB3", "HL_DB2"}
 VERTICAL_CAMS = {"WYZEDB3", "GW_BE1", "AN_RDB1"}
 # Minimum known firmware version that supports multiple streams
 SUBSTREAM_FW = {"WYZEC1-JZ": "4.9.9", "WYZE_CAKP2JFUS": "4.36.10", "HL_CAM3P": "4.58.0"}
@@ -77,8 +80,6 @@ class WyzeCredential(BaseModel):
     sms_session_id: Optional[str] = None
     email_session_id: Optional[str] = None
     phone_id: Optional[str] = str(uuid.uuid4())
-    key_id: Optional[str] = None
-    api_key: Optional[str] = None
 
 
 class WyzeAccount(BaseModel):
@@ -159,6 +160,10 @@ class WyzeCamera(BaseModel):
     @property
     def is_2k(self) -> bool:
         return self.product_model in PRO_CAMS or self.model_name.endswith("Pro")
+
+    @property
+    def default_sample_rate(self) -> int:
+        return 16000 if self.product_model in AUDIO_16k else 8000
 
     @property
     def is_gwell(self) -> bool:

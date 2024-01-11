@@ -73,11 +73,13 @@ def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
 
 
 class WyzeCredentials:
-    __slots__ = "email", "password"
+    __slots__ = "email", "password", "key_id", "api_key"
 
     def __init__(self) -> None:
         self.email: str = getenv("WYZE_EMAIL", "").strip()
         self.password: str = getenv("WYZE_PASSWORD", "").strip()
+        self.key_id: str = getenv("API_ID", "").strip()
+        self.api_key: str = getenv("API_KEY", "").strip()
 
         if not self.is_set:
             logger.warning("[WARN] Credentials are NOT set")
@@ -92,9 +94,6 @@ class WyzeCredentials:
 
     def same_email(self, email: str) -> bool:
         return self.email.lower() == email.lower() if self.is_set else True
-
-    def creds(self) -> tuple[str, str]:
-        return (self.email, self.password)
 
     def login_check(self):
         if self.is_set:
@@ -132,45 +131,48 @@ class WyzeApi:
             return
         self._last_pull = time()
 
-        self.token_auth()
-        if self.auth:
+        if self.token_auth():
             return self.auth
 
         self.creds.login_check()
         try:
-            self.auth = wyzecam.login(*self.creds.creds())
+            self.auth = wyzecam.login(
+                email=self.creds.email,
+                password=self.creds.password,
+                api_key=self.creds.api_key,
+                key_id=self.creds.key_id,
+            )
         except HTTPError as ex:
             logger.error(f"⚠️ {ex}")
-            if ex.response.status_code == 403:
-                logger.error(f"Your IP may be blocked from {ex.request.url}")
-            elif resp := ex.response.text:
-                logger.warning(resp)
+            if ex.response and ex.response.status_code == 403:
+                logger.error(f"[API] Your IP may be blocked from {ex.request.url}")
+            elif ex.response and ex.response.text:
+                logger.warning(f"[API] {ex.response.text}")
             sleep(15)
-        except ValueError as ex:
+        except (ValueError, RateLimitError, RequestException) as ex:
             logger.error(f"[API] {ex}")
-        except RateLimitError as ex:
-            logger.error(f"[API] {ex}")
-        except RequestException as ex:
-            logger.error(f"[API] ERROR: {ex}")
         else:
             if self.auth.mfa_options:
                 self._mfa_auth()
             return self.auth
 
-    def token_auth(self):
+    def token_auth(self) -> bool:
+        if len(token := env_bool("access_token", style="original")) > 150:
+            logger.info("⚠️ Using 'ACCESS_TOKEN' for authentication")
+            self.auth = WyzeCredential(access_token=token)
+
         if len(token := env_bool("refresh_token", style="original")) > 150:
             logger.info("⚠️ Using 'REFRESH_TOKEN' for authentication")
             self.auth = wyzecam.refresh_token(WyzeCredential(refresh_token=token))
 
-        if len(token := env_bool("access_token", style="original")) > 150:
-            logger.info("⚠️ Using 'ACCESS_TOKEN' for authentication")
-            self.auth = WyzeCredential(access_token=token)
+        return bool(self.auth)
 
     @cached
     @authenticated
     def get_user(self) -> Optional[WyzeAccount]:
         if self.user:
             return self.user
+
         self.user = wyzecam.get_user_info(self.auth)
         return self.user
 
@@ -263,7 +265,12 @@ class WyzeApi:
 
             logger.info(f'🔑 Using {resp["verification_code"]} for authentication')
             try:
-                self.auth = wyzecam.login(*self.creds.creds(), self.auth.phone_id, resp)
+                self.auth = wyzecam.login(
+                    email=self.creds.email,
+                    password=self.creds.password,
+                    phone_id=self.auth.phone_id,
+                    mfa=resp,
+                )
                 if self.auth.access_token:
                     logger.info("✅ Verification code accepted!")
             except HTTPError as ex:
@@ -397,14 +404,13 @@ def valid_s3_url(url: Optional[str]) -> bool:
     if not url:
         return False
 
-    query_parameters = parse_qs(urlparse(url).query)
-    x_amz_date = query_parameters.get("X-Amz-Date", "0")
-    x_amz_expires = query_parameters.get("X-Amz-Expires", "0")
-
     try:
-        amz_date = datetime.strptime(x_amz_date[0], "%Y%m%dT%H%M%SZ")
-        return amz_date.timestamp() + int(x_amz_expires[0]) > time()
-    except (ValueError, TypeError):
+        query_parameters = parse_qs(urlparse(url).query)
+        x_amz_date = query_parameters["X-Amz-Date"][0]
+        x_amz_expires = query_parameters["X-Amz-Expires"][0]
+        amz_date = datetime.strptime(x_amz_date, "%Y%m%dT%H%M%SZ")
+        return amz_date.timestamp() + int(x_amz_expires) > time()
+    except (ValueError, TypeError, KeyError):
         return False
 
 

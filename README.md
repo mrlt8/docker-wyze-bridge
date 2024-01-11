@@ -53,15 +53,19 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.6.0
+## What's Changed in v2.7.0
 
-* **NEW**: ARM 64-bit native library (#529 #604 #664 #871 #998 #1004)
-  
-  The arm64 container now runs in 64-bit mode, addressing compatibility issues, particularly on Apple Silicon M1/M2/M3, when using the Home Assistant Add-on.
+* Audio sync - bridge will now try to make minor adjustments to try to keep the video and audio in sync Thanks @carlosnasillo and everyone who helped with testing! (#388).
+* Refactor for compatibility with Scrypted. Thanks @koush (#1066)
+* Use K10050GetVideoParam for FW 4.50.4.x (#1070)
+* Fix jittery video in Firefox (#1025)
+* Retain MQTT Discovery Message Thanks @jhansche! (#920) 
 
-  Resolves issues on the Raspberry Pi 4/5 running the 64-bit version of Raspbian.
+Home Assistant:
 
-* **Update**: Python 3.11 -> Python 3.12
+* Now uses `addon_config` instead of `config` [Additional info](https://developers.home-assistant.io/blog/2023/11/06/public-addon-config/) 
+  * May need to cleanup old config manually.
+* Reset alarm/siren state (#953) (#1051)
 
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
@@ -109,7 +113,7 @@ The container can be run on its own, in [Portainer](https://github.com/mrlt8/doc
 | Wyze Cam V3                   | WYZE_CAKP2JFUS | ✅                                                            | 4.36.11.x |
 | Wyze Cam V4 [2K]              | HL_CAM4        | ❓                                                            | 4.52.?    |
 | Wyze Cam Floodlight           | WYZE_CAKP2JFUS | ✅                                                            | 4.36.11.x |
-| Wyze Cam Floodlight V2        | HL_CFL2        | ❓                                                            | -         |
+| Wyze Cam Floodlight V2 [2k]   | HL_CFL2        | ❓                                                            | -         |
 | Wyze Cam V3 Pro [2K]          | HL_CAM3P       | ✅                                                            | 4.58.11.x |
 | Wyze Cam Pan                  | WYZECP1_JEF    | ✅                                                            | 4.10.9.x  |
 | Wyze Cam Pan v2               | HL_PAN2        | ✅                                                            | 4.49.11.x |
@@ -212,7 +216,7 @@ WebRTC should work automatically in Home Assistant mode, however, some additiona
 
 ## Advanced Options
 
-**WYZE_EMAIL** and **WYZE_PASSWORD** are the only two required environment variables.
+All environment variables are optional.
 
 * [Audio](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Audio)
 * [Bitrate and Resolution](https://github.com/mrlt8/docker-wyze-bridge/wiki/Camera-Bitrate-and-Resolution)

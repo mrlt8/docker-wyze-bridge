@@ -1,3 +1,18 @@
+## What's Changed in v2.7.0
+
+* Audio sync - bridge will now try to make minor adjustments to try to keep the video and audio in sync Thanks @carlosnasillo (#388).
+* Refactor for compatibility with Scrypted. Thanks @koush (#1066)
+* Use K10050GetVideoParam for FW 4.50.4.x (#1070)
+* Fix jittery video in Firefox (#1025)
+* Retain MQTT Discovery Message Thanks @jhansche! (#920) 
+
+Home Assistant:
+
+* Now uses `addon_config` instead of `config` [Additional info](https://developers.home-assistant.io/blog/2023/11/06/public-addon-config/) 
+  * May need to cleanup old config manually.
+* Reset alarm/siren state (#953) (#1051)
+
+
 ## What's Changed in v2.6.0
 
 * **NEW**: ARM 64-bit native library (#529 #604 #664 #871 #998 #1004)

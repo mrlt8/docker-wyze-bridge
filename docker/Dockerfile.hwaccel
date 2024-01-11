@@ -1,17 +1,20 @@
 # Use the build args QSV=1 to build with intel drivers.
 ARG BUILD
+ARG BUILD_DATE
+ARG GITHUB_SHA
 ARG QSV
 FROM amd64/python:3.12-slim-bookworm as base
 
 FROM base as builder
 ARG QSV
+ARG BUILD_DATE
 RUN if [ -n "$QSV" ]; then echo 'deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware' >/etc/apt/sources.list.d/debian-testing.list; fi \
     && apt-get update \
     && apt-get install -y curl tar xz-utils \
     ${QSV:+i965-va-driver intel-media-va-driver-non-free libmfx1 libva-drm2 libx11-6 && apt-get install i965-va-driver-shaders} \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
-COPY . /build/app/
+COPY /app/ /build/app/
 RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local -r /build/app/requirements.txt
 RUN cd /build \
     && . app/.env \
@@ -20,14 +23,15 @@ RUN cd /build \
     | tar -Jxf - --strip-components=1 -C usr/local --wildcards '*ffmpeg' \
     && curl -SL https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_amd64.tar.gz \
     | tar -xzf - -C app --wildcards 'mediamtx*' \
-    && cp app/lib.amd64 usr/local/lib/libIOTCAPIs_ALL.so \
+    && cp app/lib/lib.amd64 usr/local/lib/libIOTCAPIs_ALL.so \
     && if [ -n "$QSV" ]; then cp -R /usr/lib/x86_64-linux-gnu/ usr/lib/; fi \
-    && rm app/*.txt app/lib.*  \ 
-    && echo BUILD_DATE=$(date) > .build_date
+    && rm -rf app/*.txt app/lib/  \ 
+    && if [ -z "${BUILD_DATE}" ]; then echo BUILD_DATE=$(date) > .build_date; else echo BUILD_DATE=${BUILD_DATE} > .build_date; fi
 
 FROM base
 ARG BUILD
+ARG GITHUB_SHA
 COPY --from=builder /build /
-ENV PYTHONUNBUFFERED=1 FLASK_APP=frontend BUILD=$BUILD
+ENV PYTHONUNBUFFERED=1 FLASK_APP=frontend BUILD=$BUILD GITHUB_SHA=$GITHUB_SHA
 WORKDIR /app
 CMD ["flask", "run", "--host=0.0.0.0"]

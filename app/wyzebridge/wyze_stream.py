@@ -403,9 +403,7 @@ class WyzeStream:
             self.cam_resp.get_nowait()
 
 
-def start_tutk_stream(
-    uri: str, stream: StreamTuple, queue: QueueTuple, state: c_int
-) -> None:
+def start_tutk_stream(uri: str, stream: StreamTuple, queue: QueueTuple, state: c_int):
     """Connect and communicate with the camera using TUTK."""
     was_offline = state.value == StreamStatus.OFFLINE
     state.value = StreamStatus.CONNECTING
@@ -414,11 +412,9 @@ def start_tutk_stream(
     try:
         with WyzeIOTC() as iotc, iotc.session(stream, state) as sess:
             assert state.value >= StreamStatus.CONNECTING, "Stream Stopped"
-            v_codec, fps, audio = get_cam_params(sess, uri, stream.options.audio)
-            if not stream.options.substream:
-                control_thread = setup_control(sess, uri, queue)
-            if audio:
-                audio_thread = setup_audio(sess, uri)
+            v_codec, audio = get_cam_params(sess, uri)
+            control_thread = setup_control(sess, queue, stream.options.substream)
+            audio_thread = setup_audio(sess, uri)
 
             ffmpeg_cmd = get_ffmpeg_cmd(
                 uri,
@@ -430,7 +426,7 @@ def start_tutk_stream(
             assert state.value >= StreamStatus.CONNECTING, "Stream Stopped"
             state.value = StreamStatus.CONNECTED
             with Popen(ffmpeg_cmd, stdin=PIPE) as ffmpeg:
-                for frame in sess.recv_bridge_frame(fps=fps):
+                for frame in sess.recv_bridge_data():
                     ffmpeg.stdin.write(frame)
 
     except TutkError as ex:
@@ -446,7 +442,7 @@ def start_tutk_stream(
     except BrokenPipeError:
         logger.info("FFMPEG stopped")
     except Exception as ex:
-        logger.warning(ex)
+        logger.warning(f"[{type(ex).__name__}] {ex}")
     else:
         logger.warning("Stream stopped")
     finally:
@@ -461,65 +457,40 @@ def stop_and_wait(thread: Optional[Thread]):
             thread.join()
 
 
-def setup_audio(sess: WyzeIOTCSession, uri: str) -> Thread:
-    audio_thread = Thread(
-        target=sess.recv_audio_frames,
-        args=(uri,),
-        name=f"{uri}_audio",
-    )
+def setup_audio(sess: WyzeIOTCSession, uri: str) -> Optional[Thread]:
+    if not sess.enable_audio:
+        return
+    audio_thread = Thread(target=sess.recv_audio_pipe, name=f"{uri}_audio")
     audio_thread.start()
     return audio_thread
 
 
-def setup_control(sess: WyzeIOTCSession, uri, queue: QueueTuple) -> Thread:
+def setup_control(
+    sess: WyzeIOTCSession, queue: QueueTuple, substream: bool = False
+) -> Optional[Thread]:
+    if substream:
+        return
     control_thread = Thread(
         target=camera_control,
-        args=(sess, uri, queue.cam_resp, queue.cam_cmd),
-        name=f"{uri}_control",
+        args=(sess, queue.cam_resp, queue.cam_cmd),
+        name=f"{sess.camera.name_uri}_control",
     )
     control_thread.start()
     return control_thread
 
 
-def get_cam_params(
-    sess: WyzeIOTCSession, uri: str, enable_audio: bool = False
-) -> tuple[str, int, dict]:
+def get_cam_params(sess: WyzeIOTCSession, uri: str) -> tuple[str, dict]:
     """Check session and return fps and audio codec from camera."""
     net_mode = check_net_mode(sess.session_check().mode, uri)
-    bit_frame = f"{sess.preferred_bitrate}kb/s {sess.resolution} stream"
-    fps = 20
-    v_codec = "h264"
-    if video_param := sess.camera.camera_info.get("videoParm"):
-        if fps := int(video_param.get("fps", 0)):
-            if fps % 5 != 0:
-                logger.error(f"⚠️ Unusual FPS detected: {fps}")
-        if force_fps := int(env_bool(f"FORCE_FPS_{uri}", 0)):
-            logger.info(f"Attempting to force fps={force_fps}")
-            sess.update_frame_size_rate(fps=force_fps)
-            fps = force_fps
-        v_codec = video_param.get("type", "h264")
-        bit_frame += f" ({v_codec}/{fps}fps)"
-        logger.debug(f"[videoParm] {video_param}")
-    firmware = sess.camera.camera_info["basicInfo"].get("firmware", "NA")
-    if sess.camera.dtls or sess.camera.parent_dtls:
-        firmware += " 🔒 (DTLS)"
-    wifi = sess.camera.camera_info["basicInfo"].get("wifidb", "NA")
-    if "netInfo" in sess.camera.camera_info:
-        wifi = sess.camera.camera_info["netInfo"].get("signal", wifi)
-
-    logger.info(
-        f"📡 Getting {bit_frame} via {net_mode} (WiFi: {wifi}%) FW: {firmware} (2/3)"
+    v_codec, fps = get_video_params(sess)
+    firmware, wifi = get_camera_info(sess)
+    stream = (
+        f"{sess.preferred_bitrate}kb/s {sess.resolution} stream ({v_codec}/{fps}fps)"
     )
-    audio = {}
-    if enable_audio:
-        codec, rate = sess.get_audio_codec()
-        codec_str = codec.replace("s16le", "PCM")
-        web_audio = "libopus" if BRIDGE_IP else "aac"
-        if codec_out := env_bool("AUDIO_CODEC", web_audio if "s16le" in codec else ""):
-            codec_str += f" > {codec_out}"
-        audio: dict = {"codec": codec, "rate": rate, "codec_out": codec_out.lower()}
-        logger.info(f"🔊 Audio Enabled - {codec_str.upper()}/{rate:,}Hz")
 
+    logger.info(f"📡 Getting {stream} via {net_mode} (WiFi: {wifi}%) FW: {firmware}")
+
+    audio = get_audio_params(sess)
     mqtt = [
         (f"{MQTT_TOPIC}/{uri.lower()}/net_mode", net_mode),
         (f"{MQTT_TOPIC}/{uri.lower()}/wifi", wifi),
@@ -527,7 +498,66 @@ def get_cam_params(
         (f"{MQTT_TOPIC}/{uri.lower()}/ip", sess.camera.ip),
     ]
     publish_messages(mqtt)
-    return v_codec, fps, audio
+    return v_codec, audio
+
+
+def get_camera_info(sess: WyzeIOTCSession) -> tuple[str, str]:
+    if not (camera_info := sess.camera.camera_info):
+        logger.warn("⚠️ cameraInfo is missing.")
+        return "NA", "NA"
+    logger.debug(f"[cameraInfo] {camera_info}")
+
+    firmware = camera_info.get("basicInfo", {}).get("firmware", "NA")
+    if sess.camera.dtls or sess.camera.parent_dtls:
+        firmware += " 🔒"
+
+    wifi = camera_info.get("basicInfo", {}).get("wifidb", "NA")
+    if "netInfo" in camera_info:
+        wifi = camera_info["netInfo"].get("signal", wifi)
+
+    return firmware, wifi
+
+
+def get_video_params(sess: WyzeIOTCSession) -> tuple[str, int]:
+    cam_info = sess.camera.camera_info
+    if not cam_info or not (video_param := cam_info.get("videoParm")):
+        logger.warn("⚠️ camera_info is missing videoParm. Using default values.")
+        video_param = {"type": "h264", "fps": 20}
+
+    fps = int(video_param.get("fps", 0))
+
+    if force_fps := int(env_bool(f"FORCE_FPS_{sess.camera.name_uri}", "0")):
+        logger.info(f"Attempting to force fps={force_fps}")
+        sess.update_frame_size_rate(fps=force_fps)
+        fps = force_fps
+
+    if fps % 5 != 0:
+        logger.error(f"⚠️ Unusual FPS detected: {fps}")
+
+    logger.debug(f"[videoParm] {video_param}")
+    sess.preferred_frame_rate = fps
+
+    return video_param.get("type", "h264"), fps
+
+
+def get_audio_params(sess: WyzeIOTCSession) -> dict[str, str | int]:
+    if not sess.enable_audio:
+        return {}
+
+    codec, rate = sess.identify_audio_codec()
+    codec_str = codec.replace("s16le", "PCM")
+    web_audio = "libopus" if BRIDGE_IP else "aac"
+
+    if codec_out := env_bool("AUDIO_CODEC", web_audio if codec == "s16le" else ""):
+        codec_str += f" > {codec_out}"
+    elif BRIDGE_IP and rate > 8000:
+        logger.info("Re-encoding audio for compatibility with WebRTC in MTX")
+        codec_out = "libopus"
+        codec_str += f" > {codec_out}"
+
+    logger.info(f"🔊 Audio Enabled - {codec_str.upper()}/{rate:,}Hz")
+
+    return {"codec": codec, "rate": rate, "codec_out": codec_out.lower()}
 
 
 def check_net_mode(session_mode: int, uri: str) -> str:

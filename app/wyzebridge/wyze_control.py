@@ -12,6 +12,7 @@ from wyzebridge.logging import logger
 from wyzebridge.mqtt import MQTT_ENABLED, publish_messages
 from wyzebridge.wyze_commands import CMD_VALUES, GET_CMDS, GET_PAYLOAD, PARAMS, SET_CMDS
 from wyzecam import WyzeIOTCSession, WyzeIOTCSessionState, tutk_protocol
+from wyzecam.tutk.tutk import TutkError
 
 
 def cam_http_alive(ip: str) -> bool:
@@ -128,16 +129,14 @@ def boa_control(sess: WyzeIOTCSession, boa_cam: Optional[dict]):
         pull_last_image(boa_cam, "photo", True)
 
 
-def camera_control(
-    sess: WyzeIOTCSession, uri: str, camera_info: Queue, camera_cmd: Queue
-):
+def camera_control(sess: WyzeIOTCSession, camera_info: Queue, camera_cmd: Queue):
     """
     Listen for commands to control the camera.
 
     :param sess: WyzeIOTCSession used to communicate with the camera.
     :param uri: URI-safe name of the camera.
     """
-    boa = check_boa_enabled(sess, uri)
+    boa = check_boa_enabled(sess, sess.camera.name_uri)
 
     while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
         boa_control(sess, boa)
@@ -275,6 +274,9 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
         return _response(resp, log=log)
     except tutk_protocol.TutkWyzeProtocolError as ex:
         return resp | _error_response(cmd, tutk_protocol.TutkWyzeProtocolError(ex))
+    except TutkError as ex:
+        connected = sess.should_stream()
+        return resp | _error_response(cmd, f"[{ex.code}] {ex.name}", connected)
     except Exception as ex:
         return resp | _error_response(cmd, ex)
 
@@ -293,8 +295,9 @@ def _response(response, res=None, params=None, log="info"):
     return response
 
 
-def _error_response(cmd, error):
-    logger.error(f"[CONTROL] ERROR - {error=}, {cmd=}")
+def _error_response(cmd, error, log=True):
+    if log:
+        logger.error(f"[CONTROL] ERROR - {error=}, {cmd=}")
     return {"status": "error", "response": str(error)}
 
 

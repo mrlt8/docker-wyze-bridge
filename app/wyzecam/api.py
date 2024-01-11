@@ -94,8 +94,6 @@ def login(
               [get_camera_list()][wyzecam.api.get_camera_list].
     """
     phone_id = phone_id or str(uuid.uuid4())
-    key_id = key_id or getenv("API_ID")
-    api_key = api_key or getenv("API_KEY")
     headers = _headers(phone_id, key_id=key_id, api_key=api_key)
     headers["content-type"] = "application/json"
 
@@ -113,10 +111,7 @@ def login(
     resp = post(f"{AUTH_API}/{api_version}/user/login", data=payload, headers=headers)
     resp.raise_for_status()
 
-    credential = WyzeCredential.model_validate(dict(resp.json(), phone_id=phone_id))
-    credential.key_id = key_id
-    credential.api_key = api_key
-    return credential
+    return WyzeCredential.model_validate(dict(resp.json(), phone_id=phone_id))
 
 
 def send_sms_code(auth_info: WyzeCredential, phone: str = "Primary") -> str:
@@ -137,7 +132,7 @@ def send_sms_code(auth_info: WyzeCredential, phone: str = "Primary") -> str:
             "sessionId": auth_info.sms_session_id,
             "userId": auth_info.user_id,
         },
-        headers=_headers(auth_info=auth_info),
+        headers=_headers(auth_info.phone_id),
     )
     resp.raise_for_status()
 
@@ -161,7 +156,7 @@ def send_email_code(auth_info: WyzeCredential) -> str:
             "userId": auth_info.user_id,
             "sessionId": auth_info.email_session_id,
         },
-        headers=_headers(auth_info=auth_info),
+        headers=_headers(auth_info.phone_id),
     )
     resp.raise_for_status()
 
@@ -368,12 +363,20 @@ def _payload(
     }
 
 
-def _headers(phone_id: Optional[str] = None, key_id: Optional[str] = None, api_key: Optional[str] = None, auth_info: Optional[WyzeCredential] = None) -> dict[str, str]:
-    phone_id = phone_id or (auth_info and auth_info.phone_id)
+def _headers(
+    phone_id: Optional[str] = None,
+    key_id: Optional[str] = None,
+    api_key: Optional[str] = None,
+) -> dict[str, str]:
+    """Format headers for api requests.
+
+    key_id and api_key are only needed when making a request to the /api/user/login endpoint.
+
+    phone_id is required for other login-related endpoints.
+    """
     if not phone_id:
         return {"user-agent": SCALE_USER_AGENT}
-    key_id = key_id or (auth_info and auth_info.api_key) or getenv("API_ID")
-    api_key = api_key or (auth_info and auth_info.key_id) or getenv("API_KEY")
+
     if key_id and api_key:
         return {
             "apikey": api_key,
