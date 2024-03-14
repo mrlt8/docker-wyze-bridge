@@ -98,16 +98,17 @@ def create_app():
             )
         )
 
-        resp.set_cookie("number_of_columns", str(number_of_columns))
-        resp.set_cookie("refresh_period", str(refresh_period))
-        resp.set_cookie("show_video", "1" if show_video else "")
-        resp.set_cookie("video", video_format)
+        resp.set_cookie("number_of_columns", str(number_of_columns), httponly=True)
+        resp.set_cookie("refresh_period", str(refresh_period), httponly=True)
+        resp.set_cookie("show_video", "1" if show_video else "", httponly=True)
+        resp.set_cookie("video", video_format, httponly=True)
         fullscreen = "fullscreen" in request.args or bool(
             request.cookies.get("fullscreen")
         )
-        resp.set_cookie("fullscreen", "1" if fullscreen else "")
+        resp.set_cookie("fullscreen", "1" if fullscreen else "", httponly=True)
         if order := request.args.get("order"):
-            resp.set_cookie("camera_order", quote_plus(order))
+            resp.set_cookie("camera_order", quote_plus(order), httponly=True)
+
 
         return resp
 
