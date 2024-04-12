@@ -300,6 +300,7 @@ class WyzeIOTCSession:
         self.audio_pipe_ready: bool = False
         self.frame_ts: float = 0.0
         self.substream: bool = substream
+        self._sleep_buffer: float = 0.0
 
     @property
     def resolution(self) -> str:
@@ -313,9 +314,11 @@ class WyzeIOTCSession:
         if not self.frame_ts:
             return 1 / 150
 
-        delta = max(time.time() - self.frame_ts, 0.0)
+        delta = max(time.time() - self.frame_ts, 0.0) + self._sleep_buffer
+        if self._sleep_buffer:
+            self._sleep_buffer = max(self._sleep_buffer - 0.1, 0)
 
-        return max((1 / self.preferred_frame_rate) - delta, 0.01)
+        return max((1 / self.preferred_frame_rate) - delta, 0.0)
 
     @property
     def pipe_name(self) -> str:
@@ -494,8 +497,8 @@ class WyzeIOTCSession:
         if not frame_info.is_keyframe and gap >= 0.1:
             logger.debug(f"[video] slow {gap=}")
             self.flush_pipe("audio")
-            self.tutk_platform_lib.avClientCleanVideoBuf(self.av_chan_id)
-
+            self.tutk_platform_lib.avClientCleanLocalBuf(self.av_chan_id)
+            self._sleep_buffer += gap
             return True
 
         self.frame_ts = frame_ts
@@ -609,7 +612,7 @@ class WyzeIOTCSession:
                 raise e
 
         try:
-            with open(fifo_path, "wb") as audio_pipe:
+            with open(fifo_path, "wb", buffering=0) as audio_pipe:
                 for frame_data, _ in self.recv_audio_data():
                     audio_pipe.write(frame_data)
                     self.audio_pipe_ready = True
@@ -632,10 +635,7 @@ class WyzeIOTCSession:
         if gap <= -1:
             logger.debug(f"[audio] rushing ahead of video.. {gap=}")
             self.flush_pipe("audio")
-            self.tutk_platform_lib.avClientCleanBuf(self.av_chan_id)
-            self.frame_ts = time.time() + 2
-
-            return True
+            self._sleep_buffer += abs(gap)
 
         elif gap >= 1:
             logger.debug(f"[audio] dragging behind video.. {gap=}")
