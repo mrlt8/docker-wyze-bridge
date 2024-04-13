@@ -217,7 +217,7 @@ class WyzeIOTCSessionState(enum.IntEnum):
     """Authentication failed, no longer connected"""
 
 
-FRAME_SIZE = {0: "HD", 1: "SD", 3: "2K"}
+FRAME_SIZE = {0: "HD", 1: "SD", 3: "2K", 4: "SD", 5: "2K"}
 
 
 class WyzeIOTCSession:
