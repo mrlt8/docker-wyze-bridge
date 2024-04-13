@@ -489,15 +489,13 @@ class WyzeIOTCSession:
 
         frame_ts = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
         gap = time.time() - frame_ts
-        if not frame_info.is_keyframe and gap > 1:
+        if not frame_info.is_keyframe and gap > 1 and not self._sleep_buffer:
             logger.warning("[video] super slow")
-            self.flush_pipe("audio")
             self.clear_buffer()
 
         if not frame_info.is_keyframe and gap >= 0.1:
             logger.debug(f"[video] slow {gap=}")
             self.flush_pipe("audio")
-            self.tutk_platform_lib.avClientCleanLocalBuf(self.av_chan_id)
             self._sleep_buffer += gap
             return True
 
@@ -534,6 +532,7 @@ class WyzeIOTCSession:
         return {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
 
     def sync_camera_time(self):
+        logger.debug("sync camera time")
         with self.iotctrl_mux() as mux:
             with contextlib.suppress(tutk_ioctl_mux.Empty):
                 mux.send_ioctl(tutk_protocol.K10092SetCameraTime()).result(False)
@@ -555,8 +554,9 @@ class WyzeIOTCSession:
     def clear_buffer(self) -> None:
         """Clear local buffer."""
         warnings.warn("clear buffer")
+        self.flush_pipe("audio")
         self.sync_camera_time()
-        tutk.av_client_clean_buf(self.tutk_platform_lib, self.av_chan_id)
+        tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
 
     def flush_pipe(self, pipe_type: str = "audio"):
         if pipe_type == "audio" and not self.audio_pipe_ready:
