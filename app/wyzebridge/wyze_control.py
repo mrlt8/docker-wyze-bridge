@@ -305,7 +305,9 @@ def bitrate_check(sess: WyzeIOTCSession, res: dict, topic: str):
     key = "bitrate" if topic in res else "3"
     if (bitrate := res.get(key)) and int(bitrate) != sess.preferred_bitrate:
         logger.info(f"{bitrate=} does not match {sess.preferred_bitrate}")
-        sess.update_frame_size_rate()
+        if not sess.camera.is_floodlight:
+            # temporary fix till we can find the actual bitrate value
+            sess.update_frame_size_rate()
 
     if key == "bitrate":
         return res.get(topic, res)
