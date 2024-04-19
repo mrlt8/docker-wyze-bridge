@@ -316,7 +316,7 @@ class WyzeIOTCSession:
 
         delta = max(time.time() - self.frame_ts, 0.0) + self._sleep_buffer
         if self._sleep_buffer:
-            self._sleep_buffer = max(self._sleep_buffer - 0.1, 0)
+            self._sleep_buffer = max(self._sleep_buffer - 0.05, 0)
 
         return max((1 / self.preferred_frame_rate) - delta, 0.0)
 
@@ -442,7 +442,7 @@ class WyzeIOTCSession:
                 have_key_frame = False
                 continue
 
-            if self._video_frame_slow(frame_info) and have_key_frame:
+            if have_key_frame and self._video_frame_slow(frame_info):
                 continue
 
             if frame_info.is_keyframe:
@@ -503,8 +503,7 @@ class WyzeIOTCSession:
 
     def _handle_frame_error(self, err_no: int) -> None:
         """Handle errors that occur when receiving frame data."""
-        # time.sleep(self.sleep_interval)
-        time.sleep(0.05)
+        time.sleep(1 / 25)
         if err_no == tutk.AV_ER_DATA_NOREADY or err_no >= 0:
             return
 
