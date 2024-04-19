@@ -316,8 +316,7 @@ def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
 
     ui_headers = _headers()
     ui_headers["content-type"] = "application/json"
-    ui_headers["authorization"] = auth_info.access_token
-
+    ui_headers["authorization"] = f"Bearer {auth_info.access_token}"
     resp = get(
         f"https://webrtc.api.wyze.com/signaling/device/{mac_id}?use_trickle=true",
         headers=ui_headers,
