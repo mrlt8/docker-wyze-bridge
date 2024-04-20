@@ -483,7 +483,7 @@ class WyzeIOTCSession:
 
     def _video_frame_slow(self, frame_info) -> Optional[bool]:
         # Some cams can't sync and don't sync on no audio
-        if not self.enable_audio or frame_info.timestamp < 1591069888:
+        if frame_info.timestamp < 1591069888:
             self.frame_ts = time.time()
             return
 
@@ -493,7 +493,7 @@ class WyzeIOTCSession:
             logger.warning("[video] super slow")
             self.clear_buffer()
 
-        if not frame_info.is_keyframe and gap >= 0.1:
+        if not frame_info.is_keyframe and gap >= 0.5:
             logger.debug(f"[video] slow {gap=}")
             self.flush_pipe("audio")
             self._sleep_buffer += gap
