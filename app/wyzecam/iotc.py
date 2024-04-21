@@ -489,7 +489,7 @@ class WyzeIOTCSession:
 
         frame_ts = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
         gap = time.time() - frame_ts
-        if not frame_info.is_keyframe and gap > 1 and not self._sleep_buffer:
+        if not frame_info.is_keyframe and gap > 2 and not self._sleep_buffer:
             logger.warning("[video] super slow")
             self.clear_buffer()
 
