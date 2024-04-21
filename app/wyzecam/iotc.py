@@ -526,7 +526,7 @@ class WyzeIOTCSession:
         Doorbell returns frame_size 3 or 4;
         2K returns frame_size=4
         """
-        alt = self.preferred_frame_size + (1 if self.preferred_frame_size == 3 else 3)
+        alt = self.preferred_frame_size + (1 if self.preferred_frame_size >= 3 else 3)
 
         return {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
 

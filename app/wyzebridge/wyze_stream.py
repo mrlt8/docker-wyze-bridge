@@ -105,7 +105,7 @@ class WyzeStream:
             logger.error(f"{self.camera.nickname} may not support multiple streams!!")
             # self.state = StreamStatus.DISABLED
 
-        hq_size = 5 if self.camera.is_floodlight else 3 if self.camera.is_2k else 0
+        hq_size = 4 if self.camera.is_floodlight else 3 if self.camera.is_2k else 0
 
         self.options.update_quality(hq_size)
         publish_discovery(self.uri, self.camera)
