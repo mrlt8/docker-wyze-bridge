@@ -102,6 +102,7 @@ jobs:
         with:
           builder: ${{ steps.buildx.outputs.name }}
           push: ${{ github.event_name != 'pull_request' }}
+          context: .
           file: ./docker/Dockerfile.${{ matrix.dockerfile }}
           platforms: ${{ steps.image_type.outputs.platforms }}
           build-args: |
