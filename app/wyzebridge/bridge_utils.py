@@ -72,7 +72,7 @@ def is_fw11(fw_ver: Optional[str]) -> bool:
     Check if newer firmware that needs to use K10050GetVideoParam
     """
     with contextlib.suppress(IndexError, ValueError):
-        if fw_ver and fw_ver.startswith(("4.51", "4.52", "4.50.4")):
+        if fw_ver and fw_ver.startswith(("4.51", "4.52", "4.53", "4.50.4")):
             return True
         if fw_ver and int(fw_ver.split(".")[2]) > 10:
             return True

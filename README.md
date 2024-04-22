@@ -28,7 +28,9 @@ Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) 
 ![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
 ![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
 ![Wyze Cam V3 Pro](https://img.shields.io/badge/wyze_v3_pro-yes-success.svg)
+![Wyze Cam V4](https://img.shields.io/badge/wyze_v4-yes-success.svg)
 ![Wyze Cam Floodlight](https://img.shields.io/badge/wyze_floodlight-yes-success.svg)
+![Wyze Cam Floodlight V2](https://img.shields.io/badge/wyze_floodlight_v2-yes-success.svg)
 ![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-yes-success.svg)
 ![Wyze Cam Pan V2](https://img.shields.io/badge/wyze_pan_v2-yes-success.svg)
 ![Wyze Cam Pan V3](https://img.shields.io/badge/wyze_pan_v3-yes-success.svg)
@@ -53,20 +55,16 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.7.0
+## What's Changed in v2.8.0
 
-* Audio sync - bridge will now try to make minor adjustments to try to keep the video and audio in sync Thanks @carlosnasillo and everyone who helped with testing! (#388).
-* Refactor for compatibility with Scrypted. Thanks @koush (#1066)
-* Use K10050GetVideoParam for FW 4.50.4.x (#1070)
-* Fix jittery video in Firefox (#1025)
-* Retain MQTT Discovery Message Thanks @jhansche! (#920) 
+* Fix video lag introduced in v2.7.0
+* Add aac_eld audio support for V4 cams (HL_CAM4).
+* Add 2k resolution support for Floodlight V2 cams (HL_CFL2).
 
 Home Assistant:
 
-* Now uses `addon_config` instead of `config` [Additional info](https://developers.home-assistant.io/blog/2023/11/06/public-addon-config/) 
-  * May need to cleanup old config manually.
-* Reset alarm/siren state (#953) (#1051)
-
+* Add dev and previous builds (v2.6.0) to the repo.
+* Note: you may need to re-add the repo if you cannot see the latest updates.
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
@@ -106,14 +104,17 @@ The container can be run on its own, in [Portainer](https://github.com/mrlt8/doc
 
 ## Supported Cameras
 
+> [!IMPORTANT]
+> Some newer camera firmware versions may cause issues with remote access via P2P. Local "LAN" access seems unaffected at this time.
+
 | Camera                        | Model          | Tutk Support                                                 | Latest FW |
 | ----------------------------- | -------------- | ------------------------------------------------------------ | --------- |
 | Wyze Cam v1 [HD only]         | WYZEC1         | ✅                                                            | 3.9.4.x   |
 | Wyze Cam V2                   | WYZEC1-JZ      | ✅                                                            | 4.9.9.x   |
 | Wyze Cam V3                   | WYZE_CAKP2JFUS | ✅                                                            | 4.36.11.x |
-| Wyze Cam V4 [2K]              | HL_CAM4        | ❓                                                            | 4.52.?    |
+| Wyze Cam V4 [2K]              | HL_CAM4        | ✅                                                            | 4.52.3.x  |
 | Wyze Cam Floodlight           | WYZE_CAKP2JFUS | ✅                                                            | 4.36.11.x |
-| Wyze Cam Floodlight V2 [2k]   | HL_CFL2        | ❓                                                            | -         |
+| Wyze Cam Floodlight V2 [2k]   | HL_CFL2        | ✅                                                            | 4.53.2.x  |
 | Wyze Cam V3 Pro [2K]          | HL_CAM3P       | ✅                                                            | 4.58.11.x |
 | Wyze Cam Pan                  | WYZECP1_JEF    | ✅                                                            | 4.10.9.x  |
 | Wyze Cam Pan v2               | HL_PAN2        | ✅                                                            | 4.49.11.x |

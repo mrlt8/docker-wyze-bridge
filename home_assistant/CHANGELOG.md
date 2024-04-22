@@ -1,6 +1,17 @@
+## What's Changed in v2.8.0
+
+* Fix video lag introduced in v2.7.0
+* Add aac_eld audio support for V4 cams (HL_CAM4).
+* Add 2k resolution support for Floodlight V2 cams (HL_CFL2).
+
+Home Assistant:
+
+* Add dev and previous builds (v2.6.0) to the repo.
+* Note: you may need to re-add the repo if you cannot see the latest updates.
+
 ## What's Changed in v2.7.0
 
-* Audio sync - bridge will now try to make minor adjustments to try to keep the video and audio in sync Thanks @carlosnasillo (#388).
+* Audio sync - bridge will now try to make minor adjustments to try to keep the video and audio in sync Thanks @carlosnasillo and everyone who helped with testing! (#388).
 * Refactor for compatibility with Scrypted. Thanks @koush (#1066)
 * Use K10050GetVideoParam for FW 4.50.4.x (#1070)
 * Fix jittery video in Firefox (#1025)

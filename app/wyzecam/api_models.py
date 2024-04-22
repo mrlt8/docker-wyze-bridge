@@ -52,6 +52,9 @@ BATTERY_CAMS = {"WVOD1", "HL_WCO2", "AN_RSCW"}
 AUDIO_16k = {"WYZE_CAKP2JFUS", "HL_CAM3P", "MODEL_HL_PANP"}
 # Doorbells
 DOORBELL = {"WYZEDB3", "HL_DB2"}
+
+FLOODLIGHT_CAMS = {"HL_CFL2"}
+
 VERTICAL_CAMS = {"WYZEDB3", "GW_BE1", "AN_RDB1"}
 # Minimum known firmware version that supports multiple streams
 SUBSTREAM_FW = {"WYZEC1-JZ": "4.9.9", "WYZE_CAKP2JFUS": "4.36.10", "HL_CAM3P": "4.58.0"}
@@ -160,6 +163,10 @@ class WyzeCamera(BaseModel):
     @property
     def is_2k(self) -> bool:
         return self.product_model in PRO_CAMS or self.model_name.endswith("Pro")
+
+    @property
+    def is_floodlight(self) -> bool:
+        return self.product_model in FLOODLIGHT_CAMS
 
     @property
     def default_sample_rate(self) -> int:

@@ -691,7 +691,7 @@ class K10092SetCameraTime(TutkWyzeProtocolMessage):
         super().__init__(10092)
 
     def encode(self) -> bytes:
-        return encode(self.code, pack("<I", int(time.time()) + 1))
+        return encode(self.code, pack("<I", int(time.time())))
 
 
 class K10290GetMotionTagging(TutkWyzeProtocolMessage):
@@ -831,6 +831,9 @@ class K10058TakePhoto(TutkWyzeProtocolMessage):
 
     def __init__(self):
         super().__init__(10058)
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([1]))
 
 
 class K10148StartBoa(TutkWyzeProtocolMessage):

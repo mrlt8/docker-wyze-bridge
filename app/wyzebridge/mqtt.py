@@ -85,7 +85,7 @@ def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> No
 @mqtt_enabled
 def mqtt_sub_topic(m_topics: list, callback) -> Optional[paho.mqtt.client.Client]:
     """Connect to mqtt and return the client."""
-    client = paho.mqtt.client.Client()
+    client = paho.mqtt.client.Client(paho.mqtt.client.CallbackAPIVersion.VERSION2)
 
     client.username_pw_set(MQTT_USER, MQTT_PASS or None)
     client.user_data_set(callback)

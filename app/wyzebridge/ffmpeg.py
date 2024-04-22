@@ -37,6 +37,8 @@ def get_ffmpeg_cmd(
     if audio and "codec" in audio:
         audio_in = f"{thread_queue} -f {audio['codec']} -ac 1 -ar {audio['rate']} -i /tmp/{uri}_audio.pipe"
         audio_out = audio["codec_out"] or "copy"
+    if audio and audio.get("codec", "").lower() == "aac_eld":
+        audio_in = f"{thread_queue} -f aac -ac 1 -i /tmp/{uri}_audio.pipe"
     a_filter = env_bool("AUDIO_FILTER", "volume=5") + ",adelay=0|0"
     a_options = ["-compression_level", "4", "-filter:a", a_filter]
     rtsp_transport = "udp" if "udp" in env_bool("MTX_PROTOCOLS") else "tcp"

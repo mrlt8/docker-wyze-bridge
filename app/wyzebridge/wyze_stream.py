@@ -54,14 +54,13 @@ class WyzeStreamOptions:
         if self.record:
             self.reconnect = True
 
-    def update_quality(self, is_2k: bool = False) -> None:
+    def update_quality(self, hq_frame_size: int = 0) -> None:
         quality = (self.quality or "na").lower().ljust(3, "0")
-        size = 1 if "sd" in quality else 0
         bit = int(quality[2:] or "0")
 
         self.quality = quality
         self.bitrate = bit if 1 <= bit <= 255 else 180
-        self.frame_size = 3 if is_2k and size == 0 else size
+        self.frame_size = 1 if "sd" in quality else hq_frame_size
 
 
 class WyzeStream:
@@ -82,7 +81,7 @@ class WyzeStream:
     )
 
     def __init__(self, camera: WyzeCamera, options: WyzeStreamOptions) -> None:
-        self.camera = camera
+        self.camera: WyzeCamera = camera
         self.options: WyzeStreamOptions = options
         self.uri = camera.name_uri + ("-sub" if options.substream else "")
 
@@ -105,7 +104,10 @@ class WyzeStream:
         if self.options.substream and not self.camera.can_substream:
             logger.error(f"{self.camera.nickname} may not support multiple streams!!")
             # self.state = StreamStatus.DISABLED
-        self.options.update_quality(self.camera.is_2k)
+
+        hq_size = 4 if self.camera.is_floodlight else 3 if self.camera.is_2k else 0
+
+        self.options.update_quality(hq_size)
         publish_discovery(self.uri, self.camera)
 
     @property
