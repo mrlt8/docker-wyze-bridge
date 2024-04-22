@@ -55,11 +55,12 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.8.0
+## What's Changed in v2.8.1
 
 * Fix video lag introduced in v2.7.0
 * Add aac_eld audio support for V4 cams (HL_CAM4).
 * Add 2k resolution support for Floodlight V2 cams (HL_CFL2).
+* Fix version number
 
 Home Assistant:
 
