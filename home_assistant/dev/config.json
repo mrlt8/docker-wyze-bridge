@@ -37,6 +37,8 @@
   "options": {
     "WYZE_EMAIL": null,
     "WYZE_PASSWORD": null,
+    "API_ID": null,
+    "API_KEY": null,
     "NET_MODE": "ANY",
     "SNAPSHOT": "Disable",
     "MQTT_DTOPIC": "homeassistant",

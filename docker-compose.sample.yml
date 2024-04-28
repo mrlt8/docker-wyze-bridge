@@ -15,8 +15,7 @@ services:
             # [OPTIONAL] (Can be set in the WebUI):
             - WYZE_EMAIL=
             - WYZE_PASSWORD= 
+            - API_ID=
+            - API_KEY= 
             # [OPTIONAL] IP Address of the host to enable WebRTC e.g.,:
             # - WB_IP=192.168.1.122
-            # [OPTIONAL] Wyze API credentials:
-            # - API_ID=
-            # - API_KEY= 

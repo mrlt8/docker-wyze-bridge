@@ -5,11 +5,7 @@
   "url": "https://github.com/mrlt8/docker-wyze-bridge",
   "image": "mrlt8/wyze-bridge",
   "version": "2.8.1",
-  "arch": [
-    "armv7",
-    "aarch64",
-    "amd64"
-  ],
+  "arch": ["armv7", "aarch64", "amd64"],
   "startup": "application",
   "boot": "auto",
   "apparmor": false,
@@ -34,20 +30,16 @@
     "IMG_DIR": "media/wyze/img/",
     "RECORD_PATH": "media/wyze/{CAM_NAME}"
   },
-  "map": [
-    "addon_config:rw",
-    "media:rw",
-    "ssl:ro"
-  ],
-  "services": [
-    "mqtt:want"
-  ],
+  "map": ["addon_config:rw", "media:rw", "ssl:ro"],
+  "services": ["mqtt:want"],
   "ingress": true,
   "ingress_port": 5000,
   "panel_icon": "mdi:bridge",
   "options": {
     "WYZE_EMAIL": null,
     "WYZE_PASSWORD": null,
+    "API_ID": null,
+    "API_KEY": null,
     "NET_MODE": "ANY",
     "SNAPSHOT": "Disable",
     "MQTT_DTOPIC": "homeassistant",
@@ -138,9 +130,7 @@
         "MOTION_WEBHOOKS": "str?"
       }
     ],
-    "MEDIAMTX": [
-      "match(^\\w+=.*)?"
-    ],
+    "MEDIAMTX": ["match(^\\w+=.*)?"],
     "WB_HLS_URL": "str?",
     "WB_RTMP_URL": "str?",
     "WB_RTSP_URL": "str?",

@@ -22,7 +22,8 @@ Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) 
 
 
 > [!IMPORTANT]
-> As of July 2023, you will need to **update your bridge to v2.3.x or newer** for compatibility with the latest changes to the Wyze API.
+> As of April 2024, you will need to **update your bridge to v2.3.x or newer** for compatibility with the latest changes to the Wyze API as well as supply your own API Key and API ID from: https://support.wyze.com/hc/en-us/articles/16129834216731.
+
 
 ![Wyze Cam V1](https://img.shields.io/badge/wyze_v1-yes-success.svg)
 ![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
@@ -48,7 +49,11 @@ See the [supported cameras](#supported-cameras) section for additional informati
 Install [docker](https://docs.docker.com/get-docker/) and run:
 
 ```bash
-docker run -p 8554:8554 -p 8888:8888 -p 5000:5000 mrlt8/wyze-bridge
+docker run \
+  -e API_ID=My-Unique-KeyID-From-WYZE \
+  -e API_KEY=MySecretApiKeyFromWyze \
+  -p 8554:8554 -p 8888:8888 -p 5000:5000 \
+  mrlt8/wyze-bridge
 ```
 
 You can then use the web interface at `http://localhost:5000` where localhost is the hostname or ip of the machine running the bridge.
@@ -78,7 +83,7 @@ Home Assistant:
 * Can this work offline/can I block all wyze services?
   * No. Streaming should continue to work without an active internet connection, but will probably stop working after some time as the cameras were not designed to be used without the cloud. Some camera commands also depend on the cloud and may not function without an active connection. See [wz_mini_hacks](https://github.com/gtxaspec/wz_mini_hacks/wiki/Configuration-File#self-hosted--isolated-mode) for firmware level modification to run the camera offline.
 * Why aren't all wyze cams supported yet (OG/Doorbell Pro)?
-  * These cameras are using a different SDK and will require a different method to connect and stream.
+  * These cameras are using a different SDK and will require a different method to connect and stream. See the awesome [cryze](https://github.com/carTloyal123/cryze) project by @carTloyal123.
 
 ## Compatibility
 
@@ -237,6 +242,11 @@ All environment variables are optional.
 
 ## Other Wyze Projects
 
-* [gtxaspec/wz_mini_hacks](https://github.com/gtxaspec/wz_mini_hacks) - firmware level modification with a [self-hosted mode](https://github.com/gtxaspec/wz_mini_hacks/wiki/Configuration-File#self-hosted--isolated-mode) to use the cameras without the wyze services.
-* [jfarmer08/homebridge-wyze-smart-home](https://github.com/jfarmer08/homebridge-wyze-smart-home) - homebridge plugin to interact with other wyze devices over the cloud.
+Video Streaming:
+
+* [gtxaspec/wz_mini_hacks](https://github.com/gtxaspec/wz_mini_hacks) - Firmware level modification for Ingenic based cameras with an RTSP server and [self-hosted mode](https://github.com/gtxaspec/wz_mini_hacks/wiki/Configuration-File#self-hosted--isolated-mode) to use the cameras without the wyze services.
+* [carTloyal123/cryze](https://github.com/carTloyal123/cryze) - Stream video from wyze cameras (Gwell cameras) that use the Iotvideo SDK from Tencent Cloud. 
+
+General Wyze:
+
 * [shauntarves/wyze-sdk](https://github.com/shauntarves/wyze-sdk) - python library to interact with wyze devices over the cloud.
