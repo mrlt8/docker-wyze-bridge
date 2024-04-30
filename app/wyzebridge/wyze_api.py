@@ -359,8 +359,8 @@ class WyzeApi:
         except RateLimitError as ex:
             logger.error(f"[EVENTS] RateLimitError: {ex}, cooling down.")
             return ex.reset_by, []
-        except (HTTPError, RequestException) as ex:
-            logger.error(f"[EVENTS] HTTPError: {ex}, cooling down.")
+        except (HTTPError, RequestException, WyzeAPIError) as ex:
+            logger.error(f"[EVENTS] {type(ex).__name__}: {ex}, cooling down.")
             return time() + 60, []
 
     @authenticated
