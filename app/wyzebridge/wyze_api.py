@@ -316,7 +316,7 @@ class WyzeApi:
             resp = wyzecam.api.run_action(self.auth, cam, action.lower())
             return {"status": "success", "response": resp["result"]}
         except (ValueError, WyzeAPIError) as ex:
-            logger.error(f"[CONTROL] ERROR {ex}")
+            logger.error(f"[CONTROL] ERROR: {ex}")
             return {"status": "error", "response": str(ex)}
 
     @authenticated
@@ -326,14 +326,14 @@ class WyzeApi:
         try:
             res = post_v2_device(self.auth, "get_device_Info", params)["property_list"]
         except (ValueError, WyzeAPIError) as ex:
-            logger.error(f"[CONTROL] ERROR - {ex}")
+            logger.error(f"[CONTROL] ERROR: {ex}")
             return {"status": "error", "response": str(ex)}
 
         if not pid:
             return {"status": "success", "response": res}
 
         if not (item := next((i for i in res if i["pid"] == pid), None)):
-            logger.error(f"[CONTROL] ERROR - {pid} not found")
+            logger.error(f"[CONTROL] ERROR: {pid} not found")
             return {"status": "error", "response": f"{pid} not found"}
 
         return {"status": "success", "value": item.get("value"), "response": item}
@@ -345,7 +345,7 @@ class WyzeApi:
         try:
             res = post_v2_device(self.auth, "set_property", params)["property_list"]
         except (ValueError, WyzeAPIError) as ex:
-            logger.error(f"[CONTROL] ERROR - {ex}")
+            logger.error(f"[CONTROL] ERROR: {ex}")
             return {"status": "error", "response": str(ex)}
 
         return {"status": "success", "response": res}
@@ -384,7 +384,7 @@ class WyzeApi:
             return {"status": "success", "response": "success"}
         except ValueError as ex:
             error = f'{ex.args[0].get("code")}: {ex.args[0].get("msg")}'
-            logger.error(f"ERROR - {error}")
+            logger.error(f"[CONTROL] ERROR: {error}")
             return {"status": "error", "response": f"{error}"}
 
     def clear_cache(self):
