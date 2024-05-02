@@ -1,3 +1,10 @@
+## What's Changed in v2.8.2
+
+* Add support for developer API Key/ID for WebUI based logins.
+* Update Home Assistant and unraid config to support API Key/ID
+* Refactor to catch additional WyzeAPIErrors.
+
+
 ## What's Changed in v2.8.1
 
 * Fix video lag introduced in v2.7.0

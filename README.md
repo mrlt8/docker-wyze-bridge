@@ -49,16 +49,18 @@ See the [supported cameras](#supported-cameras) section for additional informati
 Install [docker](https://docs.docker.com/get-docker/) and run:
 
 ```bash
-docker run \
-  -e API_ID=My-Unique-KeyID-From-WYZE \
-  -e API_KEY=MySecretApiKeyFromWyze \
-  -p 8554:8554 -p 8888:8888 -p 5000:5000 \
-  mrlt8/wyze-bridge
+docker run -p 8554:8554 -p 8888:8888 -p 5000:5000 mrlt8/wyze-bridge
 ```
 
 You can then use the web interface at `http://localhost:5000` where localhost is the hostname or ip of the machine running the bridge.
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
+
+## What's Changed in v2.8.2
+
+* Add support for developer API Key/ID for WebUI based logins.
+* Update Home Assistant and unraid config to support API Key/ID
+* Refactor to catch additional WyzeAPIErrors.
 
 ## What's Changed in v2.8.1
 

@@ -24,12 +24,13 @@ Please consider [supporting](https://ko-fi.com/mrlt8) this project if you found 
 
 ## System Compatibility
 
-![Supports armv7 Architecture](https://img.shields.io/badge/armv7-yes-success.svg)
-![Supports aarch64 Architecture](https://img.shields.io/badge/aarch64-yes-success.svg)
+![Supports arm32v7 Architecture](https://img.shields.io/badge/arm32v7-yes-success.svg)
+![Supports arm64v8 Architecture](https://img.shields.io/badge/arm64v8-yes-success.svg)
 ![Supports amd64 Architecture](https://img.shields.io/badge/amd64-yes-success.svg)
+![Supports Apple Silicon Architecture](https://img.shields.io/badge/apple_silicon-yes-success.svg)
 [![Home Assistant Add-on](https://img.shields.io/badge/home_assistant-add--on-blue.svg?logo=homeassistant&logoColor=white)](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
 
-Should work on most x64 systems as well as on some arm-based systems like the Raspberry Pi.
+Should work on most x64 systems as well as on most modern arm-based systems like the Raspberry Pi 3/4/5 or Apple Silicon M1/M2/M3.
 
 ## Supported Cameras
 
@@ -37,7 +38,9 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 ![Wyze Cam V2](https://img.shields.io/badge/wyze_v2-yes-success.svg)
 ![Wyze Cam V3](https://img.shields.io/badge/wyze_v3-yes-success.svg)
 ![Wyze Cam V3 Pro](https://img.shields.io/badge/wyze_v3_pro-yes-success.svg)
+![Wyze Cam V4](https://img.shields.io/badge/wyze_v4-yes-success.svg)
 ![Wyze Cam Floodlight](https://img.shields.io/badge/wyze_floodlight-yes-success.svg)
+![Wyze Cam Floodlight V2](https://img.shields.io/badge/wyze_floodlight_v2-yes-success.svg)
 ![Wyze Cam Pan](https://img.shields.io/badge/wyze_pan-yes-success.svg)
 ![Wyze Cam Pan V2](https://img.shields.io/badge/wyze_pan_v2-yes-success.svg)
 ![Wyze Cam Pan V3](https://img.shields.io/badge/wyze_pan_v3-yes-success.svg)
@@ -46,10 +49,6 @@ Should work on most x64 systems as well as on some arm-based systems like the Ra
 ![Wyze Cam Outdoor V2](https://img.shields.io/badge/wyze_outdoor_v2-yes-success.svg)
 ![Wyze Cam Doorbell](https://img.shields.io/badge/wyze_doorbell-yes-success.svg)
 ![Wyze Cam Doorbell V2](https://img.shields.io/badge/wyze_doorbell_v2-yes-success.svg)
-
-![Wyze Cam Doorbell Pro](https://img.shields.io/badge/wyze_doorbell_pro-no-inactive.svg)
-![Wyze Cam OG](https://img.shields.io/badge/wyze_og-no-inactive.svg)
-![Wyze Cam OG 3x](https://img.shields.io/badge/wyze_og_3x-no-inactive.svg)
 
 ---
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/J3J85TD3K)

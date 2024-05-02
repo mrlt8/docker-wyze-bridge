@@ -12,7 +12,9 @@ services:
             - 8189:8189/udp # WebRTC/ICE
             - 5000:5000 # WEB-UI
         environment:
-            # [OPTIONAL] (Can be set in the WebUI):
+            # [OPTIONAL] Credentials can be set in the WebUI
+            # API Key and ID can be obtained from the wyze dev portal: 
+            # https://developer-api-console.wyze.com/#/apikey/view
             - WYZE_EMAIL=
             - WYZE_PASSWORD= 
             - API_ID=

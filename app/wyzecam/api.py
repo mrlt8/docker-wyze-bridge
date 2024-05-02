@@ -8,7 +8,7 @@ from hashlib import md5
 from os import environ, getenv
 from typing import Any, Optional
 
-from requests import Response, get, post
+from requests import PreparedRequest, Response, get, post
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
 IOS_VERSION = getenv("IOS_VERSION")
@@ -60,10 +60,10 @@ class RateLimitError(Exception):
 
 
 class WyzeAPIError(Exception):
-    def __init__(self, code, msg: str):
+    def __init__(self, code, msg: str, req: PreparedRequest):
         self.code = code
         self.msg = msg
-        super().__init__(f"{code=} {msg=}")
+        super().__init__(f"{code=} {msg=} method={req.method} path={req.path_url}")
 
 
 def login(
@@ -109,9 +109,9 @@ def login(
         headers["signature2"] = sign_msg("v3", payload)
 
     resp = post(f"{AUTH_API}/{api_version}/user/login", data=payload, headers=headers)
-    resp.raise_for_status()
 
-    return WyzeCredential.model_validate(dict(resp.json(), phone_id=phone_id))
+    resp_json = validate_resp(resp)
+    return WyzeCredential.model_validate(dict(resp_json, phone_id=phone_id))
 
 
 def send_sms_code(auth_info: WyzeCredential, phone: str = "Primary") -> str:
@@ -334,14 +334,19 @@ def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
 
 
 def validate_resp(resp: Response) -> dict:
-    resp.raise_for_status()
     if int(resp.headers.get("X-RateLimit-Remaining", 100)) <= 10:
         raise RateLimitError(resp)
+
     resp_json = resp.json()
-    if str(resp_json.get("code", 0)) == "2001":
+    resp_code = str(resp_json.get("code", resp_json.get("errorCode", 0)))
+    if resp_code == "2001":
         raise AccessTokenError()
-    if (resp_code := str(resp_json.get("code", 0))) != "1":
-        raise WyzeAPIError(resp_code, resp_json.get("msg"))
+
+    if resp_code not in {"1", "0"}:
+        msg = resp_json.get("msg", resp_json.get("description", resp_code))
+        raise WyzeAPIError(resp_code, msg, resp.request)
+
+    resp.raise_for_status()
 
     return resp_json
 

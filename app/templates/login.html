@@ -4,6 +4,11 @@
 <div class="columns is-centered">
     <div class="column is-5">
         <p class="subtitle has-text-white">Wyze credentials required to complete authentication.
+        <div class="notification is-info">
+            <span class="icon"><i class="fas fa-circle-info"></i></span> Wyze API Key and ID can be obtained from the <a
+                href="https://developer-api-console.wyze.com/#/apikey/view" target="_blank">Wyze
+                Developer Portal</a>.
+        </div>
         </p>
         <form id="login" class="box">
             <div id="error"></div>
@@ -22,6 +27,26 @@
                     <input name="password" type="password" placeholder="*******" class="input" required>
                     <span class="icon is-small is-left">
                         <i class="fa fa-lock"></i>
+                    </span>
+                </div>
+            </div>
+            <div class="field">
+                <label for="" class="label">API ID</label>
+                <div class="control has-icons-left">
+                    <input name="keyId" type="text" placeholder="Key ID" class="input" pattern=".{36}"
+                        title="Key ID is 36 characters" required>
+                    <span class="icon is-small is-left">
+                        <i class="fa fa-fingerprint"></i>
+                    </span>
+                </div>
+            </div>
+            <div class="field">
+                <label for="" class="label">API Key</label>
+                <div class="control has-icons-left">
+                    <input name="apiKey" type="text" placeholder="API Key" class="input" pattern=".{60}"
+                        title="API Key is 60 characters" required>
+                    <span class="icon is-small is-left">
+                        <i class="fa fa-key"></i>
                     </span>
                 </div>
             </div>

@@ -54,8 +54,10 @@ def create_app():
             )
         email = request.form.get("email")
         password = request.form.get("password")
-        if email and password:
-            wb.api.creds.update(email, password)
+        key_id = request.form.get("keyId")
+        api_key = request.form.get("apiKey")
+        if email and password and key_id and api_key:
+            wb.api.creds.update(email, password, key_id, api_key)
             return {"status": "success"}
         return {"status": "missing email or password"}
 

@@ -3,38 +3,64 @@
   <Name>docker-wyze-bridge</Name>
   <Repository>mrlt8/wyze-bridge</Repository>
   <Registry>https://hub.docker.com/r/mrlt8/wyze-bridge</Registry>
+  <Branch>
+    <Tag>latest</Tag>
+    <TagDescription>Latest stable release.</TagDescription>
+  </Branch>
+  <Branch>
+    <Tag>latest-hw</Tag>
+    <TagDescription>Latest stable release for amd64 with additinal drivers for harware accelerated
+      encoding.</TagDescription>
+  </Branch>
+  <Branch>
+    <Tag>latest-qsv</Tag>
+    <TagDescription>Latest stable release for amd64 with additinal drivers for QSV accelerated
+      encoding.</TagDescription>
+  </Branch>
+  <Branch>
+    <Tag>dev</Tag>
+    <TagDescription>Latest development release for testing future changes.</TagDescription>
+  </Branch>
   <Network>bridge</Network>
   <Support>https://github.com/mrlt8/docker-wyze-bridge</Support>
   <Project>https://github.com/mrlt8/docker-wyze-bridge</Project>
-  <Overview>WebRTC/RTSP/RTMP/LL-HLS  bridge for Wyze cams in a docker container</Overview>
+  <Overview>WebRTC/RTSP/RTMP/LL-HLS bridge for Wyze cams in a docker container.
+    As of April 2024, you will need to supply your own API Key and ID:
+    https://support.wyze.com/hc/en-us/articles/16129834216731-Creating-an-API-Key
+  </Overview>
   <Category>HomeAutomation:</Category>
-  <WebUI>http://[IP]:[PORT:5000]/</WebUI>
-  <Icon>https://raw.githubusercontent.com/selfhosters/unRAID-CA-templates/master/templates/img/wyze.png</Icon>
-  <DonateText/>ko-fi</DonateText>
+  <WebUI>http://[IP]:[PORT:5000]</WebUI>
+  <TemplateURL>
+    https://raw.githubusercontent.com/selfhosters/unRAID-CA-templates/master/templates/docker-wyze-bridge.xml</TemplateURL>
+  <Icon>
+    https://raw.githubusercontent.com/selfhosters/unRAID-CA-templates/master/templates/img/wyze.png</Icon>
+  <DonateText>ko-fi</DonateText>
   <DonateLink>https://ko-fi.com/mrlt8</DonateLink>
+  <Requires>A unique API_KEY and API_ID which can be generated on the Wyze Developer Portal:
+    https://developer-api-console.wyze.com/#/apikey/view</Requires>
   <Config Name="WYZE_EMAIL" Target="WYZE_EMAIL" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="WYZE_PASSWORD" Target="WYZE_PASSWORD" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="true"/>
-  <Config Name="API_ID" Target="API_ID" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="true"/>
-  <Config Name="API_KEY" Target="API_KEY" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="true"/>
-  <Config Name="Net_Mode" Target="NET_MODE" Default="ANY" Mode="" Description="https://github.com/mrlt8/docker-wyze-bridge#LAN-Mode" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="RTSP Port" Target="8554" Default="8554" Mode="tcp" Description="" Type="Port" Display="always" Required="false" Mask="false"/>
-  <Config Name="RTMP Port" Target="1935" Default="1935" Mode="tcp" Description="" Type="Port" Display="always" Required="false" Mask="false"/>
-  <Config Name="HLS Port" Target="8888" Default="8888" Mode="tcp" Description="" Type="Port" Display="always" Required="false" Mask="false"/>
-  <Config Name="WebRTC Port" Target="8889" Default="8889" Mode="tcp" Description="" Type="Port" Display="always" Required="false" Mask="false"/>
-  <Config Name="WebRTC/ICE Port" Target="8189" Default="8189" Mode="udp" Description="" Type="Port" Display="always" Required="false" Mask="false"/>
-  <Config Name="WebUI Port" Target="5000" Default="5000" Mode="tcp" Description="" Type="Port" Display="always" Required="false" Mask="false"/>
-  <Config Name="MQTT_HOST" Target="MQTT_HOST" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="MQTT_AUTH" Target="MQTT_AUTH" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="MQTT_DTOPIC" Target="MQTT_DTOPIC" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Ignore Offline" Target="IGNORE_OFFLINE" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Fresh Data" Target="FRESH_DATA" Default="False" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="TOTP Key for 2FA" Target="TOTP_KEY" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Bridge IP for WebRTC" Target="WB_IP" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Enable Audio" Target="ENABLE_AUDIO" Default="True" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Enable Substreams" Target="SUBSTREAM" Default="False" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Rotate Doorbell" Target="ROTATE_DOOR" Default="False" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Custom RTSP URL" Target="WB_RTSP_URL" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Custom RTMP URL" Target="WB_RTMP_URL" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Custom HLS URL" Target="WB_HLS_URL" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="Custom WEBRTC URL" Target="WB_WEBRTC_URL" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="API_ID" Target="API_ID" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="API_KEY" Target="API_KEY" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="RTSP Port" Target="8554" Default="8554" Mode="tcp" Description="" Type="Port" Display="advanced" Required="false" Mask="false">8544</Config>
+  <Config Name="RTMP Port" Target="1935" Default="1935" Mode="tcp" Description="" Type="Port" Display="advanced" Required="false" Mask="false">1935</Config>
+  <Config Name="HLS Port" Target="8888" Default="8888" Mode="tcp" Description="" Type="Port" Display="advanced" Required="false" Mask="false">8888</Config>
+  <Config Name="WebRTC Port" Target="8889" Default="8889" Mode="tcp" Description="" Type="Port" Display="advanced" Required="false" Mask="false">8889</Config>
+  <Config Name="WebRTC/ICE Port" Target="8189" Default="8189" Mode="udp" Description="" Type="Port" Display="advanced" Required="false" Mask="false">8189</Config>
+  <Config Name="WebUI Port" Target="5000" Default="5000" Mode="tcp" Description="" Type="Port" Display="advanced" Required="false" Mask="false">5000</Config>
+  <Config Name="Net_Mode" Target="NET_MODE" Default="ANY" Mode="" Description="https://github.com/mrlt8/docker-wyze-bridge#LAN-Mode" Type="Variable" Display="advanced" Required="false" Mask="false">ANY</Config>
+  <Config Name="MQTT_HOST" Target="MQTT_HOST" Default="" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="MQTT_AUTH" Target="MQTT_AUTH" Default="" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="MQTT_DTOPIC" Target="MQTT_DTOPIC" Default="" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Ignore Offline" Target="IGNORE_OFFLINE" Default="" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Fresh Data" Target="FRESH_DATA" Default="False" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="TOTP Key for 2FA" Target="TOTP_KEY" Default="" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Bridge IP for WebRTC" Target="WB_IP" Default="" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Enable Audio" Target="ENABLE_AUDIO" Default="True" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false">True</Config>
+  <Config Name="Enable Substreams" Target="SUBSTREAM" Default="False" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Rotate Doorbell" Target="ROTATE_DOOR" Default="False" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Custom RTSP URL" Target="WB_RTSP_URL" Default="" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Custom RTMP URL" Target="WB_RTMP_URL" Default="" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Custom HLS URL" Target="WB_HLS_URL" Default="" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false"/>
+  <Config Name="Custom WEBRTC URL" Target="WB_WEBRTC_URL" Default="" Mode="" Description="" Type="Variable" Display="advanced" Required="false" Mask="false"/>
 </Container>

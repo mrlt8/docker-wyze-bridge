@@ -88,9 +88,11 @@ class WyzeCredentials:
     def is_set(self) -> bool:
         return bool(self.email and self.password)
 
-    def update(self, email: str, password: str) -> None:
+    def update(self, email: str, password: str, key_id: str, api_key: str) -> None:
         self.email = email.strip()
         self.password = password.strip()
+        self.key_id = key_id
+        self.api_key = api_key
 
     def same_email(self, email: str) -> bool:
         return self.email.lower() == email.lower() if self.is_set else True
@@ -142,12 +144,18 @@ class WyzeApi:
                 api_key=self.creds.api_key,
                 key_id=self.creds.key_id,
             )
+        except WyzeAPIError as ex:
+            logger.error(f"[API] {ex}")
+            if not getenv("WYZE_EMAIL"):
+                logger.error("[API] Clearing credentials. Please try again.")
+                self.creds.email = self.creds.password = None
+                self.login()
+            sleep(15)
         except HTTPError as ex:
-            logger.error(f"⚠️ {ex}")
-            if ex.response and ex.response.status_code == 403:
+            if hasattr(ex, "response") and ex.response.status_code == 403:
                 logger.error(f"[API] Your IP may be blocked from {ex.request.url}")
-            elif ex.response and ex.response.text:
-                logger.warning(f"[API] {ex.response.text}")
+            if hasattr(ex, "response") and ex.response.text:
+                logger.error(f"[API] Response: {ex.response.text}")
             sleep(15)
         except (ValueError, RateLimitError, RequestException) as ex:
             logger.error(f"[API] {ex}")
@@ -308,7 +316,7 @@ class WyzeApi:
             resp = wyzecam.api.run_action(self.auth, cam, action.lower())
             return {"status": "success", "response": resp["result"]}
         except (ValueError, WyzeAPIError) as ex:
-            logger.error(f"[CONTROL] ERROR {ex}")
+            logger.error(f"[CONTROL] ERROR: {ex}")
             return {"status": "error", "response": str(ex)}
 
     @authenticated
@@ -318,14 +326,14 @@ class WyzeApi:
         try:
             res = post_v2_device(self.auth, "get_device_Info", params)["property_list"]
         except (ValueError, WyzeAPIError) as ex:
-            logger.error(f"[CONTROL] ERROR - {ex}")
+            logger.error(f"[CONTROL] ERROR: {ex}")
             return {"status": "error", "response": str(ex)}
 
         if not pid:
             return {"status": "success", "response": res}
 
         if not (item := next((i for i in res if i["pid"] == pid), None)):
-            logger.error(f"[CONTROL] ERROR - {pid} not found")
+            logger.error(f"[CONTROL] ERROR: {pid} not found")
             return {"status": "error", "response": f"{pid} not found"}
 
         return {"status": "success", "value": item.get("value"), "response": item}
@@ -337,7 +345,7 @@ class WyzeApi:
         try:
             res = post_v2_device(self.auth, "set_property", params)["property_list"]
         except (ValueError, WyzeAPIError) as ex:
-            logger.error(f"[CONTROL] ERROR - {ex}")
+            logger.error(f"[CONTROL] ERROR: {ex}")
             return {"status": "error", "response": str(ex)}
 
         return {"status": "success", "response": res}
@@ -359,8 +367,8 @@ class WyzeApi:
         except RateLimitError as ex:
             logger.error(f"[EVENTS] RateLimitError: {ex}, cooling down.")
             return ex.reset_by, []
-        except (HTTPError, RequestException) as ex:
-            logger.error(f"[EVENTS] HTTPError: {ex}, cooling down.")
+        except (HTTPError, RequestException, WyzeAPIError) as ex:
+            logger.error(f"[EVENTS] {type(ex).__name__}: {ex}, cooling down.")
             return time() + 60, []
 
     @authenticated
@@ -376,7 +384,7 @@ class WyzeApi:
             return {"status": "success", "response": "success"}
         except ValueError as ex:
             error = f'{ex.args[0].get("code")}: {ex.args[0].get("msg")}'
-            logger.error(f"ERROR - {error}")
+            logger.error(f"[CONTROL] ERROR: {error}")
             return {"status": "error", "response": f"{error}"}
 
     def clear_cache(self):
