@@ -88,9 +88,11 @@ class WyzeCredentials:
     def is_set(self) -> bool:
         return bool(self.email and self.password)
 
-    def update(self, email: str, password: str) -> None:
+    def update(self, email: str, password: str, key_id: str, api_key: str) -> None:
         self.email = email.strip()
         self.password = password.strip()
+        self.key_id = key_id
+        self.api_key = api_key
 
     def same_email(self, email: str) -> bool:
         return self.email.lower() == email.lower() if self.is_set else True
@@ -142,12 +144,18 @@ class WyzeApi:
                 api_key=self.creds.api_key,
                 key_id=self.creds.key_id,
             )
+        except WyzeAPIError as ex:
+            logger.error(f"[API] {ex}")
+            if not getenv("WYZE_EMAIL"):
+                logger.error("[API] Clearing credentials. Please try again.")
+                self.creds.email = self.creds.password = None
+                self.login()
+            sleep(15)
         except HTTPError as ex:
-            logger.error(f"⚠️ {ex}")
-            if ex.response and ex.response.status_code == 403:
+            if hasattr(ex, "response") and ex.response.status_code == 403:
                 logger.error(f"[API] Your IP may be blocked from {ex.request.url}")
-            elif ex.response and ex.response.text:
-                logger.warning(f"[API] {ex.response.text}")
+            if hasattr(ex, "response") and ex.response.text:
+                logger.error(f"[API] Response: {ex.response.text}")
             sleep(15)
         except (ValueError, RateLimitError, RequestException) as ex:
             logger.error(f"[API] {ex}")
