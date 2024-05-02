@@ -1,10 +1,10 @@
 configuration:
   API_ID:
     name: Key ID
-    description: Optional, but must be used in combination with the API Key.
+    description: Now required. Can be obtained from the wyze developer portal.
   API_KEY:
     name: API Key
-    description: Optional, but must be used in combination with the Key ID.
+    description: Now required. Can be obtained from the wyze developer portal.
   REFRESH_TOKEN:
     name: Refresh Token
     description: Use existing refresh token for authentication.
