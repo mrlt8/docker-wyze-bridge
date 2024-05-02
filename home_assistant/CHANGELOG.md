@@ -1,4 +1,4 @@
-## What's Changed in v2.8.2
+## What's Changed in v2.8.2/3
 
 * Add support for developer API Key/ID for WebUI based logins.
 * Update Home Assistant and unraid config to support API Key/ID
