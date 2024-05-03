@@ -5,7 +5,7 @@ import urllib.parse
 import uuid
 from datetime import datetime
 from hashlib import md5
-from os import environ, getenv
+from os import getenv
 from typing import Any, Optional
 
 from requests import PreparedRequest, Response, get, post
@@ -16,6 +16,7 @@ APP_VERSION = getenv("APP_VERSION")
 SCALE_USER_AGENT = f"Wyze/{APP_VERSION} (iPhone; iOS {IOS_VERSION}; Scale/3.00)"
 AUTH_API = "https://auth-prod.api.wyze.com"
 WYZE_API = "https://api.wyzecam.com/app"
+CLOUD_API = "https://app-core.cloud.wyze.com/app"
 SC_SV = {
     "default": {
         "sc": "9f275790cab94a72bd206c8876429f3c",
@@ -38,6 +39,7 @@ SC_SV = {
         "sv": "e8e1db44128f4e31a2047a8f5f80b2bd",
     },
 }
+APP_KEY = {"9319141212m2ik": "wyze_app_secret_key_132"}
 
 
 class AccessTokenError(Exception):
@@ -107,6 +109,9 @@ def login(
         api_version = "v3"
         headers["appid"] = "umgm_78ae6013d158c4a5"
         headers["signature2"] = sign_msg("v3", payload)
+
+    if api_version != "api":
+        print(f"\n\n[!] A WYZE API KEY AND ID IS HIGHLY RECOMMENDED.\n\n")
 
     resp = post(f"{AUTH_API}/{api_version}/user/login", data=payload, headers=headers)
 
@@ -293,18 +298,20 @@ def run_action(auth_info: WyzeCredential, camera: WyzeCamera, action: str):
     return validate_resp(resp)["data"]
 
 
-def post_v2_device(auth_info: WyzeCredential, endpoint: str, params: dict) -> dict:
-    """Post data to the v2 device API."""
-    params |= _payload(auth_info.access_token, auth_info.phone_id, endpoint)
-    resp = post(f"{WYZE_API}/v2/device/{endpoint}", json=params, headers=_headers())
+def post_device(
+    auth_info: WyzeCredential, endpoint: str, params: dict, api_version: int = 1
+) -> dict:
+    """Post data to the Wyze device API."""
+    api_endpoints = {1: WYZE_API, 2: f"{WYZE_API}/v2", 4: f"{CLOUD_API}/v4"}
+    device_url = f"{api_endpoints.get(api_version)}/device/{endpoint}"
 
-    return validate_resp(resp)["data"]
-
-
-def post_device(auth_info: WyzeCredential, endpoint: str, params: dict) -> dict:
-    """Post data to the v1 device API."""
-    params |= _payload(auth_info.access_token, auth_info.phone_id, endpoint)
-    resp = post(f"{WYZE_API}/device/{endpoint}", json=params, headers=_headers())
+    if api_version == 4:
+        payload = sort_dict(params)
+        headers = sign_payload(auth_info, "9319141212m2ik", payload)
+        resp = post(device_url, data=payload, headers=headers)
+    else:
+        params |= _payload(auth_info.access_token, auth_info.phone_id, endpoint)
+        resp = post(device_url, json=params, headers=_headers())
 
     return validate_resp(resp)["data"]
 
@@ -395,6 +402,21 @@ def _headers(
     }
 
 
+def sign_payload(auth_info: WyzeCredential, app_id: str, payload: str) -> dict:
+    if not auth_info.access_token:
+        raise AccessTokenError()
+
+    return {
+        "content-type": "application/json",
+        "phoneid": auth_info.phone_id,
+        "user-agent": f"wyze_ios_{APP_VERSION}",
+        "appinfo": f"wyze_ios_{APP_VERSION}",
+        "access_token": auth_info.access_token,
+        "appid": app_id,
+        "signature2": sign_msg(app_id, payload, auth_info.access_token),
+    }
+
+
 def hash_password(password: str) -> str:
     """Run hashlib.md5() algorithm 3 times."""
     encoded = password.strip()
@@ -404,11 +426,13 @@ def hash_password(password: str) -> str:
 
 
 def sort_dict(payload: dict) -> str:
-    return json.dumps(dict(sorted(payload.items())), separators=(",", ":"))
+    return json.dumps(payload, separators=(",", ":"), sort_keys=True)
 
 
 def sign_msg(app_id: str, msg: str | dict, token: str = "") -> str:
-    key = md5((token + environ[app_id]).encode()).hexdigest().encode()
-    msg = sort_dict(msg) if isinstance(msg, dict) else msg
+    secret = getenv(app_id, APP_KEY.get(app_id, app_id))
+    key = md5((token + secret).encode()).hexdigest().encode()
+    if isinstance(msg, dict):
+        msg = sort_dict(msg)
 
     return hmac.new(key, msg.encode(), md5).hexdigest()
