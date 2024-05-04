@@ -489,15 +489,18 @@ class WyzeIOTCSession:
 
         frame_ts = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
         gap = time.time() - frame_ts
-        if not frame_info.is_keyframe and gap > 2 and not self._sleep_buffer:
+
+        if not frame_info.is_keyframe and gap > 3 and not self._sleep_buffer:
             logger.warning("[video] super slow")
             self.clear_buffer()
 
+            return True
+
         if not frame_info.is_keyframe and gap >= 0.5:
             logger.debug(f"[video] slow {gap=}")
-            self.flush_pipe("audio")
             self._sleep_buffer += gap
-            return True
+
+            return
 
         self.frame_ts = frame_ts
 
@@ -565,7 +568,7 @@ class WyzeIOTCSession:
         logger.debug(f"flushing {pipe_type}")
 
         try:
-            with io.open(fifo, "rb", buffering=8192) as pipe:
+            with io.open(fifo, "rb") as pipe:
                 set_non_blocking(pipe.fileno())
                 while data_read := pipe.read(8192):
                     logger.debug(f"Flushed {len(data_read)} from {pipe_type} pipe")
