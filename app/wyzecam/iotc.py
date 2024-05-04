@@ -1,6 +1,8 @@
 import base64
 import contextlib
 import enum
+import errno
+import fcntl
 import hashlib
 import io
 import logging
@@ -9,8 +11,6 @@ import pathlib
 import time
 import warnings
 from ctypes import CDLL, c_int
-from errno import EEXIST, EPIPE
-from fcntl import F_GETFL, F_SETFL, fcntl
 from typing import Any, Iterator, Optional, Union
 
 from wyzecam.api_models import WyzeAccount, WyzeCamera
@@ -566,8 +566,7 @@ class WyzeIOTCSession:
 
         try:
             with io.open(fifo, "rb", buffering=8192) as pipe:
-                flags = fcntl(pipe.fileno(), F_GETFL)
-                fcntl(pipe.fileno(), F_SETFL, flags | os.O_NONBLOCK)
+                set_non_blocking(pipe.fileno())
                 while data_read := pipe.read(8192):
                     logger.debug(f"Flushed {len(data_read)} from {pipe_type} pipe")
         except Exception as e:
@@ -604,24 +603,24 @@ class WyzeIOTCSession:
     def recv_audio_pipe(self) -> None:
         """Write raw audio frames to a named pipe."""
         fifo_path = f"/tmp/{self.pipe_name}_audio.pipe"
-        try:
-            os.mkfifo(fifo_path, os.O_NONBLOCK)
-        except OSError as e:
-            if e.errno != EEXIST:  # pipe already exists
-                raise e
 
+        with contextlib.suppress(FileExistsError):
+            os.mkfifo(fifo_path)
         try:
-            with open(fifo_path, "wb", buffering=0) as audio_pipe:
+            with open(fifo_path, "wb") as audio_pipe:
+                set_non_blocking(audio_pipe)
                 for frame_data, _ in self.recv_audio_data():
-                    audio_pipe.write(frame_data)
+                    with contextlib.suppress(BlockingIOError):
+                        audio_pipe.write(frame_data)
                     self.audio_pipe_ready = True
 
         except IOError as ex:
-            if ex.errno != EPIPE:  #  Broken pipe
+            if ex.errno != errno.EPIPE:  # Broken pipe
                 warnings.warn(str(ex))
         finally:
             self.audio_pipe_ready = False
-            os.unlink(fifo_path)
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink(fifo_path)
             warnings.warn("Audio pipe closed")
 
     def _audio_frame_slow(self, frame_info) -> Optional[bool]:
@@ -1067,3 +1066,8 @@ class WyzeIOTCSession:
             tutk.iotc_session_close(self.tutk_platform_lib, self.session_id)
         self.session_id = None
         self.state = WyzeIOTCSessionState.DISCONNECTED
+
+
+def set_non_blocking(fd):
+    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
