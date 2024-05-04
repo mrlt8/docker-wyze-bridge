@@ -55,11 +55,11 @@ class WyzeStreamOptions:
             self.reconnect = True
 
     def update_quality(self, hq_frame_size: int = 0) -> None:
-        quality = (self.quality or "na").lower().ljust(3, "0")
+        quality = (self.quality or "hd").lower().ljust(3, "0")
         bit = int(quality[2:] or "0")
 
         self.quality = quality
-        self.bitrate = bit
+        self.bitrate = bit or 180
         self.frame_size = 1 if "sd" in quality else hq_frame_size
 
 
