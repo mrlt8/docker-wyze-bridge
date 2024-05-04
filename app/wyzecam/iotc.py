@@ -544,14 +544,16 @@ class WyzeIOTCSession:
         """Send a message to the camera to update the frame_size and bitrate."""
         if bitrate:
             self.preferred_bitrate = bitrate
-        iotc_msg = self.preferred_frame_size, self.preferred_bitrate, fps
+
+        if fps and fps != self.preferred_frame_rate:
+            self.preferred_frame_rate = fps
+            self.sync_camera_time()
+
+        ioctl_params = self.preferred_frame_size, self.preferred_bitrate, fps
+        logger.warning("Requesting frame_size=%d, bitrate=%d, fps=%d" % ioctl_params)
         with self.iotctrl_mux() as mux:
-            logger.warning("Requesting frame_size=%d, bitrate=%d, fps=%d" % iotc_msg)
             with contextlib.suppress(tutk_ioctl_mux.Empty):
-                if self.camera.product_model in ("WYZEDB3", "WVOD1", "HL_WCO2"):
-                    mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result(False)
-                else:
-                    mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result(False)
+                mux.send_ioctl(K10052DBSetResolvingBit(*ioctl_params)).result(False)
 
     def clear_buffer(self) -> None:
         """Clear local buffer."""
