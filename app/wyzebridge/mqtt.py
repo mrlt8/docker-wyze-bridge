@@ -319,7 +319,7 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
                 "command_topic": f"{base_topic}bitrate/set",
                 "device_class": "data_rate",
                 "min": 1,
-                "max": 255,
+                "max": 1000,
                 "icon": "mdi:high-definition-box",
                 "entity_category": "diagnostic",
             },

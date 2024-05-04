@@ -59,7 +59,7 @@ class WyzeStreamOptions:
         bit = int(quality[2:] or "0")
 
         self.quality = quality
-        self.bitrate = bit if 1 <= bit <= 255 else 180
+        self.bitrate = bit
         self.frame_size = 1 if "sd" in quality else hq_frame_size
 
 

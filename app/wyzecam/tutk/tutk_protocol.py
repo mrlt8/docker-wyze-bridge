@@ -479,9 +479,7 @@ class K10056SetResolvingBit(TutkWyzeProtocolMessage):
     This is sent automatically after the authentication handshake completes successfully.
     """
 
-    def __init__(
-        self, frame_size=tutk.FRAME_SIZE_1080P, bitrate=tutk.BITRATE_HD, fps: int = 0
-    ):
+    def __init__(self, frame_size=tutk.FRAME_SIZE_1080P, bitrate=tutk.BITRATE_HD):
         """
         Construct a K10056SetResolvingBit message, with a given frame size and bitrate.
 
@@ -503,11 +501,10 @@ class K10056SetResolvingBit(TutkWyzeProtocolMessage):
         """
         super().__init__(10056)
         self.frame_size = frame_size + 1
-        self.bitrate = bitrate
-        self.fps = fps
+        self.bitrate = bitrate & 0xFF, (bitrate >> 8) & 0xFF
 
     def encode(self) -> bytes:
-        return encode(self.code, bytes([self.frame_size, self.bitrate, self.fps]))
+        return encode(self.code, bytes([self.frame_size, *self.bitrate]))
 
     def parse_response(self, resp_data):
         return resp_data == b"\x01"
@@ -546,13 +543,12 @@ class K10052DBSetResolvingBit(TutkWyzeProtocolMessage):
         :param bitrate: the bit rate, in KB/s to target in the h264/h265 encoder.
         """
         super().__init__(10052)
-        assert 0 <= bitrate <= 255, "bitrate value must be 1-255"
         self.frame_size = frame_size + 1
-        self.bitrate = bitrate
+        self.bitrate = bitrate & 0xFF, (bitrate >> 8) & 0xFF
         self.fps = fps
 
     def encode(self) -> bytes:
-        payload = bytes([self.bitrate, 0, self.frame_size, self.fps, 0, 0])
+        payload = bytes([*self.bitrate, self.frame_size, self.fps, 0, 0])
 
         return encode(self.code, payload)
 
@@ -572,12 +568,10 @@ class K10052SetFPS(TutkWyzeProtocolMessage):
 class K10052SetBitrate(TutkWyzeProtocolMessage):
     def __init__(self, value: int = 0):
         super().__init__(10052)
-
-        assert 0 < value <= 255, "bitrate value must be 1-255"
-        self.bitrate = value
+        self.bitrate = value & 0xFF, (value >> 8) & 0xFF
 
     def encode(self) -> bytes:
-        return encode(self.code, bytes([self.bitrate, 0, 0, 0, 0, 0]))
+        return encode(self.code, bytes([*self.bitrate, 0, 0, 0, 0]))
 
 
 class K10052HorizontalFlip(TutkWyzeProtocolMessage):
