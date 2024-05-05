@@ -44,7 +44,7 @@ def create_app():
 
     @app.route("/login", methods=["GET", "POST"])
     def wyze_login():
-        if wb.api.creds.is_set:
+        if wb.api.auth:
             return redirect("/")
         if request.method == "GET":
             return render_template(
@@ -52,19 +52,31 @@ def create_app():
                 hass=bool(config.HASS_TOKEN),
                 version=config.VERSION,
             )
-        email = request.form.get("email")
-        password = request.form.get("password")
-        key_id = request.form.get("keyId")
-        api_key = request.form.get("apiKey")
-        if email and password and key_id and api_key:
-            wb.api.creds.update(email, password, key_id, api_key)
+
+        tokens = request.form.get("tokens")
+        refresh = request.form.get("refresh")
+
+        if tokens or refresh:
+            wb.api.token_auth(tokens=tokens, refresh=refresh)
             return {"status": "success"}
-        return {"status": "missing email or password"}
+
+        credentials = {
+            "email": request.form.get("email"),
+            "password": request.form.get("password"),
+            "key_id": request.form.get("keyId"),
+            "api_key": request.form.get("apiKey"),
+        }
+
+        if all(credentials.values()):
+            wb.api.creds.update(**credentials)
+            return {"status": "success"}
+
+        return {"status": "missing credentials"}
 
     @app.route("/")
     @auth.login_required
     def index():
-        if not wb.api.creds.is_set:
+        if not wb.api.auth:
             return redirect("/login")
         if not (columns := request.args.get("columns")):
             columns = request.cookies.get("number_of_columns", "2")

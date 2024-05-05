@@ -72,7 +72,6 @@ def login(
     email: str,
     password: str,
     phone_id: Optional[str] = None,
-    mfa: Optional[dict] = None,
     api_key: Optional[str] = None,
     key_id: Optional[str] = None,
 ) -> WyzeCredential:
@@ -88,8 +87,6 @@ def login(
     :param phone_id: the ID of the device to emulate when talking to wyze.  This is
                      safe to leave as None (in which case a random phone id will be
                      generated)
-    :param mfa: A dict with the `type` of MFA being used, the `id` of the session/app,
-                and the `code` with the verification code from SMS or TOTP app.
 
     :returns: a [WyzeCredential][wyzecam.api.WyzeCredential] with the access information, suitable
               for passing to [get_user_info()][wyzecam.api.get_user_info], or
@@ -97,25 +94,11 @@ def login(
     """
     phone_id = phone_id or str(uuid.uuid4())
     headers = _headers(phone_id, key_id=key_id, api_key=api_key)
-    headers["content-type"] = "application/json"
+    payload = {"email": email.strip(), "password": hash_password(password)}
 
-    payload = sort_dict(
-        {"email": email.strip(), "password": hash_password(password), **(mfa or {})}
-    )
-    api_version = "v2"
-    if key_id and api_key:
-        api_version = "api"
-    elif getenv("v3"):
-        api_version = "v3"
-        headers["appid"] = "umgm_78ae6013d158c4a5"
-        headers["signature2"] = sign_msg("v3", payload)
-
-    if api_version != "api":
-        print(f"\n\n[!] A WYZE API KEY AND ID IS HIGHLY RECOMMENDED.\n\n")
-
-    resp = post(f"{AUTH_API}/{api_version}/user/login", data=payload, headers=headers)
-
+    resp = post(f"{AUTH_API}/api/user/login", json=payload, headers=headers)
     resp_json = validate_resp(resp)
+
     return WyzeCredential.model_validate(dict(resp_json, phone_id=phone_id))
 
 
