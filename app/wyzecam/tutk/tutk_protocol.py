@@ -501,10 +501,10 @@ class K10056SetResolvingBit(TutkWyzeProtocolMessage):
         """
         super().__init__(10056)
         self.frame_size = frame_size + 1
-        self.bitrate = bitrate & 0xFF, (bitrate >> 8) & 0xFF
+        self.bitrate = bitrate
 
     def encode(self) -> bytes:
-        return encode(self.code, bytes([self.frame_size, *self.bitrate]))
+        return encode(self.code, pack("<BH", self.frame_size, self.bitrate))
 
     def parse_response(self, resp_data):
         return resp_data == b"\x01"
@@ -544,11 +544,11 @@ class K10052DBSetResolvingBit(TutkWyzeProtocolMessage):
         """
         super().__init__(10052)
         self.frame_size = frame_size + 1
-        self.bitrate = bitrate & 0xFF, (bitrate >> 8) & 0xFF
+        self.bitrate = bitrate
         self.fps = fps
 
     def encode(self) -> bytes:
-        payload = bytes([*self.bitrate, self.frame_size, self.fps, 0, 0])
+        payload = pack("<HBBBB", self.bitrate, self.frame_size, self.fps, 0, 0)
 
         return encode(self.code, payload)
 
@@ -568,10 +568,10 @@ class K10052SetFPS(TutkWyzeProtocolMessage):
 class K10052SetBitrate(TutkWyzeProtocolMessage):
     def __init__(self, value: int = 0):
         super().__init__(10052)
-        self.bitrate = value & 0xFF, (value >> 8) & 0xFF
+        self.bitrate = value
 
     def encode(self) -> bytes:
-        return encode(self.code, bytes([*self.bitrate, 0, 0, 0, 0]))
+        return encode(self.code, pack("<HBBBB", self.bitrate, 0, 0, 0, 0))
 
 
 class K10052HorizontalFlip(TutkWyzeProtocolMessage):
