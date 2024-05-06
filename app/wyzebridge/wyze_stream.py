@@ -18,7 +18,7 @@ from wyzebridge.config import BRIDGE_IP, COOLDOWN, MQTT_TOPIC
 from wyzebridge.ffmpeg import get_ffmpeg_cmd
 from wyzebridge.logging import logger
 from wyzebridge.mqtt import publish_discovery, publish_messages, update_mqtt_state
-from wyzebridge.webhooks import ifttt_webhook
+from wyzebridge.webhooks import send_webhook
 from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_commands import GET_CMDS, PARAMS, SET_CMDS
 from wyzebridge.wyze_control import camera_control
@@ -587,7 +587,7 @@ def set_cam_offline(uri: str, error: TutkError, was_offline: bool) -> None:
     if was_offline:  # Don't resend if previous state was offline.
         return
 
-    ifttt_webhook(uri, error)
+    send_webhook("offline", uri, f"{uri} is offline")
 
 
 def is_timedout(start_time: float, timeout: int = 20) -> bool:

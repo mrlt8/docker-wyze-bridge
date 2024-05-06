@@ -2,7 +2,6 @@ from os import environ, getenv, makedirs
 from platform import machine
 
 from dotenv import load_dotenv
-
 from wyzebridge.bridge_utils import env_bool, split_int_str
 from wyzebridge.hass import setup_hass
 
@@ -52,15 +51,12 @@ makedirs(TOKEN_PATH, exist_ok=True)
 makedirs(IMG_PATH, exist_ok=True)
 
 
-DEPRECATED = {"DEBUG_FFMPEG"}
+for key in environ:
+    if not MOTION and key.startswith("MOTION_WEBHOOKS"):
+        print(f"[!] WARNING: {key} will not trigger because MOTION_API is not set")
+
+DEPRECATED = {"DEBUG_FFMPEG", "OFFLINE_IFTTT", "TOTP_KEY", "MFA_TYPE"}
 
 for env in DEPRECATED:
     if getenv(env):
         print(f"\n\n[!] WARNING: {env} is deprecated\n\n")
-
-for key, value in environ.items():
-    if key.startswith("RTSP_") and key != "RTSP_FW":
-        mtx_key = f"MTX{key[4:]}"
-        print(f"\n[!] WARNING: {key} is deprecated. Please use {mtx_key} instead\n")
-        environ.pop(key, None)
-        environ[mtx_key] = value
