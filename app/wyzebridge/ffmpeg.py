@@ -42,7 +42,7 @@ def get_ffmpeg_cmd(
     a_filter = env_bool("AUDIO_FILTER", "volume=5") + ",adelay=0|0"
     a_options = ["-compression_level", "4", "-filter:a", a_filter]
     rtsp_transport = "udp" if "udp" in env_bool("MTX_PROTOCOLS") else "tcp"
-    fio_cmd = "use_fifo=1:fifo_options=attempt_recovery=1\\\:drop_pkts_on_overflow=1:"
+    fio_cmd = r"use_fifo=1:fifo_options=attempt_recovery=1\\\:drop_pkts_on_overflow=1:"
     rss_cmd = f"[{fio_cmd}{{}}f=rtsp:{rtsp_transport=:}]rtsp://0.0.0.0:8554/{uri}"
     rtsp_ss = rss_cmd.format("")
     if env_cam("AUDIO_STREAM", uri, style="original") and audio:

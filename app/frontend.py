@@ -3,15 +3,9 @@ import time
 from pathlib import Path
 from urllib.parse import quote_plus, urlparse
 
-from flask import (
-    Flask,
-    Response,
-    make_response,
-    redirect,
-    render_template,
-    request,
-    send_from_directory,
-)
+from flask import Flask, Response, make_response
+from flask import redirect as _redirect
+from flask import render_template, request, send_from_directory
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import NotFound
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -30,6 +24,11 @@ def verify_password(username, password):
     if not auth_enabled:
         return True
     return check_password_hash(pw, password) if username == user else False
+
+
+def redirect(location: str, code: int = 302, Response=None):
+    """Fix redirect for Home Assistant."""
+    return _redirect(request.base_url.rstrip("/") + location, code, Response)
 
 
 def create_app():
