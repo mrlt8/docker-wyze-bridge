@@ -27,8 +27,13 @@ def verify_password(username, password):
 
 
 def redirect(location: str, code: int = 302, Response=None):
-    """Fix redirect for Home Assistant."""
-    return _redirect(request.base_url.rstrip("/") + location, code, Response)
+    """Redirect fix for Home Assistant."""
+    proxy = (
+        request.headers.get("X-Ingress-Path")
+        or request.headers.get("X-Forwarded-for")
+        or ""
+    )
+    return _redirect((proxy.rstrip("/") + location), code, Response)
 
 
 def create_app():
