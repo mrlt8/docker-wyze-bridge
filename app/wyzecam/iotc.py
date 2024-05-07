@@ -675,7 +675,7 @@ class WyzeIOTCSession:
         logger.info(f"[AUDIO] {codec=} {sample_rate=} {codec_id=}")
         return codec, sample_rate
 
-    def identify_audio_codec(self, limit: int = 25) -> tuple[str, int]:
+    def identify_audio_codec(self, limit: int = 60) -> tuple[str, int]:
         """Identify audio codec."""
         assert self.av_chan_id is not None, "Please call _connect() first!"
 
