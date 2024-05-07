@@ -502,7 +502,7 @@ class St_IOTCCheckDeviceOutput(FormattedStructure):
 class St_IOTCConnectInput(FormattedStructure):
     _fields_ = [
         ("cb", c_uint32),
-        ("auth_type", c_uint32),
+        ("authentication_type", c_uint),
         ("auth_key", c_char * 8),
         ("timeout", c_uint32),
     ]
@@ -543,9 +543,7 @@ class AVClientStartOutConfig(FormattedStructure):
     ]
 
 
-def av_recv_frame_data(
-    tutk_platform_lib: CDLL, av_chan_id: c_int
-) -> tuple[
+def av_recv_frame_data(tutk_platform_lib: CDLL, av_chan_id: c_int) -> tuple[
     int,
     Optional[bytes],
     Optional[Union[FrameInfoStruct, FrameInfo3Struct]],
@@ -778,7 +776,7 @@ def av_client_start(
     password: bytes,
     timeout_secs: int,
     channel_id: int,
-    resend: c_int8,
+    resend: int,
 ) -> tuple[c_int, c_uint]:
     """Start an AV client.
 
@@ -939,7 +937,7 @@ def iotc_connect_by_uid_ex(
     tutk_platform_lib: CDLL,
     p2p_id: str,
     session_id: c_int,
-    auth_key: bytes,
+    auth_key: str,
     timeout: int = 20,
 ) -> c_int:
     """Used by a client to connect a device.
@@ -957,13 +955,12 @@ def iotc_connect_by_uid_ex(
     """
     connect_input = St_IOTCConnectInput()
     connect_input.cb = sizeof(connect_input)
-    connect_input.auth_key = auth_key
+    connect_input.auth_key = auth_key.encode()
     connect_input.timeout = timeout
 
-    resultant_session_id: c_int = tutk_platform_lib.IOTC_Connect_ByUIDEx(
-        c_char_p(p2p_id.encode("ascii")), session_id, byref(connect_input)
+    return tutk_platform_lib.IOTC_Connect_ByUIDEx(
+        p2p_id.encode(), session_id, byref(connect_input)
     )
-    return resultant_session_id
 
 
 def iotc_connect_stop_by_session_id(

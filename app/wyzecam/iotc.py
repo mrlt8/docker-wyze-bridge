@@ -921,6 +921,7 @@ class WyzeIOTCSession:
     ):
         try:
             self.state = WyzeIOTCSessionState.IOTC_CONNECTING
+            assert self.camera.p2p_id, "Missing p2p_id"
 
             session_id = tutk.iotc_get_session_id(self.tutk_platform_lib)
             if session_id < 0:  # type: ignore
@@ -988,20 +989,18 @@ class WyzeIOTCSession:
             self.tutk_platform_lib, self.av_chan_id, max_buf_size
         )
 
-    def get_auth_key(self) -> bytes:
+    def get_auth_key(self) -> str:
         """Generate authkey using enr and mac address."""
         auth = self.camera.enr + self.camera.mac.upper()
         if self.camera.parent_dtls:
             auth = self.camera.parent_enr + self.camera.parent_mac.upper()
-        hashed_enr = hashlib.sha256(auth.encode("utf-8"))
-        bArr = bytearray(hashed_enr.digest())[:6]
+        hashed_enr = hashlib.sha256(auth.encode("utf-8")).digest()
         return (
-            base64.standard_b64encode(bArr)
+            base64.b64encode(hashed_enr[:6])
             .decode()
             .replace("+", "Z")
             .replace("/", "9")
             .replace("=", "A")
-            .encode("ascii")
         )
 
     def _auth(self):
