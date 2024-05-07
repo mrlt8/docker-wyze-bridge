@@ -227,8 +227,8 @@ class WyzeApi:
         if cam := self.get_camera(uri):
             return cam.thumbnail
 
-    def save_thumbnail(self, uri: str) -> bool:
-        if not (thumb := self.get_thumbnail(uri)):
+    def save_thumbnail(self, uri: str, thumb: Optional[str] = None) -> bool:
+        if not thumb and not (thumb := self.get_thumbnail(uri)):
             return False
 
         save_to = IMG_PATH + uri + ".jpg"

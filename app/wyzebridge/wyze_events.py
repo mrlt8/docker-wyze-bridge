@@ -4,6 +4,7 @@ from typing import Any
 
 from wyzebridge.config import MOTION_INT, MOTION_START
 from wyzebridge.logging import logger
+from wyzebridge.mqtt import update_preview
 from wyzebridge.webhooks import send_webhook
 from wyzebridge.wyze_stream import WyzeStream
 
@@ -41,6 +42,8 @@ class WyzeEvents:
                 send_webhook("motion", stream.uri, msg, img)
                 if MOTION_START:
                     stream.start()
+                if img and self.api.save_thumbnail(stream.camera.name_uri, img):
+                    update_preview(stream.camera.name_uri)
 
     def process_event(self, event: dict):
         if event["event_id"] in self.events:
