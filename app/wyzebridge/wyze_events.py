@@ -1,5 +1,6 @@
 import time
 from collections import deque
+from datetime import datetime
 from typing import Any
 
 from wyzebridge.config import MOTION_INT, MOTION_START
@@ -37,7 +38,8 @@ class WyzeEvents:
                 if img := next((f["url"] for f in files if f["type"] == 1), None):
                     stream.camera.thumbnail = img
                 stream.motion = self.last_ts
-                msg = f"Motion detected on {stream.uri}"
+                event_time = datetime.fromtimestamp(self.last_ts)
+                msg = f"Motion detected on {stream.uri} at {event_time: %H:%M:%S}"
                 logger.info(f"[MOTION] {msg}")
                 send_webhook("motion", stream.uri, msg, img)
                 if MOTION_START:
