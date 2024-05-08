@@ -369,7 +369,11 @@ def _headers(
     phone_id is required for other login-related endpoints.
     """
     if not phone_id:
-        return {"user-agent": SCALE_USER_AGENT}
+        return {
+            "user-agent": SCALE_USER_AGENT,
+            "appversion": f"{APP_VERSION}",
+            "env": "prod",
+        }
 
     if key_id and api_key:
         return {
@@ -394,8 +398,10 @@ def sign_payload(auth_info: WyzeCredential, app_id: str, payload: str) -> dict:
         "phoneid": auth_info.phone_id,
         "user-agent": f"wyze_ios_{APP_VERSION}",
         "appinfo": f"wyze_ios_{APP_VERSION}",
+        "appversion": APP_VERSION,
         "access_token": auth_info.access_token,
         "appid": app_id,
+        "env": "prod",
         "signature2": sign_msg(app_id, payload, auth_info.access_token),
     }
 
