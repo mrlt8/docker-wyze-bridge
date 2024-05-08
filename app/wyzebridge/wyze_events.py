@@ -54,7 +54,9 @@ class WyzeEvents:
         self.events.append(event["event_id"])
         self.last_ts = int(event["event_ts"] / 1000)
         if time.time() - self.last_ts < 30:
-            self.set_motion(event["device_id"], event["file_list"])
+            # v2 uses device_mac and v4 uses device_id
+            mac = event.get("device_id", event.get("device_mac", ""))
+            self.set_motion(mac, event["file_list"])
 
     def check_motion(self):
         if time.time() - self.last_check < MOTION_INT:

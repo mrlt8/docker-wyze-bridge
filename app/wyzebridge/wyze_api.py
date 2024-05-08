@@ -17,7 +17,7 @@ import wyzecam
 from requests import get
 from requests.exceptions import ConnectionError, HTTPError, RequestException
 from wyzebridge.bridge_utils import env_bool, env_filter
-from wyzebridge.config import IMG_PATH, MOTION, TOKEN_PATH
+from wyzebridge.config import EVENT_API, IMG_PATH, MOTION, TOKEN_PATH
 from wyzebridge.logging import logger
 from wyzecam.api import RateLimitError, WyzeAPIError, post_device
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
@@ -364,6 +364,7 @@ class WyzeApi:
 
     @authenticated
     def get_events(self, macs: Optional[list] = None, last_ts: int = 0):
+
         current_ms = int(time() + 60) * 1000
         params = {
             "count": 20,
@@ -371,11 +372,13 @@ class WyzeApi:
             "begin_time": max((last_ts + 1) * 1_000, (current_ms - 1_000_000)),
             "end_time": current_ms,
             "nonce": str(int(time() * 1000)),
-            "device_id_list": macs or [],
+            f"device_{'id' if EVENT_API == 4 else 'mac'}_list": macs or [],
+            "event_value_list": [],
+            "event_tag_list": [],
         }
 
         try:
-            resp = post_device(self.auth, "get_event_list", params, api_version=4)
+            resp = post_device(self.auth, "get_event_list", params, EVENT_API)
             return time(), resp["event_list"]
         except RateLimitError as ex:
             logger.error(f"[EVENTS] RateLimitError: {ex}, cooling down.")

@@ -46,6 +46,7 @@ BOA_COOLDOWN: int = env_bool("boa_cooldown", "20", style="int")
 MOTION: bool = env_bool("motion_api", style="bool")
 MOTION_INT: int = max(env_bool("motion_int", "1.5", style="float"), 1.1)
 MOTION_START: bool = env_bool("motion_start", style="bool")
+EVENT_API: int = env_bool("event_api", "4", style="int")
 
 makedirs(TOKEN_PATH, exist_ok=True)
 makedirs(IMG_PATH, exist_ok=True)
