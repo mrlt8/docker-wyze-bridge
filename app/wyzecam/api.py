@@ -66,6 +66,9 @@ class WyzeAPIError(Exception):
     def __init__(self, code, msg: str, req: PreparedRequest):
         self.code = code
         self.msg = msg
+        if os.getenv("DEBUG_API"):
+            print(f"headers: {req.headers}")
+            print(f"body: {req.body}")
         super().__init__(f"{code=} {msg=} method={req.method} path={req.path_url}")
 
 
@@ -296,10 +299,6 @@ def post_device(
     else:
         params |= _payload(auth_info.access_token, auth_info.phone_id, endpoint)
         resp = post(device_url, json=params, headers=_headers())
-
-    if os.getenv("DEBUG_API"):
-        print(f"headers: {resp.request.headers}")
-        print(f"body: {resp.request.body}")
 
     return validate_resp(resp)["data"]
 
