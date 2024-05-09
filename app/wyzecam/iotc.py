@@ -318,7 +318,7 @@ class WyzeIOTCSession:
         if self._sleep_buffer:
             self._sleep_buffer = max(self._sleep_buffer - 0.05, 0)
 
-        return max((1 / self.preferred_frame_rate) - delta, 0.0)
+        return max((1 / self.preferred_frame_rate) - delta, 1 / 120)
 
     @property
     def pipe_name(self) -> str:
@@ -496,7 +496,7 @@ class WyzeIOTCSession:
 
             return True
 
-        if not frame_info.is_keyframe and gap >= 0.5:
+        if gap >= 0.5:
             logger.debug(f"[video] slow {gap=}")
             self._sleep_buffer += gap
 
@@ -506,7 +506,7 @@ class WyzeIOTCSession:
 
     def _handle_frame_error(self, err_no: int) -> None:
         """Handle errors that occur when receiving frame data."""
-        time.sleep(1 / 25)
+        time.sleep(1 / 30)
         if err_no == tutk.AV_ER_DATA_NOREADY or err_no >= 0:
             return
 
