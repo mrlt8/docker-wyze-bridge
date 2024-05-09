@@ -66,9 +66,6 @@ class WyzeAPIError(Exception):
     def __init__(self, code, msg: str, req: PreparedRequest):
         self.code = code
         self.msg = msg
-        if os.getenv("DEBUG_API"):
-            print(f"headers: {req.headers}")
-            print(f"body: {req.body}")
         super().__init__(f"{code=} {msg=} method={req.method} path={req.path_url}")
 
 

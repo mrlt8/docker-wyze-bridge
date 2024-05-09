@@ -364,15 +364,15 @@ class WyzeApi:
 
     @authenticated
     def get_events(self, macs: Optional[list] = None, last_ts: int = 0):
-
         current_ms = int(time() + 60) * 1000
+        device_list = list(set(macs or []))
         params = {
             "count": 20,
             "order_by": 1,
             "begin_time": max((last_ts + 1) * 1_000, (current_ms - 1_000_000)),
             "end_time": current_ms,
             "nonce": str(int(time() * 1000)),
-            f"device_{'id' if EVENT_API == 4 else 'mac'}_list": macs or [],
+            f"device_{'id' if EVENT_API == 4 else 'mac'}_list": device_list,
             "event_value_list": [],
             "event_tag_list": [],
         }
