@@ -510,10 +510,9 @@ class WyzeIOTCSession:
         if err_no == tutk.AV_ER_DATA_NOREADY or err_no >= 0:
             return
 
-        if err_no in {tutk.AV_ER_INCOMPLETE_FRAME, tutk.AV_ER_LOSED_THIS_FRAME}:
-            warnings.warn(tutk.TutkError(err_no).name)
-
-        raise tutk.TutkError(err_no)
+        logger.warning(tutk.TutkError(err_no).name)
+        if err_no not in {tutk.AV_ER_INCOMPLETE_FRAME, tutk.AV_ER_LOSED_THIS_FRAME}:
+            raise tutk.TutkError(err_no)
 
     def should_stream(self, sleep: float = 0.01) -> bool:
         time.sleep(sleep)
