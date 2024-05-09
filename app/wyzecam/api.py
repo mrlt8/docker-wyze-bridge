@@ -299,7 +299,7 @@ def post_device(
 
     if os.getenv("DEBUG_API"):
         print(f"headers: {resp.request.headers}")
-        print(f"body: {resp.request.json}")
+        print(f"body: {resp.request.body}")
 
     return validate_resp(resp)["data"]
 
