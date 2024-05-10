@@ -5,7 +5,7 @@ from urllib.parse import quote_plus, urlparse
 
 from flask import Flask, Response, make_response
 from flask import redirect as _redirect
-from flask import render_template, request, send_from_directory
+from flask import render_template, request, send_from_directory, url_for
 from flask_httpauth import HTTPBasicAuth
 from werkzeug.exceptions import NotFound
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -13,17 +13,17 @@ from wyze_bridge import WyzeBridge
 from wyzebridge import config, web_ui
 
 auth = HTTPBasicAuth()
-auth_enabled = os.getenv("WEB_AUTH", "false").lower() != "false"
-if auth_enabled:
-    user = os.getenv("WEB_USERNAME", os.getenv("WYZE_EMAIL"))
-    pw = generate_password_hash(os.getenv("WEB_PASSWORD", os.getenv("WYZE_PASSWORD")))
 
 
 @auth.verify_password
 def verify_password(username, password):
-    if not auth_enabled:
+    if config.HASS_TOKEN and request.remote_addr == "172.30.32.2":
         return True
-    return check_password_hash(pw, password) if username == user else False
+    return (
+        check_password_hash(generate_password_hash(config.WEB_PASSWORD), password)
+        if username == config.WEB_USER
+        else False
+    )
 
 
 def redirect(location: str, code: int = 302, Response=None):
@@ -45,6 +45,11 @@ def create_app():
         print(ex)
         print("Please ensure your host is up to date.")
         exit()
+
+    @app.before_request
+    def has_ingress_only():
+        if config.HASS_TOKEN and request.remote_addr != "172.30.32.2":
+            return "Access Denied", 403
 
     @app.route("/login", methods=["GET", "POST"])
     def wyze_login():
@@ -129,13 +134,6 @@ def create_app():
 
         return resp
 
-    @app.route("/mfa/<string:code>")
-    def set_mfa_code(code):
-        """Set mfa code."""
-        if len(code) != 6:
-            return {"error": f"Wrong length: {len(code)}"}
-        return {"success" if web_ui.set_mfa(code) else "error": f"Using: {code}"}
-
     @app.route("/api/sse_status")
     def sse_status():
         """Server sent event for camera status."""
@@ -150,11 +148,13 @@ def create_app():
         )
 
     @app.route("/api")
+    @auth.login_required
     def api_all_cams():
         host = urlparse(request.root_url).hostname
         return web_ui.all_cams(wb.streams, wb.api.total_cams, host)
 
     @app.route("/api/<string:cam_name>")
+    @auth.login_required
     def api_cam(cam_name: str):
         host = urlparse(request.root_url).hostname
         if cam := wb.streams.get_info(cam_name):
@@ -163,6 +163,7 @@ def create_app():
 
     @app.route("/api/<cam_name>/<cam_cmd>", methods=["GET", "PUT", "POST"])
     @app.route("/api/<cam_name>/<cam_cmd>/<path:payload>")
+    @auth.login_required
     def api_cam_control(cam_name: str, cam_cmd: str, payload: str | dict = ""):
         """API Endpoint to send tutk commands to the camera."""
         if args := request.values:
@@ -179,12 +180,14 @@ def create_app():
         return wb.streams.send_cmd(cam_name, cam_cmd.lower(), payload)
 
     @app.route("/signaling/<string:name>")
+    @auth.login_required
     def webrtc_signaling(name):
         if "kvs" in request.args:
             return wb.api.get_kvs_signal(name)
         return web_ui.get_webrtc_signal(name, urlparse(request.root_url).hostname)
 
     @app.route("/webrtc/<string:name>")
+    @auth.login_required
     def webrtc(name):
         """View WebRTC direct from camera."""
         if (webrtc := wb.api.get_kvs_signal(name)).get("result") == "ok":
@@ -192,6 +195,7 @@ def create_app():
         return webrtc
 
     @app.route("/snapshot/<string:img_file>")
+    @auth.login_required
     def rtsp_snapshot(img_file: str):
         """Use ffmpeg to take a snapshot from the rtsp stream."""
         if wb.streams.get_rtsp_snap(Path(img_file).stem):
@@ -199,6 +203,7 @@ def create_app():
         return thumbnail(img_file)
 
     @app.route("/img/<string:img_file>")
+    @auth.login_required
     def img(img_file: str):
         """
         Serve an existing local image or take a new snapshot from the rtsp stream.
@@ -215,12 +220,14 @@ def create_app():
             return rtsp_snapshot(img_file)
 
     @app.route("/thumb/<string:img_file>")
+    @auth.login_required
     def thumbnail(img_file: str):
         if wb.api.save_thumbnail(Path(img_file).stem):
             return send_from_directory(config.IMG_PATH, img_file)
         return redirect("/static/notavailable.svg", code=307)
 
     @app.route("/photo/<string:img_file>")
+    @auth.login_required
     def boa_photo(img_file: str):
         """Take a photo on the camera and grab it over the boa http server."""
         uri = Path(img_file).stem
@@ -231,6 +238,7 @@ def create_app():
         return redirect(f"/img/{img_file}", code=307)
 
     @app.route("/restart/<string:restart_cmd>")
+    @auth.login_required
     def restart_bridge(restart_cmd: str):
         """
         Restart parts of the wyze-bridge.
@@ -254,6 +262,7 @@ def create_app():
         return {"result": "ok", "restart": restart_cmd.split(",")}
 
     @app.route("/cams.m3u8")
+    @auth.login_required
     def iptv_playlist():
         """
         Generate an m3u8 playlist with all enabled cameras.

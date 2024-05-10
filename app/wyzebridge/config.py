@@ -2,7 +2,7 @@ from os import environ, getenv, makedirs
 from platform import machine
 
 from dotenv import load_dotenv
-from wyzebridge.bridge_utils import env_bool, split_int_str
+from wyzebridge.bridge_utils import default_password, env_bool, split_int_str
 from wyzebridge.hass import setup_hass
 
 load_dotenv()
@@ -46,7 +46,10 @@ BOA_COOLDOWN: int = env_bool("boa_cooldown", "20", style="int")
 MOTION: bool = env_bool("motion_api", style="bool")
 MOTION_INT: int = max(env_bool("motion_int", "1.5", style="float"), 1.1)
 MOTION_START: bool = env_bool("motion_start", style="bool")
-EVENT_API: int = env_bool("event_api", "4", style="int")
+
+
+WEB_USER = getenv("WEB_USER") or getenv("WYZE_EMAIL") or "admin"
+WEB_PASSWORD = getenv("WEB_PASSWORD") or getenv("WYZE_PASSWORD") or default_password()
 
 makedirs(TOKEN_PATH, exist_ok=True)
 makedirs(IMG_PATH, exist_ok=True)

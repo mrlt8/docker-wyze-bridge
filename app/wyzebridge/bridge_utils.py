@@ -1,5 +1,7 @@
 import contextlib
 import os
+import secrets
+import string
 from typing import Any, Optional
 
 from wyzecam.api_models import WyzeCamera
@@ -77,3 +79,11 @@ def is_fw11(fw_ver: Optional[str]) -> bool:
         if fw_ver and int(fw_ver.split(".")[2]) > 10:
             return True
     return False
+
+
+def default_password(length=24):
+    alphabet = string.ascii_letters + string.digits + "-_"
+    password = "".join(secrets.choice(alphabet) for _ in range(length))
+    print("\n\n DEFAULT WEB PASSWORD:")
+    print(f"{password=}\n\n")
+    return password
