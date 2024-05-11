@@ -3,10 +3,35 @@ import os
 from time import sleep
 from typing import Callable, Generator, Optional
 
+from flask import request
+from flask import url_for as _url_for
+from flask_httpauth import HTTPBasicAuth
+from werkzeug.security import check_password_hash, generate_password_hash
 from wyzebridge import config
 from wyzebridge.bridge_utils import env_bool
 from wyzebridge.logging import logger
 from wyzebridge.stream import Stream, StreamManager
+
+auth = HTTPBasicAuth()
+HASHED_PASS = generate_password_hash(config.WEB_PASSWORD)
+
+
+@auth.verify_password
+def verify_password(username, password):
+    if config.HASS_TOKEN:
+        return request.remote_addr == "172.30.32.2"
+    if username == config.WEB_USER:
+        return check_password_hash(HASHED_PASS, password)
+    return config.WEB_AUTH == False
+
+
+def url_for(endpoint, **values):
+    proxy = (
+        request.headers.get("X-Ingress-Path")
+        or request.headers.get("X-Forwarded-Prefix")
+        or ""
+    ).rstrip("/")
+    return proxy + _url_for(endpoint, **values)
 
 
 def sse_generator(sse_status: Callable) -> Generator[str, str, str]:

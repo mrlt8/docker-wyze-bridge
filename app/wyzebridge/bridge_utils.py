@@ -1,7 +1,6 @@
 import contextlib
 import os
 import secrets
-import string
 from typing import Any, Optional
 
 from wyzecam.api_models import WyzeCamera
@@ -81,9 +80,16 @@ def is_fw11(fw_ver: Optional[str]) -> bool:
     return False
 
 
-def default_password(length=24):
-    alphabet = string.ascii_letters + string.digits + "-_"
-    password = "".join(secrets.choice(alphabet) for _ in range(length))
-    print("\n\n DEFAULT WEB PASSWORD:")
+def default_password():
+    filename = "/tokens/web_auth"
+    if os.path.exists(filename) and os.path.getsize(filename) > 0:
+        with open(filename, "r") as file:
+            password = file.read().strip()
+    else:
+        password = secrets.token_urlsafe(16)
+        with open(filename, "w") as file:
+            file.write(password)
+
+    print("\n\nDEFAULT WEB PASSWORD:")
     print(f"{password=}\n\n")
     return password

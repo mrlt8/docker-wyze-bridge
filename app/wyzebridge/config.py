@@ -47,8 +47,8 @@ MOTION: bool = env_bool("motion_api", style="bool")
 MOTION_INT: int = max(env_bool("motion_int", "1.5", style="float"), 1.1)
 MOTION_START: bool = env_bool("motion_start", style="bool")
 
-
-WEB_USER = getenv("WEB_USER") or getenv("WYZE_EMAIL") or "admin"
+WEB_AUTH: bool = bool(env_bool("WEB_AUTH") if getenv("WEB_AUTH") else True)
+WEB_USER = getenv("WEB_USER") or getenv("WYZE_EMAIL") or "wbadmin"
 WEB_PASSWORD = getenv("WEB_PASSWORD") or getenv("WYZE_PASSWORD") or default_password()
 
 makedirs(TOKEN_PATH, exist_ok=True)

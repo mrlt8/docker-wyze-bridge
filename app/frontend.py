@@ -1,39 +1,22 @@
 import os
 import time
+from functools import wraps
 from pathlib import Path
 from urllib.parse import quote_plus, urlparse
 
-from flask import Flask, Response, make_response
-from flask import redirect as _redirect
-from flask import render_template, request, send_from_directory, url_for
-from flask_httpauth import HTTPBasicAuth
+from flask import (
+    Flask,
+    Response,
+    make_response,
+    redirect,
+    render_template,
+    request,
+    send_from_directory,
+)
 from werkzeug.exceptions import NotFound
-from werkzeug.security import check_password_hash, generate_password_hash
 from wyze_bridge import WyzeBridge
 from wyzebridge import config, web_ui
-
-auth = HTTPBasicAuth()
-
-
-@auth.verify_password
-def verify_password(username, password):
-    if config.HASS_TOKEN and request.remote_addr == "172.30.32.2":
-        return True
-    return (
-        check_password_hash(generate_password_hash(config.WEB_PASSWORD), password)
-        if username == config.WEB_USER
-        else False
-    )
-
-
-def redirect(location: str, code: int = 302, Response=None):
-    """Redirect fix for Home Assistant."""
-    proxy = (
-        request.headers.get("X-Ingress-Path")
-        or request.headers.get("X-Forwarded-for")
-        or ""
-    )
-    return _redirect((proxy.rstrip("/") + location), code, Response)
+from wyzebridge.web_ui import url_for
 
 
 def create_app():
@@ -46,19 +29,23 @@ def create_app():
         print("Please ensure your host is up to date.")
         exit()
 
-    @app.before_request
-    def has_ingress_only():
-        if config.HASS_TOKEN and request.remote_addr != "172.30.32.2":
-            return "Access Denied", 403
+    def auth_required(view):
+        @wraps(view)
+        def wrapped_view(*args, **kwargs):
+            if not wb.api.auth:
+                return redirect(url_for("wyze_login"))
+            return web_ui.auth.login_required(view)(*args, **kwargs)
+
+        return wrapped_view
 
     @app.route("/login", methods=["GET", "POST"])
     def wyze_login():
         if wb.api.auth:
-            return redirect("/")
+            return redirect(url_for("index"))
         if request.method == "GET":
             return render_template(
                 "login.html",
-                hass=bool(config.HASS_TOKEN),
+                auth=config.WEB_AUTH,
                 version=config.VERSION,
             )
 
@@ -83,10 +70,8 @@ def create_app():
         return {"status": "missing credentials"}
 
     @app.route("/")
-    @auth.login_required
+    @auth_required
     def index():
-        if not wb.api.auth:
-            return redirect("/login")
         if not (columns := request.args.get("columns")):
             columns = request.cookies.get("number_of_columns", "2")
         if not (refresh := request.args.get("refresh")):
@@ -112,7 +97,7 @@ def create_app():
                 cam_data=web_ui.all_cams(wb.streams, wb.api.total_cams, host),
                 number_of_columns=number_of_columns,
                 refresh_period=refresh_period,
-                hass=bool(config.HASS_TOKEN),
+                auth=config.WEB_AUTH,
                 version=config.VERSION,
                 webrtc=bool(config.BRIDGE_IP),
                 show_video=show_video,
@@ -135,6 +120,7 @@ def create_app():
         return resp
 
     @app.route("/api/sse_status")
+    @auth_required
     def sse_status():
         """Server sent event for camera status."""
         if wb.api.mfa_req:
@@ -148,13 +134,13 @@ def create_app():
         )
 
     @app.route("/api")
-    @auth.login_required
+    @auth_required
     def api_all_cams():
         host = urlparse(request.root_url).hostname
         return web_ui.all_cams(wb.streams, wb.api.total_cams, host)
 
     @app.route("/api/<string:cam_name>")
-    @auth.login_required
+    @auth_required
     def api_cam(cam_name: str):
         host = urlparse(request.root_url).hostname
         if cam := wb.streams.get_info(cam_name):
@@ -163,7 +149,7 @@ def create_app():
 
     @app.route("/api/<cam_name>/<cam_cmd>", methods=["GET", "PUT", "POST"])
     @app.route("/api/<cam_name>/<cam_cmd>/<path:payload>")
-    @auth.login_required
+    @auth_required
     def api_cam_control(cam_name: str, cam_cmd: str, payload: str | dict = ""):
         """API Endpoint to send tutk commands to the camera."""
         if args := request.values:
@@ -180,14 +166,14 @@ def create_app():
         return wb.streams.send_cmd(cam_name, cam_cmd.lower(), payload)
 
     @app.route("/signaling/<string:name>")
-    @auth.login_required
+    @auth_required
     def webrtc_signaling(name):
         if "kvs" in request.args:
             return wb.api.get_kvs_signal(name)
         return web_ui.get_webrtc_signal(name, urlparse(request.root_url).hostname)
 
     @app.route("/webrtc/<string:name>")
-    @auth.login_required
+    @auth_required
     def webrtc(name):
         """View WebRTC direct from camera."""
         if (webrtc := wb.api.get_kvs_signal(name)).get("result") == "ok":
@@ -195,7 +181,7 @@ def create_app():
         return webrtc
 
     @app.route("/snapshot/<string:img_file>")
-    @auth.login_required
+    @auth_required
     def rtsp_snapshot(img_file: str):
         """Use ffmpeg to take a snapshot from the rtsp stream."""
         if wb.streams.get_rtsp_snap(Path(img_file).stem):
@@ -203,7 +189,7 @@ def create_app():
         return thumbnail(img_file)
 
     @app.route("/img/<string:img_file>")
-    @auth.login_required
+    @auth_required
     def img(img_file: str):
         """
         Serve an existing local image or take a new snapshot from the rtsp stream.
@@ -220,14 +206,14 @@ def create_app():
             return rtsp_snapshot(img_file)
 
     @app.route("/thumb/<string:img_file>")
-    @auth.login_required
+    @auth_required
     def thumbnail(img_file: str):
         if wb.api.save_thumbnail(Path(img_file).stem):
             return send_from_directory(config.IMG_PATH, img_file)
         return redirect("/static/notavailable.svg", code=307)
 
     @app.route("/photo/<string:img_file>")
-    @auth.login_required
+    @auth_required
     def boa_photo(img_file: str):
         """Take a photo on the camera and grab it over the boa http server."""
         uri = Path(img_file).stem
@@ -238,7 +224,7 @@ def create_app():
         return redirect(f"/img/{img_file}", code=307)
 
     @app.route("/restart/<string:restart_cmd>")
-    @auth.login_required
+    @auth_required
     def restart_bridge(restart_cmd: str):
         """
         Restart parts of the wyze-bridge.
@@ -262,7 +248,7 @@ def create_app():
         return {"result": "ok", "restart": restart_cmd.split(",")}
 
     @app.route("/cams.m3u8")
-    @auth.login_required
+    @auth_required
     def iptv_playlist():
         """
         Generate an m3u8 playlist with all enabled cameras.

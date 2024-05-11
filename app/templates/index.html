@@ -383,10 +383,10 @@
 {% endblock %}
 
 {% block javascript %}
-<script src="{{ 'static/site.js' if hass else url_for('static', filename='site.js') }}"></script>
+<script src="static/site.js"></script>
 {% if show_video %}
 {% if (webrtc and video_format == "webrtc") or video_format =="kvs" %}
-<script src="{{ 'static/webrtc.js' if hass else url_for('static', filename='webrtc.js') }}"></script>
+<script src="static/webrtc.js"></script>
 {% endif %}
 <script src="https://cdn.jsdelivr.net/npm/video.js/dist/video.min.js"></script>
 {% endif %}
