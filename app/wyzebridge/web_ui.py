@@ -67,19 +67,38 @@ def set_mfa(mfa_code: str) -> bool:
         return False
 
 
-def get_webrtc_signal(cam_name: str, hostname: Optional[str] = "localhost") -> dict:
+def get_webrtc_signal(cam_name: str, api_key: str) -> dict:
     """Generate signaling for MediaMTX webrtc."""
+    hostname = env_bool("DOMAIN", urlparse(request.root_url).hostname or "localhost")
     ssl = "s" if env_bool("MTX_WEBRTCENCRYPTION") else ""
     webrtc = config.WEBRTC_URL.lstrip("http") or f"{ssl}://{hostname}:8889"
-    ice_server = env_bool("MTX_WEBRTCICESERVERS") or [
-        {"credentialType": "password", "urls": ["stun:stun.l.google.com:19302"]}
-    ]
-    return {
-        "result": "ok",
-        "cam": cam_name,
-        "whep": f"http{webrtc}/{cam_name}/whep",
-        "servers": ice_server,
+    wep = {"result": "ok", "cam": cam_name, "whep": f"http{webrtc}/{cam_name}/whep"}
+
+    if ice_server := validate_ice(env_bool("MTX_WEBRTCICESERVERS")):
+        return wep | {"servers": ice_server}
+
+    ice_server = {
+        "credentialType": "password",
+        "urls": ["stun:stun.l.google.com:19302"],
     }
+    if api_key:
+        ice_server |= {
+            "username": "wb",
+            "credential": api_key,
+            "credentialType": "password",
+        }
+    return wep | {"servers": [ice_server]}
+
+
+def validate_ice(data: str) -> Optional[list[dict]]:
+    if not data:
+        return
+    try:
+        json_data = json.loads(data)
+        if "urls" in json_data:
+            return [json_data]
+    except ValueError:
+        return
 
 
 def format_stream(name_uri: str, hostname: Optional[str]) -> dict:

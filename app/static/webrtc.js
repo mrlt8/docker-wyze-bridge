@@ -94,9 +94,15 @@ class Receiver {
 
         console.log('Sending offer');
         this.offerData = parseOffer(desc.sdp);
+        let headers = { 'Content-Type': 'application/sdp' };
+
+        const server = this.signalJson.servers && this.signalJson.servers.length > 0 ? this.signalJson.servers[0] : null;
+        if (server && server.credential && server.username) {
+            headers['Authorization'] = 'Basic ' + btoa(server.username + ':' + server.credential);
+        }
         fetch(this.signalJson.whep, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/sdp' },
+            headers: headers,
             body: desc.sdp,
         })
             .then((res) => {
