@@ -123,7 +123,7 @@ def publish_messages(messages: list) -> None:
 
 
 @mqtt_enabled
-def publish_topic(topic: str, message=None, retain=True):
+def publish_topic(topic: str, message=None, retain=False):
     paho.mqtt.publish.single(
         topic=f"{MQTT_TOPIC}/{topic}",
         payload=message,
@@ -151,7 +151,7 @@ def update_preview(cam_name: str):
     with contextlib.suppress(FileNotFoundError):
         img_file = f"{IMG_PATH}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
         with open(img_file, "rb") as img:
-            publish_topic(f"{cam_name}/image", img.read())
+            publish_topic(f"{cam_name}/image", img.read(), True)
 
 
 @mqtt_enabled
