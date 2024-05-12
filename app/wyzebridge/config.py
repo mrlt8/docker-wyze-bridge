@@ -2,7 +2,7 @@ from os import environ, getenv, makedirs
 from platform import machine
 
 from dotenv import load_dotenv
-from wyzebridge.bridge_utils import default_password, env_bool, split_int_str
+from wyzebridge.bridge_utils import env_bool, get_password, migrate_path, split_int_str
 from wyzebridge.hass import setup_hass
 
 load_dotenv()
@@ -24,7 +24,8 @@ MQTT_TOPIC = env_bool("MQTT_TOPIC", "wyzebridge").strip("/")
 ON_DEMAND: bool = bool(env_bool("on_demand") if getenv("ON_DEMAND") else True)
 CONNECT_TIMEOUT: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
 
-TOKEN_PATH: str = "/config/wyze-bridge/" if HASS_TOKEN else "/tokens/"
+# TODO: change TOKEN_PATH  to /config for all:
+TOKEN_PATH: str = "/config/" if HASS_TOKEN else "/tokens/"
 IMG_PATH: str = f'/{env_bool("IMG_DIR", "img").strip("/")}/'
 
 SNAPSHOT_TYPE, SNAPSHOT_INT = split_int_str(env_bool("SNAPSHOT"), min=15, default=180)
@@ -62,6 +63,9 @@ WB_AUTH: bool = bool(env_bool("WB_AUTH") if getenv("WB_AUTH") else True)
 WB_USERNAME: str = env_bool("WB_USERNAME") or env_bool("WYZE_EMAIL") or "wbadmin"
 WB_PASSWORD: str = get_password("wb_password", env_bool("WYZE_PASSWORD"), TOKEN_PATH)
 WB_API: str = get_password("wb_api", path=TOKEN_PATH, length=30) if WB_AUTH else ""
+
+if HASS_TOKEN:
+    migrate_path("/config/wyze-bridge/", "/config/")
 
 for key in environ:
     if not MOTION and key.startswith("MOTION_WEBHOOKS"):

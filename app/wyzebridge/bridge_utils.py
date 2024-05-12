@@ -1,6 +1,7 @@
 import contextlib
 import os
 import secrets
+import shutil
 from typing import Any, Optional
 
 from wyzecam.api_models import WyzeCamera
@@ -98,3 +99,16 @@ def get_password(
     print(f"\n\nDEFAULT {file_name.upper()}:\n{password=}")
 
     return password
+
+
+def migrate_path(old: str, new: str):
+    if not os.path.exists(old):
+        return
+
+    print(f"CLEANUP: MIGRATING {old=} to {new=}")
+
+    if not os.path.exists(new):
+        os.makedirs(new)
+    for filename in os.listdir(old):
+        shutil.move(os.path.join(old, filename), os.path.join(new, filename))
+    os.rmdir(old)
