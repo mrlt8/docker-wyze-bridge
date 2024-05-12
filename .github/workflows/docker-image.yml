@@ -133,7 +133,7 @@ jobs:
           TAG_NAME=${GITHUB_REF##*/v}
           if [[ $TAG_NAME =~ ^[0-9]+\.[0-9]+\.[0-9]+(-.*)?$ ]]; then
             sed -i "s/^VERSION=.*/VERSION=${TAG_NAME}/" ./app/.env
-            sed -i "s/^version: .*/version: ${TAG_NAME}/" ./home_assistant/config.yaml
+            sed -i "s/^version: .*/version: ${TAG_NAME}/" ./home_assistant/config.yml
             echo "tag=${TAG_NAME}" >> $GITHUB_OUTPUT
           fi
       - name: Commit and push changes
@@ -141,4 +141,4 @@ jobs:
         with:
           branch: main
           commit_message: 'Bump Version to v${{ steps.version_bump.outputs.tag }}'
-          file_pattern: 'app/.env home_assistant/config.yaml'
+          file_pattern: 'app/.env home_assistant/config.yml'
