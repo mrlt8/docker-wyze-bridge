@@ -58,7 +58,7 @@ def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> No
                 "sw_version": cam.firmware_ver,
                 "via_device": f"docker-wyze-bridge v{VERSION}",
             },
-            "retain": True,
+            "retain": False,
         }
 
         # Clear out old/renamed entities
