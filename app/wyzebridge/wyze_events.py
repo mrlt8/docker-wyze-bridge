@@ -34,7 +34,7 @@ class WyzeEvents:
 
     def set_motion(self, mac: str, files: list) -> None:
         for stream in self.streams.values():
-            if stream.camera.mac == mac:
+            if stream.camera.mac == mac and not stream.options.substream:
                 if img := next((f["url"] for f in files if f["type"] == 1), None):
                     stream.camera.thumbnail = img
                 stream.motion = self.last_ts
@@ -55,8 +55,7 @@ class WyzeEvents:
         self.last_ts = int(event["event_ts"] / 1000)
         if time.time() - self.last_ts < 30:
             # v2 uses device_mac and v4 uses device_id
-            mac = event.get("device_id", event.get("device_mac", ""))
-            self.set_motion(mac, event["file_list"])
+            self.set_motion(event["device_id"], event["file_list"])
 
     def check_motion(self):
         if time.time() - self.last_check < MOTION_INT:
