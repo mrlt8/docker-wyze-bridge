@@ -2,7 +2,7 @@ import os
 import time
 from functools import wraps
 from pathlib import Path
-from urllib.parse import quote_plus, urlparse
+from urllib.parse import quote_plus
 
 from flask import (
     Flask,
@@ -45,7 +45,7 @@ def create_app():
         if request.method == "GET":
             return render_template(
                 "login.html",
-                auth=config.WEB_AUTH,
+                api=config.WB_API,
                 version=config.VERSION,
             )
 
@@ -90,14 +90,13 @@ def create_app():
         video_format = request.cookies.get("video", "webrtc")
         if req_video := ({"webrtc", "hls", "kvs"} & set(request.args)):
             video_format = req_video.pop()
-        host = urlparse(request.root_url).hostname
         resp = make_response(
             render_template(
                 "index.html",
-                cam_data=web_ui.all_cams(wb.streams, wb.api.total_cams, host),
+                cam_data=web_ui.all_cams(wb.streams, wb.api.total_cams),
                 number_of_columns=number_of_columns,
                 refresh_period=refresh_period,
-                auth=config.WEB_AUTH,
+                api=config.WB_API,
                 version=config.VERSION,
                 webrtc=bool(config.BRIDGE_IP),
                 show_video=show_video,
@@ -136,15 +135,13 @@ def create_app():
     @app.route("/api")
     @auth_required
     def api_all_cams():
-        host = urlparse(request.root_url).hostname
-        return web_ui.all_cams(wb.streams, wb.api.total_cams, host)
+        return web_ui.all_cams(wb.streams, wb.api.total_cams)
 
     @app.route("/api/<string:cam_name>")
     @auth_required
     def api_cam(cam_name: str):
-        host = urlparse(request.root_url).hostname
         if cam := wb.streams.get_info(cam_name):
-            return cam | web_ui.format_stream(cam_name, host)
+            return cam | web_ui.format_stream(cam_name)
         return {"error": f"Could not find camera [{cam_name}]"}
 
     @app.route("/api/<cam_name>/<cam_cmd>", methods=["GET", "PUT", "POST"])
@@ -170,7 +167,7 @@ def create_app():
     def webrtc_signaling(name):
         if "kvs" in request.args:
             return wb.api.get_kvs_signal(name)
-        return web_ui.get_webrtc_signal(name, urlparse(request.root_url).hostname)
+        return web_ui.get_webrtc_signal(name, config.WB_API)
 
     @app.route("/webrtc/<string:name>")
     @auth_required
@@ -253,8 +250,7 @@ def create_app():
         """
         Generate an m3u8 playlist with all enabled cameras.
         """
-        host = urlparse(request.root_url).hostname
-        cameras = web_ui.format_streams(wb.streams.get_all_cam_info(), host)
+        cameras = web_ui.format_streams(wb.streams.get_all_cam_info())
         resp = make_response(render_template("m3u8.html", cameras=cameras))
         resp.headers.set("content-type", "application/x-mpegURL")
         return resp

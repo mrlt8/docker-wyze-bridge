@@ -80,16 +80,21 @@ def is_fw11(fw_ver: Optional[str]) -> bool:
     return False
 
 
-def default_password():
-    filename = "/tokens/web_auth"
-    if os.path.exists(filename) and os.path.getsize(filename) > 0:
-        with open(filename, "r") as file:
-            password = file.read().strip()
-    else:
-        password = secrets.token_urlsafe(16)
-        with open(filename, "w") as file:
-            file.write(password)
+def get_password(
+    file_name: str, alt: str = "", path: str = "", length: int = 16
+) -> str:
+    if env_pass := env_bool(file_name, alt):
+        return env_pass
 
-    print("\n\nDEFAULT WEB PASSWORD:")
-    print(f"{password=}\n\n")
+    file_path = f"{path}{file_name}"
+    if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+        with open(file_path, "r") as file:
+            return file.read().strip()
+
+    password = secrets.token_urlsafe(length)
+    with open(file_path, "w") as file:
+        file.write(password)
+
+    print(f"\n\nDEFAULT {file_name.upper()}:\n{password=}")
+
     return password

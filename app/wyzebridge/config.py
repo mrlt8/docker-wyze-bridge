@@ -47,13 +47,21 @@ MOTION: bool = env_bool("motion_api", style="bool")
 MOTION_INT: int = max(env_bool("motion_int", "1.5", style="float"), 1.1)
 MOTION_START: bool = env_bool("motion_start", style="bool")
 
-WEB_AUTH: bool = bool(env_bool("WEB_AUTH") if getenv("WEB_AUTH") else True)
-WEB_USER = getenv("WEB_USER") or getenv("WYZE_EMAIL") or "wbadmin"
-WEB_PASSWORD = getenv("WEB_PASSWORD") or getenv("WYZE_PASSWORD") or default_password()
 
 makedirs(TOKEN_PATH, exist_ok=True)
 makedirs(IMG_PATH, exist_ok=True)
 
+for key, value in environ.items():
+    if key.startswith("WEB_"):
+        new_key = key.replace("WEB", "WB")
+        print(f"\n[!] WARNING: {key} is deprecated! Please use {new_key} instead\n")
+        environ.pop(key, None)
+        environ[new_key] = value
+
+WB_AUTH: bool = bool(env_bool("WB_AUTH") if getenv("WB_AUTH") else True)
+WB_USERNAME: str = env_bool("WB_USERNAME") or env_bool("WYZE_EMAIL") or "wbadmin"
+WB_PASSWORD: str = get_password("wb_password", env_bool("WYZE_PASSWORD"), TOKEN_PATH)
+WB_API: str = get_password("wb_api", path=TOKEN_PATH, length=30) if WB_AUTH else ""
 
 for key in environ:
     if not MOTION and key.startswith("MOTION_WEBHOOKS"):

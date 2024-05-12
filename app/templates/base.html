@@ -19,11 +19,8 @@
     </section>
     <footer class="footer fs-display-none">
         <div class="content has-text-centered">
-            {% if not auth %}
-            <span class="icon-text">
-                <span class="icon"><i class="fas fa-triangle-exclamation"></i></span><span>WebUI auth is
-                    disabled.</span></span>
-            {% endif %}
+            {% block api_info %}
+            {% endblock %}
             <p>
                 <a href="https://github.com/mrlt8/docker-wyze-bridge"><i class="fa-brands fa-github"></i>
                     <strong>docker-wyze-bridge</strong></a>
