@@ -1,6 +1,7 @@
 ## What's Changed in v2.9.0
 
-> [!IMPORTANT] WebUI and stream authentication will be enabled by default to prevent unintentional access.
+> [!IMPORTANT] 
+> WebUI and stream authentication will be enabled by default to prevent unintentional access.
 
 **Default Authentication**
 
