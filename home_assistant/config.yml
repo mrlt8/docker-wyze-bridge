@@ -1,6 +1,6 @@
 name: Docker Wyze Bridge
 description: WebRTC/RTSP/RTMP/LL-HLS bridge for Wyze cams in a docker container
-slug: docker_wyze_bridge_dev
+slug: docker_wyze_bridge
 url: https://github.com/mrlt8/docker-wyze-bridge
 image: mrlt8/wyze-bridge
 version: 2.9.0
