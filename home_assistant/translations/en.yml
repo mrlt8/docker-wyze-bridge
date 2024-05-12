@@ -94,3 +94,10 @@ configuration:
   TOTP_KEY:
     name: TOTP Key
     description: Used to auto generate a TOTP code when needed.
+  WB_AUTH:
+    name: WebUI Auth
+    description: Enable authentication for WebUI
+  WB_USERNAME:
+    name: WebUI Username
+  WB_PASSWORD:
+    name: WebUI Password
