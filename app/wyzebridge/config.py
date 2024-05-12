@@ -60,8 +60,14 @@ for key, value in environ.items():
         environ[new_key] = value
 
 WB_AUTH: bool = bool(env_bool("WB_AUTH") if getenv("WB_AUTH") else True)
-WB_USERNAME: str = env_bool("WB_USERNAME") or env_bool("WYZE_EMAIL") or "wbadmin"
-WB_PASSWORD: str = get_password("wb_password", env_bool("WYZE_PASSWORD"), TOKEN_PATH)
+WB_USERNAME: str = (
+    env_bool("WB_USERNAME", style="original")
+    or env_bool("WYZE_EMAIL", style="original")
+    or "wbadmin"
+)
+WB_PASSWORD: str = get_password(
+    "wb_password", env_bool("WYZE_PASSWORD", style="original"), path=TOKEN_PATH
+)
 WB_API: str = get_password("wb_api", path=TOKEN_PATH, length=30) if WB_AUTH else ""
 
 if HASS_TOKEN:

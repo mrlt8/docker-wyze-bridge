@@ -84,7 +84,7 @@ def is_fw11(fw_ver: Optional[str]) -> bool:
 def get_password(
     file_name: str, alt: str = "", path: str = "", length: int = 16
 ) -> str:
-    if env_pass := env_bool(file_name, alt):
+    if env_pass := env_bool(file_name, alt, style="original"):
         return env_pass
 
     file_path = f"{path}{file_name}"
