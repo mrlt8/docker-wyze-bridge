@@ -24,7 +24,8 @@ Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) 
 > [!IMPORTANT]
 > As of May 2024, you will need an API Key and API ID from: https://support.wyze.com/hc/en-us/articles/16129834216731.
 
-> [!WARNING] Please double check your router/firewall and do NOT forward ports or enable DMZ access to the bridge unless you know what you are doing!
+> [!WARNING]
+> Please double check your router/firewall and do NOT forward ports or enable DMZ access to the bridge unless you know what you are doing!
 
 
 ![Wyze Cam V1](https://img.shields.io/badge/wyze_v1-yes-success.svg)
