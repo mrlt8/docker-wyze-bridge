@@ -1,6 +1,8 @@
 import base64
 import contextlib
 import enum
+import errno
+import fcntl
 import hashlib
 import io
 import logging
@@ -9,8 +11,6 @@ import pathlib
 import time
 import warnings
 from ctypes import CDLL, c_int
-from errno import EEXIST, EPIPE
-from fcntl import F_GETFL, F_SETFL, fcntl
 from typing import Any, Iterator, Optional, Union
 
 from wyzecam.api_models import WyzeAccount, WyzeCamera
@@ -318,7 +318,7 @@ class WyzeIOTCSession:
         if self._sleep_buffer:
             self._sleep_buffer = max(self._sleep_buffer - 0.05, 0)
 
-        return max((1 / self.preferred_frame_rate) - delta, 0.0)
+        return max((1 / self.preferred_frame_rate) - delta, 1 / 80)
 
     @property
     def pipe_name(self) -> str:
@@ -489,28 +489,30 @@ class WyzeIOTCSession:
 
         frame_ts = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
         gap = time.time() - frame_ts
-        if not frame_info.is_keyframe and gap > 2 and not self._sleep_buffer:
+
+        if not frame_info.is_keyframe and gap > 3 and not self._sleep_buffer:
             logger.warning("[video] super slow")
             self.clear_buffer()
 
-        if not frame_info.is_keyframe and gap >= 0.5:
-            logger.debug(f"[video] slow {gap=}")
-            self.flush_pipe("audio")
-            self._sleep_buffer += gap
             return True
+
+        if gap >= 0.5:
+            logger.debug(f"[video] slow {gap=}")
+            self._sleep_buffer += gap
+
+            return
 
         self.frame_ts = frame_ts
 
     def _handle_frame_error(self, err_no: int) -> None:
         """Handle errors that occur when receiving frame data."""
-        time.sleep(1 / 25)
+        time.sleep(1 / self.preferred_frame_rate * 0.8)
         if err_no == tutk.AV_ER_DATA_NOREADY or err_no >= 0:
             return
 
-        if err_no in {tutk.AV_ER_INCOMPLETE_FRAME, tutk.AV_ER_LOSED_THIS_FRAME}:
-            warnings.warn(tutk.TutkError(err_no).name)
-
-        raise tutk.TutkError(err_no)
+        logger.warning(tutk.TutkError(err_no).name)
+        if err_no not in {tutk.AV_ER_INCOMPLETE_FRAME, tutk.AV_ER_LOSED_THIS_FRAME}:
+            raise tutk.TutkError(err_no)
 
     def should_stream(self, sleep: float = 0.01) -> bool:
         time.sleep(sleep)
@@ -541,21 +543,23 @@ class WyzeIOTCSession:
         """Send a message to the camera to update the frame_size and bitrate."""
         if bitrate:
             self.preferred_bitrate = bitrate
-        iotc_msg = self.preferred_frame_size, self.preferred_bitrate, fps
+
+        if fps and fps != self.preferred_frame_rate:
+            self.preferred_frame_rate = fps
+            self.sync_camera_time()
+
+        ioctl_params = self.preferred_frame_size, self.preferred_bitrate, fps
+        logger.warning("Requesting frame_size=%d, bitrate=%d, fps=%d" % ioctl_params)
         with self.iotctrl_mux() as mux:
-            logger.warning("Requesting frame_size=%d, bitrate=%d, fps=%d" % iotc_msg)
             with contextlib.suppress(tutk_ioctl_mux.Empty):
-                if self.camera.product_model in ("WYZEDB3", "WVOD1", "HL_WCO2"):
-                    mux.send_ioctl(K10052DBSetResolvingBit(*iotc_msg)).result(False)
-                else:
-                    mux.send_ioctl(K10056SetResolvingBit(*iotc_msg)).result(False)
+                mux.send_ioctl(K10052DBSetResolvingBit(*ioctl_params)).result(False)
 
     def clear_buffer(self) -> None:
         """Clear local buffer."""
         warnings.warn("clear buffer")
         self.flush_pipe("audio")
         self.sync_camera_time()
-        tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
+        tutk.av_client_clean_buf(self.tutk_platform_lib, self.av_chan_id)
 
     def flush_pipe(self, pipe_type: str = "audio"):
         if pipe_type == "audio" and not self.audio_pipe_ready:
@@ -565,9 +569,8 @@ class WyzeIOTCSession:
         logger.debug(f"flushing {pipe_type}")
 
         try:
-            with io.open(fifo, "rb", buffering=8192) as pipe:
-                flags = fcntl(pipe.fileno(), F_GETFL)
-                fcntl(pipe.fileno(), F_SETFL, flags | os.O_NONBLOCK)
+            with io.open(fifo, "rb") as pipe:
+                set_non_blocking(pipe.fileno())
                 while data_read := pipe.read(8192):
                     logger.debug(f"Flushed {len(data_read)} from {pipe_type} pipe")
         except Exception as e:
@@ -604,24 +607,24 @@ class WyzeIOTCSession:
     def recv_audio_pipe(self) -> None:
         """Write raw audio frames to a named pipe."""
         fifo_path = f"/tmp/{self.pipe_name}_audio.pipe"
-        try:
-            os.mkfifo(fifo_path, os.O_NONBLOCK)
-        except OSError as e:
-            if e.errno != EEXIST:  # pipe already exists
-                raise e
 
+        with contextlib.suppress(FileExistsError):
+            os.mkfifo(fifo_path)
         try:
-            with open(fifo_path, "wb", buffering=0) as audio_pipe:
+            with open(fifo_path, "wb") as audio_pipe:
+                set_non_blocking(audio_pipe)
                 for frame_data, _ in self.recv_audio_data():
-                    audio_pipe.write(frame_data)
+                    with contextlib.suppress(BlockingIOError):
+                        audio_pipe.write(frame_data)
                     self.audio_pipe_ready = True
 
         except IOError as ex:
-            if ex.errno != EPIPE:  #  Broken pipe
+            if ex.errno != errno.EPIPE:  # Broken pipe
                 warnings.warn(str(ex))
         finally:
             self.audio_pipe_ready = False
-            os.unlink(fifo_path)
+            with contextlib.suppress(FileNotFoundError):
+                os.unlink(fifo_path)
             warnings.warn("Audio pipe closed")
 
     def _audio_frame_slow(self, frame_info) -> Optional[bool]:
@@ -630,6 +633,12 @@ class WyzeIOTCSession:
             return
 
         gap = self.frame_ts - float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
+
+        if abs(gap) > 5:
+            logger.debug(f"[audio] out of sync {gap=}")
+            self._sleep_buffer += abs(gap)
+            self.clear_buffer()
+            return
 
         if gap <= -1:
             logger.debug(f"[audio] rushing ahead of video.. {gap=}")
@@ -671,7 +680,7 @@ class WyzeIOTCSession:
         logger.info(f"[AUDIO] {codec=} {sample_rate=} {codec_id=}")
         return codec, sample_rate
 
-    def identify_audio_codec(self, limit: int = 25) -> tuple[str, int]:
+    def identify_audio_codec(self, limit: int = 60) -> tuple[str, int]:
         """Identify audio codec."""
         assert self.av_chan_id is not None, "Please call _connect() first!"
 
@@ -917,6 +926,7 @@ class WyzeIOTCSession:
     ):
         try:
             self.state = WyzeIOTCSessionState.IOTC_CONNECTING
+            assert self.camera.p2p_id, "Missing p2p_id"
 
             session_id = tutk.iotc_get_session_id(self.tutk_platform_lib)
             if session_id < 0:  # type: ignore
@@ -984,20 +994,18 @@ class WyzeIOTCSession:
             self.tutk_platform_lib, self.av_chan_id, max_buf_size
         )
 
-    def get_auth_key(self) -> bytes:
+    def get_auth_key(self) -> str:
         """Generate authkey using enr and mac address."""
         auth = self.camera.enr + self.camera.mac.upper()
         if self.camera.parent_dtls:
             auth = self.camera.parent_enr + self.camera.parent_mac.upper()
-        hashed_enr = hashlib.sha256(auth.encode("utf-8"))
-        bArr = bytearray(hashed_enr.digest())[:6]
+        hashed_enr = hashlib.sha256(auth.encode("utf-8")).digest()
         return (
-            base64.standard_b64encode(bArr)
+            base64.b64encode(hashed_enr[:6])
             .decode()
             .replace("+", "Z")
             .replace("/", "9")
             .replace("=", "A")
-            .encode("ascii")
         )
 
     def _auth(self):
@@ -1067,3 +1075,8 @@ class WyzeIOTCSession:
             tutk.iotc_session_close(self.tutk_platform_lib, self.session_id)
         self.session_id = None
         self.state = WyzeIOTCSessionState.DISCONNECTED
+
+
+def set_non_blocking(fd):
+    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)

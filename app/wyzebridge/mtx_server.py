@@ -8,17 +8,13 @@ from wyzebridge.logging import logger
 
 
 class MtxInterface(Protocol):
-    def set(self, uri: str, path: str, value: str) -> None:
-        ...
+    def set(self, uri: str, path: str, value: str) -> None: ...
 
-    def get(self, uri: str, path: str) -> Optional[str]:
-        ...
+    def get(self, uri: str, path: str) -> Optional[str]: ...
 
-    def set_opt(self, option: str, value: str) -> None:
-        ...
+    def set_opt(self, option: str, value: str) -> None: ...
 
-    def get_opt(self, option: str) -> Optional[str]:
-        ...
+    def get_opt(self, option: str) -> Optional[str]: ...
 
 
 class MtxEnv:
@@ -57,7 +53,7 @@ class MtxServer:
         if bridge_ip:
             self.setup_webrtc(bridge_ip)
 
-    def add_path(self, uri: str, on_demand: bool = True):
+    def add_path(self, uri: str, on_demand: bool = True, auth: str = ""):
         for event in {"Read", "Unread", "Ready", "NotReady"}:
             bash_cmd = f"echo $MTX_PATH,{event}! > /tmp/mtx_event;"
             self.rtsp.set(uri, f"RunOn{event}", f"bash -c '{bash_cmd}'")
@@ -70,6 +66,9 @@ class MtxServer:
             self.rtsp.set(uri, "readUser", read_user)
         if read_pass := self.rtsp.get(uri, "readPass"):
             self.rtsp.set(uri, "readPass", read_pass)
+        elif auth:
+            self.rtsp.set(uri, "readUser", "wb")
+            self.rtsp.set(uri, "readPass", auth)
 
     def add_source(self, uri: str, value: str):
         self.rtsp.set(uri, "source", value)

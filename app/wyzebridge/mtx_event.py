@@ -1,6 +1,9 @@
 """
 This module handles stream and client events from MediaMTX.
 """
+
+import contextlib
+import errno
 import os
 import select
 
@@ -24,14 +27,11 @@ class RtspEvent:
 
     def read(self, timeout: int = 1):
         try:
-            ready, _, _ = select.select([self.pipe_fd], [], [], timeout)
-            if not ready:
-                return
-            data = os.read(self.pipe_fd, 128)
-            self.process_data(data)
-
+            if select.select([self.pipe_fd], [], [], timeout)[0]:
+                data = os.read(self.pipe_fd, 128)
+                self.process_data(data)
         except OSError as ex:
-            if ex.errno != 9:
+            if ex.errno != errno.EBADF:
                 logger.error(ex)
             self.open_pipe()
         except Exception as ex:
@@ -48,11 +48,9 @@ class RtspEvent:
         self.buf = messages[-1].strip()
 
     def open_pipe(self):
-        try:
-            os.mkfifo(self.FIFO, os.O_RDWR | os.O_NONBLOCK)
-        except OSError as ex:
-            if ex.errno != 17:
-                raise ex
+        with contextlib.suppress(FileExistsError):
+            os.mkfifo(self.FIFO)
+
         self.pipe_fd = os.open(self.FIFO, os.O_RDWR | os.O_NONBLOCK)
 
     def log_event(self, event_data: str):

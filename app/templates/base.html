@@ -5,8 +5,8 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Wyze-Bridge</title>
-    <link rel="stylesheet" href="{{ 'static/bulma.css' if hass else url_for('static',filename='bulma.css') }}" />
-    <link rel="stylesheet" href="{{ 'static/site.css' if hass else url_for('static',filename='site.css') }}" />
+    <link rel="stylesheet" href="static/bulma.css" />
+    <link rel="stylesheet" href="static/site.css" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css" />
     {% block stylesheet %}
     {% endblock %}
@@ -19,6 +19,8 @@
     </section>
     <footer class="footer fs-display-none">
         <div class="content has-text-centered">
+            {% block api_info %}
+            {% endblock %}
             <p>
                 <a href="https://github.com/mrlt8/docker-wyze-bridge"><i class="fa-brands fa-github"></i>
                     <strong>docker-wyze-bridge</strong></a>
@@ -32,7 +34,7 @@
             </p>
         </div>
     </footer>
-    <script src="{{ 'static/bulma-toast.js' if hass else url_for('static',filename='bulma-toast.js') }}"></script>
+    <script src="static/bulma-toast.js"></script>
     {% block javascript %}
     {% endblock %}
 </body>

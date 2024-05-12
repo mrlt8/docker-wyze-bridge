@@ -2,8 +2,7 @@ from os import environ, getenv, makedirs
 from platform import machine
 
 from dotenv import load_dotenv
-
-from wyzebridge.bridge_utils import env_bool, split_int_str
+from wyzebridge.bridge_utils import env_bool, get_password, migrate_path, split_int_str
 from wyzebridge.hass import setup_hass
 
 load_dotenv()
@@ -25,7 +24,8 @@ MQTT_TOPIC = env_bool("MQTT_TOPIC", "wyzebridge").strip("/")
 ON_DEMAND: bool = bool(env_bool("on_demand") if getenv("ON_DEMAND") else True)
 CONNECT_TIMEOUT: int = env_bool("CONNECT_TIMEOUT", 20, style="int")
 
-TOKEN_PATH: str = "/config/wyze-bridge/" if HASS_TOKEN else "/tokens/"
+# TODO: change TOKEN_PATH  to /config for all:
+TOKEN_PATH: str = "/config/" if HASS_TOKEN else "/tokens/"
 IMG_PATH: str = f'/{env_bool("IMG_DIR", "img").strip("/")}/'
 
 SNAPSHOT_TYPE, SNAPSHOT_INT = split_int_str(env_bool("SNAPSHOT"), min=15, default=180)
@@ -48,19 +48,37 @@ MOTION: bool = env_bool("motion_api", style="bool")
 MOTION_INT: int = max(env_bool("motion_int", "1.5", style="float"), 1.1)
 MOTION_START: bool = env_bool("motion_start", style="bool")
 
+
 makedirs(TOKEN_PATH, exist_ok=True)
 makedirs(IMG_PATH, exist_ok=True)
 
+for key, value in environ.items():
+    if key.startswith("WEB_"):
+        new_key = key.replace("WEB", "WB")
+        print(f"\n[!] WARNING: {key} is deprecated! Please use {new_key} instead\n")
+        environ.pop(key, None)
+        environ[new_key] = value
 
-DEPRECATED = {"DEBUG_FFMPEG"}
+WB_AUTH: bool = bool(env_bool("WB_AUTH") if getenv("WB_AUTH") else True)
+WB_USERNAME: str = (
+    env_bool("WB_USERNAME", style="original")
+    or env_bool("WYZE_EMAIL", style="original")
+    or "wbadmin"
+)
+WB_PASSWORD: str = get_password(
+    "wb_password", env_bool("WYZE_PASSWORD", style="original"), path=TOKEN_PATH
+)
+WB_API: str = get_password("wb_api", path=TOKEN_PATH, length=30) if WB_AUTH else ""
+
+if HASS_TOKEN:
+    migrate_path("/config/wyze-bridge/", "/config/")
+
+for key in environ:
+    if not MOTION and key.startswith("MOTION_WEBHOOKS"):
+        print(f"[!] WARNING: {key} will not trigger because MOTION_API is not set")
+
+DEPRECATED = {"DEBUG_FFMPEG", "OFFLINE_IFTTT", "TOTP_KEY", "MFA_TYPE"}
 
 for env in DEPRECATED:
     if getenv(env):
         print(f"\n\n[!] WARNING: {env} is deprecated\n\n")
-
-for key, value in environ.items():
-    if key.startswith("RTSP_") and key != "RTSP_FW":
-        mtx_key = f"MTX{key[4:]}"
-        print(f"\n[!] WARNING: {key} is deprecated. Please use {mtx_key} instead\n")
-        environ.pop(key, None)
-        environ[mtx_key] = value

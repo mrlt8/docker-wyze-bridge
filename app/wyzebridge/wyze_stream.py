@@ -18,7 +18,7 @@ from wyzebridge.config import BRIDGE_IP, COOLDOWN, MQTT_TOPIC
 from wyzebridge.ffmpeg import get_ffmpeg_cmd
 from wyzebridge.logging import logger
 from wyzebridge.mqtt import publish_discovery, publish_messages, update_mqtt_state
-from wyzebridge.webhooks import ifttt_webhook
+from wyzebridge.webhooks import send_webhook
 from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_commands import GET_CMDS, PARAMS, SET_CMDS
 from wyzebridge.wyze_control import camera_control
@@ -55,11 +55,11 @@ class WyzeStreamOptions:
             self.reconnect = True
 
     def update_quality(self, hq_frame_size: int = 0) -> None:
-        quality = (self.quality or "na").lower().ljust(3, "0")
+        quality = (self.quality or "hd").lower().ljust(3, "0")
         bit = int(quality[2:] or "0")
 
         self.quality = quality
-        self.bitrate = bit if 1 <= bit <= 255 else 180
+        self.bitrate = bit or 180
         self.frame_size = 1 if "sd" in quality else hq_frame_size
 
 
@@ -587,7 +587,7 @@ def set_cam_offline(uri: str, error: TutkError, was_offline: bool) -> None:
     if was_offline:  # Don't resend if previous state was offline.
         return
 
-    ifttt_webhook(uri, error)
+    send_webhook("offline", uri, f"{uri} is offline")
 
 
 def is_timedout(start_time: float, timeout: int = 20) -> bool:

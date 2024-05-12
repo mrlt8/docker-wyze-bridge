@@ -1,5 +1,6 @@
 import contextlib
 import hmac
+import json
 import pickle
 import struct
 from base64 import b32decode
@@ -18,7 +19,7 @@ from requests.exceptions import ConnectionError, HTTPError, RequestException
 from wyzebridge.bridge_utils import env_bool, env_filter
 from wyzebridge.config import IMG_PATH, MOTION, TOKEN_PATH
 from wyzebridge.logging import logger
-from wyzecam.api import RateLimitError, WyzeAPIError, post_v2_device
+from wyzecam.api import RateLimitError, WyzeAPIError, post_device
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
 
@@ -86,25 +87,19 @@ class WyzeCredentials:
 
     @property
     def is_set(self) -> bool:
-        return bool(self.email and self.password)
+        return bool(self.email and self.password and self.key_id and self.api_key)
 
     def update(self, email: str, password: str, key_id: str, api_key: str) -> None:
         self.email = email.strip()
         self.password = password.strip()
-        self.key_id = key_id
-        self.api_key = api_key
+        self.key_id = key_id.strip()
+        self.api_key = api_key.strip()
+
+    def reset_creds(self):
+        self.email = self.password = self.key_id = self.api_key = ""
 
     def same_email(self, email: str) -> bool:
         return self.email.lower() == email.lower() if self.is_set else True
-
-    def login_check(self):
-        if self.is_set:
-            return
-
-        logger.error("Credentials required to complete login!")
-        logger.info("Please visit the WebUI to enter your credentials.")
-        while not self.is_set:
-            sleep(0.2)
 
 
 class WyzeApi:
@@ -125,18 +120,28 @@ class WyzeApi:
         return 0 if self.mfa_req else len(self.get_cameras() or [])
 
     @cached
-    def login(self, fresh_data: bool = False) -> Optional[WyzeCredential]:
+    def login(self, fresh_data: bool = False, web: bool = False) -> WyzeCredential:
         if fresh_data:
             self.clear_cache()
 
-        if self.auth_locked():
-            return
-        self._last_pull = time()
+        self.token_auth()
+        while not self.auth:
+            if not self.creds.is_set:
+                logger.error("Credentials required to complete login!")
+                logger.info("Please visit the WebUI to enter your credentials.")
+                web = True
 
-        if self.token_auth():
-            return self.auth
+            while not (self.creds.is_set or self.auth):
+                sleep(0.2)
 
-        self.creds.login_check()
+            if not self.auth:
+                self.attempt_login(web)
+
+        return self.auth
+
+    def attempt_login(self, web: bool = False) -> None:
+        while self.auth_locked:
+            sleep(1)
         try:
             self.auth = wyzecam.login(
                 email=self.creds.email,
@@ -146,34 +151,39 @@ class WyzeApi:
             )
         except WyzeAPIError as ex:
             logger.error(f"[API] {ex}")
-            if not getenv("WYZE_EMAIL"):
+            if ex.code == "1000":
                 logger.error("[API] Clearing credentials. Please try again.")
-                self.creds.email = self.creds.password = None
-                self.login()
-            sleep(15)
+                self.creds.reset_creds()
         except HTTPError as ex:
             if hasattr(ex, "response") and ex.response.status_code == 403:
                 logger.error(f"[API] Your IP may be blocked from {ex.request.url}")
             if hasattr(ex, "response") and ex.response.text:
                 logger.error(f"[API] Response: {ex.response.text}")
-            sleep(15)
         except (ValueError, RateLimitError, RequestException) as ex:
             logger.error(f"[API] {ex}")
-        else:
-            if self.auth.mfa_options:
-                self._mfa_auth()
-            return self.auth
+        finally:
+            if not web and not self.auth:
+                logger.info("[API] Cool down for 20s before trying again.")
+                sleep(20)
 
-    def token_auth(self) -> bool:
-        if len(token := env_bool("access_token", style="original")) > 150:
+    def token_auth(
+        self, tokens: Optional[str] = None, refresh: Optional[str] = None
+    ) -> None:
+        if len(token := tokens or env_bool("access_token", style="original")) > 150:
+            token, refresh = parse_token(token)
             logger.info("⚠️ Using 'ACCESS_TOKEN' for authentication")
-            self.auth = WyzeCredential(access_token=token)
+            try:
+                self.auth = WyzeCredential(access_token=token)
+            except Exception:
+                self.auth = None
 
-        if len(token := env_bool("refresh_token", style="original")) > 150:
+        if len(token := refresh or env_bool("refresh_token", style="original")) > 150:
             logger.info("⚠️ Using 'REFRESH_TOKEN' for authentication")
-            self.auth = wyzecam.refresh_token(WyzeCredential(refresh_token=token))
-
-        return bool(self.auth)
+            try:
+                creds = WyzeCredential(refresh_token=token)
+                self.auth = wyzecam.refresh_token(creds)
+            except Exception:
+                self.auth = None
 
     @cached
     @authenticated
@@ -217,8 +227,8 @@ class WyzeApi:
         if cam := self.get_camera(uri):
             return cam.thumbnail
 
-    def save_thumbnail(self, uri: str) -> bool:
-        if not (thumb := self.get_thumbnail(uri)):
+    def save_thumbnail(self, uri: str, thumb: Optional[str] = None) -> bool:
+        if not thumb and not (thumb := self.get_thumbnail(uri)):
             return False
 
         save_to = IMG_PATH + uri + ".jpg"
@@ -290,7 +300,7 @@ class WyzeApi:
 
     @authenticated
     def refresh_token(self):
-        if self.auth_locked():
+        if self.auth_locked:
             return
 
         logger.info("♻️ Refreshing tokens")
@@ -303,6 +313,7 @@ class WyzeApi:
             logger.warning("⏰ Expired refresh token?")
             return self.login(fresh_data=True)
 
+    @property
     def auth_locked(self) -> bool:
         if time() - self._last_pull < 15:
             return True
@@ -324,15 +335,16 @@ class WyzeApi:
         logger.info(f"[CONTROL] ☁️ get_device_Info for {cam.name_uri} via Wyze API")
         params = {"device_mac": cam.mac, "device_model": cam.product_model}
         try:
-            res = post_v2_device(self.auth, "get_device_Info", params)["property_list"]
+            resp = post_device(self.auth, "get_device_Info", params, api_version=2)
+            property_list = resp["property_list"]
         except (ValueError, WyzeAPIError) as ex:
             logger.error(f"[CONTROL] ERROR: {ex}")
             return {"status": "error", "response": str(ex)}
 
         if not pid:
-            return {"status": "success", "response": res}
+            return {"status": "success", "response": property_list}
 
-        if not (item := next((i for i in res if i["pid"] == pid), None)):
+        if not (item := next((i for i in property_list if i["pid"] == pid), None)):
             logger.error(f"[CONTROL] ERROR: {pid} not found")
             return {"status": "error", "response": f"{pid} not found"}
 
@@ -343,12 +355,12 @@ class WyzeApi:
         logger.info(f"[CONTROL] ☁️ set_property for {cam.name_uri} via Wyze API")
         params = {"device_mac": cam.mac, "device_model": cam.product_model}
         try:
-            res = post_v2_device(self.auth, "set_property", params)["property_list"]
+            res = post_device(self.auth, "set_property", params, api_version=2)
         except (ValueError, WyzeAPIError) as ex:
             logger.error(f"[CONTROL] ERROR: {ex}")
             return {"status": "error", "response": str(ex)}
 
-        return {"status": "success", "response": res}
+        return {"status": "success", "response": res["property_list"]}
 
     @authenticated
     def get_events(self, macs: Optional[list] = None, last_ts: int = 0):
@@ -358,11 +370,14 @@ class WyzeApi:
             "order_by": 1,
             "begin_time": max((last_ts + 1) * 1_000, (current_ms - 1_000_000)),
             "end_time": current_ms,
-            "device_mac_list": macs or [],
+            "nonce": str(int(time() * 1000)),
+            "device_id_list": list(set(macs or [])),
+            "event_value_list": [],
+            "event_tag_list": [],
         }
 
         try:
-            resp = post_v2_device(self.auth, "get_event_list", params)
+            resp = post_device(self.auth, "get_event_list", params, api_version=4)
             return time(), resp["event_list"]
         except RateLimitError as ex:
             logger.error(f"[EVENTS] RateLimitError: {ex}, cooling down.")
@@ -380,7 +395,7 @@ class WyzeApi:
         )
         params |= {"device_mac": cam.mac}
         try:
-            wyzecam.api.post_device(self.auth, "set_device_Info", params)
+            post_device(self.auth, "set_device_Info", params, api_version=1)
             return {"status": "success", "response": "success"}
         except ValueError as ex:
             error = f'{ex.args[0].get("code")}: {ex.args[0].get("msg")}'
@@ -504,3 +519,18 @@ def pickle_dump(name: str, data: object):
     with open(TOKEN_PATH + name + ".pickle", "wb") as f:
         logger.info(f"💾 Saving '{name}' to local cache...")
         pickle.dump(data, f)
+
+
+def parse_token(access_token: Optional[str]) -> tuple[Optional[str], Optional[str]]:
+    if not access_token:
+        return None, None
+
+    access_token = access_token.strip(" '\"")
+
+    try:
+        json_token = json.loads(access_token)
+        json_token = json_token.get("data", json_token)
+
+        return json_token.get("access_token"), json_token.get("refresh_token")
+    except ValueError:
+        return access_token, None

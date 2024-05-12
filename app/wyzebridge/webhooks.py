@@ -1,33 +1,27 @@
 from typing import Optional
 
 import requests
-from wyzebridge.bridge_utils import env_bool
+from wyzebridge.bridge_utils import env_cam
 from wyzebridge.config import VERSION
 from wyzebridge.logging import logger
-from wyzecam import TutkError
-
-HEADERS = {"user-agent": f"wyzebridge/{VERSION}"}
 
 
-def ifttt_webhook(uri: str, error: TutkError):
-    if ":" not in (ifttt := env_bool("OFFLINE_IFTTT", style="original")):
+def send_webhook(event: str, camera: str, msg: str, img: Optional[str] = None) -> None:
+    if not (url := env_cam(f"{event}_webhooks", camera, style="original")):
         return
-    event, key = ifttt.split(":")
-    url = f"https://maker.ifttt.com/trigger/{event}/with/key/{key}"
-    data = {"value1": uri, "value2": error.code, "value3": error.name}
+
+    header = {
+        "user-agent": f"wyzebridge/{VERSION}",
+        "X-Title": f"{event} event".title(),
+        "X-Attach": img,
+        "X-Tags": f"{camera},{event}",
+        "X-Camera": camera,
+        "X-Event": event,
+    }
+
+    logger.debug(f"[WEBHOOKS] 📲 Triggering {event.upper()} event for {camera}")
     try:
-        resp = requests.post(url, data, headers=HEADERS)
+        resp = requests.post(url, headers=header, data=msg)
         resp.raise_for_status()
     except requests.exceptions.HTTPError as ex:
-        logger.warning(f"[IFTTT] {ex}")
-    else:
-        logger.info(f"[IFTTT] 📲 Sent webhook trigger to {event}")
-
-
-def get_http_webhooks(url: str, msg: str, img: Optional[str] = None):
-    payload = {"X-Title": msg, "X-Attach": img}
-    try:
-        resp = requests.get(url, headers=HEADERS | payload)
-        resp.raise_for_status()
-    except requests.exceptions.HTTPError as ex:
-        logger.warning(f"[HTTP] {ex}")
+        print(f"[WEBHOOKS] {ex}")

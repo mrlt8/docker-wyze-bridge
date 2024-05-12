@@ -71,7 +71,7 @@
                             <span class="icon is-small">
                                 <i class="fas fa-solid fa-network-wired"></i>
                             </span>
-                            <span>rtsp-simple-server</span>
+                            <span>mtx-server</span>
                         </a>
                         <a data-restart="all" class="dropdown-item">
                             <span class="icon is-small">
@@ -171,7 +171,7 @@
                         poster="{{camera.img_url or 'static/loading.svg'}}" data-cam="{{cam_uri}}"
                         data-setup='{"liveui": true, "fluid": true, "muted": true, "autoplay": {{'"muted"' if autoplay and camera.connected
                                 else "false" }}}' data-src="{{camera.hls_url}}stream.m3u8" width="100%">
-                        <source src="{{camera.hls_url}}stream.m3u8" type="application/x-mpegURL" />
+                        <source src="{{camera.hls_url}}stream.m3u8" class="hls-video" type="application/x-mpegURL" />
                         <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
                             src="{{camera.img_url or 'static/loading.svg'}}" data-cam="{{cam_uri}}" width="100%" />
                     </video-js>
@@ -284,35 +284,33 @@
                         <div class="dropdown-content">
                             <p class="menu-label dropdown-item">Video Streams</p>
                             {% if camera.webrtc_url %}
-                            <a href="{{camera.webrtc_url}}" class="dropdown-item icon-text" target="_blank">
+                            <a href="{{camera.webrtc_url}}" class="dropdown-item icon-text stream-link" target="_blank">
                                 <span class="icon is-small"><i class="fas fa-file-code" aria-hidden="true"></i>
                                 </span><span>WebRTC</span>{% if camera.stream_auth
                                 %}<span class="icon">
                                     <i class="fas fa-lock"></i>
                                 </span> {% endif %}</a>
                             {% endif %}
-                            <a href="{{camera.hls_url}}" class="dropdown-item icon-text" target="_blank">
+                            <a href="{{camera.hls_url}}" class="dropdown-item icon-text stream-link" target="_blank">
                                 <span class="icon is-small"><i class="fas fa-file-code" aria-hidden="true"></i>
                                 </span><span>HLS</span>{% if camera.stream_auth
                                 %}<span class="icon">
                                     <i class="fas fa-lock"></i>
                                 </span> {% endif %}</a>
-                            <a href="{{camera.rtmp_url}}" class="dropdown-item icon-text">
+                            <a href="{{camera.rtmp_url}}" class="dropdown-item icon-text stream-link">
                                 <span class="icon is-small"><i class="fas fa-file-video" aria-hidden="true"></i>
                                 </span><span>RTMP</span> {% if camera.stream_auth
                                 %}<span class="icon">
                                     <i class="fas fa-lock"></i>
                                 </span> {% endif %}</a>
-                            <a href="{{camera.rtsp_url}}" class="dropdown-item icon-text">
+                            <a href="{{camera.rtsp_url}}" class="dropdown-item icon-text stream-link">
                                 <span class="icon is-small"><i class="fas fa-file-video" aria-hidden="true"></i>
                                 </span><span>RTSP</span>{% if camera.stream_auth
-                                %}<span class="icon is-small">
-                                    <i class="fas fa-file-video" aria-hidden="true"></i>
-                                </span><span class="icon">
+                                %}<span class="icon">
                                     <i class="fas fa-lock"></i>
                                 </span>{% endif %}</a>
                             {% if camera.rtsp_fw_enabled %}
-                            <a href="{{camera.rtsp_url}}fw" class="dropdown-item icon-text" target="_blank">
+                            <a href="{{camera.rtsp_url}}fw" class="dropdown-item icon-text stream-link" target="_blank">
                                 <span class="icon is-small"><i class="fas fa-file-video" aria-hidden="true"></i></span>
                                 <span>FW_RTSP</span></a>
                             {% endif %}
@@ -382,12 +380,44 @@
 {% endif %}
 {% endblock %}
 
+
+{% block api_info %}
+{% if api %}
+<p>
+    API key: <code>{{ api }}</code>
+</p>
+{% else %}
+<span class="icon-text">
+    <span class="icon"><i class="fas fa-triangle-exclamation"></i></span><span>WebUI auth is
+        disabled.</span></span>
+{% endif %}
+{% endblock %}
 {% block javascript %}
-<script src="{{ 'static/site.js' if hass else url_for('static', filename='site.js') }}"></script>
+<script src="static/site.js"></script>
+{% if api %}
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('a.stream-link').forEach(function (link) {
+            var href = link.getAttribute('href');
+            var updatedHref = href.replace(/^(\w{4,5}):\/\//, function (match, protocol) {
+                return protocol + '://' + encodeURIComponent('wb') + ':' + encodeURIComponent('{{api}}') + '@';
+            });
+            link.setAttribute('href', updatedHref);
+        });
+        document.querySelectorAll('source.hls-video').forEach(function (sourceElement) {
+            var updatedSrc = sourceElement.src.replace(/^https?:\/\//, function (match) {
+                return match + encodeURIComponent('wb') + ':' + encodeURIComponent('{{api}}') + '@';
+            });
+            sourceElement.src = updatedSrc;
+        });
+    });
+</script>
+{% endif %}
 {% if show_video %}
 {% if (webrtc and video_format == "webrtc") or video_format =="kvs" %}
-<script src="{{ 'static/webrtc.js' if hass else url_for('static', filename='webrtc.js') }}"></script>
-{% endif %}
+<script src="static/webrtc.js"></script>
+{% else %}
 <script src="https://cdn.jsdelivr.net/npm/video.js/dist/video.min.js"></script>
+{% endif %}
 {% endif %}
 {% endblock %}

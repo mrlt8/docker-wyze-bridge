@@ -1,10 +1,10 @@
 configuration:
   API_ID:
     name: Key ID
-    description: Now required. Can be obtained from the wyze developer portal.
+    description: Optional, but must be used in combination with the API Key.
   API_KEY:
     name: API Key
-    description: Now required. Can be obtained from the wyze developer portal.
+    description: Optional, but must be used in combination with the Key ID.
   REFRESH_TOKEN:
     name: Refresh Token
     description: Use existing refresh token for authentication.
@@ -94,3 +94,10 @@ configuration:
   TOTP_KEY:
     name: TOTP Key
     description: Used to auto generate a TOTP code when needed.
+  WB_AUTH:
+    name: WebUI Auth
+    description: Enable authentication for WebUI
+  WB_USERNAME:
+    name: WebUI Username
+  WB_PASSWORD:
+    name: WebUI Password

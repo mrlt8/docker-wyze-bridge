@@ -2,11 +2,45 @@ import json
 import os
 from time import sleep
 from typing import Callable, Generator, Optional
+from urllib.parse import urlparse
 
+from flask import request
+from flask import url_for as _url_for
+from flask_httpauth import HTTPBasicAuth
+from werkzeug.security import check_password_hash, generate_password_hash
 from wyzebridge import config
 from wyzebridge.bridge_utils import env_bool
 from wyzebridge.logging import logger
 from wyzebridge.stream import Stream, StreamManager
+
+auth = HTTPBasicAuth()
+HASHED_PASS = generate_password_hash(config.WB_PASSWORD)
+API_ENDPOINTS = "/api", "/img", "/snapshot", "/thumb", "/photo"
+
+
+@auth.verify_password
+def verify_password(username, password):
+    if config.HASS_TOKEN and request.remote_addr == "172.30.32.2":
+        return True
+    if request.args.get("api") == config.WB_API:
+        return request.path.startswith(API_ENDPOINTS)
+    if username == config.WB_USERNAME:
+        return check_password_hash(HASHED_PASS, password)
+    return config.WB_AUTH == False
+
+
+@auth.error_handler
+def unauthorized():
+    return {"error": "Unauthorized"}, 401
+
+
+def url_for(endpoint, **values):
+    proxy = (
+        request.headers.get("X-Ingress-Path")
+        or request.headers.get("X-Forwarded-Prefix")
+        or ""
+    ).rstrip("/")
+    return proxy + _url_for(endpoint, **values)
 
 
 def sse_generator(sse_status: Callable) -> Generator[str, str, str]:
@@ -42,41 +76,58 @@ def set_mfa(mfa_code: str) -> bool:
         return False
 
 
-def get_webrtc_signal(cam_name: str, hostname: Optional[str] = "localhost") -> dict:
+def get_webrtc_signal(cam_name: str, api_key: str) -> dict:
     """Generate signaling for MediaMTX webrtc."""
+    hostname = env_bool("DOMAIN", urlparse(request.root_url).hostname or "localhost")
     ssl = "s" if env_bool("MTX_WEBRTCENCRYPTION") else ""
     webrtc = config.WEBRTC_URL.lstrip("http") or f"{ssl}://{hostname}:8889"
-    ice_server = env_bool("MTX_WEBRTCICESERVERS") or [
-        {"credentialType": "password", "urls": ["stun:stun.l.google.com:19302"]}
-    ]
-    return {
-        "result": "ok",
-        "cam": cam_name,
-        "whep": f"http{webrtc}/{cam_name}/whep",
-        "servers": ice_server,
+    wep = {"result": "ok", "cam": cam_name, "whep": f"http{webrtc}/{cam_name}/whep"}
+
+    if ice_server := validate_ice(env_bool("MTX_WEBRTCICESERVERS")):
+        return wep | {"servers": ice_server}
+
+    ice_server = {
+        "credentialType": "password",
+        "urls": ["stun:stun.l.google.com:19302"],
     }
+    if api_key:
+        ice_server |= {
+            "username": "wb",
+            "credential": api_key,
+            "credentialType": "password",
+        }
+    return wep | {"servers": [ice_server]}
 
 
-def format_stream(name_uri: str, hostname: Optional[str]) -> dict:
+def validate_ice(data: str) -> Optional[list[dict]]:
+    if not data:
+        return
+    try:
+        json_data = json.loads(data)
+        if "urls" in json_data:
+            return [json_data]
+    except ValueError:
+        return
+
+
+def format_stream(name_uri: str) -> dict:
     """
     Format stream with hostname.
 
     Parameters:
     - name_uri (str): camera name.
-    - hostname (str): hostname of the bridge. Usually passed from flask.
 
     Returns:
     - dict: Can be merged with camera info.
     """
-    hostname = env_bool("DOMAIN", hostname or "localhost")
+    hostname = env_bool("DOMAIN", urlparse(request.root_url).hostname or "localhost")
     img = f"{name_uri}.{env_bool('IMG_TYPE','jpg')}"
     try:
         img_time = int(os.path.getmtime(config.IMG_PATH + img) * 1000)
     except FileNotFoundError:
         img_time = None
 
-    webrtc_url = (config.WEBRTC_URL or f"http://{hostname}:8889") + f"/{name_uri}"
-
+    webrtc_url = (config.WEBRTC_URL or f"http://{hostname}:8889") + f"/{name_uri}/"
     data = {
         "hls_url": (config.HLS_URL or f"http://{hostname}:8888") + f"/{name_uri}/",
         "webrtc_url": webrtc_url if config.BRIDGE_IP else None,
@@ -93,26 +144,25 @@ def format_stream(name_uri: str, hostname: Optional[str]) -> dict:
     return data
 
 
-def format_streams(cams: dict, host: Optional[str]) -> dict[str, dict]:
+def format_streams(cams: dict) -> dict[str, dict]:
     """
     Format info for multiple streams with hostname.
 
     Parameters:
     - cams (dict): get_all_cam_info from StreamManager.
-    - hostname (str): hostname of the bridge. Usually passed from flask.
 
     Returns:
     - dict: cam info with hostname.
     """
-    return {uri: cam | format_stream(uri, host) for uri, cam in cams.items()}
+    return {uri: cam | format_stream(uri) for uri, cam in cams.items()}
 
 
-def all_cams(streams: StreamManager, total: int, host: Optional[str]) -> dict:
+def all_cams(streams: StreamManager, total: int) -> dict:
     return {
         "total": total,
         "available": streams.total,
         "enabled": streams.active,
-        "cameras": format_streams(streams.get_all_cam_info(), host),
+        "cameras": format_streams(streams.get_all_cam_info()),
     }
 
 

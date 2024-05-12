@@ -58,7 +58,7 @@ def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> No
                 "sw_version": cam.firmware_ver,
                 "via_device": f"docker-wyze-bridge v{VERSION}",
             },
-            "retain": True,
+            "retain": False,
         }
 
         # Clear out old/renamed entities
@@ -123,7 +123,7 @@ def publish_messages(messages: list) -> None:
 
 
 @mqtt_enabled
-def publish_topic(topic: str, message=None, retain=True):
+def publish_topic(topic: str, message=None, retain=False):
     paho.mqtt.publish.single(
         topic=f"{MQTT_TOPIC}/{topic}",
         payload=message,
@@ -151,7 +151,7 @@ def update_preview(cam_name: str):
     with contextlib.suppress(FileNotFoundError):
         img_file = f"{IMG_PATH}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
         with open(img_file, "rb") as img:
-            publish_topic(f"{cam_name}/image", img.read())
+            publish_topic(f"{cam_name}/image", img.read(), True)
 
 
 @mqtt_enabled
@@ -319,7 +319,7 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
                 "command_topic": f"{base_topic}bitrate/set",
                 "device_class": "data_rate",
                 "min": 1,
-                "max": 255,
+                "max": 1000,
                 "icon": "mdi:high-definition-box",
                 "entity_category": "diagnostic",
             },

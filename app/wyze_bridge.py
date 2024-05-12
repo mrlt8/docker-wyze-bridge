@@ -53,7 +53,8 @@ class WyzeBridge(Thread):
             self.add_substream(cam, options)
             stream = WyzeStream(cam, options)
             stream.rtsp_fw_enabled = self.rtsp_fw_proxy(cam, stream)
-            self.rtsp.add_path(stream.uri, not options.reconnect)
+
+            self.rtsp.add_path(stream.uri, not options.reconnect, config.WB_API)
             self.streams.add(stream)
 
     def rtsp_fw_proxy(self, cam: WyzeCamera, stream: WyzeStream) -> bool:
@@ -74,7 +75,7 @@ class WyzeBridge(Thread):
             record = bool(env_cam("sub_record", cam.name_uri))
             sub_opt = replace(options, substream=True, quality=quality, record=record)
             sub = WyzeStream(cam, sub_opt)
-            self.rtsp.add_path(sub.uri, not options.reconnect)
+            self.rtsp.add_path(sub.uri, not options.reconnect, config.WB_API)
             self.streams.add(sub)
 
     def clean_up(self, *_):

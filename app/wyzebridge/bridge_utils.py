@@ -1,5 +1,7 @@
 import contextlib
 import os
+import secrets
+import shutil
 from typing import Any, Optional
 
 from wyzecam.api_models import WyzeCamera
@@ -77,3 +79,36 @@ def is_fw11(fw_ver: Optional[str]) -> bool:
         if fw_ver and int(fw_ver.split(".")[2]) > 10:
             return True
     return False
+
+
+def get_password(
+    file_name: str, alt: str = "", path: str = "", length: int = 16
+) -> str:
+    if env_pass := env_bool(file_name, alt, style="original"):
+        return env_pass
+
+    file_path = f"{path}{file_name}"
+    if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
+        with open(file_path, "r") as file:
+            return file.read().strip()
+
+    password = secrets.token_urlsafe(length)
+    with open(file_path, "w") as file:
+        file.write(password)
+
+    print(f"\n\nDEFAULT {file_name.upper()}:\n{password=}")
+
+    return password
+
+
+def migrate_path(old: str, new: str):
+    if not os.path.exists(old):
+        return
+
+    print(f"CLEANUP: MIGRATING {old=} to {new=}")
+
+    if not os.path.exists(new):
+        os.makedirs(new)
+    for filename in os.listdir(old):
+        shutil.move(os.path.join(old, filename), os.path.join(new, filename))
+    os.rmdir(old)

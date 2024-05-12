@@ -22,7 +22,9 @@ Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) 
 
 
 > [!IMPORTANT]
-> As of April 2024, you will need to **update your bridge to v2.3.x or newer** for compatibility with the latest changes to the Wyze API as well as supply your own API Key and API ID from: https://support.wyze.com/hc/en-us/articles/16129834216731.
+> As of May 2024, you will need an API Key and API ID from: https://support.wyze.com/hc/en-us/articles/16129834216731.
+
+> [!WARNING] Please double check your router/firewall and do NOT forward ports or enable DMZ access to the bridge unless you know what you are doing!
 
 
 ![Wyze Cam V1](https://img.shields.io/badge/wyze_v1-yes-success.svg)
@@ -56,25 +58,62 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.8.2/3
+## What's Changed in v2.9.0
 
-* Add support for developer API Key/ID for WebUI based logins.
-* Update Home Assistant and unraid config to support API Key/ID
-* Refactor to catch additional WyzeAPIErrors.
+> [!IMPORTANT] WebUI and stream authentication will be enabled by default to prevent unintentional access.
 
-## What's Changed in v2.8.1
+**Default Authentication**
 
-* Fix video lag introduced in v2.7.0
-* Add aac_eld audio support for V4 cams (HL_CAM4).
-* Add 2k resolution support for Floodlight V2 cams (HL_CFL2).
-* Fix version number
+  - To disable default authentication, set `WB_AUTH=False` explicitly.
+  - Note that all streams and the REST API will necessitate authentication when `WB_AUTH` is enabled.
 
-Home Assistant:
+**WebUI Authentication**
 
-* Add dev and previous builds (v2.6.0) to the repo.
-* Note: you may need to re-add the repo if you cannot see the latest updates.
+- If `WB_USERNAME` and `WB_PASSWORD` are not set, the system will try to use `WYZE_EMAIL` and `WYZE_PASSWORD`.
+- In case neither sets of credentials are provided, the username will default to `wbadmin` with a randomly generated `WB_PASSWORD`, which will be logged and stored in a `wb_password` file within the tokens directory.
+- Credentials are case sensitive.
+
+**Stream and REST API Authentication**
+- A unique API key will be accessible at the bottom of your WebUI and saved to a `wb_api` file in your tokens directory.
+  - For persistence, ensure to set the `WB_API` environment variable or volume mount the `/tokens` directory.
+- REST API will require an `api` query parameter. 
+  - Example:  `http://localhost:5000/api/<camera-name>/state?api=<your-wb-api-key>`
+- Streams will also require authentication.
+  - username: `wb`
+  - password: your unique wb api key
+
+**FIXES**
+- Wrong file permission caused errors for non-root. (#1174) Thanks @GiZZoR!
+- Fix `MOTION_API` when substreams were enabled. (#1125) Thanks @kiwi-cam!
+- Changing FPS and `FORCE_FPS` were broken (#1161) Thanks @jarrah31!
+- Dropped frame issue when camera is falling behind. (#1167) Thanks @34t614t1254y!
+
+**NEW**
+- Token based wyze authentication from WebUI. See [wiki](https://github.com/mrlt8/docker-wyze-bridge/wiki/Authentication#token-based-authentication).
+- Remove 255 limit from `QUALITY`. Can now go as high as your network can handle. e.g. `- QUALITY=HD8000` 
+- Update snapshot with `MOTION_API` and push to mqtt (#709) (#970)
+- Additional headers for `MOTION_WEBHOOKS`.
+- `OFFLINE_WEBHOOKS` will send a POST request when the bridge cannot connect to a camera because it is offline. Replaces `ifttt_webhook`.
+
+**POTENTIALLY BREAKING**
+- CHANGES: `MOTION_WEBHOOKS` now makes a POST request instead of a GET request.
+- CHANGES: `MOTION_WEBHOOKS` includes the event timestamp in the message body which may require you to adjust the timezone for your container with the `TZ` environment.
+- REMOVED: `ifttt_webhook` as webhooks are no longer free with IFTTT.
+- CHANGED: Renamed WebUI authentication related ENV options:
+  - `WEB_AUTH` -> `WB_AUTH`
+  - `WEB_USERNAME` -> `WB_USERNAME`
+  - `WEB_PASSWORD` -> `WB_PASSWORD`
+
+**HOME ASSISTANT**
+- Login with API Key/ID or existing token via Ingress/WebUI.
+- Config now uses yaml instead of json.
+- Credentials are now optional to allow for WebUI based login, but it is still recommended to set them under advanced options.
+
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
+
+> [!TIP] Home Assistant: you may need to re-add the repo if you cannot see the latest updates.
+
 
 ## FAQ
 

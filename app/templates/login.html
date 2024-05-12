@@ -3,15 +3,24 @@
 {% block content %}
 <div class="columns is-centered">
     <div class="column is-5">
-        <p class="subtitle has-text-white">Wyze credentials required to complete authentication.
-        <div class="notification is-info">
-            <span class="icon"><i class="fas fa-circle-info"></i></span> Wyze API Key and ID can be obtained from the <a
-                href="https://developer-api-console.wyze.com/#/apikey/view" target="_blank">Wyze
-                Developer Portal</a>.
-        </div>
-        </p>
-        <form id="login" class="box">
-            <div id="error"></div>
+        <p class="subtitle has-text-white">Wyze credentials required to complete authentication.</p>
+        <nav class="navbar block is-dark fs-display-none">
+            <div class="navbar-brand">
+                <a data-target="apiLogin" class="navbar-item is-tab is-active">
+                    <span class="icon-text">
+                        <span class="icon"><i class="fas fa-key"></i></span> <span>API Key</span></span></a>
+                <a data-target="tokenLogin" class="navbar-item is-tab">
+                    <span class="icon-text"><span class="icon"><i
+                                class="fas fa-address-card"></i></span><span>Token</span></span></a>
+            </div>
+        </nav>
+        <form id="apiLogin" class="box">
+            <div class="error"></div>
+            <div class="notification is-info">
+                <span class="icon"><i class="fas fa-circle-info"></i></span> Wyze API Key and ID can be obtained from
+                the <a href="https://developer-api-console.wyze.com/#/apikey/view" target="_blank">Wyze
+                    Developer Portal</a>.
+            </div>
             <div class="field">
                 <label for="" class="label">Email</label>
                 <div class="control has-icons-left">
@@ -56,34 +65,71 @@
                 </button>
             </div>
         </form>
+        <form id="tokenLogin" class="box is-hidden">
+            <div class="error"></div>
+            <div class="field">
+                <label for="" class="label">Access Tokens</label>
+                <div class="control has-icons-left">
+                    <input name="tokens" type="text" placeholder="access tokens" class="input">
+                    <span class="icon is-small is-left">
+                        <i class="fa fa-address-card"></i>
+                    </span>
+                </div>
+            </div>
+            <div class="field">
+                <label for="" class="label">Refresh Token</label>
+                <div class="control has-icons-left">
+                    <input name="refresh" type="text" placeholder="refresh token" class="input">
+                    <span class="icon is-small is-left">
+                        <i class="fa fa-arrows-rotate"></i>
+                    </span>
+                </div>
+            </div>
+            <div class="field">
+                <button class="button is-success is-large is-fullwidth">
+                    Login
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}
 
 {% block javascript %}
 <script>
-    const loginForm = document.getElementById("login")
-    const button = document.getElementById("submitLogin").classList
-    loginForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        button.add("is-loading");
-        fetch("login", {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/x-www-form-urlencoded'
-            },
-            body: new URLSearchParams(new FormData(loginForm)).toString()
-        }).then(resp => resp.json()).then(data => {
-            if (data.status == "success") {
-                loginForm.innerHTML = '<article class="message is-success container"><div class="message-body"><span class="icon"><i class="fas fa-check-circle"></i></span><span>Attempting login. <i class="fas fa-spinner fa-pulse"></i></div></article>'
-                setTimeout(function () { window.location = '.'; }, 5000);
-            } else {
-                console.error(data)
-                button.remove("is-loading")
-                document.getElementById("error").innerHTML = '<article class="message is-danger container"><div class="message-body"><span class="icon"><i class="fas fa-circle-exclamation"></i></span><span>' + data.status + '. Please try again.</div></article>'
-            }
-        }).catch(error => { console.error(error) });
-
+    const forms = document.querySelectorAll('form');
+    forms.forEach(form => {
+        const button = form.querySelector('button.button').classList;
+        form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            button.add("is-loading");
+            fetch("login", {
+                method: 'POST',
+                body: new FormData(form)
+            }).then(resp => resp.json()).then(data => {
+                if (data.status == "success") {
+                    form.innerHTML = '<article class="message is-success container"><div class="message-body"><span class="icon"><i class="fas fa-check-circle"></i></span><span>Attempting login. <i class="fas fa-spinner fa-pulse"></i></div></article>';
+                    setTimeout(() => { window.location = '.'; }, 5000);
+                } else {
+                    console.error(data);
+                    button.remove("is-loading");
+                    form.querySelector(".error").innerHTML = '<article class="message is-danger container"><div class="message-body"><span class="icon"><i class="fas fa-circle-exclamation"></i></span><span>' + data.status + '. Please try again.</div></article>';
+                }
+            }).catch(error => { console.error(error); });
+        });
     });
+    const tabs = document.querySelectorAll('a.navbar-item');
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function () {
+            const targetFormId = this.getAttribute('data-target');
+            document.querySelectorAll('form').forEach(form => {
+                form.classList.toggle('is-hidden', form.id !== targetFormId);
+            });
+            tabs.forEach(otherTab => {
+                otherTab.classList.toggle('is-active', otherTab === tab);
+            });
+        });
+    });
+
 </script>
 {% endblock %}

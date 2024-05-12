@@ -1,25 +1,22 @@
 # Docker Wyze Bridge
 
-## Required Configs
+## Wyze Authentication
 
-Credentials for the wyze account you are trying to use.
+As of April 2024, you will need to supply your own API Key and API ID along with your Wyze email and password. 
 
-- `WYZE_EMAIL`
-- `WYZE_PASSWORD`
+See the official help documentation on how to generate your developer keys: https://support.wyze.com/hc/en-us/articles/16129834216731.
 
-### Two-Step Verification
+## Stream and API Authentication
 
-If you have Two-Step Verification enabled on the account, you can add your verification code to the text file: /config/wyze-bridge/mfa_token.txt
+Note that all streams and the REST API will necessitate authentication when WebUI Auth `WB_AUTH` is enabled.
 
-## Optional Configs
+- REST API will require an `api` query parameter. 
+  - Example:  `http://homeassistant.local:5000/api/<camera-name>/state?api=<your-wb-api-key>`
+- Streams will also require authentication.
+  - username: `wb`
+  - password: your unique wb api key
 
-- `NET_MODE` - Allowed connection mode between the camera and the bridge:
-  - `LAN` - Restrict connections to local access only. Will NOT use additional bandwidth.
-  - `P2P` - Allow streaming from the camera over the internet if camera cannot be found locally. MAY use additional bandwidth.
-  - `ANY` - Allow the stream to be relayed over the wyze server. MAY use additional bandwidth if in P2P or relay mode.
-- `SNAPSHOT` - Enable snapshots for all cameras.
-  - `API` - Will run ONCE at startup and will grab a high-quality thumbnail from the wyze api.
-  - `RTSPX` - Will grab a new frame from the RTSP stream every X seconds.
+Please double check your router/firewall and do NOT forward ports or enable DMZ access to your bridge/server unless you know what you are doing!
 
 ## Camera Specific Options
 
@@ -37,13 +34,16 @@ Camera specific options can now be passed to the bridge using `CAM_OPTIONS`. To 
 
 Available options:
 
-- `AUDIO` - enable audio for this camera.
-- `FFMPEG` - use a custom ffmpeg command for this camera.
-- `LIVESTREAM` - specify a rtmp url to livestream to for this camera.
-- `NET_MODE` - change the allowed net mode for this camera only.
+- `AUDIO` - Enable audio for this camera.
+- `FFMPEG` - Use a custom ffmpeg command for this camera.
+- `LIVESTREAM` - Specify a rtmp url to livestream to for this camera.
+- `NET_MODE` - Change the allowed net mode for this camera only.
 - `QUALITY` - Adjust the quality for this camera only.
-- `RECORD` - enable recording for this camera.
-- `ROTATE` - rotate this camera 90 degrees clockwise.
+- `SUBSTREAM` - Enable a substream for this camera.
+- `SUB_QUALITY` - Adjust the quality for this substream.
+- `RECORD` - Enable recording for this camera.
+- `ROTATE` - Rotate this camera 90 degrees clockwise.
+- `MOTION_WEBHOOKS` - Specify a url to POST to when motion is detected.
 
 ## URIs
 
