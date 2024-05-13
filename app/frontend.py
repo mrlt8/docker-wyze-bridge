@@ -149,15 +149,16 @@ def create_app():
     @auth_required
     def api_cam_control(cam_name: str, cam_cmd: str, payload: str | dict = ""):
         """API Endpoint to send tutk commands to the camera."""
-        if args := request.values:
-            payload = args.to_dict() if len(args) > 1 else next(args.values())
-        elif request.is_json:
+        if not payload and (args := request.values.to_dict()):
+            args.pop("api", None)
+            payload = next(iter(args.values())) if len(args) == 1 else args
+        if not payload and request.is_json:
             json = request.get_json()
             if isinstance(json, dict):
                 payload = json if len(json) > 1 else list(json.values())[0]
             else:
                 payload = json
-        elif request.data:
+        elif not payload and request.data:
             payload = request.data.decode()
 
         return wb.streams.send_cmd(cam_name, cam_cmd.lower(), payload)

@@ -463,12 +463,13 @@ class K10050GetVideoParam(TutkWyzeProtocolMessage):
         super().__init__(10050)
 
     def parse_response(self, resp_data):
+        data = unpack("<HBBBB", resp_data)
         return {
-            "bitrate": resp_data[0],
-            "res": resp_data[2],
-            "fps": resp_data[3],
-            "hor_flip": resp_data[4],
-            "ver_flip": resp_data[5],
+            "bitrate": data[0],
+            "res": data[1],
+            "fps": data[2],
+            "hor_flip": data[3],
+            "ver_flip": data[4],
         }
 
 

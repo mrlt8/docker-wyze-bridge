@@ -22,7 +22,7 @@ API_ENDPOINTS = "/api", "/img", "/snapshot", "/thumb", "/photo"
 def verify_password(username, password):
     if config.HASS_TOKEN and request.remote_addr == "172.30.32.2":
         return True
-    if request.args.get("api") == config.WB_API:
+    if config.WB_API in (request.args.get("api"), request.headers.get("api")):
         return request.path.startswith(API_ENDPOINTS)
     if username == config.WB_USERNAME:
         return check_password_hash(HASHED_PASS, password)
