@@ -59,6 +59,14 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.9.1
+
+- FIX: Setting bitrate higher than 255 would not report correctly (#1185) Thanks @Anc0dia!
+- FIX: Wrong bitrate for HL_CFL2 (#1112) Thanks @dreondre!
+- FIX: Could not set values with the REST API when `WB_AUTH` is enabled.(#1189) Thanks @kiwi-cam!
+- NEW: `api` header authentication option for the RES API when `WB_AUTH` is enabled:
+  - `-H "api: MyWbApiKey"`
+ 
 ## What's Changed in v2.9.0
 
 > [!IMPORTANT] 
