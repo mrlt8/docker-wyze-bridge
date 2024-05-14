@@ -215,7 +215,7 @@ class WyzeApi:
                 return next((c for c in self.cameras if c.name_uri == uri))
 
         too_old = time() - self._last_pull > 120
-        with contextlib.suppress(TypeError):
+        with contextlib.suppress(TypeError, wyzecam.api.AccessTokenError):
             for cam in self.get_cameras(fresh_data=too_old):
                 if cam.name_uri == uri:
                     return cam
