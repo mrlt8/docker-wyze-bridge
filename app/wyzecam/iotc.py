@@ -312,7 +312,7 @@ class WyzeIOTCSession:
             return 0
 
         if not self.frame_ts:
-            return 1 / 150
+            return 1 / 100
 
         fps = 1 / self.preferred_frame_rate * 0.95
         delta = max(time.time() - self.frame_ts, 0.0)
@@ -638,8 +638,7 @@ class WyzeIOTCSession:
 
         if gap < -1:
             logger.debug(f"[audio] behind video.. {gap=}")
-            self.tutk_platform_lib.avClientCleanAudioBuf(self.av_chan_id)
-            return True
+            self.flush_pipe("audio")
 
         if gap > 1:
             logger.debug(f"[audio] ahead of video.. {gap=}")
