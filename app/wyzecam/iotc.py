@@ -500,7 +500,7 @@ class WyzeIOTCSession:
 
         if gap >= 1:
             logger.debug(f"[video] slow {gap=}")
-            # self.flush_pipe("audio")
+            self.flush_pipe("audio")
 
     def _handle_frame_error(self, err_no: int) -> None:
         """Handle errors that occur when receiving frame data."""
