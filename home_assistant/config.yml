@@ -93,6 +93,7 @@ schema:
   URI_SEPARATOR: list(-|_|#)?
   QUALITY: str?
   SUB_QUALITY: str?
+  FORCE_FPS: int?
   SUB_RECORD: bool?
   FFMPEG_FLAGS: str?
   FFMPEG_CMD: str?
@@ -117,6 +118,7 @@ schema:
       ROTATE: bool?
       QUALITY: str?
       SUB_QUALITY: str?
+      FORCE_FPS: int?
       RECORD: bool?
       SUB_RECORD: bool?
       SUBSTREAM: bool?
