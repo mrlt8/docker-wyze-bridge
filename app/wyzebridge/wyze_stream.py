@@ -528,7 +528,7 @@ def get_video_params(sess: WyzeIOTCSession) -> tuple[str, int]:
 
     fps = int(video_param.get("fps", 0))
 
-    if force_fps := int(env_bool(f"FORCE_FPS_{sess.camera.name_uri}", "0")):
+    if force_fps := int(env_cam("FORCE_FPS", sess.camera.name_uri, "0")):
         logger.info(f"Attempting to force fps={force_fps}")
         sess.update_frame_size_rate(fps=force_fps)
         fps = force_fps
