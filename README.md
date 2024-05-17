@@ -59,6 +59,15 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.9.2
+
+- Improved video connection stability and audio sync.  #1175 #1196 #1194 #1193 #1186 Thanks @vipergts450!
+- FIX: Remove quotes from credentials #1158
+- NEW: `FORCE_FPS` option for all cameras #1161
+- Home Assistant: Add `FORCE_FPS` option #1161
+- Home Assistant: Ignore whitespaces in api key/id #1188 Thanks @richh1! 
+
+
 ## What's Changed in v2.9.1
 
 - FIX: Setting bitrate higher than 255 would not report correctly (#1185) Thanks @Anc0dia!
@@ -122,7 +131,8 @@ See [basic usage](#basic-usage) for additional information or visit the [wiki pa
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
 
-> [!TIP] Home Assistant: you may need to re-add the repo if you cannot see the latest updates.
+> [!TIP] 
+> Home Assistant: you may need to re-add the repo if you cannot see the latest updates.
 
 
 ## FAQ
@@ -297,6 +307,7 @@ Video Streaming:
 
 * [gtxaspec/wz_mini_hacks](https://github.com/gtxaspec/wz_mini_hacks) - Firmware level modification for Ingenic based cameras with an RTSP server and [self-hosted mode](https://github.com/gtxaspec/wz_mini_hacks/wiki/Configuration-File#self-hosted--isolated-mode) to use the cameras without the wyze services.
 * [carTloyal123/cryze](https://github.com/carTloyal123/cryze) - Stream video from wyze cameras (Gwell cameras) that use the Iotvideo SDK from Tencent Cloud. 
+* [mnakada/atomcam_tools](https://github.com/mnakada/atomcam_tools) - Video streaming for Wyze v3.
 
 General Wyze:
 

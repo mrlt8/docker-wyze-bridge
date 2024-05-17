@@ -48,8 +48,8 @@ options:
 schema:
   WYZE_EMAIL: email?
   WYZE_PASSWORD: password?
-  API_ID: match([a-fA-F0-9-]{36})?
-  API_KEY: match([a-zA-Z0-9]{60})?
+  API_ID: match(\s*[a-fA-F0-9-]{36}\s*)?
+  API_KEY: match(\s*[a-zA-Z0-9]{60}\s*)?
   WB_IP: str?
   REFRESH_TOKEN: str?
   ACCESS_TOKEN: str?
@@ -93,6 +93,7 @@ schema:
   URI_SEPARATOR: list(-|_|#)?
   QUALITY: str?
   SUB_QUALITY: str?
+  FORCE_FPS: int?
   SUB_RECORD: bool?
   FFMPEG_FLAGS: str?
   FFMPEG_CMD: str?
@@ -117,6 +118,7 @@ schema:
       ROTATE: bool?
       QUALITY: str?
       SUB_QUALITY: str?
+      FORCE_FPS: int?
       RECORD: bool?
       SUB_RECORD: bool?
       SUBSTREAM: bool?

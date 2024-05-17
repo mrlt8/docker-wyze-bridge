@@ -77,10 +77,10 @@ class WyzeCredentials:
     __slots__ = "email", "password", "key_id", "api_key"
 
     def __init__(self) -> None:
-        self.email: str = getenv("WYZE_EMAIL", "").strip()
-        self.password: str = getenv("WYZE_PASSWORD", "").strip()
-        self.key_id: str = getenv("API_ID", "").strip()
-        self.api_key: str = getenv("API_KEY", "").strip()
+        self.email: str = getenv("WYZE_EMAIL", "").strip("'\" \n\t\r")
+        self.password: str = getenv("WYZE_PASSWORD", "").strip("'\" \n\t\r")
+        self.key_id: str = getenv("API_ID", "").strip("'\" \n\t\r")
+        self.api_key: str = getenv("API_KEY", "").strip("'\" \n\t\r")
 
         if not self.is_set:
             logger.warning("[WARN] Credentials are NOT set")
@@ -215,7 +215,7 @@ class WyzeApi:
                 return next((c for c in self.cameras if c.name_uri == uri))
 
         too_old = time() - self._last_pull > 120
-        with contextlib.suppress(TypeError):
+        with contextlib.suppress(TypeError, wyzecam.api.AccessTokenError):
             for cam in self.get_cameras(fresh_data=too_old):
                 if cam.name_uri == uri:
                     return cam

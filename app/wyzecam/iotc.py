@@ -312,13 +312,15 @@ class WyzeIOTCSession:
             return 0
 
         if not self.frame_ts:
-            return 1 / 150
+            return 1 / 100
 
-        delta = max(time.time() - self.frame_ts, 0.0) + self._sleep_buffer
+        fps = 1 / self.preferred_frame_rate * 0.95
+        delta = max(time.time() - self.frame_ts, 0.0)
         if self._sleep_buffer:
-            self._sleep_buffer = max(self._sleep_buffer - 0.05, 0)
+            delta += self._sleep_buffer
+            self._sleep_buffer = max(self._sleep_buffer - fps, 0)
 
-        return max((1 / self.preferred_frame_rate) - delta, 1 / 80)
+        return max(fps - delta, fps / 4)
 
     @property
     def pipe_name(self) -> str:
@@ -442,8 +444,8 @@ class WyzeIOTCSession:
                 have_key_frame = False
                 continue
 
-            if have_key_frame and self._video_frame_slow(frame_info):
-                continue
+            if have_key_frame:
+                self._video_frame_slow(frame_info)
 
             if frame_info.is_keyframe:
                 have_key_frame = True
@@ -487,26 +489,22 @@ class WyzeIOTCSession:
             self.frame_ts = time.time()
             return
 
-        frame_ts = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
-        gap = time.time() - frame_ts
+        self.frame_ts = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
+        gap = time.time() - self.frame_ts
 
-        if not frame_info.is_keyframe and gap > 3 and not self._sleep_buffer:
+        if not frame_info.is_keyframe and gap > 5:
             logger.warning("[video] super slow")
             self.clear_buffer()
-
-            return True
-
-        if gap >= 0.5:
-            logger.debug(f"[video] slow {gap=}")
+        if gap > 0:
             self._sleep_buffer += gap
 
-            return
-
-        self.frame_ts = frame_ts
+        if gap >= 1:
+            logger.debug(f"[video] slow {gap=}")
+            self.flush_pipe("audio")
 
     def _handle_frame_error(self, err_no: int) -> None:
         """Handle errors that occur when receiving frame data."""
-        time.sleep(1 / self.preferred_frame_rate * 0.8)
+        time.sleep(1 / 80)
         if err_no == tutk.AV_ER_DATA_NOREADY or err_no >= 0:
             return
 
@@ -559,7 +557,7 @@ class WyzeIOTCSession:
         warnings.warn("clear buffer")
         self.flush_pipe("audio")
         self.sync_camera_time()
-        tutk.av_client_clean_buf(self.tutk_platform_lib, self.av_chan_id)
+        tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
 
     def flush_pipe(self, pipe_type: str = "audio"):
         if pipe_type == "audio" and not self.audio_pipe_ready:
@@ -611,7 +609,7 @@ class WyzeIOTCSession:
         with contextlib.suppress(FileExistsError):
             os.mkfifo(fifo_path)
         try:
-            with open(fifo_path, "wb") as audio_pipe:
+            with open(fifo_path, "wb", buffering=0) as audio_pipe:
                 set_non_blocking(audio_pipe)
                 for frame_data, _ in self.recv_audio_data():
                     with contextlib.suppress(BlockingIOError):
@@ -632,25 +630,19 @@ class WyzeIOTCSession:
         if frame_info.timestamp < 1591069888:
             return
 
-        gap = self.frame_ts - float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
+        gap = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}") - self.frame_ts
 
-        if abs(gap) > 5:
+        if abs(gap) > 10:
             logger.debug(f"[audio] out of sync {gap=}")
-            self._sleep_buffer += abs(gap)
             self.clear_buffer()
-            return
 
-        if gap <= -1:
-            logger.debug(f"[audio] rushing ahead of video.. {gap=}")
+        if gap < -1:
+            logger.debug(f"[audio] behind video.. {gap=}")
             self.flush_pipe("audio")
-            self._sleep_buffer += abs(gap)
 
-        elif gap >= 1:
-            logger.debug(f"[audio] dragging behind video.. {gap=}")
-            self.flush_pipe("audio")
-            self.tutk_platform_lib.avClientCleanAudioBuf(self.av_chan_id)
-
-            return True
+        if gap > 1:
+            logger.debug(f"[audio] ahead of video.. {gap=}")
+            time.sleep(gap * 0.5)
 
     def get_audio_sample_rate(self) -> int:
         """Attempt to get the audio sample rate."""

@@ -29,7 +29,7 @@ def get_ffmpeg_cmd(
     - list of str: complete ffmpeg command that is ready to run as subprocess.
     """
 
-    flags = "-fflags +flush_packets+nobuffer+genpts -flags +low_delay -use_wallclock_as_timestamps 1"
+    flags = "-fflags +flush_packets+nobuffer+genpts -flags +low_delay"
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
@@ -38,7 +38,7 @@ def get_ffmpeg_cmd(
         audio_in = f"{thread_queue} -f {audio['codec']} -ac 1 -ar {audio['rate']} -i /tmp/{uri}_audio.pipe"
         audio_out = audio["codec_out"] or "copy"
     if audio and audio.get("codec", "").lower() == "aac_eld":
-        audio_in = f"{thread_queue} -f aac -ac 1 -i /tmp/{uri}_audio.pipe"
+        audio_in = f"{thread_queue} -f aac -ac 1 -re -i /tmp/{uri}_audio.pipe"
     a_filter = env_bool("AUDIO_FILTER", "volume=5") + ",adelay=0|0"
     a_options = ["-compression_level", "4", "-filter:a", a_filter]
     rtsp_transport = "udp" if "udp" in env_bool("MTX_PROTOCOLS") else "tcp"
@@ -62,6 +62,9 @@ def get_ffmpeg_cmd(
         + re_encode_video(uri, is_vertical)
         + (["-map", "1:a", "-c:a", audio_out] if audio_in else [])
         + (a_options if audio and audio_out != "copy" else [])
+        + ["-fps_mode", "passthrough", "-async", "1", "-flush_packets", "1"]
+        + ["-muxdelay", "0"]
+        + ["-rtbufsize", "1", "-max_interleave_delta", "10"]
         + ["-f", "tee"]
         + [rtsp_ss + get_record_cmd(uri, audio_out, record) + livestream]
     )
