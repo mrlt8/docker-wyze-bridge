@@ -1,41 +1,61 @@
-from os import environ, getenv
+from os import getenv
 from pathlib import Path
 from signal import SIGINT
 from subprocess import DEVNULL, Popen
-from typing import Optional, Protocol
+from typing import Optional
 
+import yaml
 from wyzebridge.logging import logger
 
-
-class MtxInterface(Protocol):
-    def set(self, uri: str, path: str, value: str) -> None: ...
-
-    def get(self, uri: str, path: str) -> Optional[str]: ...
-
-    def set_opt(self, option: str, value: str) -> None: ...
-
-    def get_opt(self, option: str) -> Optional[str]: ...
+MTX_CONFIG = "/app/mediamtx.yml"
 
 
-class MtxEnv:
-    """Use environment variables to interface with mediamtx."""
+class MtxInterface:
+    def __init__(self):
+        self.data = {}
+        self._modified = False
 
-    def set(self, uri: str, path: str, value: str) -> None:
-        env = f"MTX_PATHS_{uri}_{path}".upper()
-        if not getenv(env):
-            environ[env] = value
+    def __enter__(self):
+        self._load_config()
+        return self
 
-    def get(self, uri: str, path: str) -> Optional[str]:
-        env = f"MTX_PATHS_{{}}_{path}".upper()
-        return getenv(env.format(uri.upper()), getenv(env.format("ALL")))
+    def __exit__(self, exc_type, exc_value, traceback):
+        if self._modified:
+            self._save_config()
 
-    def set_opt(self, option: str, value: str) -> None:
-        env = f"MTX_{option}".upper()
-        if not getenv(env):
-            environ[env] = value
+    def _load_config(self):
+        with open(MTX_CONFIG, "r") as f:
+            self.data = yaml.safe_load(f) or {}
 
-    def get_opt(self, option: str) -> Optional[str]:
-        return getenv(f"MTX_{option}".upper())
+    def _save_config(self):
+        with open(MTX_CONFIG, "w") as f:
+            yaml.safe_dump(self.data, f)
+
+    def get(self, path: str):
+        keys = path.split(".")
+        current = self.data
+        for key in keys:
+            if current is None:
+                return None
+            current = current.get(key)
+        return current
+
+    def set(self, path: str, value):
+        keys = path.split(".")
+        current = self.data
+        for key in keys[:-1]:
+            current = current.setdefault(key, {})
+        current[keys[-1]] = value
+        self._modified = True
+
+    def add(self, path: str, value):
+        current = self.data.get(path)
+        if isinstance(current, list):
+            if not isinstance(value, list):
+                value = [value]
+            current.extend([item for item in value if item not in current])
+        else:
+            self.data[path] = value
 
 
 class MtxServer:
@@ -44,34 +64,43 @@ class MtxServer:
     __slots__ = "rtsp", "sub_process"
 
     def __init__(
-        self,
-        bridge_ip: Optional[str] = None,
-        mtx_interface: MtxInterface = MtxEnv(),
+        self, bridge_ip: Optional[str] = None, api_auth: Optional[str] = None
     ) -> None:
-        self.rtsp: MtxInterface = mtx_interface
         self.sub_process: Optional[Popen] = None
+        self._setup(api_auth)
         if bridge_ip:
             self.setup_webrtc(bridge_ip)
 
+    def _setup(self, api_auth: Optional[str]):
+        publisher = [
+            {
+                "ips": ["127.0.0.1"],
+                "permissions": [{"action": "read"}, {"action": "publish"}],
+            }
+        ]
+        with MtxInterface() as mtx:
+            mtx.set("paths", {})
+            mtx.set("authInternalUsers", publisher)
+            for event in {"Read", "Unread", "Ready", "NotReady"}:
+                bash_cmd = f"echo $MTX_PATH,{event}! > /tmp/mtx_event;"
+                mtx.set(f"pathDefaults.runOn{event}", f"bash -c '{bash_cmd}'")
+            # mtx.set(f"pathDefaults.runOnDemandStartTimeout", "30s")
+            # mtx.set(f"pathDefaults.runOnDemandCloseAfter", "60s")
+            client: dict = {"permissions": [{"action": "read"}]}
+            if api_auth:
+                client.update({"user": "wb", "pass": api_auth})
+            mtx.add("authInternalUsers", client)
+
     def add_path(self, uri: str, on_demand: bool = True, auth: str = ""):
-        for event in {"Read", "Unread", "Ready", "NotReady"}:
-            bash_cmd = f"echo $MTX_PATH,{event}! > /tmp/mtx_event;"
-            self.rtsp.set(uri, f"RunOn{event}", f"bash -c '{bash_cmd}'")
-        if on_demand:
-            cmd = "bash -c 'echo $MTX_PATH,start! > /tmp/mtx_event'"
-            self.rtsp.set(uri, "runOnDemand", cmd)
-            self.rtsp.set(uri, "runOnDemandStartTimeout", "30s")
-            self.rtsp.set(uri, "runOnDemandCloseAfter", "60s")
-        if read_user := self.rtsp.get(uri, "readUser"):
-            self.rtsp.set(uri, "readUser", read_user)
-        if read_pass := self.rtsp.get(uri, "readPass"):
-            self.rtsp.set(uri, "readPass", read_pass)
-        elif auth:
-            self.rtsp.set(uri, "readUser", "wb")
-            self.rtsp.set(uri, "readPass", auth)
+        with MtxInterface() as mtx:
+            if on_demand:
+                cmd = f"bash -c 'echo $MTX_PATH,{{}}! > /tmp/mtx_event'"
+                mtx.set(f"paths.{uri}.runOnDemand", cmd.format("start"))
+                mtx.set(f"paths.{uri}.runOnUnDemand", cmd.format("stop"))
 
     def add_source(self, uri: str, value: str):
-        self.rtsp.set(uri, "source", value)
+        with MtxInterface() as mtx:
+            mtx.set(f"paths.{uri}.source", value)
 
     def start(self):
         if self.sub_process:
@@ -102,30 +131,31 @@ class MtxServer:
         if not bridge_ip:
             logger.warning("SET WB_IP to allow WEBRTC connections.")
             return
-        logger.debug(f"Using {bridge_ip} for webrtc")
-        self.rtsp.set_opt("webrtcICEHostNAT1To1IPs", bridge_ip)
-        if self.sub_process:
-            self.restart()
+        ips = bridge_ip.split(",")
+        logger.debug(f"Using {' and '.join(ips)} for webrtc")
+        with MtxInterface() as mtx:
+            mtx.add("webrtcAdditionalHosts", ips)
 
     def setup_llhls(self, token_path: str = "/tokens/", hass: bool = False):
         logger.info("Configuring LL-HLS")
-        self.rtsp.set_opt("hlsVariant", "lowLatency")
-        self.rtsp.set_opt("hlsEncryption", "yes")
-        if self.rtsp.get_opt("hlsServerKey"):
-            return
+        with MtxInterface() as mtx:
+            mtx.set("hlsVariant", "lowLatency")
+            mtx.set("hlsEncryption", "yes")
+            if mtx.get("hlsServerKey"):
+                return
 
-        key = "/ssl/privkey.pem"
-        cert = "/ssl/fullchain.pem"
-        if hass and Path(key).is_file() and Path(cert).is_file():
-            logger.info("🔐 Using existing SSL certificate from Home Assistant")
-            self.rtsp.set_opt("hlsServerKey", key)
-            self.rtsp.set_opt("hlsServerCert", cert)
-            return
+            key = "/ssl/privkey.pem"
+            cert = "/ssl/fullchain.pem"
+            if hass and Path(key).is_file() and Path(cert).is_file():
+                logger.info("🔐 Using existing SSL certificate from Home Assistant")
+                mtx.set("hlsServerKey", key)
+                mtx.set("hlsServerCert", cert)
+                return
 
-        cert_path = f"{token_path}hls_server"
-        generate_certificates(cert_path)
-        self.rtsp.set_opt("hlsServerKey", f"{cert_path}.key")
-        self.rtsp.set_opt("hlsServerCert", f"{cert_path}.crt")
+            cert_path = f"{token_path}hls_server"
+            generate_certificates(cert_path)
+            mtx.set("hlsServerKey", f"{cert_path}.key")
+            mtx.set("hlsServerCert", f"{cert_path}.crt")
 
 
 def mtx_version() -> str:
