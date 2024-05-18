@@ -14,7 +14,7 @@ from wyzecam.api_models import WyzeCamera
 
 
 class WyzeBridge(Thread):
-    __slots__ = "api", "streams", "rtsp"
+    __slots__ = "api", "streams", "mtx"
 
     def __init__(self) -> None:
         Thread.__init__(self)
@@ -23,8 +23,9 @@ class WyzeBridge(Thread):
         print(f"\n🚀 DOCKER-WYZE-BRIDGE v{config.VERSION} {config.BUILD_STR}\n")
         self.api: WyzeApi = WyzeApi()
         self.streams: StreamManager = StreamManager()
-        self.mtx: MtxServer = MtxServer(config.BRIDGE_IP, config.WB_API)
-
+        self.mtx: MtxServer = MtxServer(config.WB_API)
+        if config.BRIDGE_IP:
+            self.mtx.setup_webrtc(config.BRIDGE_IP)
         if config.LLHLS:
             self.mtx.setup_llhls(config.TOKEN_PATH, bool(config.HASS_TOKEN))
 
@@ -55,6 +56,8 @@ class WyzeBridge(Thread):
             stream.rtsp_fw_enabled = self.rtsp_fw_proxy(cam, stream)
 
             self.mtx.add_path(stream.uri, not options.reconnect)
+            if env_cam("record", cam.name_uri):
+                self.mtx.record(stream.uri)
             self.streams.add(stream)
 
     def rtsp_fw_proxy(self, cam: WyzeCamera, stream: WyzeStream) -> bool:

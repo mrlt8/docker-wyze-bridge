@@ -5,12 +5,15 @@ from subprocess import DEVNULL, Popen
 from typing import Optional
 
 import yaml
+from wyzebridge.config import RECORD_KEEP, RECORD_LENGTH, RECORD_PATH
 from wyzebridge.logging import logger
 
 MTX_CONFIG = "/app/mediamtx.yml"
 
 
 class MtxInterface:
+    __slots__ = "data", "_modified"
+
     def __init__(self):
         self.data = {}
         self._modified = False
@@ -49,27 +52,24 @@ class MtxInterface:
         self._modified = True
 
     def add(self, path: str, value):
+        if not isinstance(value, list):
+            value = [value]
         current = self.data.get(path)
         if isinstance(current, list):
-            if not isinstance(value, list):
-                value = [value]
             current.extend([item for item in value if item not in current])
         else:
             self.data[path] = value
+        self._modified = True
 
 
 class MtxServer:
     """Setup and interact with the backend mediamtx."""
 
-    __slots__ = "rtsp", "sub_process"
+    __slots__ = "sub_process"
 
-    def __init__(
-        self, bridge_ip: Optional[str] = None, api_auth: Optional[str] = None
-    ) -> None:
+    def __init__(self, api_auth: str = "") -> None:
         self.sub_process: Optional[Popen] = None
         self._setup(api_auth)
-        if bridge_ip:
-            self.setup_webrtc(bridge_ip)
 
     def _setup(self, api_auth: Optional[str]):
         publisher = [
@@ -84,8 +84,11 @@ class MtxServer:
             for event in {"Read", "Unread", "Ready", "NotReady"}:
                 bash_cmd = f"echo $MTX_PATH,{event}! > /tmp/mtx_event;"
                 mtx.set(f"pathDefaults.runOn{event}", f"bash -c '{bash_cmd}'")
-            # mtx.set(f"pathDefaults.runOnDemandStartTimeout", "30s")
-            # mtx.set(f"pathDefaults.runOnDemandCloseAfter", "60s")
+            mtx.set(f"pathDefaults.runOnDemandStartTimeout", "30s")
+            mtx.set(f"pathDefaults.runOnDemandCloseAfter", "60s")
+            mtx.set(f"pathDefaults.recordPath", RECORD_PATH)
+            mtx.set(f"pathDefaults.recordSegmentDuration", RECORD_LENGTH)
+            mtx.set(f"pathDefaults.recordDeleteAfter", RECORD_KEEP)
             client: dict = {"permissions": [{"action": "read"}]}
             if api_auth:
                 client.update({"user": "wb", "pass": api_auth})
@@ -101,6 +104,11 @@ class MtxServer:
     def add_source(self, uri: str, value: str):
         with MtxInterface() as mtx:
             mtx.set(f"paths.{uri}.source", value)
+
+    def record(self, uri: str):
+        logger.info(f"📹 Will record {RECORD_LENGTH}s clips to {RECORD_PATH}")
+        with MtxInterface() as mtx:
+            mtx.set(f"paths.{uri}.record", True)
 
     def start(self):
         if self.sub_process:
