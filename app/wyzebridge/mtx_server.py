@@ -100,6 +100,8 @@ class MtxServer:
                 cmd = f"bash -c 'echo $MTX_PATH,{{}}! > /tmp/mtx_event'"
                 mtx.set(f"paths.{uri}.runOnDemand", cmd.format("start"))
                 mtx.set(f"paths.{uri}.runOnUnDemand", cmd.format("stop"))
+            else:
+                mtx.set(f"paths.{uri}", {})
 
     def add_source(self, uri: str, value: str):
         with MtxInterface() as mtx:
