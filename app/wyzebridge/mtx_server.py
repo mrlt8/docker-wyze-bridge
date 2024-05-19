@@ -94,6 +94,15 @@ class MtxServer:
                 client.update({"user": "wb", "pass": api_auth})
             mtx.add("authInternalUsers", client)
 
+    def add_auth(self, entries: str):
+        with MtxInterface() as mtx:
+            for entry in parse_auth(entries):
+                paths = [
+                    i.get("path") for i in entry["permissions"] if isinstance(i, dict)
+                ] or "all"
+                logger.info(f"[MTX] Auth [{entry['user']}:{entry['pass']}] {paths=}")
+                mtx.add("authInternalUsers", entry)
+
     def add_path(self, uri: str, on_demand: bool = True, auth: str = ""):
         with MtxInterface() as mtx:
             if on_demand:
@@ -197,3 +206,21 @@ def generate_certificates(cert_path):
             stdout=DEVNULL,
             stderr=DEVNULL,
         ).wait()
+
+
+def parse_auth(auth: str) -> list[dict[str, str]]:
+    entries = []
+    for entry in auth.split("|"):
+        creds, *endpoints = entry.split("@")
+        if ":" not in creds:
+            continue
+        username, password = creds.split(":")
+        data = {"user": username, "pass": password, "permissions": []}
+        if endpoints:
+            for endpoint in endpoints[0].split(","):
+                data["permissions"].append({"action": "read", "path": endpoint})
+        else:
+            data["permissions"].append({"action": "read"})
+
+        entries.append(data)
+    return entries

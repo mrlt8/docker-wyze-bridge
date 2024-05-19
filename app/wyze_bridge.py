@@ -41,6 +41,11 @@ class WyzeBridge(Thread):
         """Gather and setup streams for each camera."""
         WyzeStream.user = self.api.get_user()
         WyzeStream.api = self.api
+
+        if config.STREAM_AUTH:
+            logger.info("[+] Custom stream auth enabled")
+            self.mtx.add_auth(config.STREAM_AUTH)
+
         for cam in self.api.filtered_cams():
             logger.info(f"[+] Adding {cam.nickname} [{cam.product_model}]")
             if config.SNAPSHOT_TYPE == "api":

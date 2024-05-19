@@ -73,6 +73,8 @@ WB_PASSWORD: str = get_password(
 )
 WB_API: str = get_password("wb_api", path=TOKEN_PATH, length=30) if WB_AUTH else ""
 
+STREAM_AUTH: str = env_bool("STREAM_AUTH")
+
 if HASS_TOKEN:
     migrate_path("/config/wyze-bridge/", "/config/")
 
