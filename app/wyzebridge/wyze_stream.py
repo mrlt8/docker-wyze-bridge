@@ -124,7 +124,7 @@ class WyzeStream:
         state = time() - self.motion_ts < 20
         if self._motion and not state:
             self._motion = state
-            publish_messages([(f"{MQTT_TOPIC}/{self.uri}/motion", 2)])
+            publish_messages([(f"{MQTT_TOPIC}/{self.uri}/motion", 2, 0, True)])
         return state
 
     @motion.setter
@@ -133,8 +133,8 @@ class WyzeStream:
         self.motion_ts = value
         publish_messages(
             [
-                (f"{MQTT_TOPIC}/{self.uri}/motion", 1),
-                (f"{MQTT_TOPIC}/{self.uri}/motion_ts", value),
+                (f"{MQTT_TOPIC}/{self.uri}/motion", 1, 0, True),
+                (f"{MQTT_TOPIC}/{self.uri}/motion_ts", value, 0, True),
             ]
         )
 
@@ -497,7 +497,7 @@ def get_cam_params(sess: WyzeIOTCSession, uri: str) -> tuple[str, dict]:
         (f"{MQTT_TOPIC}/{uri.lower()}/net_mode", net_mode),
         (f"{MQTT_TOPIC}/{uri.lower()}/wifi", wifi),
         (f"{MQTT_TOPIC}/{uri.lower()}/audio", json.dumps(audio) if audio else False),
-        (f"{MQTT_TOPIC}/{uri.lower()}/ip", sess.camera.ip),
+        (f"{MQTT_TOPIC}/{uri.lower()}/ip", sess.camera.ip, 0, True),
     ]
     publish_messages(mqtt)
     return v_codec, audio
