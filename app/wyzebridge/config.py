@@ -41,13 +41,16 @@ LLHLS: bool = env_bool("LLHLS", style="bool")
 COOLDOWN = env_bool("OFFLINE_TIME", "10", style="int")
 
 
-BOA_INTERVAL: int = env_bool("boa_interval", "15", style="int")
+BOA_INTERVAL: int = env_bool("boa_interval", "20", style="int")
 BOA_COOLDOWN: int = env_bool("boa_cooldown", "20", style="int")
 
 MOTION: bool = env_bool("motion_api", style="bool")
 MOTION_INT: int = max(env_bool("motion_int", "1.5", style="float"), 1.1)
 MOTION_START: bool = env_bool("motion_start", style="bool")
 
+RECORD_PATH = env_bool("RECORD_PATH", "/record/%path/%Y-%m-%d_%H-%M-%S-%f")
+RECORD_LENGTH = env_bool("RECORD_LENGTH", "60s")
+RECORD_KEEP = env_bool("RECORD_KEEP", "24h")
 
 makedirs(TOKEN_PATH, exist_ok=True)
 makedirs(IMG_PATH, exist_ok=True)
@@ -69,6 +72,8 @@ WB_PASSWORD: str = get_password(
     "wb_password", env_bool("WYZE_PASSWORD", style="original"), path=TOKEN_PATH
 )
 WB_API: str = get_password("wb_api", path=TOKEN_PATH, length=30) if WB_AUTH else ""
+
+STREAM_AUTH: str = env_bool("STREAM_AUTH")
 
 if HASS_TOKEN:
     migrate_path("/config/wyze-bridge/", "/config/")

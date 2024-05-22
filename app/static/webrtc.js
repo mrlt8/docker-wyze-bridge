@@ -78,7 +78,7 @@ class Receiver {
     onOpen() {
         const direction = this.whep ? "sendrecv" : "recvonly";
 
-        this.pc = new RTCPeerConnection({ iceServers: this.signalJson.servers });
+        this.pc = new RTCPeerConnection({ iceServers: this.signalJson.servers, sdpSemantics: 'unified-plan' });
         this.pc.addTransceiver("video", { direction });
         this.pc.addTransceiver("audio", { direction });
         this.pc.ontrack = (evt) => this.onTrack(evt);
@@ -121,18 +121,22 @@ class Receiver {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/trickle-ice-sdpfrag',
-                'If-Match': this.eTag,
+                'If-Match': '*',
             },
             body: generateSdpFragment(this.offerData, candidates),
         })
             .then((res) => {
-                if (res.status !== 204) {
-                    throw new Error('bad status code');
+                switch (res.status) {
+                    case 204:
+                        break;
+                    case 404:
+                        throw new Error('stream not found');
+                    default:
+                        throw new Error(`bad status code ${res.status}`);
                 }
             })
             .catch((err) => {
-                console.error('error: ' + err);
-                this.scheduleRestart();
+                onError(err.toString());
             });
     }
 
