@@ -1,3 +1,8 @@
+## What's Changed in v2.9.3
+
+- FIX: Clear the retain flag from MQTT Discovery which was causing commands to be resent to the bridge on startup for some users. (#1182)
+- Ignore commands when connection is stopping.
+
 ## What's Changed in v2.9.2
 
 - Improved video connection stability and audio sync.  #1175 #1196 #1194 #1193 #1186 Thanks @vipergts450!

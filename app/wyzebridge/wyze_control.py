@@ -138,7 +138,7 @@ def camera_control(sess: WyzeIOTCSession, camera_info: Queue, camera_cmd: Queue)
     """
     boa = check_boa_enabled(sess, sess.camera.name_uri)
 
-    while sess.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
+    while sess.should_stream():
         boa_control(sess, boa)
         try:
             cmd = camera_cmd.get(timeout=BOA_INTERVAL)
@@ -173,7 +173,7 @@ def update_params(sess: WyzeIOTCSession):
     """
     Update camera parameters.
     """
-    if sess.state != WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED:
+    if not sess.should_stream(0):
         return
     fw_11 = is_fw11(sess.camera.firmware_ver)
 
@@ -254,6 +254,8 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
     resp, tutk_msg, params = parse_cmd(cmd, log)
     if not tutk_msg:
         return resp | _error_response(cmd, "invalid command")
+    if not sess.should_stream(0):
+        return resp | _error_response(cmd, "not connected")
 
     try:
         with sess.iotctrl_mux() as mux:
@@ -275,10 +277,13 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
     except tutk_protocol.TutkWyzeProtocolError as ex:
         return resp | _error_response(cmd, tutk_protocol.TutkWyzeProtocolError(ex))
     except TutkError as ex:
-        connected = sess.should_stream()
+        connected = not sess.should_stream(0)
         return resp | _error_response(cmd, f"[{ex.code}] {ex.name}", connected)
     except Exception as ex:
         return resp | _error_response(cmd, ex)
+    finally:
+        if not sess.should_stream(0):
+            return resp | _error_response(cmd, "not connected", False)
 
     return _response(resp, res, params, log)
 

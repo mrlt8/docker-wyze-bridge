@@ -46,7 +46,7 @@ def mqtt_enabled(func):
 def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> None:
     """Publish MQTT discovery message for camera."""
     base = f"{MQTT_TOPIC}/{cam_uri}/"
-    msgs = [(f"{base}state", "stopped")] if stopped else []
+    msgs = [(f"{base}state", "stopped", 0, True)] if stopped else []
     if MQTT_DISCOVERY:
         base_payload = {
             "device": {
@@ -61,11 +61,6 @@ def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> No
             "retain": False,
         }
 
-        # Clear out old/renamed entities
-        REMOVE = {"alarm": "switch", "pan_tilt": "cover"}
-        for entity, type in REMOVE.items():
-            msgs.append((f"{MQTT_DISCOVERY}/{type}/{cam.mac}/{entity}/config", None))
-
         for entity, data in get_entities(base, cam.is_pan_cam, cam.rtsp_fw).items():
             topic = f"{MQTT_DISCOVERY}/{data['type']}/{cam.mac}/{entity}/config"
             if "availability_topic" not in data["payload"]:
@@ -77,7 +72,7 @@ def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> No
                 uniq_id=f"WYZE{cam.mac}{entity.upper()}",
             )
 
-            msgs.append((topic, json.dumps(payload)))
+            msgs.append((topic, json.dumps(payload), 0, True))
 
     publish_messages(msgs)
 
@@ -85,14 +80,20 @@ def publish_discovery(cam_uri: str, cam: WyzeCamera, stopped: bool = True) -> No
 @mqtt_enabled
 def mqtt_sub_topic(m_topics: list, callback) -> Optional[paho.mqtt.client.Client]:
     """Connect to mqtt and return the client."""
+
+    def on_connect(client, *_):
+        """Callback for when the client receives a CONNACK response from the server."""
+        client.publish(f"{MQTT_TOPIC}/state", "online", retain=True)
+        for topic in m_topics:
+            # Clear Retain Flag
+            client.publish(f"{MQTT_TOPIC}/{topic}", retain=True)
+            client.subscribe(f"{MQTT_TOPIC}/{topic}")
+
     client = paho.mqtt.client.Client(paho.mqtt.client.CallbackAPIVersion.VERSION2)
 
     client.username_pw_set(MQTT_USER, MQTT_PASS or None)
     client.user_data_set(callback)
-    client.on_connect = lambda mq_client, *_: (
-        mq_client.publish(f"{MQTT_TOPIC}/state", "online"),
-        [mq_client.subscribe(f"{MQTT_TOPIC}/{m_topic}") for m_topic in m_topics],
-    )
+    client.on_connect = on_connect
     client.will_set(f"{MQTT_TOPIC}/state", payload="offline", qos=1, retain=True)
     client.connect(MQTT_HOST, int(MQTT_PORT or 1883), 30)
     client.loop_start()
@@ -104,7 +105,7 @@ def bridge_status(client: Optional[paho.mqtt.client.Client]):
     """Set bridge online if MQTT is enabled."""
     if not client:
         return
-    client.publish(f"{MQTT_TOPIC}/state", "online")
+    client.publish(f"{MQTT_TOPIC}/state", "online", retain=True)
 
 
 @mqtt_enabled
@@ -123,7 +124,7 @@ def publish_messages(messages: list) -> None:
 
 
 @mqtt_enabled
-def publish_topic(topic: str, message=None, retain=False):
+def publish_topic(topic: str, message=None, retain=True):
     paho.mqtt.publish.single(
         topic=f"{MQTT_TOPIC}/{topic}",
         payload=message,
@@ -140,9 +141,9 @@ def publish_topic(topic: str, message=None, retain=False):
 
 @mqtt_enabled
 def update_mqtt_state(camera: str, state: str):
-    msg = [(f"{MQTT_TOPIC}/{camera}/state", state)]
+    msg = [(f"{MQTT_TOPIC}/{camera}/state", state, 0, True)]
     if state == "online":
-        msg.append((f"{MQTT_TOPIC}/{camera}/power", "on"))
+        msg.append((f"{MQTT_TOPIC}/{camera}/power", "on", 0, True))
     publish_messages(msg)
 
 
