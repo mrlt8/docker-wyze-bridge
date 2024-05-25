@@ -492,15 +492,17 @@ class WyzeIOTCSession:
         self.frame_ts = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
         gap = time.time() - self.frame_ts
 
-        if not frame_info.is_keyframe and gap > 5:
+        if frame_info.is_keyframe:
+            return
+
+        if gap > 5:
             logger.warning("[video] super slow")
             self.clear_buffer()
-        if gap > 0:
-            self._sleep_buffer += gap
-
-        if gap >= 1:
+        if gap > 1:
             logger.debug(f"[video] slow {gap=}")
             self.flush_pipe("audio")
+        if gap > 0:
+            self._sleep_buffer += gap
 
     def _handle_frame_error(self, err_no: int) -> None:
         """Handle errors that occur when receiving frame data."""
@@ -530,11 +532,11 @@ class WyzeIOTCSession:
 
         return {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
 
-    def sync_camera_time(self):
+    def sync_camera_time(self, wait: bool = False):
         logger.debug("sync camera time")
         with self.iotctrl_mux() as mux:
-            with contextlib.suppress(tutk_ioctl_mux.Empty):
-                mux.send_ioctl(tutk_protocol.K10092SetCameraTime()).result(False)
+            with contextlib.suppress(tutk_ioctl_mux.Empty, tutk.TutkError):
+                mux.send_ioctl(tutk_protocol.K10092SetCameraTime()).result(wait)
         self.frame_ts = time.time()
 
     def update_frame_size_rate(self, bitrate: Optional[int] = None, fps: int = 0):
@@ -555,27 +557,24 @@ class WyzeIOTCSession:
     def clear_buffer(self) -> None:
         """Clear local buffer."""
         warnings.warn("clear buffer")
-        self.flush_pipe("audio")
-        self.sync_camera_time()
-        tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
+        self.sync_camera_time(True)
+        tutk.av_client_clean_buf(self.tutk_platform_lib, self.av_chan_id)
 
     def flush_pipe(self, pipe_type: str = "audio"):
         if pipe_type == "audio" and not self.audio_pipe_ready:
             return
 
         fifo = f"/tmp/{self.pipe_name}_{pipe_type}.pipe"
-        logger.debug(f"flushing {pipe_type}")
 
         try:
             with io.open(fifo, "rb") as pipe:
                 set_non_blocking(pipe.fileno())
-                while data_read := pipe.read(8192):
+                while data_read := pipe.read(7680):
                     logger.debug(f"Flushed {len(data_read)} from {pipe_type} pipe")
+            if pipe_type == "audio":
+                self.audio_pipe_ready = False
         except Exception as e:
             logger.warning(f"Flushing Error: {e}")
-
-        if pipe_type == "audio":
-            self.audio_pipe_ready = False
 
     def recv_audio_data(
         self,
@@ -630,7 +629,7 @@ class WyzeIOTCSession:
         if frame_info.timestamp < 1591069888:
             return
 
-        gap = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}") - self.frame_ts
+        gap = self.frame_ts - float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
 
         if abs(gap) > 10:
             logger.debug(f"[audio] out of sync {gap=}")
@@ -638,11 +637,12 @@ class WyzeIOTCSession:
 
         if gap < -1:
             logger.debug(f"[audio] behind video.. {gap=}")
+            self.tutk_platform_lib.avClientCleanAudioBuf(self.av_chan_id)
             self.flush_pipe("audio")
 
         if gap > 1:
             logger.debug(f"[audio] ahead of video.. {gap=}")
-            time.sleep(gap * 0.5)
+            self._sleep_buffer += gap
 
     def get_audio_sample_rate(self) -> int:
         """Attempt to get the audio sample rate."""
