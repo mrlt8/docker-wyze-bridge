@@ -500,7 +500,7 @@ class WyzeIOTCSession:
             self.clear_buffer()
         if gap > 1:
             logger.debug(f"[video] slow {gap=}")
-            self.flush_pipe("audio")
+            self.flush_pipe("audio", gap)
         if gap > 0:
             self._sleep_buffer += gap
 
@@ -560,17 +560,20 @@ class WyzeIOTCSession:
         self.sync_camera_time(True)
         tutk.av_client_clean_buf(self.tutk_platform_lib, self.av_chan_id)
 
-    def flush_pipe(self, pipe_type: str = "audio"):
+    def flush_pipe(self, pipe_type: str = "audio", gap: float = 0):
         if pipe_type == "audio" and not self.audio_pipe_ready:
             return
 
         fifo = f"/tmp/{self.pipe_name}_{pipe_type}.pipe"
+        size = (round(abs(gap) + 0.49) * 320) if gap else 7680
 
         try:
             with io.open(fifo, "rb") as pipe:
                 set_non_blocking(pipe.fileno())
-                while data_read := pipe.read(7680):
+                while data_read := pipe.read(size):
                     logger.debug(f"Flushed {len(data_read)} from {pipe_type} pipe")
+                    if gap:
+                        break
             if pipe_type == "audio":
                 self.audio_pipe_ready = False
         except Exception as e:
@@ -629,20 +632,20 @@ class WyzeIOTCSession:
         if frame_info.timestamp < 1591069888:
             return
 
-        gap = self.frame_ts - float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
+        gap = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}") - self.frame_ts
 
-        if abs(gap) > 10:
+        if abs(gap) > 5:
             logger.debug(f"[audio] out of sync {gap=}")
             self.clear_buffer()
 
         if gap < -1:
             logger.debug(f"[audio] behind video.. {gap=}")
-            self.tutk_platform_lib.avClientCleanAudioBuf(self.av_chan_id)
-            self.flush_pipe("audio")
+            self.flush_pipe("audio", gap)
 
         if gap > 1:
             logger.debug(f"[audio] ahead of video.. {gap=}")
             self._sleep_buffer += gap
+            time.sleep(gap / 2)
 
     def get_audio_sample_rate(self) -> int:
         """Attempt to get the audio sample rate."""
