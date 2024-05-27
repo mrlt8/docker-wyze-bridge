@@ -565,7 +565,7 @@ class WyzeIOTCSession:
             return
 
         fifo = f"/tmp/{self.pipe_name}_{pipe_type}.pipe"
-        size = (round(abs(gap) + 0.49) * 320) if gap else 7680
+        size = (round(abs(gap)) * 320) if gap else 7680
 
         try:
             with io.open(fifo, "rb") as pipe:
@@ -574,8 +574,6 @@ class WyzeIOTCSession:
                     logger.debug(f"Flushed {len(data_read)} from {pipe_type} pipe")
                     if gap:
                         break
-            if pipe_type == "audio":
-                self.audio_pipe_ready = False
         except Exception as e:
             logger.warning(f"Flushing Error: {e}")
 
@@ -613,10 +611,10 @@ class WyzeIOTCSession:
         try:
             with open(fifo_path, "wb", buffering=0) as audio_pipe:
                 set_non_blocking(audio_pipe)
+                self.audio_pipe_ready = True
                 for frame_data, _ in self.recv_audio_data():
                     with contextlib.suppress(BlockingIOError):
                         audio_pipe.write(frame_data)
-                    self.audio_pipe_ready = True
 
         except IOError as ex:
             if ex.errno != errno.EPIPE:  # Broken pipe

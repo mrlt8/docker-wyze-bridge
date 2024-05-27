@@ -33,7 +33,7 @@ def get_ffmpeg_cmd(
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
-    thread_queue = "-thread_queue_size 1k -analyzeduration 32 -probesize 32"
+    thread_queue = "-thread_queue_size 8 -analyzeduration 32 -probesize 32"
     if audio and "codec" in audio:
         audio_in = f"{thread_queue} -f {audio['codec']} -ac 1 -ar {audio['rate']} -i /tmp/{uri}_audio.pipe"
         audio_out = audio["codec_out"] or "copy"
@@ -54,7 +54,7 @@ def get_ffmpeg_cmd(
     ).split() or (
         ["-hide_banner", "-loglevel", get_log_level()]
         + env_cam("FFMPEG_FLAGS", uri, flags).strip("'\"\n ").split()
-        + thread_queue.split()
+        + thread_queue.replace("8", "1k").split()
         + (["-hwaccel", h264_enc] if h264_enc in {"vaapi", "qsv"} else [])
         + ["-f", vcodec, "-i", "pipe:0"]
         + audio_in.split()
@@ -62,9 +62,8 @@ def get_ffmpeg_cmd(
         + re_encode_video(uri, is_vertical)
         + (["-map", "1:a", "-c:a", audio_out] if audio_in else [])
         + (a_options if audio and audio_out != "copy" else [])
-        + ["-fps_mode", "drop", "-async", "1", "-flush_packets", "1"]
-        + ["-rtbufsize", "32", "-max_interleave_delta", "0"]
-        + ["-max_muxing_queue_size", "1", "-max_delay", "0.1"]
+        + ["-fps_mode", "passthrough", "-flush_packets", "1"]
+        + ["-rtbufsize", "1"]
         + ["-f", "tee"]
         + [rtsp_ss + get_record_cmd(uri, audio_out, record) + livestream]
     )
