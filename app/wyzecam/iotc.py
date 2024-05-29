@@ -492,9 +492,6 @@ class WyzeIOTCSession:
         self.frame_ts = float(f"{frame_info.timestamp}.{frame_info.timestamp_ms}")
         gap = time.time() - self.frame_ts
 
-        if frame_info.is_keyframe:
-            return
-
         if gap > 5:
             logger.warning("[video] super slow")
             self.clear_buffer()
@@ -640,9 +637,10 @@ class WyzeIOTCSession:
             logger.debug(f"[audio] behind video.. {gap=}")
             self.flush_pipe("audio", gap)
 
+        if gap > 0:
+            self._sleep_buffer += gap
         if gap > 1:
             logger.debug(f"[audio] ahead of video.. {gap=}")
-            self._sleep_buffer += gap
             time.sleep(gap / 2)
 
     def get_audio_sample_rate(self) -> int:
