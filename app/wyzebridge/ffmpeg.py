@@ -54,7 +54,7 @@ def get_ffmpeg_cmd(
     ).split() or (
         ["-hide_banner", "-loglevel", get_log_level()]
         + env_cam("FFMPEG_FLAGS", uri, flags).strip("'\"\n ").split()
-        + thread_queue.replace("8", "1k").split()
+        + thread_queue.split()
         + (["-hwaccel", h264_enc] if h264_enc in {"vaapi", "qsv"} else [])
         + ["-f", vcodec, "-i", "pipe:0"]
         + audio_in.split()
