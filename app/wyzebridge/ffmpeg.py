@@ -28,11 +28,11 @@ def get_ffmpeg_cmd(
     - list of str: complete ffmpeg command that is ready to run as subprocess.
     """
 
-    flags = "-fflags +flush_packets+nobuffer+genpts -flags +low_delay"
+    flags = "-fflags +flush_packets+nobuffer -flags +low_delay"
     livestream = get_livestream_cmd(uri)
     audio_in = "-f lavfi -i anullsrc=cl=mono" if livestream else ""
     audio_out = "aac"
-    thread_queue = "-thread_queue_size 1k -analyzeduration 32 -probesize 32"
+    thread_queue = "-thread_queue_size 8 -analyzeduration 32 -probesize 32"
     if audio and "codec" in audio:
         audio_in = f"{thread_queue} -f {audio['codec']} -ac 1 -ar {audio['rate']} -i /tmp/{uri}_audio.pipe"
         audio_out = audio["codec_out"] or "copy"
@@ -62,7 +62,7 @@ def get_ffmpeg_cmd(
         + (["-map", "1:a", "-c:a", audio_out] if audio_in else [])
         + (a_options if audio and audio_out != "copy" else [])
         + ["-fps_mode", "passthrough", "-flush_packets", "1"]
-        + ["-rtbufsize", "1", "-max_interleave_delta", "0"]
+        + ["-rtbufsize", "1"]
         + ["-f", "tee"]
         + [rtsp_ss + livestream]
     )

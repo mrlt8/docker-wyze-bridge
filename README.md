@@ -59,6 +59,10 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.9.4
+
+- Adjust AV sync issue/delay when audio is enabled. (#1231) Thanks @delmlund!
+
 ## What's Changed in v2.9.3
 
 - FIX: Clear the retain flag from MQTT Discovery which was causing commands to be resent to the bridge on startup for some users. (#1182)
