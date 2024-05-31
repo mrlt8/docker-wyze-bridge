@@ -1,3 +1,7 @@
+## What's Changed in v2.9.4
+
+- Adjust AV sync issue/delay when audio is enabled. (#1231) Thanks @delmlund!
+
 ## What's Changed in v2.9.3
 
 - FIX: Clear the retain flag from MQTT Discovery which was causing commands to be resent to the bridge on startup for some users. (#1182)
