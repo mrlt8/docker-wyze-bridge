@@ -29,9 +29,7 @@ def setup_hass(hass_token: Optional[str]) -> None:
     except Exception as e:
         logger.error(f"WEBRTC SETUP: {e}")
 
-    if environ.get("MQTT_HOST", "").lower() in {"false", "disable"}:
-        logger.info(f"[MQTT] DISABLED {MQTT_HOST=}")
-    else:
+    if environ.get("MQTT_DTOPIC", "").lower() == "homeassistant":
         mqtt_conf = requests.get("http://supervisor/services/mqtt", headers=auth).json()
         if "ok" in mqtt_conf.get("result") and (data := mqtt_conf.get("data")):
             environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
