@@ -37,10 +37,12 @@ def get_ffmpeg_cmd(
     if audio and "codec" in audio:
         audio_in = f"{thread_queue} -f {audio['codec']} -ac 1 -ar {audio['rate']} -i /tmp/{uri}_audio.pipe"
         audio_out = audio["codec_out"] or "copy"
-    if audio and audio.get("codec", "").lower() == "aac_eld":
-        audio_in = f"{thread_queue} -f aac -ac 1 -re -i /tmp/{uri}_audio.pipe"
     a_filter = env_bool("AUDIO_FILTER", "volume=5") + ",adelay=0|0"
-    a_options = ["-compression_level", "4", "-filter:a", a_filter]
+    a_options = ["-filter:a", a_filter]
+    if audio_out.lower() == "libopus":
+        a_options += ["-compression_level", "4", "-frame_duration", "10"]
+    if audio_out.lower() not in {"libopus", "aac"}:
+        a_options += ["-ar", "8000"]
     rtsp_transport = "udp" if "udp" in env_bool("MTX_PROTOCOLS") else "tcp"
     fio_cmd = r"use_fifo=1:fifo_options=attempt_recovery=1\\\:drop_pkts_on_overflow=1:"
     rss_cmd = f"[{fio_cmd}{{}}f=rtsp:{rtsp_transport=:}]rtsp://0.0.0.0:8554/{uri}"
@@ -167,22 +169,22 @@ def get_record_cmd(uri: str, audio_codec: str, record: bool = False) -> str:
     seg_time = env_bool("RECORD_LENGTH", "60")
     file_name = "{CAM_NAME}_%Y-%m-%d_%H-%M-%S_%Z"
     file_name = env_bool("RECORD_FILE_NAME", file_name, style="original").rstrip(".mp4")
-    container = "mp4" if audio_codec.lower() in {"aac", "libopus"} else "mov"
+    format = "mp4" if audio_codec.lower() in {"aac", "libopus"} else "mov"
     path = "/%s/" % env_bool(
         f"RECORD_PATH_{uri}", env_bool("RECORD_PATH", "record/{CAM_NAME}")
     ).format(cam_name=uri.lower(), CAM_NAME=uri).strip("/")
     os.makedirs(path, exist_ok=True)
-    logger.info(f"📹 Will record {seg_time}s {container} clips to {path}")
+    logger.info(f"📹 Will record {seg_time}s clips to {path}")
     return (
         f"|[onfail=ignore:f=segment"
         ":bsfs/v=dump_extra=freq=keyframe"
         f":segment_time={seg_time}"
         ":segment_atclocktime=1"
-        f":segment_format={container}"
+        f":segment_format={format}"
         ":reset_timestamps=1"
         ":strftime=1"
         ":use_fifo=1]"
-        f"{path}{file_name.format(cam_name=uri.lower(),CAM_NAME=uri)}.{container}"
+        f"{path}{file_name.format(cam_name=uri.lower(),CAM_NAME=uri)}.mp4"
     )
 
 
