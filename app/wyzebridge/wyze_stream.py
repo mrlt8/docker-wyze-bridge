@@ -177,7 +177,7 @@ class WyzeStream:
             try:
                 self.process.join(2)
             except Exception as ex:
-                print(f"Error stopping {self.uri}: {ex}")
+                logger.warning(f"Error stopping {self.uri}: {ex}")
                 with contextlib.suppress(AttributeError):
                     self.process.kill()
         self.process = None
