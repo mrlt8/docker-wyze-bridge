@@ -659,7 +659,7 @@ class WyzeIOTCSession:
             140: ("s16le", sample_rate),
             141: ("aac", sample_rate),
             143: ("alaw", sample_rate),
-            144: ("aac_eld", 16000),
+            144: ("aac", 16000),  # aac_eld
             146: ("opus", 16000),
         }
 

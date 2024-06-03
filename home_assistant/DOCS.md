@@ -18,6 +18,13 @@ Note that all streams and the REST API will necessitate authentication when WebU
 
 Please double check your router/firewall and do NOT forward ports or enable DMZ access to your bridge/server unless you know what you are doing!
 
+## MQTT
+
+If MQTT is available and `MQTT_DTOPIC` is set to `homeassistant`, the bridge will automatically configure MQTT.
+
+To disable this automatic configuration, set `MQTT_DTOPIC` to any value other than `homeassistant`.
+
+
 ## Camera Specific Options
 
 Camera specific options can now be passed to the bridge using `CAM_OPTIONS`. To do so you, will need to specify the `CAM_NAME` and the option(s) that you want to pass to the camera.

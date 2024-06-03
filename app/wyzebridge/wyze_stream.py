@@ -14,7 +14,7 @@ from time import sleep, time
 from typing import Optional
 
 from wyzebridge.bridge_utils import env_bool, env_cam
-from wyzebridge.config import BRIDGE_IP, COOLDOWN, MQTT_TOPIC
+from wyzebridge.config import COOLDOWN, MQTT_TOPIC
 from wyzebridge.ffmpeg import get_ffmpeg_cmd
 from wyzebridge.logging import logger
 from wyzebridge.mqtt import publish_discovery, publish_messages, update_mqtt_state
@@ -541,17 +541,13 @@ def get_audio_params(sess: WyzeIOTCSession) -> dict[str, str | int]:
         return {}
 
     codec, rate = sess.identify_audio_codec()
-    codec_str = codec.replace("s16le", "PCM")
-    web_audio = "libopus" if BRIDGE_IP else "aac"
+    logger.info(f"🔊 Audio Enabled [Source={codec.upper()}/{rate:,}Hz]")
 
-    if codec_out := env_bool("AUDIO_CODEC", web_audio if codec == "s16le" else ""):
-        codec_str += f" > {codec_out}"
-    elif BRIDGE_IP and rate > 8000:
-        logger.info("Re-encoding audio for compatibility with WebRTC in MTX")
-        codec_out = "libopus"
-        codec_str += f" > {codec_out}"
-
-    logger.info(f"🔊 Audio Enabled - {codec_str.upper()}/{rate:,}Hz")
+    if codec_out := env_bool("AUDIO_CODEC"):
+        logger.info(f"[AUDIO] Re-Encode Enabled [AUDIO_CODEC={codec_out}]")
+    elif rate > 8000 or codec.lower() == "s16le":
+        codec_out = "pcm_mulaw"
+        logger.info(f"[AUDIO] Re-Encode for RTSP compatibility [{codec_out=}]")
 
     return {"codec": codec, "rate": rate, "codec_out": codec_out.lower()}
 
