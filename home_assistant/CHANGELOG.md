@@ -1,3 +1,10 @@
+## What's Changed in v2.9.5
+
+- **POTENTIALLY BREAKING**: The bridge will now use **PCMU/8000** as the default audio codec when the camera does not provide an RTSP/WebRTC-compatible audio format. This change should enhance compatibility with various NVR systems like **Surveillance Station** which do not support opus. Thanks @Dot50Cal!
+  - To use a different audio codec, set the desired codec in the `AUDIO_CODEC` environment variable.
+- Always re-encode `aac_eld` (Wyze Cam v4) even when WebRTC is not enabled (#1236) Thanks @Dot50Cal!
+- HOME ASSISTANT: Disable MQTT from automatically setting up by setting `MQTT_DTOPIC` to something other than `homeassistant` (#1232)
+
 ## What's Changed in v2.9.4
 
 - Adjust AV sync issue/delay when audio is enabled. (#1231) Thanks @delmlund!
