@@ -555,7 +555,7 @@ class WyzeIOTCSession:
         """Clear local buffer."""
         warnings.warn("clear buffer")
         self.sync_camera_time(True)
-        tutk.av_client_clean_buf(self.tutk_platform_lib, self.av_chan_id)
+        tutk.av_client_clean_local_buf(self.tutk_platform_lib, self.av_chan_id)
 
     def flush_pipe(self, pipe_type: str = "audio", gap: float = 0):
         if pipe_type == "audio" and not self.audio_pipe_ready:

@@ -170,13 +170,16 @@ class WyzeStream:
 
     def stop(self) -> bool:
         self.start_time = 0
-        state = self.state
         self.state = StreamStatus.STOPPING
-        if self.process and self.process.is_alive():
+        while self.process and self.process.is_alive():
             with contextlib.suppress(AttributeError):
-                if state != StreamStatus.CONNECTED:
+                self.process.terminate()
+            try:
+                self.process.join(2)
+            except Exception as ex:
+                print(f"Error stopping {self.uri}: {ex}")
+                with contextlib.suppress(AttributeError):
                     self.process.kill()
-                self.process.join()
         self.process = None
         self.state = StreamStatus.STOPPED
         return True
