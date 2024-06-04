@@ -6,7 +6,7 @@ import struct
 from base64 import b32decode
 from datetime import datetime
 from functools import wraps
-from os import environ, getenv, listdir, remove, utime
+from os import environ, listdir, remove, utime
 from os.path import exists, getmtime, getsize
 from pathlib import Path
 from time import sleep, time
