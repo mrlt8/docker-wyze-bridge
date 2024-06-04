@@ -82,8 +82,8 @@ def setup_hass(hass_token: Optional[str]) -> None:
         log_level = getattr(logging, log_level.upper(), 20)
         format_logging(logging.StreamHandler(stdout), log_level, log_time)
     if conf.get("LOG_FILE"):
-        log_path = "/config/wyze-bridge/logs/"
-        log_file = f"{log_path}debug.log"
+        log_path = "/config/logs/"
+        log_file = f"{log_path}wyze-bridge.log"
         logger.info(f"Logging to file: {log_file}")
         makedirs(log_path, exist_ok=True)
         format_logging(logging.FileHandler(log_file), logging.DEBUG, "%Y/%m/%d %X")

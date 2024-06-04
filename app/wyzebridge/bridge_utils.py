@@ -119,6 +119,10 @@ def migrate_path(old: str, new: str):
 
     if not os.path.exists(new):
         os.makedirs(new)
-    for filename in os.listdir(old):
-        shutil.move(os.path.join(old, filename), os.path.join(new, filename))
+    for item in os.listdir(old):
+        new_file = os.path.join(new, os.path.relpath(os.path.join(old, item), old))
+        if os.path.exists(new_file):
+            new_file += ".old"
+        shutil.move(os.path.join(old, item), new_file)
+
     os.rmdir(old)
