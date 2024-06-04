@@ -2,7 +2,13 @@ from os import environ, getenv, makedirs
 from platform import machine
 
 from dotenv import load_dotenv
-from wyzebridge.bridge_utils import env_bool, get_password, migrate_path, split_int_str
+from wyzebridge.bridge_utils import (
+    env_bool,
+    get_password,
+    get_secret,
+    migrate_path,
+    split_int_str,
+)
 from wyzebridge.hass import setup_hass
 
 load_dotenv()
@@ -60,14 +66,8 @@ for key, value in environ.items():
         environ[new_key] = value
 
 WB_AUTH: bool = bool(env_bool("WB_AUTH") if getenv("WB_AUTH") else True)
-WB_USERNAME: str = (
-    env_bool("WB_USERNAME", style="original")
-    or env_bool("WYZE_EMAIL", style="original")
-    or "wbadmin"
-)
-WB_PASSWORD: str = get_password(
-    "wb_password", env_bool("WYZE_PASSWORD", style="original"), path=TOKEN_PATH
-)
+WB_USERNAME: str = get_secret("wb_username") or get_secret("wyze_email") or "wbadmin"
+WB_PASSWORD: str = get_password("wb_password", "wyze_password", path=TOKEN_PATH)
 WB_API: str = get_password("wb_api", path=TOKEN_PATH, length=30) if WB_AUTH else ""
 
 if HASS_TOKEN:

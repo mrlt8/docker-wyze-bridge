@@ -16,7 +16,7 @@ from urllib.parse import parse_qs, urlparse
 import wyzecam
 from requests import get
 from requests.exceptions import ConnectionError, HTTPError, RequestException
-from wyzebridge.bridge_utils import env_bool, env_filter
+from wyzebridge.bridge_utils import env_bool, env_filter, get_secret
 from wyzebridge.config import IMG_PATH, MOTION, TOKEN_PATH
 from wyzebridge.logging import logger
 from wyzecam.api import RateLimitError, WyzeAPIError, post_device
@@ -77,10 +77,10 @@ class WyzeCredentials:
     __slots__ = "email", "password", "key_id", "api_key"
 
     def __init__(self) -> None:
-        self.email: str = getenv("WYZE_EMAIL", "").strip("'\" \n\t\r")
-        self.password: str = getenv("WYZE_PASSWORD", "").strip("'\" \n\t\r")
-        self.key_id: str = getenv("API_ID", "").strip("'\" \n\t\r")
-        self.api_key: str = getenv("API_KEY", "").strip("'\" \n\t\r")
+        self.email: str = get_secret("WYZE_EMAIL")
+        self.password: str = get_secret("WYZE_PASSWORD")
+        self.key_id: str = get_secret("API_ID")
+        self.api_key: str = get_secret("API_KEY")
 
         if not self.is_set:
             logger.warning("[WARN] Credentials are NOT set")
