@@ -1,3 +1,12 @@
+## What's Changed in v2.9.6
+
+- FIX: Connection to camera would get stuck and not come back on it's own until the webui was opened. Thanks@vipergts450 and @g13092! (#1234) (#1240)
+- FIX: Regression introduced in v2.9.5 where AAC audio sources would not work (#1241) Thanks @rspierenburg!
+- Home Assistant FIX: check if path exists when migrating HA config #1242
+- NEW: Ability to read credentials from Docker Secrets. Thanks @cliaz! (#1244)
+  - Supported variables: `WYZE_EMAIL`, `WYZE_PASSWORD`, `API_ID`,`API_KEY`, `WB_USERNAME`, `WB_PASSWORD`, and `WB_API`
+
+
 ## What's Changed in v2.9.5
 
 - **POTENTIALLY BREAKING**: The bridge will now use **PCMU/8000** as the default audio codec when the camera does not provide an RTSP/WebRTC-compatible audio format. This change should enhance compatibility with various NVR systems like **Surveillance Station** which do not support opus. Thanks @Dot50Cal!
