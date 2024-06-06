@@ -1,8 +1,8 @@
-name: Docker Wyze Bridge (DEV branch)
-description: DEV build. Use the REBUILD button to pull latest image.
-slug: docker_wyze_bridge_dev
+name: Docker Wyze Bridge (EDGE branch)
+description: EDGE build. Use the REBUILD button to pull latest image.
+slug: docker_wyze_bridge_edge
 url: "https://github.com/mrlt8/docker-wyze-bridge"
-version: dev
+version: edge
 stage: experimental
 arch:
   - armv7
@@ -44,7 +44,7 @@ options:
   ON_DEMAND: true
   WB_AUTH: true
   MOTION_API: true
-  MQTT: true
+  MQTT_DTOPIC: homeassistant
   CAM_OPTIONS: []
 schema:
   WYZE_EMAIL: email?
@@ -66,7 +66,7 @@ schema:
   MOTION_START: bool?
   MOTION_WEBHOOKS: str?
   SUBSTREAM: bool?
-  AUDIO_CODEC: list(COPY|AAC|LIBOPUS|MP3|PCM_MULAW|PCM_ALAW)?
+  AUDIO_CODEC: list(COPY|AAC|MP3|LIBOPUS)?
   AUDIO_FILTER: str?
   LLHLS: bool?
   DISABLE_CONTROL: bool?
