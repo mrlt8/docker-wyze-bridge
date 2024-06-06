@@ -169,19 +169,17 @@ class WyzeStream:
         return True
 
     def stop(self) -> bool:
+        self._clear_mp_queue()
         self.start_time = 0
         self.state = StreamStatus.STOPPING
         if self.process and self.process.is_alive():
-            with contextlib.suppress(ArithmeticError):
-                self.process.join(1)
-        if self.process and self.process.is_alive():
             with contextlib.suppress(AttributeError):
-                self.process.kill()
-            try:
                 self.process.join(1)
-            except Exception as ex:
-                logger.warning(f"Error stopping {self.uri}: {ex}")
-                return False
+            if self.process.is_alive():
+                with contextlib.suppress(AttributeError):
+                    self.process.kill()
+                    self.process.join(1)
+
         self.process = None
         self.state = StreamStatus.STOPPED
         return True
@@ -209,8 +207,6 @@ class WyzeStream:
                 self.disable()
                 return self.state
             logger.info(f"👻 {self.camera.nickname} is offline.")
-        if self.state == StreamStatus.STOPPING:
-            self.stop()
         if self.state in {-13, -19, -68}:
             self.refresh_camera()
         elif self.state < StreamStatus.DISABLED:

@@ -67,8 +67,8 @@ class RtspEvent:
         elif event in {"read", "unread"}:
             read_event(uri, event)
         elif event in {"ready", "notready"}:
-            if event == "notready" and not self.streams.get(uri).stop():
-                return
+            if event == "notready":
+                self.streams.get(uri).stop()
             ready_event(uri, event)
 
 
