@@ -61,9 +61,11 @@ See [basic usage](#basic-usage) for additional information or visit the [wiki pa
 
 ## What's Changed in v2.9.6
 
-- FIX: Connection to camera would get stuck and not come back on it's own until the webui was opened. Thanks@vipergts450 and @g13092! (#1234) (#1240)
+- FIX: Connection to camera would get stuck and not come back on it's own until the webui was opened. Thanks @vipergts450 and @g13092! (#1234) (#1240)
 - FIX: Regression introduced in v2.9.5 where AAC audio sources would not work (#1241) Thanks @rspierenburg!
-- Home Assistant FIX: check if path exists when migrating HA config #1242
+- Home Assistant FIX: Regression introduced in v2.9.5 where MQTT was not setting up automatically. (#1247)
+- Home Assistant FIX: check if path exists when migrating HA config (#1242)
+- Home Assistant NEW: Disable MQTT by setting MQTT to `false` (#1232)
 - NEW: Ability to read credentials from Docker Secrets. Thanks @cliaz! (#1244)
   - Supported variables: `WYZE_EMAIL`, `WYZE_PASSWORD`, `API_ID`,`API_KEY`, `WB_USERNAME`, `WB_PASSWORD`, and `WB_API`
 
