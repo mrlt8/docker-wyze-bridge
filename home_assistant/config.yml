@@ -29,6 +29,7 @@ ports_description:
 environment:
   IMG_DIR: media/wyze/img/
   RECORD_PATH: media/wyze/{CAM_NAME}
+  MQTT_DTOPIC: homeassistant
 map:
   - addon_config:rw
   - media:rw
@@ -43,7 +44,7 @@ options:
   ON_DEMAND: true
   WB_AUTH: true
   MOTION_API: true
-  MQTT_DTOPIC: homeassistant
+  MQTT: true
   CAM_OPTIONS: []
 schema:
   WYZE_EMAIL: email?
@@ -74,6 +75,7 @@ schema:
   RECORD_LENGTH: int?
   RECORD_PATH: str?
   RECORD_FILE_NAME: str?
+  MQTT: bool
   MQTT_HOST: str?
   MQTT_AUTH: str?
   MQTT_TOPIC: str?

@@ -29,11 +29,10 @@ def setup_hass(hass_token: Optional[str]) -> None:
     except Exception as e:
         logger.error(f"WEBRTC SETUP: {e}")
 
-    if environ.get("MQTT_DTOPIC", "").lower() == "homeassistant":
-        mqtt_conf = requests.get("http://supervisor/services/mqtt", headers=auth).json()
-        if "ok" in mqtt_conf.get("result") and (data := mqtt_conf.get("data")):
-            environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
-            environ["MQTT_AUTH"] = f'{data["username"]}:{data["password"]}'
+    mqtt_conf = requests.get("http://supervisor/services/mqtt", headers=auth).json()
+    if "ok" in mqtt_conf.get("result") and (data := mqtt_conf.get("data")):
+        environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
+        environ["MQTT_AUTH"] = f'{data["username"]}:{data["password"]}'
 
     if cam_options := conf.pop("CAM_OPTIONS", None):
         for cam in cam_options:
@@ -75,6 +74,10 @@ def setup_hass(hass_token: Optional[str]) -> None:
 
     for k, v in conf.items():
         environ.update({k.replace(" ", "_").upper(): str(v)})
+
+    if not conf.get("MQTT"):
+        logger.warning("MQTT IS DISABLED")
+        environ.pop("MQTT_HOST", None)
 
     log_time = "%X" if conf.get("LOG_TIME") else ""
     log_level = conf.get("LOG_LEVEL", "")
