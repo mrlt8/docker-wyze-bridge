@@ -17,9 +17,8 @@ def env_cam(env: str, uri: str, default="", style="") -> str:
 
 def env_bool(env: str, false="", true="", style="") -> Any:
     """Return env variable or empty string if the variable contains 'false' or is empty."""
-    env_value = os.getenv(env.upper().replace("-", "_"), "")
-    value = env_value.lower().replace("false", "").strip("'\" \n\t\r")
-    if value in {"no", "none"}:
+    value = os.getenv(env.upper().replace("-", "_"), "").strip("'\" \n\t\r")
+    if value.lower() in {"no", "none", "false"}:
         value = ""
     if style.lower() == "bool":
         return bool(value or false)
@@ -33,8 +32,8 @@ def env_bool(env: str, false="", true="", style="") -> Any:
     if style.lower() == "upper" and value:
         return value.upper()
     if style.lower() == "original" and value:
-        return os.getenv(env.upper().replace("-", "_"))
-    return true if true and value else value or false
+        return value
+    return true if true and value else value.lower() or false
 
 
 def env_list(env: str) -> list:
