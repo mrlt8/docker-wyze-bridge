@@ -4,6 +4,7 @@
   "slug": "docker_wyze_bridge_previous",
   "url": "https://github.com/mrlt8/docker-wyze-bridge",
   "version": "2.6.0",
+  "stage": "deprecated",
   "arch": ["armv7", "aarch64", "amd64"],
   "startup": "application",
   "boot": "auto",

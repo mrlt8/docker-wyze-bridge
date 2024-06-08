@@ -1,0 +1,103 @@
+configuration:
+  API_ID:
+    name: Key ID
+    description: Optional, but must be used in combination with the API Key.
+  API_KEY:
+    name: API Key
+    description: Optional, but must be used in combination with the Key ID.
+  REFRESH_TOKEN:
+    name: Refresh Token
+    description: Use existing refresh token for authentication.
+  ACCESS_TOKEN:
+    name: Access Token
+    description: Use existing access token for authentication.
+  NET_MODE:
+    name: Allowed Net Modes
+  SNAPSHOT:
+    name: Snapshot Mode
+  ENABLE_AUDIO:
+    name: Enable Audio For All Cameras
+  SUBSTREAM:
+    name: Enable sub-stream
+    description: Create a secondary SD30 stream on "/cam-name-sub"
+  FILTER_NAMES:
+    name: Filter cameras by name
+  FILTER_MODELS:
+    name: Filter cameras by camera model
+  FILTER_MACS:
+    name: Filter cameras by MAC address
+  FILTER_BLOCK:
+    name: Invert Filter
+    description: Block cameras in filter list
+  AUDIO_CODEC:
+    name: Audio Codec
+    description: Cams with PCM audio will be re-encoded to AAC by default for RTSP compatibility.
+  AUDIO_FILTER:
+    name: FFmpeg Audio Filter
+    description: Requires audio codec to be set to AAC or MP3.
+  OFFLINE_IFTTT:
+    name: IFTTT Webhook
+    description: e.g. `EventName:Webhooks_Key`.
+  ROTATE_DOOR:
+    name: Rotate Doorbells
+    description: Will rotate video 90 degrees clockwise.
+  CAM_OPTIONS:
+    name: Camera Specific Options
+  FRESH_DATA:
+    name: Pull Fresh Data From Wyze API
+    description: Ignore local cache and pull fresh data from the wyze API.
+  WEBRTC:
+    name: Print WebRTC Credentials
+  WB_SHOW_VIDEO:
+    name: HLS Player in Web-UI
+  MEDIAMTX:
+    name: MediaMTX config
+    description: Use `=` to specify the value and use `_` in place of spaces.
+  BOA_ENABLED:
+    name: Enable Boa HTTP*
+    description: Enable http webserver on select cameras. *Req LAN and SD Card.
+  BOA_INTERVAL:
+    name: Boa Keep Alive
+    description: The number of seconds between photos/keep alive.
+  BOA_TAKE_PHOTO:
+    name: Interval Photo
+    description: Take a photo on the camera on Boa Keep Alive Interval.
+  BOA_PHOTO:
+    name: Pull Photo (MQTT Motion Alerts)
+    description: Pull the HQ photo from the SD card via Boa.
+  BOA_ALARM:
+    name: Pull Alarm (MQTT Motion Alerts)
+    description: Pull alarm/motion image from the SD card via Boa.
+  BOA_COOLDOWN:
+    name: Motion Cooldown
+    description: Number of seconds to keep the motion flag set to true before resetting it.
+  BOA_MOTION:
+    name: Webhook on Boa Motion
+    description: Make a Webhook/HTTP request to any url. e.g., http://localhost/motion?cam={cam_name}
+  WB_HLS_URL:
+    name: Custom HLS url
+  WB_RTMP_URL:
+    name: Custom RTMP url
+  WB_RTSP_URL:
+    name: Custom RTSP url
+  WB_WEBRTC_URL:
+    name: Custom WebRTC url
+  RTSP_FW:
+    name: Firmware RTSP
+    description: Proxy additional RTSP stream from official RTSP firmware.
+  DISABLE_CONTROL:
+    name: Disable Control
+    description: Disable camera control from the API/mqtt.
+  WB_IP:
+    name: Bridge IP
+    description: Home Assistant IP for WebRTC ICE traffic.
+  TOTP_KEY:
+    name: TOTP Key
+    description: Used to auto generate a TOTP code when needed.
+  WB_AUTH:
+    name: WebUI Auth
+    description: Enable authentication for WebUI
+  WB_USERNAME:
+    name: WebUI Username
+  WB_PASSWORD:
+    name: WebUI Password

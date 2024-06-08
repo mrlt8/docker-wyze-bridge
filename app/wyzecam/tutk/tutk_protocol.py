@@ -4,7 +4,7 @@ import time
 from ctypes import LittleEndianStructure, c_char, c_uint16, c_uint32
 from os import getenv
 from pathlib import Path
-from struct import pack, unpack
+from struct import iter_unpack, pack, unpack
 from typing import Any, Optional
 
 import xxtea
@@ -1014,23 +1014,17 @@ class K11006GetCurCruisePoint(TutkWyzeProtocolMessage):
     - dict: current PTZ:
         - vertical (int): vertical angle.
         - horizontal (int): horizontal angle.
-        - time (int): wait time in seconds.
-        - blank (int): isBlankPst?.
     """
 
     def __init__(self):
-        super().__init__(11010)
+        super().__init__(11006)
 
     def encode(self) -> bytes:
         return encode(self.code, pack("<I", int(time.time())))
 
     def parse_response(self, resp_data: bytes):
-        return {
-            "vertical": resp_data[1],
-            "horizontal": resp_data[2],
-            "time": resp_data[3],
-            "blank": resp_data[4],
-        }
+        data = unpack("<IBH", resp_data)
+        return {"vertical": data[1], "horizontal": data[2]}
 
 
 class K11010GetCruisePoints(TutkWyzeProtocolMessage):
@@ -1042,7 +1036,6 @@ class K11010GetCruisePoints(TutkWyzeProtocolMessage):
         - vertical (int): vertical angle.
         - horizontal (int): horizontal angle.
         - time (int): wait time in seconds.
-        - blank (int): isBlankPst?.
     """
 
     def __init__(self):
@@ -1051,12 +1044,11 @@ class K11010GetCruisePoints(TutkWyzeProtocolMessage):
     def parse_response(self, resp_data: bytes):
         return [
             {
-                "vertical": resp_data[i + 1],
-                "horizontal": resp_data[i + 2],
-                "time": resp_data[i + 3],
-                "blank": resp_data[i + 4],
+                "vertical": data[0],
+                "horizontal": data[1],
+                "time": data[2],
             }
-            for i in range(0, resp_data[0] * 4, 4)
+            for data in iter_unpack("<BHB", resp_data[1:])
         ]
 
 
@@ -1069,28 +1061,24 @@ class K11012SetCruisePoints(TutkWyzeProtocolMessage):
             - vertical (int[0-40], optional): vertical angle.
             - horizontal (int[0-350], optional): horizontal angle.
             - time (int, optional[10-255]): wait time in seconds. Defaults to 10.
-            - blank (int, optional): isBlankPst?.
+            - blank (int, optional): skip.
     - wait_time(int, optional): Default wait time. Defaults to 10.
     """
 
     def __init__(self, points: list[dict], wait_time=10):
         super().__init__(11012)
 
-        cruise_points = [0]
-        for count, point in enumerate(points, 1):
-            cruise_points[0] = count
-            cruise_points.extend(
-                [
-                    int(point.get("vertical", 0)),
-                    int(point.get("horizontal", 0)),
-                    int(point.get("time", wait_time)),
-                    int(point.get("blank", 0)),
-                ]
-            )
-        self.points = cruise_points
+        self.points = bytearray(pack("<B", len(points)))
+        for point in points:
+            if point.get("blank", 0):
+                continue
+            vertical = int(point.get("vertical", 0))
+            horizontal = int(point.get("horizontal", 0))
+            time = int(point.get("time", wait_time))
+            self.points.extend(pack("<BHB", vertical, horizontal, time))
 
     def encode(self) -> bytes:
-        return encode(self.code, bytes(self.points))
+        return encode(self.code, self.points)
 
 
 class K11014GetCruise(TutkWyzeProtocolMessage):

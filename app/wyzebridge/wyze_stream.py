@@ -169,14 +169,17 @@ class WyzeStream:
         return True
 
     def stop(self) -> bool:
+        self._clear_mp_queue()
         self.start_time = 0
-        state = self.state
         self.state = StreamStatus.STOPPING
         if self.process and self.process.is_alive():
             with contextlib.suppress(AttributeError):
-                if state != StreamStatus.CONNECTED:
+                self.process.join(1)
+            if self.process.is_alive():
+                with contextlib.suppress(AttributeError):
                     self.process.kill()
-                self.process.join()
+                    self.process.join(1)
+
         self.process = None
         self.state = StreamStatus.STOPPED
         return True

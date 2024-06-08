@@ -17,9 +17,8 @@ def env_cam(env: str, uri: str, default="", style="") -> str:
 
 def env_bool(env: str, false="", true="", style="") -> Any:
     """Return env variable or empty string if the variable contains 'false' or is empty."""
-    env_value = os.getenv(env.upper().replace("-", "_"), "")
-    value = env_value.lower().replace("false", "").strip("'\" \n\t\r")
-    if value in {"no", "none"}:
+    value = os.getenv(env.upper().replace("-", "_"), "").strip("'\" \n\t\r")
+    if value.lower() in {"no", "none", "false"}:
         value = ""
     if style.lower() == "bool":
         return bool(value or false)
@@ -33,8 +32,8 @@ def env_bool(env: str, false="", true="", style="") -> Any:
     if style.lower() == "upper" and value:
         return value.upper()
     if style.lower() == "original" and value:
-        return os.getenv(env.upper().replace("-", "_"))
-    return true if true and value else value or false
+        return value
+    return true if true and value else value.lower() or false
 
 
 def env_list(env: str) -> list:
@@ -81,10 +80,20 @@ def is_fw11(fw_ver: Optional[str]) -> bool:
     return False
 
 
+def get_secret(name: str) -> str:
+    if not name:
+        return ""
+    try:
+        with open(f"/run/secrets/{name.upper()}", "r") as f:
+            return f.read().strip("'\" \n\t\r")
+    except FileNotFoundError:
+        return env_bool(name, style="original")
+
+
 def get_password(
     file_name: str, alt: str = "", path: str = "", length: int = 16
 ) -> str:
-    if env_pass := env_bool(file_name, alt, style="original"):
+    if env_pass := (get_secret(file_name) or get_secret(alt)):
         return env_pass
 
     file_path = f"{path}{file_name}"
@@ -109,6 +118,10 @@ def migrate_path(old: str, new: str):
 
     if not os.path.exists(new):
         os.makedirs(new)
-    for filename in os.listdir(old):
-        shutil.move(os.path.join(old, filename), os.path.join(new, filename))
+    for item in os.listdir(old):
+        new_file = os.path.join(new, os.path.relpath(os.path.join(old, item), old))
+        if os.path.exists(new_file):
+            new_file += ".old"
+        shutil.move(os.path.join(old, item), new_file)
+
     os.rmdir(old)

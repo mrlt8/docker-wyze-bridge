@@ -29,11 +29,10 @@ def setup_hass(hass_token: Optional[str]) -> None:
     except Exception as e:
         logger.error(f"WEBRTC SETUP: {e}")
 
-    if environ.get("MQTT_DTOPIC", "").lower() == "homeassistant":
-        mqtt_conf = requests.get("http://supervisor/services/mqtt", headers=auth).json()
-        if "ok" in mqtt_conf.get("result") and (data := mqtt_conf.get("data")):
-            environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
-            environ["MQTT_AUTH"] = f'{data["username"]}:{data["password"]}'
+    mqtt_conf = requests.get("http://supervisor/services/mqtt", headers=auth).json()
+    if "ok" in mqtt_conf.get("result") and (data := mqtt_conf.get("data")):
+        environ["MQTT_HOST"] = f'{data["host"]}:{data["port"]}'
+        environ["MQTT_AUTH"] = f'{data["username"]}:{data["password"]}'
 
     if cam_options := conf.pop("CAM_OPTIONS", None):
         for cam in cam_options:
@@ -76,14 +75,18 @@ def setup_hass(hass_token: Optional[str]) -> None:
     for k, v in conf.items():
         environ.update({k.replace(" ", "_").upper(): str(v)})
 
+    if not conf.get("MQTT"):
+        logger.warning("MQTT IS DISABLED")
+        environ.pop("MQTT_HOST", None)
+
     log_time = "%X" if conf.get("LOG_TIME") else ""
     log_level = conf.get("LOG_LEVEL", "")
     if log_level or log_time:
         log_level = getattr(logging, log_level.upper(), 20)
         format_logging(logging.StreamHandler(stdout), log_level, log_time)
     if conf.get("LOG_FILE"):
-        log_path = "/config/wyze-bridge/logs/"
-        log_file = f"{log_path}debug.log"
+        log_path = "/config/logs/"
+        log_file = f"{log_path}wyze-bridge.log"
         logger.info(f"Logging to file: {log_file}")
         makedirs(log_path, exist_ok=True)
         format_logging(logging.FileHandler(log_file), logging.DEBUG, "%Y/%m/%d %X")
