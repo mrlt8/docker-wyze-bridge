@@ -1061,7 +1061,6 @@ class K11012SetCruisePoints(TutkWyzeProtocolMessage):
             - vertical (int[0-40], optional): vertical angle.
             - horizontal (int[0-350], optional): horizontal angle.
             - time (int, optional[10-255]): wait time in seconds. Defaults to 10.
-            - blank (int, optional): skip.
     - wait_time(int, optional): Default wait time. Defaults to 10.
     """
 
@@ -1070,8 +1069,6 @@ class K11012SetCruisePoints(TutkWyzeProtocolMessage):
 
         self.points = bytearray(pack("<B", len(points)))
         for point in points:
-            if point.get("blank", 0):
-                continue
             vertical = int(point.get("vertical", 0))
             horizontal = int(point.get("horizontal", 0))
             time = int(point.get("time", wait_time))

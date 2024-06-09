@@ -1,3 +1,10 @@
+## What's Changed in v2.9.7
+
+- FIX: Pan and tilt cruise points 3 and 4 were broken. Thanks @Deach01! (#1228)
+- FIX: Remove whitespaces from credentials (#1252)
+- CHANGED: Removed `blank` option when setting `cruise_points` as it would be ignored anyways.
+
+
 ## What's Changed in v2.9.6
 
 - FIX: Connection to camera would get stuck and not come back on it's own until the webui was opened. Thanks @vipergts450 and @g13092! (#1234) (#1240)
