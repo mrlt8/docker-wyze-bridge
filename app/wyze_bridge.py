@@ -23,7 +23,7 @@ class WyzeBridge(Thread):
         print(f"\n🚀 DOCKER-WYZE-BRIDGE v{config.VERSION} {config.BUILD_STR}\n")
         self.api: WyzeApi = WyzeApi()
         self.streams: StreamManager = StreamManager()
-        self.mtx: MtxServer = MtxServer(config.WB_API)
+        self.mtx: MtxServer = MtxServer(config.WB_API, config.STREAM_AUTH)
         if config.BRIDGE_IP:
             self.mtx.setup_webrtc(config.BRIDGE_IP)
         if config.LLHLS:
@@ -41,10 +41,6 @@ class WyzeBridge(Thread):
         """Gather and setup streams for each camera."""
         WyzeStream.user = self.api.get_user()
         WyzeStream.api = self.api
-
-        if config.STREAM_AUTH:
-            logger.info("[+] Custom stream auth enabled")
-            self.mtx.add_auth(config.STREAM_AUTH)
 
         for cam in self.api.filtered_cams():
             logger.info(f"[+] Adding {cam.nickname} [{cam.product_model}]")

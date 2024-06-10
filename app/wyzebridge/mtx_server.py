@@ -67,43 +67,45 @@ class MtxServer:
 
     __slots__ = "sub_process"
 
-    def __init__(self, api_auth: str = "") -> None:
+    def __init__(self, api_auth: Optional[str], stream_auth: Optional[str]) -> None:
         self.sub_process: Optional[Popen] = None
-        self._setup(api_auth)
+        self._setup(api_auth, stream_auth)
 
-    def _setup(self, api_auth: Optional[str]):
+    def _setup(self, api_auth: Optional[str], stream_auth: Optional[str]):
+        with MtxInterface() as mtx:
+            self._setup_auth(mtx, api_auth, stream_auth)
+            self._setup_path_defaults(mtx)
+
+    def _setup_path_defaults(self, mtx: MtxInterface):
+        mtx.set("paths", {})
+        for event in {"Read", "Unread", "Ready", "NotReady"}:
+            bash_cmd = f"echo $MTX_PATH,{event}! > /tmp/mtx_event;"
+            mtx.set(f"pathDefaults.runOn{event}", f"bash -c '{bash_cmd}'")
+        mtx.set(f"pathDefaults.runOnDemandStartTimeout", "30s")
+        mtx.set(f"pathDefaults.runOnDemandCloseAfter", "60s")
+        mtx.set(f"pathDefaults.recordPath", RECORD_PATH)
+        mtx.set(f"pathDefaults.recordSegmentDuration", RECORD_LENGTH)
+        mtx.set(f"pathDefaults.recordDeleteAfter", RECORD_KEEP)
+
+    def _setup_auth(self, mtx: MtxInterface, api: Optional[str], stream: Optional[str]):
         publisher = [
             {
                 "ips": ["127.0.0.1"],
                 "permissions": [{"action": "read"}, {"action": "publish"}],
             }
         ]
-        with MtxInterface() as mtx:
-            mtx.set("paths", {})
-            mtx.set("authInternalUsers", publisher)
-            for event in {"Read", "Unread", "Ready", "NotReady"}:
-                bash_cmd = f"echo $MTX_PATH,{event}! > /tmp/mtx_event;"
-                mtx.set(f"pathDefaults.runOn{event}", f"bash -c '{bash_cmd}'")
-            mtx.set(f"pathDefaults.runOnDemandStartTimeout", "30s")
-            mtx.set(f"pathDefaults.runOnDemandCloseAfter", "60s")
-            mtx.set(f"pathDefaults.recordPath", RECORD_PATH)
-            mtx.set(f"pathDefaults.recordSegmentDuration", RECORD_LENGTH)
-            mtx.set(f"pathDefaults.recordDeleteAfter", RECORD_KEEP)
+        mtx.set("authInternalUsers", publisher)
+        if api or not stream:
             client: dict = {"permissions": [{"action": "read"}]}
-            if api_auth:
-                client.update({"user": "wb", "pass": api_auth})
+            if api:
+                client.update({"user": "wb", "pass": api})
             mtx.add("authInternalUsers", client)
+        if stream:
+            logger.info("[+] Custom stream auth enabled")
+            for client in parse_auth(stream):
+                mtx.add("authInternalUsers", client)
 
-    def add_auth(self, entries: str):
-        with MtxInterface() as mtx:
-            for entry in parse_auth(entries):
-                paths = [
-                    i.get("path") for i in entry["permissions"] if isinstance(i, dict)
-                ] or "all"
-                logger.info(f"[MTX] Auth [{entry['user']}:{entry['pass']}] {paths=}")
-                mtx.add("authInternalUsers", entry)
-
-    def add_path(self, uri: str, on_demand: bool = True, auth: str = ""):
+    def add_path(self, uri: str, on_demand: bool = True):
         with MtxInterface() as mtx:
             if on_demand:
                 cmd = f"bash -c 'echo $MTX_PATH,{{}}! > /tmp/mtx_event'"
@@ -220,10 +222,13 @@ def parse_auth(auth: str) -> list[dict[str, str]]:
             username = username if username else "any"
         data = {"user": username, "pass": password, "ips": ips, "permissions": []}
         if endpoints:
+            paths = []
             for endpoint in endpoints[0].split(","):
+                paths.append(endpoint)
                 data["permissions"].append({"action": "read", "path": endpoint})
         else:
+            paths = "all"
             data["permissions"].append({"action": "read"})
-
+        logger.info(f"[MTX] Auth [{data['user']}:{data['pass']}] {paths=}")
         entries.append(data)
     return entries
