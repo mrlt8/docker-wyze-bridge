@@ -1,3 +1,4 @@
+import contextlib
 import json
 import time
 from subprocess import Popen, TimeoutExpired
@@ -20,40 +21,29 @@ class Stream(Protocol):
     uri: str
 
     @property
-    def connected(self) -> bool:
-        ...
+    def connected(self) -> bool: ...
 
     @property
-    def enabled(self) -> bool:
-        ...
+    def enabled(self) -> bool: ...
 
     @property
-    def motion(self) -> bool:
-        ...
+    def motion(self) -> bool: ...
 
-    def start(self) -> bool:
-        ...
+    def start(self) -> bool: ...
 
-    def stop(self) -> bool:
-        ...
+    def stop(self) -> bool: ...
 
-    def enable(self) -> bool:
-        ...
+    def enable(self) -> bool: ...
 
-    def disable(self) -> bool:
-        ...
+    def disable(self) -> bool: ...
 
-    def health_check(self) -> int:
-        ...
+    def health_check(self) -> int: ...
 
-    def get_info(self, item: Optional[str] = None) -> dict:
-        ...
+    def get_info(self, item: Optional[str] = None) -> dict: ...
 
-    def status(self) -> str:
-        ...
+    def status(self) -> str: ...
 
-    def send_cmd(self, cmd: str, payload: str | list | dict = "") -> dict:
-        ...
+    def send_cmd(self, cmd: str, payload: str | list | dict = "") -> dict: ...
 
 
 class StreamManager:
@@ -94,7 +84,8 @@ class StreamManager:
         for stream in self.streams.values():
             stream.stop()
         if self.thread and self.thread.is_alive():
-            self.thread.join()
+            with contextlib.suppress(AttributeError):
+                self.thread.join()
 
     def monitor_streams(self, mtx_health: Callable) -> None:
         self.stop_flag = False
@@ -136,6 +127,8 @@ class StreamManager:
         Returns:
         - list(str): uri-friendly name of streams that are enabled.
         """
+        if self.stop_flag:
+            return []
         return [cam for cam, s in self.streams.items() if s.health_check() > 0]
 
     def snap_all(self, cams: Optional[list[str]] = None, force: bool = False):
