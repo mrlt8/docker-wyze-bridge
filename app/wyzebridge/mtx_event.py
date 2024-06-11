@@ -4,6 +4,7 @@ This module handles stream and client events from MediaMTX.
 
 import contextlib
 import errno
+import fcntl
 import os
 import select
 
@@ -17,28 +18,32 @@ class RtspEvent:
     """
 
     FIFO = "/tmp/mtx_event"
-    __slots__ = "pipe_fd", "streams", "buf"
+    __slots__ = "pipe", "streams", "buf"
 
     def __init__(self, streams):
-        self.pipe_fd: int = 0
+        self.pipe = None
         self.streams = streams
         self.buf: str = ""
-        self.open_pipe()
+        with contextlib.suppress(FileExistsError):
+            os.mkfifo(self.FIFO)
+        print("RtspEvent initialized")
 
     def read(self, timeout: int = 1):
+        if not self.pipe or self.pipe.closed:
+            self.pipe = open(self.FIFO)
+            set_non_blocking(self.pipe)
         try:
-            if select.select([self.pipe_fd], [], [], timeout)[0]:
-                data = os.read(self.pipe_fd, 128)
-                self.process_data(data)
+            if select.select([self.pipe], [], [], timeout)[0]:
+                if data := self.pipe.read(128):
+                    self.process_data(data)
         except OSError as ex:
             if ex.errno != errno.EBADF:
                 logger.error(ex)
-            self.open_pipe()
         except Exception as ex:
             logger.error(f"Error reading from pipe: {ex}")
 
     def process_data(self, data):
-        messages = data.decode().split("!")
+        messages = data.split("!")
         if self.buf:
             messages[0] = self.buf + messages[0]
             self.buf = ""
@@ -46,12 +51,6 @@ class RtspEvent:
             self.log_event(msg.strip())
 
         self.buf = messages[-1].strip()
-
-    def open_pipe(self):
-        with contextlib.suppress(FileExistsError):
-            os.mkfifo(self.FIFO)
-
-        self.pipe_fd = os.open(self.FIFO, os.O_RDWR | os.O_NONBLOCK)
 
     def log_event(self, event_data: str):
         try:
@@ -88,3 +87,8 @@ def ready_event(camera: str, status: str):
 
     update_mqtt_state(camera, state)
     logger.info(msg)
+
+
+def set_non_blocking(fd):
+    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
+    fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)

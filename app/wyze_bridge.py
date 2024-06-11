@@ -29,12 +29,20 @@ class WyzeBridge(Thread):
             self.rtsp.setup_llhls(config.TOKEN_PATH, bool(config.HASS_TOKEN))
 
     def run(self, fresh_data: bool = False) -> None:
+        self._initialize(fresh_data)
+
+    def _initialize(self, fresh_data: bool = False) -> None:
         self.api.login(fresh_data=fresh_data)
         self.setup_streams()
         if self.streams.total < 1:
             return signal.raise_signal(signal.SIGINT)
         self.rtsp.start()
         self.streams.monitor_streams(self.rtsp.health_check)
+
+    def restart(self, fresh_data: bool = False) -> None:
+        self.rtsp.stop()
+        self.streams.stop_all()
+        self._initialize(fresh_data)
 
     def setup_streams(self):
         """Gather and setup streams for each camera."""

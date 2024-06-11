@@ -1,6 +1,6 @@
 from os import environ, getenv
 from pathlib import Path
-from signal import SIGINT
+from signal import SIGKILL
 from subprocess import DEVNULL, Popen
 from typing import Optional, Protocol
 
@@ -82,15 +82,14 @@ class MtxServer:
     def stop(self):
         if not self.sub_process:
             return
-        logger.info("Stopping MediaMTX...")
         if self.sub_process.poll() is None:
-            self.sub_process.send_signal(SIGINT)
+            logger.info("Stopping MediaMTX...")
+            self.sub_process.send_signal(SIGKILL)
             self.sub_process.communicate()
         self.sub_process = None
 
     def restart(self):
-        if self.sub_process:
-            self.stop()
+        self.stop()
         self.start()
 
     def health_check(self):

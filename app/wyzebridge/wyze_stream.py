@@ -175,8 +175,8 @@ class WyzeStream:
         if self.process and self.process.is_alive():
             with contextlib.suppress(AttributeError):
                 self.process.join(1)
-            if self.process.is_alive():
-                with contextlib.suppress(AttributeError):
+            with contextlib.suppress(AttributeError):
+                if self.process.is_alive():
                     self.process.kill()
                     self.process.join(1)
 
@@ -402,9 +402,9 @@ class WyzeStream:
             return
 
     def _clear_mp_queue(self):
-        with contextlib.suppress(Empty):
+        with contextlib.suppress(Empty, AttributeError):
             self.cam_cmd.get_nowait()
-        with contextlib.suppress(Empty):
+        with contextlib.suppress(Empty, AttributeError):
             self.cam_resp.get_nowait()
 
 
@@ -451,6 +451,8 @@ def start_tutk_stream(uri: str, stream: StreamTuple, queue: QueueTuple, state: c
     else:
         logger.warning("Stream stopped")
     finally:
+        if ffmpeg and ffmpeg.poll() is None:
+            ffmpeg.stdin.close()
         state.value = exit_code
         stop_and_wait(audio_thread)
         stop_and_wait(control_thread)
