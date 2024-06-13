@@ -53,7 +53,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
 function applyPreferences() {
   const repeatNumber = getCookie("number_of_columns", 2);
-  console.debug("applyPreferences number_of_columns", repeatNumber);
   const grid = document.querySelectorAll(".camera");
   for (var i = 0, len = grid.length; i < len; i++) {
     grid[i].classList.forEach((item) => {
@@ -72,7 +71,6 @@ function applyPreferences() {
       sortOrder = sortOrder.replaceAll("%2C", ",")
       setCookie("camera_order", sortOrder);
     }
-    console.debug("applyPreferences camera_order", sortOrder);
     const ids = sortOrder.split(",");
     var cameras = [...document.querySelectorAll(".camera")];
     for (var i = 0; i < Math.min(ids.length, cameras.length); i++) {
@@ -189,7 +187,6 @@ async function update_img(oldUrl, useImg = false) {
   if (useImg || ext == "svg") {
     newUrl = "img/" + cam + "." + ext;
   }
-  console.debug("update_img", oldUrl, newUrl);
   let button = document.querySelector(`.update-preview[data-cam="${cam}"]`);
   if (button) {
     button.disabled = true;
@@ -211,20 +208,11 @@ async function update_img(oldUrl, useImg = false) {
     });
 
   // update video.poster
-  document
-    .querySelectorAll(`[poster="${oldUrl}"],[poster="${newUrl}"]`)
+  document.querySelectorAll(`[poster="${oldUrl}"],[poster="${newUrl}"]`)
     .forEach(function (e) {
       e.setAttribute("poster", newUrl);
     });
 
-  // update video js div for poster
-  document
-    .querySelectorAll(
-      `[style='background-image: url("${oldUrl}");'],[style='background-image: url("${newUrl}");']`
-    )
-    .forEach(function (e) {
-      e.style = `background-image: url("${newUrl}");`;
-    });
   if (button) {
     button.disabled = false;
     button.getElementsByClassName("fas")[0].classList.remove("fa-spin");
@@ -237,9 +225,8 @@ async function update_img(oldUrl, useImg = false) {
 }
 
 function refresh_imgs() {
-  console.debug("refresh_imgs " + Date.now());
   document.querySelectorAll(".refresh_img").forEach(async function (image) {
-    let url = image.getAttribute("src");
+    let url = image.getAttribute(image.nodeName === "IMG" ? "src" : "poster");
     if (url === null) { return; }
     let CameraBattery = document.getElementById(image.dataset.cam).dataset.battery?.toLowerCase() == "true";
     let CameraConnected = image.classList.contains("connected");
@@ -383,6 +370,7 @@ document.addEventListener("DOMContentLoaded", () => {
       icon.classList.remove("fa-plug-circle-exclamation");
       icon.classList.add("fa-arrows-rotate");
     })
+    autoplay();
     applyPreferences();
   });
   sse.addEventListener("error", () => {
@@ -628,7 +616,35 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleFullscreen(fs)
   })
   toggleFullscreen()
-
+  function loadHLS(videoElement) {
+    const videoSrc = `${videoElement.dataset.src}stream.m3u8`;
+    videoElement.controls = true;
+    videoElement.classList.remove("placeholder");
+    if (Hls.isSupported()) {
+      const hls = new Hls({ maxLiveSyncPlaybackRate: 1.5 });
+      hls.on(Hls.Events.ERROR, (evt, data) => {
+        if (data.fatal) { hls.destroy(); }
+        if (data.type !== Hls.ErrorTypes.NETWORK_ERROR || videoElement.classList.contains("connected")) {
+          setTimeout(() => loadHLS(videoElement), 2000);
+        }
+      });
+      hls.on(Hls.Events.MEDIA_ATTACHED, () => {
+        hls.loadSource(videoSrc);
+      });
+      hls.attachMedia(videoElement);
+    } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
+      fetch(videoSrc).then(() => { videoElement.src = videoSrc; });
+    }
+  }
+  document.querySelectorAll('video.hls').forEach((videoElement) => {
+    loadHLS(videoElement);
+    videoElement.addEventListener('play', () => {
+      if (!videoElement.classList.contains("connected")) {
+        fetch(`api/${videoElement.dataset.cam}/start`)
+      }
+      videoElement.play()
+    });
+  });
   // Load WS for WebRTC on demand
   function loadWebRTC(video, force = false) {
     if (!force && (!video.classList.contains("placeholder") || !video.classList.contains("connected"))) { return }
@@ -647,23 +663,20 @@ document.addEventListener("DOMContentLoaded", () => {
     let videos = document.querySelectorAll('video');
     if (action === "stop") {
       videos.forEach(video => {
-        if (video.classList.contains("vjs-tech")) { videojs(video).pause() } else {
-          video.classList.add("lost");
-          // show poster on lost connection
-        }
+        video.pause();
+        video.controls = false;
+        video.classList.add("lost");
       });
       return;
     }
     let autoPlay = getCookie("autoplay");
     let fullscreen = getCookie("fullscreen");
     videos.forEach(video => {
+      video.controls = true;
       video.classList.remove("lost");
       if (!autoPlay && !fullscreen && !video.autoplay) { return }
-      if (video.classList.contains("webrtc")) {
-        loadWebRTC(video);
-      } else if (video.classList.contains("vjs-tech")) {
-        video = videojs(video);
-      }
+      if (video.classList.contains("hls")) { loadHLS(video); }
+      if (video.classList.contains("webrtc")) { loadWebRTC(video); }
       video.play();
     });
   }

@@ -1,9 +1,6 @@
 {% extends 'base.html' %}
 
 {% block stylesheet %}
-{% if show_video %}
-<link href="https://cdn.jsdelivr.net/npm/video.js/dist/video-js.min.css" rel="stylesheet" />
-{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -165,23 +162,13 @@
             <div class="card-image has-text-centered">
                 <figure class="image">
                     {% if show_video and (camera.on_demand or camera.enabled) %}
-                    {% if (webrtc and video_format == "webrtc") or (camera.webrtc and video_format == "kvs") %}
-                    <video data-cam="{{cam_uri}}"
-                        class="webrtc loading-preview refresh_img placeholder {{'connected' if camera.connected}}" muted
-                        playsinline {{ "autoplay" if autoplay and camera.connected else "preload=none" }}
-                        poster="{{camera.img_url or 'static/loading.svg'}}"></video>
+                    {% set is_webrtc = webrtc and (video_format == "webrtc" or camera.webrtc and video_format == "kvs") %}
+                    <video data-cam="{{ cam_uri }}" {% if not is_webrtc %}data-src="{{ camera.hls_url }}" {% endif %}
+                        class="{% if is_webrtc %}webrtc{% else %}hls{% endif %} loading-preview refresh_img placeholder {{ 'connected' if camera.connected }}"
+                        muted playsinline {{ "autoplay" if autoplay and camera.connected else "preload=none" }}
+                        poster="{{ camera.img_url or 'static/loading.svg' }}">
+                    </video>
                     <i class="fas"></i>
-                    {% else %}
-                    <video-js id="video-{{cam_uri}}" class="video-js vjs-live vjs-big-play-centered" controls muted
-                        playsinline preload={{"auto" if autoplay and camera.connected else "none" }}
-                        poster="{{camera.img_url or 'static/loading.svg'}}" data-cam="{{cam_uri}}"
-                        data-setup='{"liveui": true, "fluid": true, "muted": true, "autoplay": {{'"muted"' if autoplay and camera.connected
-                                else "false" }}}' data-src="{{camera.hls_url}}stream.m3u8" width="100%">
-                        <source src="{{camera.hls_url}}stream.m3u8" class="hls-video" type="application/x-mpegURL" />
-                        <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
-                            src="{{camera.img_url or 'static/loading.svg'}}" data-cam="{{cam_uri}}" width="100%" />
-                    </video-js>
-                    {% endif %}
                     {% elif camera.img_url or camera.connected or (camera.on_demand and camera.enabled) %}
                     <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
                         src="{{ camera.img_url or 'static/loading.svg' }}" data-cam="{{cam_uri}}" width="100%" />
@@ -423,7 +410,7 @@
 {% if (webrtc and video_format == "webrtc") or video_format =="kvs" %}
 <script src="static/webrtc.js"></script>
 {% else %}
-<script src="https://cdn.jsdelivr.net/npm/video.js/dist/video.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js/dist/hls.min.js"></script>
 {% endif %}
 {% endif %}
 {% endblock %}

@@ -451,8 +451,6 @@ def start_tutk_stream(uri: str, stream: StreamTuple, queue: QueueTuple, state: c
     else:
         logger.warning("Stream stopped")
     finally:
-        if ffmpeg and ffmpeg.poll() is None:
-            ffmpeg.stdin.close()
         state.value = exit_code
         stop_and_wait(audio_thread)
         stop_and_wait(control_thread)
