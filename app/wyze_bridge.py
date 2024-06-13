@@ -44,6 +44,12 @@ class WyzeBridge(Thread):
         self.streams.stop_all()
         self._initialize(fresh_data)
 
+    def refresh_cams(self) -> None:
+        self.rtsp.stop()
+        self.streams.stop_all()
+        self.api.get_cameras(fresh_data=True)
+        self._initialize(False)
+
     def setup_streams(self):
         """Gather and setup streams for each camera."""
         WyzeStream.user = self.api.get_user()

@@ -402,14 +402,21 @@ class WyzeApi:
             logger.error(f"[CONTROL] ERROR: {error}")
             return {"status": "error", "response": f"{error}"}
 
-    def clear_cache(self):
-        logger.info("♻️ Clearing local cache...")
-        self.auth = None
-        self.user = None
-        self.cameras = None
-        for name in listdir(TOKEN_PATH):
-            if name.endswith("pickle"):
-                remove(TOKEN_PATH + name)
+    def clear_cache(self, name: Optional[str] = None):
+        data = {"auth", "user", "cameras"}
+
+        if name in data:
+            logger.info(f"♻️ Clearing {name} from local cache...")
+            setattr(self, name, None)
+            pickled_data = Path(TOKEN_PATH, f"{name}.pickle")
+            if pickled_data.exists():
+                pickled_data.unlink()
+        else:
+            logger.info("♻️ Clearing local cache...")
+            for data_attr in data:
+                setattr(self, data_attr, None)
+            for token_file in Path(TOKEN_PATH).glob("*.pickle"):
+                token_file.unlink()
 
     def get_mfa(self):
         return self.mfa_req
