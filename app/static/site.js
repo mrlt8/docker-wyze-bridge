@@ -336,8 +336,9 @@ document.addEventListener("DOMContentLoaded", () => {
   document.querySelectorAll(".update-preview[data-cam]").forEach((button) => {
     button.addEventListener("click", async () => {
       let img = document.querySelector(`.refresh_img[data-cam=${button.getAttribute("data-cam")}]`);
-      if (img && img.getAttribute("src")) {
-        await update_img(img.getAttribute("src"));
+      let imgSrc = img.getAttribute(img.nodeName === "IMG" ? "src" : "poster");
+      if (img && imgSrc) {
+        await update_img(imgSrc);
       }
     });
   });
@@ -617,11 +618,17 @@ document.addEventListener("DOMContentLoaded", () => {
   })
   toggleFullscreen()
   function loadHLS(videoElement) {
-    const videoSrc = `${videoElement.dataset.src}stream.m3u8`;
+    const videoSrc = videoElement.dataset.src;
     videoElement.controls = true;
     videoElement.classList.remove("placeholder");
     if (Hls.isSupported()) {
-      const hls = new Hls({ maxLiveSyncPlaybackRate: 1.5 });
+      const hls = new Hls({ maxLiveSyncPlaybackRate: 1.5, liveDurationInfinity: true });
+      var parsedUrl = new URL(videoSrc);
+      if (parsedUrl.username && parsedUrl.password) {
+        hls.config.xhrSetup = function (xhr, url) {
+          xhr.setRequestHeader('Authorization', 'Basic ' + btoa(parsedUrl.username + ':' + parsedUrl.password));
+        };
+      }
       hls.on(Hls.Events.ERROR, (evt, data) => {
         if (data.fatal) { hls.destroy(); }
         if (data.type !== Hls.ErrorTypes.NETWORK_ERROR || videoElement.classList.contains("connected")) {

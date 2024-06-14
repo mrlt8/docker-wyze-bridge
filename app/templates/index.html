@@ -162,8 +162,10 @@
             <div class="card-image has-text-centered">
                 <figure class="image">
                     {% if show_video and (camera.on_demand or camera.enabled) %}
-                    {% set is_webrtc = webrtc and (video_format == "webrtc" or camera.webrtc and video_format == "kvs") %}
-                    <video data-cam="{{ cam_uri }}" {% if not is_webrtc %}data-src="{{ camera.hls_url }}" {% endif %}
+                    {% set is_webrtc = webrtc and (video_format == "webrtc" or camera.webrtc and video_format == "kvs")
+                    %}
+                    <video data-cam="{{ cam_uri }}" {% if not is_webrtc %}data-src="{{ camera.hls_url }}stream.m3u8" {%
+                        endif %}
                         class="{% if is_webrtc %}webrtc{% else %}hls{% endif %} loading-preview refresh_img placeholder {{ 'connected' if camera.connected }}"
                         muted playsinline {{ "autoplay" if autoplay and camera.connected else "preload=none" }}
                         poster="{{ camera.img_url or 'static/loading.svg' }}">
@@ -386,10 +388,9 @@
 {% endif %}
 {% endblock %}
 {% block javascript %}
-<script src="static/site.js"></script>
 {% if api %}
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
+    function addApiKey() {
         document.querySelectorAll('a.stream-link').forEach(function (link) {
             var href = link.getAttribute('href');
             var updatedHref = href.replace(/^(\w{4,5}):\/\//, function (match, protocol) {
@@ -397,15 +398,17 @@
             });
             link.setAttribute('href', updatedHref);
         });
-        document.querySelectorAll('source.hls-video').forEach(function (sourceElement) {
-            var updatedSrc = sourceElement.src.replace(/^https?:\/\//, function (match) {
+        document.querySelectorAll('video.hls').forEach(function (sourceElement) {
+            sourceElement.dataset.src = sourceElement.dataset.src.replace(/^https?:\/\//, function (match) {
                 return match + encodeURIComponent('wb') + ':' + encodeURIComponent('{{api}}') + '@';
             });
-            sourceElement.src = updatedSrc;
         });
-    });
+        document.removeEventListener('DOMContentLoaded', addApiKey);
+    }
+    document.addEventListener('DOMContentLoaded', addApiKey);
 </script>
 {% endif %}
+<script src="static/site.js"></script>
 {% if show_video %}
 {% if (webrtc and video_format == "webrtc") or video_format =="kvs" %}
 <script src="static/webrtc.js"></script>
