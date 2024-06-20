@@ -138,8 +138,8 @@ video {
   top: 0;
 }
 
-[data-enabled=True] video.webrtc.placeholder,
-[data-enabled=True] video.webrtc.placeholder+i,
+[data-enabled=True] video.placeholder,
+[data-enabled=True] video.placeholder+i,
 .status .fa-circle-play,
 .status .fa-circle-pause,
 .status .fa-satellite-dish,
@@ -148,17 +148,17 @@ video {
 }
 
 video,
-video.webrtc+.fas {
+video+.fas {
   display: block;
 }
 
-figure.image:hover>video.webrtc.placeholder {
+figure.image:hover>video.placeholder {
   transition: .3s ease;
   background-color: transparent;
   opacity: 0.8;
 }
 
-video.webrtc+i::before {
+video+i::before {
   color: white;
   font-size: 4rem;
   position: absolute;
@@ -168,17 +168,17 @@ video.webrtc+i::before {
   text-shadow: 2px 2px #444;
 }
 
-[data-enabled=True] video.webrtc.placeholder+i::before {
+[data-enabled=True] video.placeholder+i::before {
   content: "\f144";
   cursor: pointer;
 }
 
-video.webrtc.lost+i::before {
+video.lost+i::before {
   content: "\e560";
 }
 
-video.webrtc.lost,
-video.webrtc.lost+i {
+video.lost,
+video.lost+i {
   cursor: default;
 }
 

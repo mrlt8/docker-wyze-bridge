@@ -26,7 +26,6 @@ class RtspEvent:
         self.buf: str = ""
         with contextlib.suppress(FileExistsError):
             os.mkfifo(self.FIFO)
-        print("RtspEvent initialized")
 
     def read(self, timeout: int = 1):
         if not self.pipe or self.pipe.closed:
