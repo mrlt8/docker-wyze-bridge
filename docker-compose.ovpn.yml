@@ -1,0 +1,38 @@
+services:
+  openvpn:
+    image: dperson/openvpn-client
+    container_name: openvpn
+    restart: unless-stopped
+    ports: # Configure all ports here:
+      - 1935:1935 # RTMP
+      - 8554:8554 # RTSP
+      - 8888:8888 # HLS
+      - 8889:8889 #WebRTC
+      - 8189:8189/udp # WebRTC/ICE
+      - 5000:5000 # WEB-UI
+    dns: [8.8.8.8]
+    cap_add: [NET_ADMIN]
+    command: '-f /vpn/config.ovpn'
+    volumes:
+        # Set path to your ovpn config
+      - ${PWD}/config.ovpn:/vpn/config.ovpn
+  wyze-bridge:
+    container_name: wyze-bridge
+    restart: unless-stopped
+    image: mrlt8/wyze-bridge:latest
+    depends_on: [openvpn]
+    network_mode: service:openvpn
+    environment:
+      # [OPTIONAL] Credentials can be set in the WebUI
+      # API Key and ID can be obtained from the wyze dev portal:
+      # https://developer-api-console.wyze.com/#/apikey/view
+      - WYZE_EMAIL=
+      - WYZE_PASSWORD=
+      - API_ID=
+      - API_KEY=
+      # [OPTIONAL] IP Address of the host to enable WebRTC e.g.,:
+      # - WB_IP=192.168.1.122
+      # WebUI and Stream authentication:
+      - WB_AUTH=True # Set to false to disable web and stream auth.
+      # WB_USERNAME=
+      # WB_PASSWORD=
