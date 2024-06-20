@@ -59,6 +59,15 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.9.8
+
+KNOWN BUG: stream path may become unresponsive after stopping when ON_DEMAND is enabled until the onDemand timeout clears (60s).
+
+- FIX: restart options in the WebUI
+- FIX: Resume HLS/WebRTC on recover and play on first click in WebUI.
+- NEW: Add 'reload cameras' option to refresh camera data without clearing all data (#1255)
+- CHANGED: Use hls-js for HLS in WebUI.
+
 ## What's Changed in v2.9.7
 
 - FIX: Pan and tilt cruise points 3 and 4 were broken. Thanks @Deach01! (#1228)
