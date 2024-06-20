@@ -617,39 +617,66 @@ document.addEventListener("DOMContentLoaded", () => {
     toggleFullscreen(fs)
   })
   toggleFullscreen()
+
   function loadHLS(videoElement) {
+    if (!videoElement.paused && videoElement.hls && videoElement.hls.media) {
+      return;
+    }
     const videoSrc = videoElement.dataset.src;
     videoElement.controls = true;
     videoElement.classList.remove("placeholder");
     if (Hls.isSupported()) {
-      const hls = new Hls({ maxLiveSyncPlaybackRate: 1.5, liveDurationInfinity: true });
-      var parsedUrl = new URL(videoSrc);
+      const hlsConfig = { maxLiveSyncPlaybackRate: 1.5, liveDurationInfinity: true };
+      if (videoElement.hls && !videoElement.hls.destroyed) {
+        videoElement.hls.destroy();
+      }
+      const hls = new Hls(hlsConfig);
+      const parsedUrl = new URL(videoSrc);
+      videoElement.hls = hls;
       if (parsedUrl.username && parsedUrl.password) {
-        hls.config.xhrSetup = function (xhr, url) {
-          xhr.setRequestHeader('Authorization', 'Basic ' + btoa(parsedUrl.username + ':' + parsedUrl.password));
+        hls.config.xhrSetup = (xhr) => {
+          xhr.setRequestHeader('Authorization', `Basic ${btoa(`${parsedUrl.username}:${parsedUrl.password}`)}`);
         };
       }
       hls.on(Hls.Events.ERROR, (evt, data) => {
-        if (data.fatal) { hls.destroy(); }
-        if (data.type !== Hls.ErrorTypes.NETWORK_ERROR || videoElement.classList.contains("connected")) {
+        if (data.type === Hls.ErrorTypes.MEDIA_ERROR && videoElement.classList.contains("connected")) {
+          hls.recoverMediaError();
+        } else if (data.type !== Hls.ErrorTypes.NETWORK_ERROR || videoElement.classList.contains("connected")) {
           setTimeout(() => loadHLS(videoElement), 2000);
         }
       });
       hls.on(Hls.Events.MEDIA_ATTACHED, () => {
         hls.loadSource(videoSrc);
+        videoElement.muted = true;
+        videoElement.play();
       });
       hls.attachMedia(videoElement);
     } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
-      fetch(videoSrc).then(() => { videoElement.src = videoSrc; });
+      console.log("loading mpeg")
+      fetch(videoSrc)
+        .then(() => { videoElement.src = videoSrc; })
+        .catch(() => { loadHLS(videoElement); });
     }
   }
-  document.querySelectorAll('video.hls').forEach((videoElement) => {
-    loadHLS(videoElement);
+
+  document.querySelectorAll('video.hls.placeholder').forEach((videoElement) => {
+    videoElement.parentElement.addEventListener("click", () => { loadHLS(videoElement), videoElement.play() }, { "once": true });
     videoElement.addEventListener('play', () => {
-      if (!videoElement.classList.contains("connected")) {
-        fetch(`api/${videoElement.dataset.cam}/start`)
+      loadHLS(videoElement);
+      if (!videoElement.classList.contains("connected") && !videoElement.hasAttribute("connecting")) {
+        videoElement.setAttribute('connecting', '');
+        fetch(`api/${videoElement.dataset.cam}/start`).then(() => {
+          videoElement.classList.add("connected");
+          videoElement.removeAttribute('connecting');
+        }).catch((e) => {
+          console.error('Error starting video stream:', e);
+          videoElement.removeAttribute('connecting');
+        });
       }
-      videoElement.play()
+      videoElement.setAttribute('autoplay', '');
+    });
+    videoElement.addEventListener('pause', () => {
+      videoElement.removeAttribute('autoplay');
     });
   });
   // Load WS for WebRTC on demand
@@ -663,13 +690,14 @@ document.addEventListener("DOMContentLoaded", () => {
   // Click to load WebRTC
 
   document.querySelectorAll('[data-enabled=True] video.webrtc.placeholder').forEach((v) => {
-    v.parentElement.addEventListener("click", () => loadWebRTC(v, true), { "once": true });
+    v.parentElement.addEventListener("click", () => { loadWebRTC(v, true), v.play() }, { "once": true });
   });
   // Auto-play video
   function autoplay(action) {
     let videos = document.querySelectorAll('video');
     if (action === "stop") {
       videos.forEach(video => {
+        if (!video.paused) { video.classList.add("resume"); }
         video.pause();
         video.controls = false;
         video.classList.add("lost");
@@ -679,9 +707,11 @@ document.addEventListener("DOMContentLoaded", () => {
     let autoPlay = getCookie("autoplay");
     let fullscreen = getCookie("fullscreen");
     videos.forEach(video => {
+      const resume = video.classList.contains("resume")
       video.controls = true;
       video.classList.remove("lost");
-      if (!autoPlay && !fullscreen && !video.autoplay) { return }
+      video.classList.remove("resume");
+      if (!resume && !autoPlay && !fullscreen && !video.autoplay) { return }
       if (video.classList.contains("hls")) { loadHLS(video); }
       if (video.classList.contains("webrtc")) { loadWebRTC(video); }
       video.play();
