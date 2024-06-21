@@ -119,7 +119,7 @@ class MtxServer:
             mtx.set(f"paths.{uri}.source", value)
 
     def record(self, uri: str):
-        logger.info(f"📹 Will record {RECORD_LENGTH}s clips to {RECORD_PATH}")
+        logger.info(f"📹 Will record {RECORD_LENGTH} clips to {record_path}")
         with MtxInterface() as mtx:
             mtx.set(f"paths.{uri}.record", True)
 

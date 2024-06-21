@@ -41,12 +41,12 @@ class WyzeBridge(Thread):
         self.streams.monitor_streams(self.mtx.health_check)
 
     def restart(self, fresh_data: bool = False) -> None:
-        self.rtsp.stop()
+        self.mtx.stop()
         self.streams.stop_all()
         self._initialize(fresh_data)
 
     def refresh_cams(self) -> None:
-        self.rtsp.stop()
+        self.mtx.stop()
         self.streams.stop_all()
         self.api.get_cameras(fresh_data=True)
         self._initialize(False)
