@@ -1,3 +1,8 @@
+## What's Changed in v2.9.9
+
+- FIX: Regression introduced in v2.9.8 where a pipe blocking issue would cause CPU to spike (#1268) (#1270)
+- Tweak HLS latency and buffer.
+
 ## What's Changed in v2.9.8
 
 KNOWN BUG: stream path may become unresponsive after stopping when ON_DEMAND is enabled until the onDemand timeout clears (60s).
@@ -6,7 +11,6 @@ KNOWN BUG: stream path may become unresponsive after stopping when ON_DEMAND is 
 - FIX: Resume HLS/WebRTC on recover and play on first click in WebUI.
 - NEW: Add 'reload cameras' option to refresh camera data without clearing all data (#1255)
 - CHANGED: Use hls-js for HLS in WebUI.
-NGED: Use hls-js for HLS in WebUI.
 
 ## What's Changed in v2.9.7
 
