@@ -59,6 +59,11 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.9.9
+
+- FIX: Regression introduced in v2.9.8 where a pipe blocking issue would cause CPU to spike (#1268) (#1270)
+- Tweak HLS latency and buffer.
+
 ## What's Changed in v2.9.8
 
 KNOWN BUG: stream path may become unresponsive after stopping when ON_DEMAND is enabled until the onDemand timeout clears (60s).

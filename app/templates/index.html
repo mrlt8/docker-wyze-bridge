@@ -170,7 +170,6 @@
                         muted playsinline {{ "autoplay" if autoplay and camera.connected else "preload=none" }}
                         poster="{{ camera.img_url or 'static/loading.svg' }}">
                     </video>
-                    <i class="fas"></i>
                     {% elif camera.img_url or camera.connected or (camera.on_demand and camera.enabled) %}
                     <img class="refresh_img loading-preview {{'connected' if camera.connected}}"
                         src="{{ camera.img_url or 'static/loading.svg' }}" data-cam="{{cam_uri}}" width="100%" />
