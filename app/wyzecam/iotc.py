@@ -565,8 +565,8 @@ class WyzeIOTCSession:
         size = (round(abs(gap)) * 320) if gap else 7680
 
         try:
-            with io.open(fifo, "rb") as pipe:
-                set_non_blocking(pipe.fileno())
+            fd = os.open(fifo, os.O_RDWR | os.O_NONBLOCK)
+            with os.fdopen(fd, "rb", buffering=0) as pipe:
                 while data_read := pipe.read(size):
                     logger.debug(f"Flushed {len(data_read)} from {pipe_type} pipe")
                     if gap:

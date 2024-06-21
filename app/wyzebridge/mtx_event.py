@@ -4,7 +4,6 @@ This module handles stream and client events from MediaMTX.
 
 import contextlib
 import errno
-import fcntl
 import os
 import select
 
@@ -21,21 +20,26 @@ class RtspEvent:
     __slots__ = "pipe", "streams", "buf"
 
     def __init__(self, streams):
-        self.pipe = None
+        self.pipe = 0
         self.streams = streams
         self.buf: str = ""
+        self.open_pipe()
+
+    def open_pipe(self):
+        if self.pipe:
+            return
         with contextlib.suppress(FileExistsError):
             os.mkfifo(self.FIFO)
+        self.pipe = os.open(self.FIFO, os.O_RDWR | os.O_NONBLOCK)
 
     def read(self, timeout: int = 1):
-        if not self.pipe or self.pipe.closed:
-            self.pipe = open(self.FIFO)
-            set_non_blocking(self.pipe)
+        self.open_pipe()
         try:
             if select.select([self.pipe], [], [], timeout)[0]:
-                if data := self.pipe.read(128):
-                    self.process_data(data)
+                if data := os.read(self.pipe, 128):
+                    self.process_data(data.decode())
         except OSError as ex:
+            self.pipe = 0
             if ex.errno != errno.EBADF:
                 logger.error(ex)
         except Exception as ex:
@@ -86,8 +90,3 @@ def ready_event(camera: str, status: str):
 
     update_mqtt_state(camera, state)
     logger.info(msg)
-
-
-def set_non_blocking(fd):
-    flags = fcntl.fcntl(fd, fcntl.F_GETFL)
-    fcntl.fcntl(fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
