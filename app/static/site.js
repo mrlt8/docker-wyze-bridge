@@ -626,7 +626,7 @@ document.addEventListener("DOMContentLoaded", () => {
     videoElement.controls = true;
     videoElement.classList.remove("placeholder");
     if (Hls.isSupported()) {
-      const hlsConfig = { maxLiveSyncPlaybackRate: 1.5, liveDurationInfinity: true };
+      const hlsConfig = { maxLiveSyncPlaybackRate: 1.5, liveDurationInfinity: true, maxBufferHole: 5, nudgeMaxRetry: 20, liveSyncDurationCount: 0, liveMaxLatencyDurationCount: 6 };
       if (videoElement.hls && !videoElement.hls.destroyed) {
         videoElement.hls.destroy();
       }
@@ -639,10 +639,10 @@ document.addEventListener("DOMContentLoaded", () => {
         };
       }
       hls.on(Hls.Events.ERROR, (evt, data) => {
-        if (data.type === Hls.ErrorTypes.MEDIA_ERROR && videoElement.classList.contains("connected")) {
-          hls.recoverMediaError();
-        } else if (data.type !== Hls.ErrorTypes.NETWORK_ERROR || videoElement.classList.contains("connected")) {
+        if (data.type !== Hls.ErrorTypes.NETWORK_ERROR || videoElement.classList.contains("connected")) {
           setTimeout(() => loadHLS(videoElement), 2000);
+        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR && videoElement.classList.contains("connected")) {
+          console.debug("Media error", data.details);
         }
       });
       hls.on(Hls.Events.MEDIA_ATTACHED, () => {

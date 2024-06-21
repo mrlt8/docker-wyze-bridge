@@ -139,7 +139,6 @@ video {
 }
 
 [data-enabled=True] video.placeholder,
-[data-enabled=True] video.placeholder+i,
 .status .fa-circle-play,
 .status .fa-circle-pause,
 .status .fa-satellite-dish,
@@ -166,11 +165,6 @@ video+i::before {
   left: 50%;
   transform: translate(-50%, -50%);
   text-shadow: 2px 2px #444;
-}
-
-[data-enabled=True] video.placeholder+i::before {
-  content: "\f144";
-  cursor: pointer;
 }
 
 video.lost+i::before {
