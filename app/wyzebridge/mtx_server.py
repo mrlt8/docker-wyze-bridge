@@ -5,10 +5,16 @@ from subprocess import DEVNULL, Popen
 from typing import Optional
 
 import yaml
-from wyzebridge.config import RECORD_KEEP, RECORD_LENGTH, RECORD_PATH
+from wyzebridge.bridge_utils import env_bool
 from wyzebridge.logging import logger
 
 MTX_CONFIG = "/app/mediamtx.yml"
+
+RECORD_LENGTH = env_bool("RECORD_LENGTH", "60s")
+RECORD_KEEP = env_bool("RECORD_KEEP", "0s")
+rec_file = env_bool("RECORD_FILE_NAME", style="original")
+rec_path = env_bool("RECORD_PATH", "record/%path/%Y-%m-%d_%H-%M-%S", style="original")
+RECORD_PATH = f"/{Path(rec_path, rec_file)}".removesuffix(".mp4")
 
 
 class MtxInterface:
@@ -77,15 +83,17 @@ class MtxServer:
             self._setup_path_defaults(mtx)
 
     def _setup_path_defaults(self, mtx: MtxInterface):
+        record_path = RECORD_PATH.format(cam_name="%path", CAM_NAME="%path")
+
         mtx.set("paths", {})
         for event in {"Read", "Unread", "Ready", "NotReady"}:
             bash_cmd = f"echo $MTX_PATH,{event}! > /tmp/mtx_event;"
             mtx.set(f"pathDefaults.runOn{event}", f"bash -c '{bash_cmd}'")
-        mtx.set(f"pathDefaults.runOnDemandStartTimeout", "30s")
-        mtx.set(f"pathDefaults.runOnDemandCloseAfter", "60s")
-        mtx.set(f"pathDefaults.recordPath", RECORD_PATH)
-        mtx.set(f"pathDefaults.recordSegmentDuration", RECORD_LENGTH)
-        mtx.set(f"pathDefaults.recordDeleteAfter", RECORD_KEEP)
+        mtx.set("pathDefaults.runOnDemandStartTimeout", "30s")
+        mtx.set("pathDefaults.runOnDemandCloseAfter", "60s")
+        mtx.set("pathDefaults.recordPath", record_path)
+        mtx.set("pathDefaults.recordSegmentDuration", RECORD_LENGTH)
+        mtx.set("pathDefaults.recordDeleteAfter", RECORD_KEEP)
 
     def _setup_auth(self, mtx: MtxInterface, api: Optional[str], stream: Optional[str]):
         publisher = [
@@ -119,9 +127,14 @@ class MtxServer:
             mtx.set(f"paths.{uri}.source", value)
 
     def record(self, uri: str):
-        logger.info(f"📹 Will record {RECORD_LENGTH} clips to {record_path}")
+        record_path = RECORD_PATH.replace("%path", uri).format(
+            cam_name=uri.lower(), CAM_NAME=uri.upper()
+        )
+
+        logger.info(f"📹 Will record {RECORD_LENGTH} clips to {record_path}.mp4")
         with MtxInterface() as mtx:
             mtx.set(f"paths.{uri}.record", True)
+            mtx.set(f"paths.{uri}.recordPath", record_path)
 
     def start(self):
         if self.sub_process:

@@ -54,9 +54,6 @@ MOTION: bool = env_bool("motion_api", style="bool")
 MOTION_INT: int = max(env_bool("motion_int", "1.5", style="float"), 1.1)
 MOTION_START: bool = env_bool("motion_start", style="bool")
 
-RECORD_PATH = env_bool("RECORD_PATH", "/record/%path/%Y-%m-%d_%H-%M-%S-%f")
-RECORD_LENGTH = env_bool("RECORD_LENGTH", "60s")
-RECORD_KEEP = env_bool("RECORD_KEEP", "24h")
 
 makedirs(TOKEN_PATH, exist_ok=True)
 makedirs(IMG_PATH, exist_ok=True)
