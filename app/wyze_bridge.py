@@ -24,10 +24,8 @@ class WyzeBridge(Thread):
         self.api: WyzeApi = WyzeApi()
         self.streams: StreamManager = StreamManager()
         self.mtx: MtxServer = MtxServer(config.WB_API, config.STREAM_AUTH)
-        if config.BRIDGE_IP:
-            self.mtx.setup_webrtc(config.BRIDGE_IP)
-        if config.LLHLS:
-            self.mtx.setup_llhls(config.TOKEN_PATH, bool(config.HASS_TOKEN))
+        self.mtx.setup_webrtc(config.BRIDGE_IP)
+        self.mtx.setup_llhls(config.TOKEN_PATH, bool(config.HASS_TOKEN))
 
     def run(self, fresh_data: bool = False) -> None:
         self._initialize(fresh_data)

@@ -109,7 +109,7 @@ class MtxServer:
                 client.update({"user": "wb", "pass": api})
             mtx.add("authInternalUsers", client)
         if stream:
-            logger.info("[+] Custom stream auth enabled")
+            logger.info("[MTX] Custom stream auth enabled")
             for client in parse_auth(stream):
                 mtx.add("authInternalUsers", client)
 
@@ -131,7 +131,7 @@ class MtxServer:
             cam_name=uri.lower(), CAM_NAME=uri.upper()
         )
 
-        logger.info(f"📹 Will record {RECORD_LENGTH} clips to {record_path}.mp4")
+        logger.info(f"[MTX] 📹 Will record {RECORD_LENGTH} clips to {record_path}.mp4")
         with MtxInterface() as mtx:
             mtx.set(f"paths.{uri}.record", True)
             mtx.set(f"paths.{uri}.recordPath", record_path)
@@ -139,14 +139,14 @@ class MtxServer:
     def start(self):
         if self.sub_process:
             return
-        logger.info(f"starting MediaMTX {getenv('MTX_TAG')}")
+        logger.info(f"[MTX] starting MediaMTX {getenv('MTX_TAG')}")
         self.sub_process = Popen(["/app/mediamtx", "/app/mediamtx.yml"])
 
     def stop(self):
         if not self.sub_process:
             return
         if self.sub_process.poll() is None:
-            logger.info("Stopping MediaMTX...")
+            logger.info("[MTX] Stopping MediaMTX...")
             self.sub_process.send_signal(SIGKILL)
             self.sub_process.communicate()
         self.sub_process = None
@@ -160,7 +160,7 @@ class MtxServer:
             logger.error(f"[MediaMTX] Process exited with {self.sub_process.poll()}")
             self.restart()
 
-    def setup_webrtc(self, bridge_ip: str):
+    def setup_webrtc(self, bridge_ip: Optional[str]):
         if not bridge_ip:
             logger.warning("SET WB_IP to allow WEBRTC connections.")
             return
@@ -170,7 +170,9 @@ class MtxServer:
             mtx.add("webrtcAdditionalHosts", ips)
 
     def setup_llhls(self, token_path: str = "/tokens/", hass: bool = False):
-        logger.info("Configuring LL-HLS")
+        if not hass:
+            return
+        logger.info("[MTX] Configuring LL-HLS")
         with MtxInterface() as mtx:
             mtx.set("hlsVariant", "lowLatency")
             mtx.set("hlsEncryption", "yes")
@@ -180,7 +182,9 @@ class MtxServer:
             key = "/ssl/privkey.pem"
             cert = "/ssl/fullchain.pem"
             if hass and Path(key).is_file() and Path(cert).is_file():
-                logger.info("🔐 Using existing SSL certificate from Home Assistant")
+                logger.info(
+                    "[MTX] 🔐 Using existing SSL certificate from Home Assistant"
+                )
                 mtx.set("hlsServerKey", key)
                 mtx.set("hlsServerCert", cert)
                 return
@@ -201,14 +205,14 @@ def mtx_version() -> str:
 
 def generate_certificates(cert_path):
     if not Path(f"{cert_path}.key").is_file():
-        logger.info("🔐 Generating key for LL-HLS")
+        logger.info("[MTX] 🔐 Generating key for LL-HLS")
         Popen(
             ["openssl", "genrsa", "-out", f"{cert_path}.key", "2048"],
             stdout=DEVNULL,
             stderr=DEVNULL,
         ).wait()
     if not Path(f"{cert_path}.crt").is_file():
-        logger.info("🔏 Generating certificate for LL-HLS")
+        logger.info("[MTX] 🔏 Generating certificate for LL-HLS")
         dns = getenv("SUBJECT_ALT_NAME")
         Popen(
             ["openssl", "req", "-new", "-x509", "-sha256"]
