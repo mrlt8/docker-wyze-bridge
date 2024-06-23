@@ -232,11 +232,10 @@ def parse_auth(auth: str) -> list[dict[str, str]]:
         creds, *endpoints = entry.split("@")
         if ":" not in creds:
             continue
-        username, password, *ips = creds.split(":", 2)
+        user, password, *ips = creds.split(":", 2)
         if ips:
             ips = ips[0].split(",")
-            username = username if username else "any"
-        data = {"user": username, "pass": password, "ips": ips, "permissions": []}
+        data = {"user": user or "any", "pass": password, "ips": ips, "permissions": []}
         if endpoints:
             paths = []
             for endpoint in endpoints[0].split(","):
