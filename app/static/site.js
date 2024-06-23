@@ -648,7 +648,9 @@ document.addEventListener("DOMContentLoaded", () => {
       hls.on(Hls.Events.MEDIA_ATTACHED, () => {
         hls.loadSource(videoSrc);
         videoElement.muted = true;
-        videoElement.play();
+        videoElement.play().catch((err) => {
+          console.info('play() error:', err);
+        });
       });
       hls.attachMedia(videoElement);
     } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
@@ -690,7 +692,8 @@ document.addEventListener("DOMContentLoaded", () => {
   // Click to load WebRTC
 
   document.querySelectorAll('[data-enabled=True] video.webrtc.placeholder').forEach((v) => {
-    v.parentElement.addEventListener("click", () => { loadWebRTC(v, true), v.play() }, { "once": true });
+    v.parentElement.addEventListener("click", () => { loadWebRTC(v, true) }, { "once": true });
+    v.addEventListener('pause', () => { v.removeAttribute('autoplay'); });
   });
   // Auto-play video
   function autoplay(action) {
@@ -714,7 +717,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!resume && !autoPlay && !fullscreen && !video.autoplay) { return }
       if (video.classList.contains("hls")) { loadHLS(video); }
       if (video.classList.contains("webrtc")) { loadWebRTC(video); }
-      video.play();
+      video.play().catch((err) => {
+        console.info('play() error:', err);
+      });
     });
   }
   // Change default video format for WebUI

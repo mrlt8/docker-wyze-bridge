@@ -55,7 +55,7 @@ class Receiver {
         this.queuedCandidates = [];
         this.ws = null;
         this.pc = null;
-        this.eTag = '';
+        this.sessionUrl = '';
         this.start();
     }
     start() {
@@ -63,18 +63,10 @@ class Receiver {
         this.ws = new WebSocket(this.signalJson.signalingUrl);
         this.ws.onopen = () => this.onOpen();
         this.ws.onmessage = (msg) => this.onWsMessage(msg);
-        this.ws.onerror = (err) => this.onClose(err);
-        this.ws.onclose = () => this.onClose();
+        this.ws.onerror = (err) => this.onError(err);
+        this.ws.onclose = () => this.onError();
     }
 
-    onClose(err = null) {
-        if (err) { console.error('Error:', err); }
-        if (this.ws !== null) {
-            this.ws.close();
-            this.ws = null;
-        }
-        this.scheduleRestart();
-    }
     onOpen() {
         const direction = this.whep ? "sendrecv" : "recvonly";
 
@@ -89,17 +81,10 @@ class Receiver {
     }
     createOffer(desc) {
         this.pc.setLocalDescription(desc);
-
         if (!this.whep) { return this.sendToServer("SDP_OFFER", desc); }
-
-        console.log('Sending offer');
         this.offerData = parseOffer(desc.sdp);
-        let headers = { 'Content-Type': 'application/sdp' };
-
-        const server = this.signalJson.servers && this.signalJson.servers.length > 0 ? this.signalJson.servers[0] : null;
-        if (server && server.credential && server.username) {
-            headers['Authorization'] = 'Basic ' + btoa(server.username + ':' + server.credential);
-        }
+        const headers = this.authHeaders();
+        headers['Content-Type'] = 'application/sdp'
         fetch(this.signalJson.whep, {
             method: 'POST',
             headers: headers,
@@ -107,22 +92,31 @@ class Receiver {
         })
             .then((res) => {
                 if (res.status !== 201) { throw new Error('Bad status code'); }
-                this.eTag = res.headers.get('ETag');
+                this.sessionUrl = new URL(res.headers.get('location'), this.signalJson.whep).toString();
                 return res.text();
             })
             .then((sdp) => this.onRemoteDescription(sdp))
-            .catch((err) => this.onClose(err));
+            .catch((err) => this.onError(err));
     }
+    authHeaders() {
+        const server = this.signalJson.servers && this.signalJson.servers.length > 0 ? this.signalJson.servers[0] : null;
+        if (server && server.credential && server.username) {
+            return { 'Authorization': 'Basic ' + btoa(server.username + ':' + server.credential) };
+        }
+        return {}
+    }
+
     sendToServer(action, payload) {
         this.ws.send(JSON.stringify({ "action": action, "messagePayload": btoa(JSON.stringify(payload)), "recipientClientId": this.signalJson.ClientId }));
     }
     sendLocalCandidates(candidates) {
-        fetch(this.signalJson.whep, {
+        const headers = this.authHeaders();
+        headers['Content-Type'] = 'application/trickle-ice-sdpfrag'
+        headers['If-Match'] = '*'
+
+        fetch(this.sessionUrl, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/trickle-ice-sdpfrag',
-                'If-Match': '*',
-            },
+            headers: headers,
             body: generateSdpFragment(this.offerData, candidates),
         })
             .then((res) => {
@@ -136,29 +130,32 @@ class Receiver {
                 }
             })
             .catch((err) => {
-                onError(err.toString());
+                this.onError(err.toString());
             });
     }
 
     onTrack(event) {
-        console.log("new track: " + event.track.kind);
         let vid = document.querySelector(`video[data-cam='${this.signalJson.cam}']`);
         vid.srcObject = event.streams[0];
-        vid.oncanplay = () => {
-            vid.autoplay = true;
-            vid.play();
-        };
-
+        vid.autoplay = true;
+        vid.playsInline = true;
+        vid.play().catch((err) => {
+            console.info('play() error:', err);
+        });
     }
+    play(video) {
+        video.autoplay = true;
+        video.playsInline = true;
+        return video.play();
+    }
+
 
     onConnectionStateChange() {
         if (this.restartTimeout !== null) { return; }
-
-        console.log('Peer connection state:', this.pc.iceConnectionState);
         switch (this.pc.iceConnectionState) {
             case 'disconnected':
             case 'failed':
-                this.scheduleRestart();
+                this.onError()
                 break;
         }
     }
@@ -197,7 +194,7 @@ class Receiver {
     onIceCandidate(evt) {
         if (this.restartTimeout !== null || evt.candidate === null) { return; }
         if (this.whep) {
-            if (this.eTag === '') {
+            if (this.sessionUrl === '') {
                 this.queuedCandidates.push(evt.candidate);
             } else {
                 this.sendLocalCandidates([evt.candidate]);
@@ -207,10 +204,12 @@ class Receiver {
         }
     }
 
-    scheduleRestart() {
+    onError(err = undefined) {
         if (this.restartTimeout !== null) {
             return;
         }
+        if (err !== undefined) { console.error('Error:', err.toString()); }
+
         if (this.ws !== null) {
             this.ws.close();
             this.ws = null;
@@ -223,7 +222,15 @@ class Receiver {
             this.restartTimeout = null;
             this.start();
         }, restartPause);
-        this.eTag = '';
+
+        if (this.sessionUrl !== '' && this.signalJson.whep) {
+            fetch(this.sessionUrl, {
+                method: 'DELETE',
+                headers: this.authHeaders(),
+            });
+        }
+        this.sessionUrl = '';
+
         this.queuedCandidates = [];
     }
-}
+};
