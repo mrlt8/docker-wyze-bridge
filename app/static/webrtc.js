@@ -56,6 +56,7 @@ class Receiver {
         this.ws = null;
         this.pc = null;
         this.sessionUrl = '';
+        this.iceConnectionTimer;
         this.start();
     }
     start() {
@@ -69,7 +70,6 @@ class Receiver {
 
     onOpen() {
         const direction = this.whep ? "sendrecv" : "recvonly";
-
         this.pc = new RTCPeerConnection({ iceServers: this.signalJson.servers, sdpSemantics: 'unified-plan' });
         this.pc.addTransceiver("video", { direction });
         this.pc.addTransceiver("audio", { direction });
@@ -77,7 +77,6 @@ class Receiver {
         this.pc.onicecandidate = (evt) => this.onIceCandidate(evt);
         this.pc.oniceconnectionstatechange = () => this.onConnectionStateChange();
         this.pc.createOffer().then((desc) => this.createOffer(desc));
-
     }
     createOffer(desc) {
         this.pc.setLocalDescription(desc);
@@ -144,6 +143,7 @@ class Receiver {
     }
 
     onConnectionStateChange() {
+        clearTimeout(this.iceConnectionTimer);
         if (this.restartTimeout !== null) { return; }
         switch (this.pc.iceConnectionState) {
             case 'disconnected':
@@ -194,7 +194,23 @@ class Receiver {
             }
         } else {
             this.sendToServer('ICE_CANDIDATE', evt.candidate);
+            if (!this.iceConnectionTimer) {
+                this.iceConnectionTimer = setTimeout(() => {
+                    if (this.pc.iceConnectionState !== 'start') {
+                        this.pc.close();
+                        this.onError("ICE connection timeout")
+                    }
+                }, 30000);
+            }
         }
+    }
+    refreshSignal() {
+        fetch(new URL(`signaling/${this.signalJson.cam}?${this.whep ? 'webrtc' : 'kvs'}`, window.location.href))
+            .then((resp) => resp.json())
+            .then((signalJson) => {
+                if (signalJson.result !== "ok") { return console.error("signaling json not ok"); }
+                this.signalJson = signalJson;
+            });
     }
 
     onError(err = undefined) {
@@ -202,6 +218,8 @@ class Receiver {
             return;
         }
         if (err !== undefined) { console.error('Error:', err.toString()); }
+        clearTimeout(this.iceConnectionTimer);
+        this.iceConnectionTimer = null;
 
         if (this.ws !== null) {
             this.ws.close();
@@ -213,7 +231,13 @@ class Receiver {
         }
         this.restartTimeout = window.setTimeout(() => {
             this.restartTimeout = null;
-            this.start();
+            const connection = document.getElementById("connection-lost");
+            if (connection && connection.style.display === "block") {
+                this.onError()
+            } else {
+                this.refreshSignal();
+                this.start();
+            }
         }, restartPause);
 
         if (this.sessionUrl !== '' && this.signalJson.whep) {
@@ -223,7 +247,6 @@ class Receiver {
             });
         }
         this.sessionUrl = '';
-
         this.queuedCandidates = [];
     }
 };

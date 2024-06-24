@@ -682,8 +682,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
   // Load WS for WebRTC on demand
-  function loadWebRTC(video, force = false) {
-    if (!force && (!video.classList.contains("placeholder") || !video.classList.contains("connected"))) { return }
+  function loadWebRTC(video) {
+    if (!video.classList.contains("placeholder")) { return }
     let videoFormat = getCookie("video");
     video.classList.remove("placeholder");
     video.controls = true;
