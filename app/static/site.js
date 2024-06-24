@@ -704,6 +704,8 @@ document.addEventListener("DOMContentLoaded", () => {
         video.pause();
         video.controls = false;
         video.classList.add("lost");
+        video.removeAttribute('src');
+        video.load();
       });
       return;
     }
