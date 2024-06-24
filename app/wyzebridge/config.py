@@ -70,7 +70,7 @@ WB_USERNAME: str = get_secret("wb_username") or get_secret("wyze_email") or "wba
 WB_PASSWORD: str = get_password("wb_password", "wyze_password", path=TOKEN_PATH)
 WB_API: str = get_password("wb_api", path=TOKEN_PATH, length=30) if WB_AUTH else ""
 
-STREAM_AUTH: str = env_bool("STREAM_AUTH")
+STREAM_AUTH: str = env_bool("STREAM_AUTH", style="original")
 
 if HASS_TOKEN:
     migrate_path("/config/wyze-bridge/", "/config/")
