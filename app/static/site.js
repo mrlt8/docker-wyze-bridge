@@ -691,9 +691,9 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   // Click to load WebRTC
 
-  document.querySelectorAll('[data-enabled=True] video.webrtc.placeholder').forEach((v) => {
-    v.parentElement.addEventListener("click", () => { loadWebRTC(v, true) }, { "once": true });
-    v.addEventListener('pause', () => { v.removeAttribute('autoplay'); });
+  document.querySelectorAll('[data-enabled=True] video.webrtc.placeholder').forEach((videoElement) => {
+    videoElement.addEventListener("play", () => { loadWebRTC(videoElement) }, { "once": true });
+    videoElement.addEventListener('pause', () => { videoElement.removeAttribute('autoplay'); });
   });
   // Auto-play video
   function autoplay(action) {

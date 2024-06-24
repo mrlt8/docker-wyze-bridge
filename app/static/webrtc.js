@@ -138,17 +138,10 @@ class Receiver {
         let vid = document.querySelector(`video[data-cam='${this.signalJson.cam}']`);
         vid.srcObject = event.streams[0];
         vid.autoplay = true;
-        vid.playsInline = true;
         vid.play().catch((err) => {
             console.info('play() error:', err);
         });
     }
-    play(video) {
-        video.autoplay = true;
-        video.playsInline = true;
-        return video.play();
-    }
-
 
     onConnectionStateChange() {
         if (this.restartTimeout !== null) { return; }
