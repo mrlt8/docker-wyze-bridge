@@ -229,10 +229,12 @@ class Receiver {
             this.pc.close();
             this.pc = null;
         }
+        const connection = document.getElementById("connection-lost");
+        const offline = connection && connection.style.display === "block";
+
         this.restartTimeout = window.setTimeout(() => {
             this.restartTimeout = null;
-            const connection = document.getElementById("connection-lost");
-            if (connection && connection.style.display === "block") {
+            if (offline) {
                 this.onError()
             } else {
                 this.refreshSignal();
@@ -240,7 +242,7 @@ class Receiver {
             }
         }, restartPause);
 
-        if (this.sessionUrl !== '' && this.signalJson.whep) {
+        if (this.sessionUrl !== '' && !offline) {
             fetch(this.sessionUrl, {
                 method: 'DELETE',
                 headers: this.authHeaders(),
