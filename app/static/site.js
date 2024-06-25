@@ -662,7 +662,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   document.querySelectorAll('video.hls.placeholder').forEach((videoElement) => {
-    videoElement.parentElement.addEventListener("click", () => { loadHLS(videoElement), videoElement.play() }, { "once": true });
+    videoElement.parentElement.addEventListener("click", () => { videoElement.play() }, { "once": true });
     videoElement.addEventListener('play', () => {
       loadHLS(videoElement);
       if (!videoElement.classList.contains("connected") && !videoElement.hasAttribute("connecting")) {
@@ -692,6 +692,7 @@ document.addEventListener("DOMContentLoaded", () => {
   // Click to load WebRTC
 
   document.querySelectorAll('[data-enabled=True] video.webrtc.placeholder').forEach((videoElement) => {
+    videoElement.parentElement.addEventListener("click", () => { videoElement.play() }, { "once": true });
     videoElement.addEventListener("play", () => { loadWebRTC(videoElement) }, { "once": true });
     videoElement.addEventListener('pause', () => { videoElement.removeAttribute('autoplay'); });
   });

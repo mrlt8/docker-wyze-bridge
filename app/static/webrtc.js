@@ -246,7 +246,7 @@ class Receiver {
             fetch(this.sessionUrl, {
                 method: 'DELETE',
                 headers: this.authHeaders(),
-            });
+            }).catch(() => { });
         }
         this.sessionUrl = '';
         this.queuedCandidates = [];
