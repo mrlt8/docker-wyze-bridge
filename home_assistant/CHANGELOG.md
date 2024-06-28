@@ -1,3 +1,16 @@
+## What's Changed in v2.9.10
+
+- FIX: `-20021` error when sending multiple ioctl commands to the camera.
+- FIX: Regression introduced in v2.9.9 where the WebRTC/HLS icon in WebUI was missing.
+- Reduced memory usage slightly.
+- NEW: Option to use pre-hashed passwords (#1275):
+  - You must md5 hash your password three times and prefix it with `hashed:`
+  - Example: `WYZE_PASSWORD=hashed:<your-tripple-hashed-password>`
+- NEW: REST/MQTT commands (#1274):
+  - `notifications` GET/SET wyze app push notifications on/off (CLOUD).
+  - `motion_detection` GET/SET motion detection on/off (LOCAL).
+
+
 ## What's Changed in v2.9.9
 
 - FIX: Regression introduced in v2.9.8 where a pipe blocking issue would cause CPU to spike (#1268) (#1270)
