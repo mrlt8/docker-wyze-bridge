@@ -558,21 +558,23 @@ def av_recv_frame_data(tutk_platform_lib: CDLL, av_chan_id: c_int) -> tuple[
     :return: a 4-tuple of errno, frame_data, frame_info, and frame_index
     """
     frame_data_max_len = 800_000
+    frame_info_max_len = 4096
+
+    frame_data_buffer = create_string_buffer(frame_data_max_len)
+    frame_info_buffer = create_string_buffer(frame_info_max_len)
+
     frame_data_actual_len = c_int32()
     frame_data_expected_len = c_int32()
-    frame_data = create_string_buffer(frame_data_max_len)
     frame_info_actual_len = c_int32()
     frame_index = c_uint()
-    frame_info_max_len = 4096
-    frame_info = create_string_buffer(frame_info_max_len)
 
     errno = tutk_platform_lib.avRecvFrameData2(
         av_chan_id,
-        frame_data,
+        frame_data_buffer,
         frame_data_max_len,
         byref(frame_data_actual_len),
         byref(frame_data_expected_len),
-        frame_info,
+        frame_info_buffer,
         frame_info_max_len,
         byref(frame_info_actual_len),
         byref(frame_index),
@@ -581,18 +583,10 @@ def av_recv_frame_data(tutk_platform_lib: CDLL, av_chan_id: c_int) -> tuple[
     if errno < 0:
         return errno, None, None, None
 
-    frame_data_actual: bytes = frame_data[: frame_data_actual_len.value]  # type: ignore
-    frame_info_actual: Union[FrameInfoStruct, FrameInfo3Struct]
-    if frame_info_actual_len.value == sizeof(FrameInfo3Struct):
-        frame_info_actual = FrameInfo3Struct.from_buffer(frame_info)
-    elif frame_info_actual_len.value == sizeof(FrameInfoStruct):
-        frame_info_actual = FrameInfoStruct.from_buffer(frame_info)
-    else:
-        raise Exception(
-            f"Unknown frame info structure format! len={frame_info_actual_len}"
-        )
+    frame_data = memoryview(frame_data_buffer)[: frame_data_actual_len.value].tobytes()
+    frame_info = cast(frame_info_buffer, POINTER(FrameInfoStruct)).contents
 
-    return (0, frame_data_actual, frame_info_actual, frame_index.value)
+    return 0, frame_data, frame_info, frame_index.value
 
 
 def av_recv_audio_data(tutk_platform_lib: CDLL, av_chan_id: c_int):
@@ -608,13 +602,13 @@ def av_recv_audio_data(tutk_platform_lib: CDLL, av_chan_id: c_int):
     audio_data_max_size = 51_200
     frame_info_max_size = 1024
 
-    audio_data = create_string_buffer(audio_data_max_size)
+    audio_data_buffer = create_string_buffer(audio_data_max_size)
     frame_info_buffer = create_string_buffer(frame_info_max_size)
     frame_index = c_uint32()
 
     frame_len = tutk_platform_lib.avRecvAudioData(
         av_chan_id,
-        audio_data,
+        audio_data_buffer,
         audio_data_max_size,
         frame_info_buffer,
         frame_info_max_size,
@@ -624,8 +618,10 @@ def av_recv_audio_data(tutk_platform_lib: CDLL, av_chan_id: c_int):
     if frame_len < 0:
         return frame_len, None, None
 
+    audio_data = memoryview(audio_data_buffer)[:frame_len].tobytes()
     frame_info = cast(frame_info_buffer, POINTER(FrameInfo3Struct)).contents
-    return 0, audio_data.raw[:frame_len], frame_info
+
+    return 0, audio_data, frame_info
 
 
 def av_check_audio_buf(tutk_platform_lib: CDLL, av_chan_id: c_int) -> int:
@@ -635,7 +631,7 @@ def av_check_audio_buf(tutk_platform_lib: CDLL, av_chan_id: c_int) -> int:
 
 def av_recv_io_ctrl(
     tutk_platform_lib: CDLL, av_chan_id: c_int, timeout_ms: int
-) -> tuple[int, int, Optional[list[bytes]]]:
+) -> tuple[int, int, Optional[bytes]]:
     """Receive AV IO control.
 
     This function is used by AV servers or AV clients to receive a AV IO control.
@@ -646,21 +642,19 @@ def av_recv_io_ctrl(
               the io_ctrl_type, and the data in bytes)
     """
     pn_io_ctrl_type = c_uint()
-    ctl_data_len = 1024 * 1024
-    ctl_data = (c_char * ctl_data_len)()
-    actual_len = tutk_platform_lib.avRecvIOCtrl(
-        av_chan_id,
-        byref(pn_io_ctrl_type),
-        ctl_data,
-        c_int(ctl_data_len),
-        c_uint(timeout_ms),
+    ctl_data_len = 50_000
+    ctl_buffer = create_string_buffer(ctl_data_len)
+
+    frame_len = tutk_platform_lib.avRecvIOCtrl(
+        av_chan_id, byref(pn_io_ctrl_type), ctl_buffer, ctl_data_len, timeout_ms
     )
 
-    return (
-        actual_len,
-        pn_io_ctrl_type.value,
-        ctl_data[0:actual_len] if actual_len > 0 else None,
-    )
+    if frame_len < 0:
+        return frame_len, 0, None
+
+    data = memoryview(ctl_buffer)[:frame_len].tobytes()
+
+    return frame_len, pn_io_ctrl_type.value, data
 
 
 def av_client_set_max_buf_size(tutk_platform_lib: CDLL, size: int) -> None:
@@ -746,6 +740,10 @@ def av_client_stop(tutk_platform_lib: CDLL, av_chan_id: c_int) -> None:
     :param av_chan_id: The channel ID of the AV channel to be stopped
     """
     tutk_platform_lib.avClientStop(av_chan_id)
+
+
+def av_send_io_ctrl_exit(tutk_platform_lib: CDLL, av_chan_id: c_int) -> None:
+    tutk_platform_lib.avSendIOCtrlExit(av_chan_id)
 
 
 def av_send_io_ctrl(
