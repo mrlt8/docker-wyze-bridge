@@ -702,6 +702,37 @@ class K10290GetMotionTagging(TutkWyzeProtocolMessage):
         super().__init__(10290)
 
 
+class K10200GetMotionAlarm(TutkWyzeProtocolMessage):
+    def __init__(self):
+        super().__init__(10200)
+
+    def parse_response(self, resp_data):
+        enabled, sensitivity = unpack("<BB", resp_data)
+        return enabled
+
+
+class K10202SetMotionAlarm(TutkWyzeProtocolMessage):
+
+    def __init__(self, value: int):
+        super().__init__(10202)
+        assert value in {1, 2}, "value must be 1 or 2"
+        self.value: int = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([self.value, 0]))
+
+
+class K10206SetMotionAlarm(TutkWyzeProtocolMessage):
+
+    def __init__(self, value: int):
+        super().__init__(10206)
+        assert value in {1, 2}, "value must be 1 or 2"
+        self.value: int = value
+
+    def encode(self) -> bytes:
+        return encode(self.code, bytes([self.value, 0]))
+
+
 class K10292SetMotionTagging(TutkWyzeProtocolMessage):
     """
     A message used to enable/disable motion tagging (green box around motion).

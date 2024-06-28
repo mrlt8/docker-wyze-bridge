@@ -1,4 +1,5 @@
 import socket
+import time
 from datetime import datetime, timedelta
 from multiprocessing import Queue
 from queue import Empty
@@ -162,6 +163,16 @@ def camera_control(sess: WyzeIOTCSession, camera_info: Queue, camera_cmd: Queue)
             # Use K10050GetVideoParam if newer firmware
             if topic == "bitrate" and is_fw11(sess.camera.firmware_ver):
                 cmd = "_bitrate"
+            elif topic == "motion_detection" and payload:
+                if sess.camera.product_model in (
+                    "WYZEDB3",
+                    "WVOD1",
+                    "HL_WCO2",
+                    "WYZEC1",
+                ):
+                    cmd = "K10202SetMotionAlarm", cmd[1]
+                else:
+                    cmd = "K10206SetMotionAlarm", cmd[1]
             resp = send_tutk_msg(sess, cmd)
             if boa and cmd == "take_photo":
                 pull_last_image(boa, "photo")
@@ -324,6 +335,9 @@ def parse_cmd(cmd: tuple | str, log: str) -> tuple:
     proto_name = SET_CMDS.get(topic) if set_cmd else GET_CMDS.get(topic)
     if topic == "_bitrate":
         topic = "bitrate"
+
+    if topic in {"K10202SetMotionAlarm", "K10206SetMotionAlarm"}:
+        proto_name = topic
 
     log_msg = f"SET: {topic}={payload}" if set_cmd else f"GET: {topic}"
     getattr(logger, log)(f"[CONTROL] Attempting to {log_msg}")

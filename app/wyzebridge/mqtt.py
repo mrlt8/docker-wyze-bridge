@@ -291,6 +291,29 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
                 "icon": "mdi:motion-sensor",
             },
         },
+        "motion_detection": {
+            "type": "switch",
+            "payload": {
+                "state_topic": f"{base_topic}motion_detection",
+                "command_topic": f"{base_topic}motion_detection/set",
+                "payload_on": 1,
+                "payload_off": 2,
+                "state_off": "stopped",
+                "icon": "mdi:motion-sensor-off",
+                "entity_category": "diagnostic",
+            },
+        },
+        "notifications": {
+            "type": "switch",
+            "payload": {
+                "state_topic": f"{base_topic}notifications",
+                "command_topic": f"{base_topic}notifications/set",
+                "payload_on": 1,
+                "payload_off": 2,
+                "icon": "mdi:square-rounded-badge",
+                "entity_category": "diagnostic",
+            },
+        },
         "status_light": {
             "type": "switch",
             "payload": {
@@ -411,7 +434,7 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
                     "command_topic": f"{base_topic}motion_tracking/set",
                     "payload_on": 1,
                     "payload_off": 2,
-                    "icon": "mdi:motion-sensor",
+                    "icon": "mdi:radar",
                 },
             },
             "reset_rotation": {
@@ -456,7 +479,7 @@ def get_entities(base_topic: str, pan_cam: bool = False, rtsp: bool = False) -> 
                     "command_topic": f"{base_topic}rtsp/set",
                     "payload_on": 1,
                     "payload_off": 2,
-                    "icon": "mdi:motion-sensor",
+                    "icon": "mdi:server-network",
                 },
             },
         }

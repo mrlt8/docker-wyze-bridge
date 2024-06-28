@@ -309,6 +309,16 @@ class WyzeStream:
             value="on" if payload == "restart" else payload,
         )
 
+    def notification_control(self, payload: str) -> dict:
+        if payload not in {"on", "off", "1", "2", "true", "false"}:
+            return self.api.get_device_info(self.camera, "P1")
+
+        pvalue = "1" if payload in {"on", "1", "true"} else "2"
+        resp = self.api.set_property(self.camera, "P1", pvalue)
+        value = None if resp.get("status") == "error" else pvalue
+
+        return dict(resp, value=value)
+
     def tz_control(self, payload: str) -> dict:
         try:
             zone = zoneinfo.ZoneInfo(payload)
@@ -334,6 +344,9 @@ class WyzeStream:
 
         if cmd == "power":
             return self.power_control(str(payload).lower())
+
+        if cmd == "notifications":
+            return self.notification_control(str(payload).lower())
 
         if cmd in {"motion", "motion_ts"}:
             return {

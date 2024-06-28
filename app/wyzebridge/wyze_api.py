@@ -351,16 +351,20 @@ class WyzeApi:
         return {"status": "success", "value": item.get("value"), "response": item}
 
     @authenticated
-    def set_property(self, cam: WyzeCamera, pid: str = ""):
-        logger.info(f"[CONTROL] ☁️ set_property for {cam.name_uri} via Wyze API")
-        params = {"device_mac": cam.mac, "device_model": cam.product_model}
+    def set_property(self, cam: WyzeCamera, pid: str, pvalue: str):
+        params = {"pid": pid.upper(), "pvalue": pvalue}
+
+        logger.info(
+            f"[CONTROL] ☁️ set_property: {params} for {cam.name_uri} via Wyze API"
+        )
+        params |= {"device_mac": cam.mac, "device_model": cam.product_model}
         try:
             res = post_device(self.auth, "set_property", params, api_version=2)
         except (ValueError, WyzeAPIError) as ex:
             logger.error(f"[CONTROL] ERROR: {ex}")
             return {"status": "error", "response": str(ex)}
 
-        return {"status": "success", "response": res["property_list"]}
+        return {"status": "success", "response": res.get("result")}
 
     @authenticated
     def get_events(self, macs: Optional[list] = None, last_ts: int = 0):

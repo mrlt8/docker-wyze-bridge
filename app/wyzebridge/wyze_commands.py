@@ -1,7 +1,9 @@
 GET_CMDS = {
     "state": None,
     "power": None,
+    "notifications": None,
     "update_snapshot": None,
+    "motion_detection": None,
     "take_photo": "K10058TakePhoto",
     "irled": "K10044GetIRLEDStatus",
     "night_vision": "K10040GetNightVisionStatus",
@@ -37,6 +39,8 @@ SET_CMDS = {
     "cruise_point": None,
     "fps": None,
     "bitrate": None,
+    "notifications": None,
+    "motion_detection": None,
     "irled": "K10046SetIRLEDStatus",
     "night_vision": "K10042SetNightVisionStatus",
     "status_light": "K10032SetNetworkLightStatus",
@@ -59,7 +63,7 @@ SET_CMDS = {
     "quick_response": "K11635ResponseQuickMessage",
     "spotlight": "K10646SetSpotlightStatus",
     "floodlight": "K12060SetFloodLightSwitch",
-    "format_sd" : "K10242FormatSDCard",
+    "format_sd": "K10242FormatSDCard",
 }
 
 CMD_VALUES = {
@@ -82,6 +86,7 @@ PARAMS = {
     "fps": "5",
     "hor_flip": "6",
     "ver_flip": "7",
+    "motion_detection": "13",  # K10200GetMotionAlarm
     "motion_tagging": "21",
     "time_zone": "22",
     "motion_tracking": "27",
