@@ -59,6 +59,19 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.9.10
+
+- FIX: `-20021` error when sending multiple ioctl commands to the camera.
+- FIX: Regression introduced in v2.9.9 where the WebRTC/HLS icon in WebUI was missing.
+- Reduced memory usage slightly.
+- NEW: Option to use pre-hashed passwords (#1275):
+  - You must md5 hash your password three times and prefix it with `hashed:`
+  - Example: `WYZE_PASSWORD=hashed:<your-tripple-hashed-password>`
+- NEW: REST/MQTT commands (#1274):
+  - `notifications` GET/SET wyze app push notifications on/off (CLOUD).
+  - `motion_detection` GET/SET motion detection on/off (LOCAL).
+
+
 ## What's Changed in v2.9.9
 
 - FIX: Regression introduced in v2.9.8 where a pipe blocking issue would cause CPU to spike (#1268) (#1270)
@@ -219,7 +232,7 @@ The container can be run on its own, in [Portainer](https://github.com/mrlt8/doc
 ## Supported Cameras
 
 > [!IMPORTANT]
-> Some newer camera firmware versions may cause issues with remote access via P2P. Local "LAN" access seems unaffected at this time.
+> Some newer camera firmware versions may cause issues with remote access via P2P. Local "LAN" access seems unaffected at this time. A temporary solution is to use a VPN. See the [OpenVPN example](https://github.com/mrlt8/docker-wyze-bridge/blob/main/docker-compose.ovpn.yml).
 
 | Camera                        | Model          | Tutk Support                                                 | Latest FW |
 | ----------------------------- | -------------- | ------------------------------------------------------------ | --------- |
@@ -258,7 +271,7 @@ This is similar to the docker run command, but will save all your options in a y
 Once you're happy with your config you can use `docker-compose up -d` to run it in detached mode.
 
 > [!CAUTION]
-> If your credentials have special characters, you must escape them or leave your credentials blank and use the webUI to login.
+> If your credentials contain a `$` character, you need to escape it with another `$` sign (e.g., `pa$$word` > `pa$$$$word`) or leave your credentials blank and use the webUI to login.
 
 > [!NOTE] 
 > You may need to [update the WebUI links](https://github.com/mrlt8/docker-wyze-bridge/wiki/WebUI#custom-ports) if you're changing the ports or using a reverse proxy.

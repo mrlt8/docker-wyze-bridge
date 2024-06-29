@@ -32,7 +32,7 @@ class TutkIOCtrlFuture:
     def __init__(
         self,
         req: TutkWyzeProtocolMessage,
-        queue: Optional["Queue[Union[object, tuple[int, int, int, bytes]]]"] = None,
+        queue: Optional[Queue[Union[object, tuple[int, int, int, bytes]]]] = None,
         errcode: Optional[c_int] = None,
     ):
         self.req: TutkWyzeProtocolMessage = req
@@ -48,8 +48,8 @@ class TutkIOCtrlFuture:
         Wait until the camera has responded to our message, and return the result.
 
         :param block: wait until the camera has responded, or the timeout has been reached.
-                      if False, returns immediately if we have already recieved a response,
-                      otherwise raise queue.Empty.
+                      if False, returns immediately if we have already received a response,
+                      otherwise raises queue.Empty.
         :param timeout: the maximum number of milliseconds to wait for the response
                         from the camera, after which queue.Empty will be raised.
         :returns: the result of [`TutkWyzeProtocolMessage.parse_response`][wyzecam.tutk.tutk_protocol.TutkWyzeProtocolMessage.parse_response]
@@ -100,7 +100,12 @@ class TutkIOCtrlMux:
     See: [wyzecam.iotc.WyzeIOTCSession.iotctrl_mux][]
     """
 
-    def __init__(self, tutk_platform_lib: CDLL, av_chan_id: c_int) -> None:
+    __slots__ = "tutk_platform_lib", "av_chan_id", "queues", "listener", "block"
+    _context_lock = threading.Lock()
+
+    def __init__(
+        self, tutk_platform_lib: CDLL, av_chan_id: c_int, block: bool = True
+    ) -> None:
         """Initialize the mux channel.
 
         :param tutk_platform_lib: the underlying c library used to communicate with the wyze
@@ -110,11 +115,12 @@ class TutkIOCtrlMux:
         self.tutk_platform_lib = tutk_platform_lib
         self.av_chan_id = av_chan_id
         self.queues: DefaultDict[
-            Union[str, int], "Queue[Union[object, tuple[int, int, int, bytes]]]"
+            Union[str, int], Queue[Union[object, tuple[int, int, int, bytes]]]
         ] = defaultdict(Queue)
         self.listener = TutkIOCtrlMuxListener(
             tutk_platform_lib, av_chan_id, self.queues
         )
+        self.block = block
 
     def start_listening(self) -> None:
         """Start a separate thread listening for responses from the camera.
@@ -131,6 +137,9 @@ class TutkIOCtrlMux:
 
         See: [wyzecam.tutk.tutk_ioctl_mux.TutkIOCtrlMux.stop_listening][]
         """
+        timeout = {"timeout": 2} if self.block else {}
+        if not TutkIOCtrlMux._context_lock.acquire(blocking=self.block, **timeout):
+            raise tutk.TutkError(-20021)
         self.listener.start()
 
     def stop_listening(self) -> None:
@@ -141,6 +150,7 @@ class TutkIOCtrlMux:
         """
         self.queues[CONTROL_CHANNEL].put(STOP_SENTINEL)
         self.listener.join()
+        TutkIOCtrlMux._context_lock.release()
 
     def __enter__(self):
         self.start_listening()
@@ -248,12 +258,14 @@ class TutkIOCtrlMux:
 
 
 class TutkIOCtrlMuxListener(threading.Thread):
+    __slots__ = "tutk_platform_lib", "av_chan_id", "queues", "exception"
+
     def __init__(
         self,
         tutk_platform_lib: CDLL,
         av_chan_id: c_int,
         queues: DefaultDict[
-            Union[int, str], "Queue[Union[object, tuple[int, int, int, bytes]]]"
+            Union[int, str], Queue[Union[object, tuple[int, int, int, bytes]]]
         ],
     ):
         super().__init__()
@@ -263,7 +275,7 @@ class TutkIOCtrlMuxListener(threading.Thread):
         self.exception: Optional[tutk.TutkError] = None
 
     def join(self, timeout=None):
-        super(TutkIOCtrlMuxListener, self).join(timeout)
+        super().join(timeout)
         if self.exception:
             raise self.exception
 

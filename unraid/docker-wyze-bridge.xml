@@ -9,13 +9,11 @@
   </Branch>
   <Branch>
     <Tag>latest-hw</Tag>
-    <TagDescription>Latest stable release for amd64 with additinal drivers for harware accelerated
-      encoding.</TagDescription>
+    <TagDescription>Latest stable release for amd64 with additinal drivers for harware accelerated encoding.</TagDescription>
   </Branch>
   <Branch>
     <Tag>latest-qsv</Tag>
-    <TagDescription>Latest stable release for amd64 with additinal drivers for QSV accelerated
-      encoding.</TagDescription>
+    <TagDescription>Latest stable release for amd64 with additinal drivers for QSV accelerated encoding.</TagDescription>
   </Branch>
   <Branch>
     <Tag>dev</Tag>
@@ -30,10 +28,8 @@
   </Overview>
   <Category>HomeAutomation:</Category>
   <WebUI>http://[IP]:[PORT:5000]</WebUI>
-  <TemplateURL>
-    https://raw.githubusercontent.com/selfhosters/unRAID-CA-templates/master/templates/docker-wyze-bridge.xml</TemplateURL>
-  <Icon>
-    https://raw.githubusercontent.com/selfhosters/unRAID-CA-templates/master/templates/img/wyze.png</Icon>
+  <TemplateURL>https://raw.githubusercontent.com/selfhosters/unRAID-CA-templates/master/templates/docker-wyze-bridge.xml</TemplateURL>
+  <Icon>https://raw.githubusercontent.com/selfhosters/unRAID-CA-templates/master/templates/img/wyze.png</Icon>
   <DonateText>ko-fi</DonateText>
   <DonateLink>https://ko-fi.com/mrlt8</DonateLink>
   <Requires>A unique API_KEY and API_ID which can be generated on the Wyze Developer Portal:
@@ -42,7 +38,10 @@
   <Config Name="WYZE_PASSWORD" Target="WYZE_PASSWORD" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="true"/>
   <Config Name="API_ID" Target="API_ID" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="API_KEY" Target="API_KEY" Default="" Mode="" Description="" Type="Variable" Display="always" Required="false" Mask="false"/>
-  <Config Name="RTSP Port" Target="8554" Default="8554" Mode="tcp" Description="" Type="Port" Display="advanced" Required="false" Mask="false">8544</Config>
+  <Config Name="WB_AUTH" Target="WB_AUTH" Default="True" Mode="" Description="Enable authentication for Wyze Bridge." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="WB_USERNAME" Target="WB_USERNAME" Default="" Mode="" Description="Username to access Wyze Bridge." Type="Variable" Display="always" Required="false" Mask="false"/>
+  <Config Name="WB_PASSWORD" Target="WB_PASSWORD" Default="" Mode="" Description="Password to access Wyze Bridge." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="RTSP Port" Target="8554" Default="8554" Mode="tcp" Description="" Type="Port" Display="advanced" Required="false" Mask="false">8554</Config>
   <Config Name="RTMP Port" Target="1935" Default="1935" Mode="tcp" Description="" Type="Port" Display="advanced" Required="false" Mask="false">1935</Config>
   <Config Name="HLS Port" Target="8888" Default="8888" Mode="tcp" Description="" Type="Port" Display="advanced" Required="false" Mask="false">8888</Config>
   <Config Name="WebRTC Port" Target="8889" Default="8889" Mode="tcp" Description="" Type="Port" Display="advanced" Required="false" Mask="false">8889</Config>

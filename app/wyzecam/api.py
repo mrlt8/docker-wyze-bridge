@@ -345,6 +345,7 @@ def validate_resp(resp: Response) -> dict:
 def _payload(
     access_token: Optional[str], phone_id: Optional[str] = "", endpoint: str = "default"
 ) -> dict:
+    endpoint = endpoint if endpoint in SC_SV else "default"
     return {
         "sc": SC_SV[endpoint]["sc"],
         "sv": SC_SV[endpoint]["sv"],
@@ -410,6 +411,11 @@ def sign_payload(auth_info: WyzeCredential, app_id: str, payload: str) -> dict:
 def hash_password(password: str) -> str:
     """Run hashlib.md5() algorithm 3 times."""
     encoded = password.strip()
+
+    for ex in {"hashed:", "md5:"}:
+        if encoded.lower().startswith(ex):
+            return encoded[len(ex) :]
+
     for _ in range(3):
         encoded = md5(encoded.encode("ascii")).hexdigest()  # nosec
     return encoded

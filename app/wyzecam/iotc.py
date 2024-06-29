@@ -4,7 +4,6 @@ import enum
 import errno
 import fcntl
 import hashlib
-import io
 import logging
 import os
 import pathlib
@@ -346,7 +345,7 @@ class WyzeIOTCSession:
 
         return sess_info
 
-    def iotctrl_mux(self) -> TutkIOCtrlMux:
+    def iotctrl_mux(self, block: bool = True) -> TutkIOCtrlMux:
         """Construct a new TutkIOCtrlMux for this session.
 
         Use this to send configuration messages, such as change the cameras resolution.
@@ -365,7 +364,7 @@ class WyzeIOTCSession:
 
         """
         assert self.av_chan_id is not None, "Please call _connect() first!"
-        return TutkIOCtrlMux(self.tutk_platform_lib, self.av_chan_id)
+        return TutkIOCtrlMux(self.tutk_platform_lib, self.av_chan_id, block)
 
     def __enter__(self):
         self._connect()
@@ -530,8 +529,7 @@ class WyzeIOTCSession:
         return {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
 
     def sync_camera_time(self, wait: bool = False):
-        logger.debug("sync camera time")
-        with self.iotctrl_mux() as mux:
+        with self.iotctrl_mux(False) as mux:
             with contextlib.suppress(tutk_ioctl_mux.Empty, tutk.TutkError):
                 mux.send_ioctl(tutk_protocol.K10092SetCameraTime()).result(wait)
         self.frame_ts = time.time()
@@ -1055,6 +1053,7 @@ class WyzeIOTCSession:
 
     def _disconnect(self):
         if self.av_chan_id is not None:
+            tutk.av_send_io_ctrl_exit(self.tutk_platform_lib, self.av_chan_id)
             tutk.av_client_stop(self.tutk_platform_lib, self.av_chan_id)
         self.av_chan_id = None
         if self.session_id is not None:
