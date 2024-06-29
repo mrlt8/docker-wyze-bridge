@@ -233,9 +233,9 @@ def create_app():
         """
         if restart_cmd == "cameras":
             wb.streams.stop_all()
-            wb.streams.monitor_streams(wb.rtsp.health_check)
+            wb.streams.monitor_streams(wb.mtx.health_check)
         elif restart_cmd == "rtsp_server":
-            wb.rtsp.restart()
+            wb.mtx.restart()
         elif restart_cmd == "cam_data":
             wb.refresh_cams()
             restart_cmd = "cameras"

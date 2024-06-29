@@ -14,7 +14,7 @@ from wyzecam.api_models import WyzeCamera
 
 
 class WyzeBridge(Thread):
-    __slots__ = "api", "streams", "rtsp"
+    __slots__ = "api", "streams", "mtx"
 
     def __init__(self) -> None:
         Thread.__init__(self)
@@ -23,10 +23,9 @@ class WyzeBridge(Thread):
         print(f"\n🚀 DOCKER-WYZE-BRIDGE v{config.VERSION} {config.BUILD_STR}\n")
         self.api: WyzeApi = WyzeApi()
         self.streams: StreamManager = StreamManager()
-        self.rtsp: MtxServer = MtxServer(config.BRIDGE_IP)
-
-        if config.LLHLS:
-            self.rtsp.setup_llhls(config.TOKEN_PATH, bool(config.HASS_TOKEN))
+        self.mtx: MtxServer = MtxServer(config.WB_API, config.STREAM_AUTH)
+        self.mtx.setup_webrtc(config.BRIDGE_IP)
+        self.mtx.setup_llhls(config.TOKEN_PATH, bool(config.HASS_TOKEN))
 
     def run(self, fresh_data: bool = False) -> None:
         self._initialize(fresh_data)
@@ -36,16 +35,16 @@ class WyzeBridge(Thread):
         self.setup_streams()
         if self.streams.total < 1:
             return signal.raise_signal(signal.SIGINT)
-        self.rtsp.start()
-        self.streams.monitor_streams(self.rtsp.health_check)
+        self.mtx.start()
+        self.streams.monitor_streams(self.mtx.health_check)
 
     def restart(self, fresh_data: bool = False) -> None:
-        self.rtsp.stop()
+        self.mtx.stop()
         self.streams.stop_all()
         self._initialize(fresh_data)
 
     def refresh_cams(self) -> None:
-        self.rtsp.stop()
+        self.mtx.stop()
         self.streams.stop_all()
         self.api.get_cameras(fresh_data=True)
         self._initialize(False)
@@ -54,6 +53,7 @@ class WyzeBridge(Thread):
         """Gather and setup streams for each camera."""
         WyzeStream.user = self.api.get_user()
         WyzeStream.api = self.api
+
         for cam in self.api.filtered_cams():
             logger.info(f"[+] Adding {cam.nickname} [{cam.product_model}]")
             if config.SNAPSHOT_TYPE == "api":
@@ -68,7 +68,9 @@ class WyzeBridge(Thread):
             stream = WyzeStream(cam, options)
             stream.rtsp_fw_enabled = self.rtsp_fw_proxy(cam, stream)
 
-            self.rtsp.add_path(stream.uri, not options.reconnect, config.WB_API)
+            self.mtx.add_path(stream.uri, not options.reconnect)
+            if env_cam("record", cam.name_uri):
+                self.mtx.record(stream.uri)
             self.streams.add(stream)
 
     def rtsp_fw_proxy(self, cam: WyzeCamera, stream: WyzeStream) -> bool:
@@ -76,7 +78,7 @@ class WyzeBridge(Thread):
             if rtsp_path := stream.check_rtsp_fw(rtsp_fw == "force"):
                 rtsp_uri = f"{cam.name_uri}-fw"
                 logger.info(f"Adding /{rtsp_uri} as a source")
-                self.rtsp.add_source(rtsp_uri, rtsp_path)
+                self.mtx.add_source(rtsp_uri, rtsp_path)
                 return True
         return False
 
@@ -89,7 +91,7 @@ class WyzeBridge(Thread):
             record = bool(env_cam("sub_record", cam.name_uri))
             sub_opt = replace(options, substream=True, quality=quality, record=record)
             sub = WyzeStream(cam, sub_opt)
-            self.rtsp.add_path(sub.uri, not options.reconnect, config.WB_API)
+            self.mtx.add_path(sub.uri, not options.reconnect)
             self.streams.add(sub)
 
     def clean_up(self, *_):
@@ -98,7 +100,7 @@ class WyzeBridge(Thread):
             sys.exit(0)
         if self.streams:
             self.streams.stop_all()
-        self.rtsp.stop()
+        self.mtx.stop()
         logger.info("👋 goodbye!")
         sys.exit(0)
 

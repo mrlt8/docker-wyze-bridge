@@ -133,7 +133,6 @@ def format_stream(name_uri: str) -> dict:
         "webrtc_url": webrtc_url if config.BRIDGE_IP else None,
         "rtmp_url": (config.RTMP_URL or f"rtmp://{hostname}:1935") + f"/{name_uri}",
         "rtsp_url": (config.RTSP_URL or f"rtsp://{hostname}:8554") + f"/{name_uri}",
-        "stream_auth": bool(os.getenv(f"MTX_PATHS_{name_uri.upper()}_READUSER")),
         "img_url": f"img/{img}" if img_time else None,
         "snapshot_url": f"snapshot/{img}",
         "thumbnail_url": f"thumb/{img}",
