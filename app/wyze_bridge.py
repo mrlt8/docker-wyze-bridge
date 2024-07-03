@@ -4,6 +4,7 @@ from dataclasses import replace
 from threading import Thread
 
 from wyzebridge import config
+from wyzebridge.auth import STREAM_AUTH, WbAuth
 from wyzebridge.bridge_utils import env_bool, env_cam, is_livestream
 from wyzebridge.logging import logger
 from wyzebridge.mtx_server import MtxServer
@@ -23,7 +24,7 @@ class WyzeBridge(Thread):
         print(f"\n🚀 DOCKER-WYZE-BRIDGE v{config.VERSION} {config.BUILD_STR}\n")
         self.api: WyzeApi = WyzeApi()
         self.streams: StreamManager = StreamManager()
-        self.mtx: MtxServer = MtxServer(config.WB_API, config.STREAM_AUTH)
+        self.mtx: MtxServer = MtxServer()
         self.mtx.setup_webrtc(config.BRIDGE_IP)
         self.mtx.setup_llhls(config.TOKEN_PATH, bool(config.HASS_TOKEN))
 
@@ -32,6 +33,8 @@ class WyzeBridge(Thread):
 
     def _initialize(self, fresh_data: bool = False) -> None:
         self.api.login(fresh_data=fresh_data)
+        WbAuth.set_email(email=self.api.creds.email)
+        self.mtx.setup_auth(WbAuth.api, STREAM_AUTH)
         self.setup_streams()
         if self.streams.total < 1:
             return signal.raise_signal(signal.SIGINT)

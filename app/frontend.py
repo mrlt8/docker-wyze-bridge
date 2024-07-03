@@ -16,6 +16,7 @@ from flask import (
 from werkzeug.exceptions import NotFound
 from wyze_bridge import WyzeBridge
 from wyzebridge import config, web_ui
+from wyzebridge.auth import WbAuth
 from wyzebridge.web_ui import url_for
 
 
@@ -45,7 +46,7 @@ def create_app():
         if request.method == "GET":
             return render_template(
                 "login.html",
-                api=config.WB_API,
+                api=WbAuth.api,
                 version=config.VERSION,
             )
 
@@ -96,7 +97,7 @@ def create_app():
                 cam_data=web_ui.all_cams(wb.streams, wb.api.total_cams),
                 number_of_columns=number_of_columns,
                 refresh_period=refresh_period,
-                api=config.WB_API,
+                api=WbAuth.api,
                 version=config.VERSION,
                 webrtc=bool(config.BRIDGE_IP),
                 show_video=show_video,
@@ -168,7 +169,7 @@ def create_app():
     def webrtc_signaling(name):
         if "kvs" in request.args:
             return wb.api.get_kvs_signal(name)
-        return web_ui.get_webrtc_signal(name, config.WB_API)
+        return web_ui.get_webrtc_signal(name, WbAuth.api)
 
     @app.route("/webrtc/<string:name>")
     @auth_required

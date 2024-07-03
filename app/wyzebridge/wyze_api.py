@@ -6,7 +6,7 @@ import struct
 from base64 import b32decode
 from datetime import datetime
 from functools import wraps
-from os import environ, listdir, remove, utime
+from os import environ, utime
 from os.path import exists, getmtime, getsize
 from pathlib import Path
 from time import sleep, time
@@ -16,7 +16,8 @@ from urllib.parse import parse_qs, urlparse
 import wyzecam
 from requests import get
 from requests.exceptions import ConnectionError, HTTPError, RequestException
-from wyzebridge.bridge_utils import env_bool, env_filter, get_secret
+from wyzebridge.auth import get_secret
+from wyzebridge.bridge_utils import env_bool, env_filter
 from wyzebridge.config import IMG_PATH, MOTION, TOKEN_PATH
 from wyzebridge.logging import logger
 from wyzecam.api import RateLimitError, WyzeAPIError, post_device

@@ -7,14 +7,15 @@ from urllib.parse import urlparse
 from flask import request
 from flask import url_for as _url_for
 from flask_httpauth import HTTPBasicAuth
-from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.security import check_password_hash
 from wyzebridge import config
+from wyzebridge.auth import WbAuth
 from wyzebridge.bridge_utils import env_bool
 from wyzebridge.logging import logger
 from wyzebridge.stream import Stream, StreamManager
 
 auth = HTTPBasicAuth()
-HASHED_PASS = generate_password_hash(config.WB_PASSWORD)
+
 API_ENDPOINTS = "/api", "/img", "/snapshot", "/thumb", "/photo"
 
 
@@ -22,11 +23,11 @@ API_ENDPOINTS = "/api", "/img", "/snapshot", "/thumb", "/photo"
 def verify_password(username, password):
     if config.HASS_TOKEN and request.remote_addr == "172.30.32.2":
         return True
-    if config.WB_API in (request.args.get("api"), request.headers.get("api")):
+    if WbAuth.api in (request.args.get("api"), request.headers.get("api")):
         return request.path.startswith(API_ENDPOINTS)
-    if username == config.WB_USERNAME:
-        return check_password_hash(HASHED_PASS, password)
-    return config.WB_AUTH == False
+    if username == WbAuth.username:
+        return check_password_hash(WbAuth.hashed_password(), password)
+    return WbAuth.enabled == False
 
 
 @auth.error_handler
