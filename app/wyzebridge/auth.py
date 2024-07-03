@@ -31,6 +31,14 @@ def get_password(file_name: str, alt: str = "") -> str:
     return ""
 
 
+def clear_local_auth():
+    for file in ["wb_password", "wb_api"]:
+        file_path = f"{TOKEN_PATH}{file}"
+        if os.path.exists(file_path):
+            logger.info(f"[AUTH] Clearing local auth data [{file_path=}]")
+            os.remove(file_path)
+
+
 def gen_api_key(email):
     hash_bytes = sha256(email.encode()).digest()
     return urlsafe_b64encode(hash_bytes).decode()[:40]
@@ -50,26 +58,29 @@ class WbAuth:
         return generate_password_hash(cls.password)
 
     @classmethod
-    def set_email(cls, email: str):
+    def set_email(cls, email: str, force: bool = False):
         logger.info(f"[AUTH] WB_AUTH={cls.enabled}")
         if not cls.enabled:
             return
 
-        cls._set_password(email)
-        cls._set_api(email)
+        if forced := (force or env_bool("FRESH_DATA")):
+            clear_local_auth()
+
+        cls._set_password(email, forced)
+        cls._set_api(email, forced)
 
         logger.info(f"[AUTH] WB_USERNAME={cls.username}")
         logger.info(f"[AUTH] WB_PASSWORD={cls.password[0]}{'*'*(len(cls.password)-1)}")
         logger.info(f"[AUTH] WB_API={cls.api}")
 
     @classmethod
-    def _set_password(cls, email: str) -> None:
-        if not cls.password:
+    def _set_password(cls, email: str, forced: bool = False) -> None:
+        if forced or not cls.password:
             cls.password = email.partition("@")[0]
 
     @classmethod
-    def _set_api(cls, email: str) -> None:
-        if not cls.api:
+    def _set_api(cls, email: str, forced: bool = False) -> None:
+        if forced or not cls.api:
             cls.api = gen_api_key(email)
 
 
