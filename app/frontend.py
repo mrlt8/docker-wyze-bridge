@@ -123,11 +123,6 @@ def create_app():
     @auth_required
     def sse_status():
         """Server sent event for camera status."""
-        if wb.api.mfa_req:
-            return Response(
-                web_ui.mfa_generator(wb.api.get_mfa),
-                mimetype="text/event-stream",
-            )
         return Response(
             web_ui.sse_generator(wb.streams.get_sse_status),
             mimetype="text/event-stream",
