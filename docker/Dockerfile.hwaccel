@@ -19,7 +19,7 @@ RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local -r /build
 RUN cd /build \
     && . app/.env \
     && mkdir -p tokens img ${QSV:+usr/lib} \
-    && curl -SL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz \
+    && curl -SL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n6.1-latest-linux64-gpl-6.1.tar.xz \
     | tar -Jxf - --strip-components=1 -C usr/local --wildcards '*ffmpeg' \
     && curl -SL https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_amd64.tar.gz \
     | tar -xzf - -C app --wildcards 'mediamtx*' \

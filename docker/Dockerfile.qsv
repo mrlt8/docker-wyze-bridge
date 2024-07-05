@@ -9,7 +9,7 @@ ARG QSV
 ARG BUILD_DATE
 RUN if [ -n "$QSV" ]; then echo 'deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware' >/etc/apt/sources.list.d/debian-testing.list; fi \
     && apt-get update \
-    && apt-get install -y curl tar \
+    && apt-get install -y curl tar xz-utils \
     ${QSV:+i965-va-driver intel-gpu-tools intel-media-va-driver-non-free intel-opencl-icd libmfx1 libva-drm2 libx11-6 vainfo} \
     && if [ -n "$QSV" ]; then apt-get install -y i965-va-driver-shaders; fi \
     && apt-get clean \
@@ -19,8 +19,8 @@ RUN pip3 install --disable-pip-version-check --prefix=/build/usr/local -r /build
 RUN cd /build \
     && . app/.env \
     && mkdir -p tokens img ${QSV:+usr/lib} \
-    && curl -SL https://github.com/homebridge/ffmpeg-for-homebridge/releases/latest/download/ffmpeg-alpine-x86_64.tar.gz \
-    | tar xzf - -C . \
+    && curl -SL https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-n6.1-latest-linux64-gpl-6.1.tar.xz \
+    | tar -Jxf - --strip-components=1 -C usr/local --wildcards '*ffmpeg' \
     && curl -SL https://github.com/bluenviron/mediamtx/releases/download/v${MTX_TAG}/mediamtx_v${MTX_TAG}_linux_amd64.tar.gz \
     | tar -xzf - -C app --wildcards 'mediamtx*' \
     && cp app/lib/lib.amd64 usr/local/lib/libIOTCAPIs_ALL.so \
