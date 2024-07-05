@@ -1,6 +1,5 @@
 import hmac
 import json
-import os
 import time
 import urllib.parse
 import uuid
@@ -48,13 +47,21 @@ class AccessTokenError(Exception):
 
 
 class RateLimitError(Exception):
-    def __init__(self, resp):
-        reset = resp.headers.get("X-RateLimit-Reset-By")
-        self.remaining = int(resp.headers.get("X-RateLimit-Remaining", 0))
-        self.reset_by = self.get_reset_time(reset)
-        super().__init__(f"{self.remaining} requests remaining until {reset}")
+    def __init__(self, resp: Response):
+        self.remaining: int = self.parse_remaining(resp)
+        reset_by: str = resp.headers.get("X-RateLimit-Reset-By", "")
+        self.reset_by: int = self.get_reset_time(reset_by)
+        super().__init__(f"{self.remaining} requests remaining until {reset_by}")
 
-    def get_reset_time(self, reset_by: str):
+    @staticmethod
+    def parse_remaining(resp: Response) -> int:
+        try:
+            return int(resp.headers.get("X-RateLimit-Remaining", 0))
+        except Exception:
+            return 0
+
+    @staticmethod
+    def get_reset_time(reset_by: str) -> int:
         ts_format = "%a %b %d %H:%M:%S %Z %Y"
         try:
             return int(datetime.strptime(reset_by, ts_format).timestamp())
@@ -165,13 +172,9 @@ def refresh_token(auth_info: WyzeCredential) -> WyzeCredential:
               [get_camera_list()][wyzecam.api.get_camera_list].
 
     """
-    payload = _payload(auth_info.access_token, auth_info.phone_id)
+    payload = _payload(auth_info)
     payload["refresh_token"] = auth_info.refresh_token
-    resp = post(
-        f"{WYZE_API}/user/refresh_token",
-        json=payload,
-        headers=_headers(),
-    )
+    resp = post(f"{WYZE_API}/user/refresh_token", json=payload, headers=_headers())
 
     return WyzeCredential.model_validate(
         dict(
@@ -195,9 +198,7 @@ def get_user_info(auth_info: WyzeCredential) -> WyzeAccount:
 
     """
     resp = post(
-        f"{WYZE_API}/user/get_user_info",
-        json=_payload(auth_info.access_token, auth_info.phone_id),
-        headers=_headers(),
+        f"{WYZE_API}/user/get_user_info", json=_payload(auth_info), headers=_headers()
     )
 
     return WyzeAccount.model_validate(
@@ -209,7 +210,7 @@ def get_homepage_object_list(auth_info: WyzeCredential) -> dict[str, Any]:
     """Get all homepage objects."""
     resp = post(
         f"{WYZE_API}/v2/home_page/get_object_list",
-        json=_payload(auth_info.access_token, auth_info.phone_id),
+        json=_payload(auth_info),
         headers=_headers(),
     )
 
@@ -271,7 +272,7 @@ def get_camera_list(auth_info: WyzeCredential) -> list[WyzeCamera]:
 def run_action(auth_info: WyzeCredential, camera: WyzeCamera, action: str):
     """Send run_action commands to the camera."""
     payload = dict(
-        _payload(auth_info.access_token, auth_info.phone_id, "run_action"),
+        _payload(auth_info, "run_action"),
         action_params={},
         action_key=action,
         instance_id=camera.mac,
@@ -294,7 +295,7 @@ def post_device(
         headers = sign_payload(auth_info, "9319141212m2ik", payload)
         resp = post(device_url, data=payload, headers=headers)
     else:
-        params |= _payload(auth_info.access_token, auth_info.phone_id, endpoint)
+        params |= _payload(auth_info, endpoint)
         resp = post(device_url, json=params, headers=_headers())
 
     return validate_resp(resp)["data"]
@@ -342,20 +343,18 @@ def validate_resp(resp: Response) -> dict:
     return resp_json
 
 
-def _payload(
-    access_token: Optional[str], phone_id: Optional[str] = "", endpoint: str = "default"
-) -> dict:
-    endpoint = endpoint if endpoint in SC_SV else "default"
+def _payload(auth_info: WyzeCredential, endpoint: str = "default") -> dict:
+    values = SC_SV.get(endpoint, SC_SV["default"])
     return {
-        "sc": SC_SV[endpoint]["sc"],
-        "sv": SC_SV[endpoint]["sv"],
+        "sc": values["sc"],
+        "sv": values["sv"],
         "app_ver": f"com.hualai.WyzeCam___{APP_VERSION}",
         "app_version": APP_VERSION,
         "app_name": "com.hualai.WyzeCam",
         "phone_system_type": 1,
         "ts": int(time.time() * 1000),
-        "access_token": access_token,
-        "phone_id": phone_id,
+        "access_token": auth_info.access_token,
+        "phone_id": auth_info.phone_id,
     }
 
 
