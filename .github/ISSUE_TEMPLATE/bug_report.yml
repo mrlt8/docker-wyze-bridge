@@ -37,7 +37,7 @@ body:
     attributes:
       label: Affected Camera(s)
   - type: input
-    id: cameras
+    id: firmware
     attributes:
       label: Affected Camera Firmware
   - type: textarea
