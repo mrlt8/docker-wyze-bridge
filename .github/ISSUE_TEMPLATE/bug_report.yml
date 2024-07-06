@@ -1,0 +1,48 @@
+name: Bug Report
+description: Help improve the bridge by reporting any bugs
+title: "BUG: "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the bug
+      description: Provide a clear and concise description of the issue and include relevant logs if applicable.
+    validations:
+      required: true
+  - type: markdown
+    attributes:
+      value: Additional information to help resolve the issue
+  - type: input
+    id: version
+    attributes:
+      label: Affected Bridge Version
+      description: Please include the image tag if applicable
+      placeholder: e.g. v1.9.10
+    validations:
+      required: true
+  - type: dropdown
+    id: type
+    attributes:
+      label: Bridge type
+      multiple: true
+      options:
+        - Docker Run/Compose
+        - Home Assistant
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: cameras
+    attributes:
+      label: Affected Camera(s)
+  - type: input
+    id: cameras
+    attributes:
+      label: Affected Camera Firmware
+  - type: textarea
+    id: config
+    attributes:
+      label: docker-compose or config (if applicable)
+      description: Please be sure to remove any credentials or sensitive information!
+      render: yaml
