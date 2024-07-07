@@ -338,6 +338,8 @@ class WyzeStream:
 
         if cmd == "device_info":
             return self.api.get_device_info(self.camera)
+        if cmd == "device_setting":
+            return self.api.get_device_info(self.camera, cmd="device_setting")
 
         if cmd == "battery":
             return self.api.get_device_info(self.camera, "P8")

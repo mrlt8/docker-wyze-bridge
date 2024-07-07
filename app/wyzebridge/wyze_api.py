@@ -331,7 +331,7 @@ class WyzeApi:
             return {"status": "error", "response": str(ex)}
 
     @authenticated
-    def get_device_info(self, cam: WyzeCamera, pid: str = ""):
+    def get_device_info(self, cam: WyzeCamera, pid: str = "", cmd: str = ""):
         logger.info(f"[CONTROL] ☁️ get_device_Info for {cam.name_uri} via Wyze API")
         params = {"device_mac": cam.mac, "device_model": cam.product_model}
         try:
@@ -340,6 +340,9 @@ class WyzeApi:
         except (ValueError, WyzeAPIError) as ex:
             logger.error(f"[CONTROL] ERROR: {ex}")
             return {"status": "error", "response": str(ex)}
+
+        if cmd in resp:
+            return {"status": "success", "response": resp[cmd]}
 
         if not pid:
             return {"status": "success", "response": property_list}
