@@ -276,7 +276,8 @@ def send_tutk_msg(sess: WyzeIOTCSession, cmd: tuple | str, log: str = "info") ->
         elif res := iotc.result(timeout=5):
             if tutk_msg.code in {10020, 10050}:
                 update_mqtt_values(sess.camera.name_uri, res)
-                res = bitrate_check(sess, res, resp["command"])
+                if sess.camera.firmware_ver not in {"4.50.4.9222", "4.36.12.9751"}:
+                    res = bitrate_check(sess, res, resp["command"])
                 params = None
             if isinstance(res, bytes):
                 res = ",".join(map(str, res))
