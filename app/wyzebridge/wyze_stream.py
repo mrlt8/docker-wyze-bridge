@@ -149,6 +149,7 @@ class WyzeStream:
     def start(self) -> bool:
         if self.health_check(False) != StreamStatus.STOPPED:
             return False
+        self.state = StreamStatus.CONNECTING
         logger.info(
             f"🎉 Connecting to WyzeCam {self.camera.model_name} - {self.camera.nickname} on {self.camera.ip}"
         )
