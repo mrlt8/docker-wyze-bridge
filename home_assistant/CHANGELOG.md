@@ -1,3 +1,10 @@
+## What's Changed in v2.9.11
+
+- FIX: Update stream state on startup to prevent multiple connections.
+- FIX: No audio on HW and QSV builds. (#1281)
+- Use k10056 if supported and not setting fps when updating resolution and bitrate (#1194)
+- Temporary fix: Don't check bitrate on newer firmware which do not seem to report the actual bitrate. (#1194)
+
 ## What's Changed in v2.9.10
 
 - FIX: `-20021` error when sending multiple ioctl commands to the camera.

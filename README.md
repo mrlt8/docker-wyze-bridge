@@ -59,6 +59,13 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
+## What's Changed in v2.9.11
+
+- FIX: Update stream state on startup to prevent multiple connections.
+- FIX: No audio on HW and QSV builds. (#1281)
+- Use k10056 if supported and not setting fps when updating resolution and bitrate (#1194)
+- Temporary fix: Don't check bitrate on newer firmware which do not seem to report the actual bitrate. (#1194)
+
 ## What's Changed in v2.9.10
 
 - FIX: `-20021` error when sending multiple ioctl commands to the camera.
