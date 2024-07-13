@@ -581,9 +581,7 @@ class WyzeIOTCSession:
         except Exception as e:
             logger.warning(f"Flushing Error: {e}")
 
-    def recv_audio_data(
-        self,
-    ) -> Iterator[tuple[bytes, Optional[tutk.FrameInfo3Struct]]]:
+    def recv_audio_data(self) -> Iterator[bytes]:
         assert self.av_chan_id is not None, "Please call _connect() first!"
         try:
             while self.should_stream():
@@ -596,10 +594,9 @@ class WyzeIOTCSession:
                     continue
 
                 assert frame_info is not None, "Empty frame_info without an error!"
-                if self._audio_frame_slow(frame_info):
-                    continue
+                self._sync_audio_frame(frame_info)
 
-                yield frame_data, frame_info
+                yield frame_data
 
         except tutk.TutkError as ex:
             warnings.warn(ex.name)
@@ -616,7 +613,7 @@ class WyzeIOTCSession:
             with open(fifo_path, "wb", buffering=0) as audio_pipe:
                 set_non_blocking(audio_pipe)
                 self.audio_pipe_ready = True
-                for frame_data, _ in self.recv_audio_data():
+                for frame_data in self.recv_audio_data():
                     with contextlib.suppress(BlockingIOError):
                         audio_pipe.write(frame_data)
 
@@ -629,7 +626,7 @@ class WyzeIOTCSession:
                 os.unlink(fifo_path)
             warnings.warn("Audio pipe closed")
 
-    def _audio_frame_slow(self, frame_info) -> Optional[bool]:
+    def _sync_audio_frame(self, frame_info):
         # Some cams can't sync
         if frame_info.timestamp < 1591069888:
             return
