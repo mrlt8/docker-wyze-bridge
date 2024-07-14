@@ -1,5 +1,6 @@
-## What's Changed in v2.9.11
+## What's Changed in v2.9.11/12
 
+- FIX: Fix regression introduced in v2.9.11 which caused connection issues for WYZEDB3, WVOD1, HL_WCO2, and WYZEC1 (#1294) 
 - FIX: Update stream state on startup to prevent multiple connections.
 - FIX: No audio on HW and QSV builds. (#1281)
 - Use k10056 if supported and not setting fps when updating resolution and bitrate (#1194)

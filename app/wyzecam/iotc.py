@@ -535,7 +535,12 @@ class WyzeIOTCSession:
         self.frame_ts = time.time()
 
     def set_resolving_bit(self, fps: int = 0):
-        if fps or self.camera.model_name in {"WYZEDB3", "WVOD1", "HL_WCO2", "WYZEC1"}:
+        if fps or self.camera.product_model in {
+            "WYZEDB3",
+            "WVOD1",
+            "HL_WCO2",
+            "WYZEC1",
+        }:
             return K10052DBSetResolvingBit(
                 self.preferred_frame_size, self.preferred_bitrate, fps
             )

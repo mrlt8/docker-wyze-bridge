@@ -59,8 +59,9 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.9.11
+## What's Changed in v2.9.11/12
 
+- FIX: Fix regression introduced in v2.9.11 which caused connection issues for WYZEDB3, WVOD1, HL_WCO2, and WYZEC1 (#1294) 
 - FIX: Update stream state on startup to prevent multiple connections.
 - FIX: No audio on HW and QSV builds. (#1281)
 - Use k10056 if supported and not setting fps when updating resolution and bitrate (#1194)
