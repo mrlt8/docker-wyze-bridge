@@ -1,8 +1,7 @@
-import contextlib
 import os
 import secrets
 import shutil
-from typing import Any, Optional
+from typing import Any
 
 from wyzecam.api_models import WyzeCamera
 
@@ -66,18 +65,6 @@ def is_livestream(uri: str) -> bool:
     services = {"youtube", "facebook", "livestream"}
 
     return any(env_bool(f"{service}_{uri}") for service in services)
-
-
-def is_fw11(fw_ver: Optional[str]) -> bool:
-    """
-    Check if newer firmware that needs to use K10050GetVideoParam
-    """
-    with contextlib.suppress(IndexError, ValueError):
-        if fw_ver and fw_ver.startswith(("4.51", "4.52", "4.53", "4.50.4")):
-            return True
-        if fw_ver and int(fw_ver.split(".")[2]) > 10:
-            return True
-    return False
 
 
 def get_secret(name: str) -> str:
