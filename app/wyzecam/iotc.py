@@ -512,10 +512,23 @@ class WyzeIOTCSession:
         return {self.preferred_frame_size, int(os.getenv("IGNORE_RES", alt))}
 
     def sync_camera_time(self, wait: bool = False):
-        with self.iotctrl_mux(False) as mux:
-            with contextlib.suppress(tutk_ioctl_mux.Empty, tutk.TutkError):
+        with contextlib.suppress(tutk_ioctl_mux.Empty, tutk.TutkError):
+            with self.iotctrl_mux(False) as mux:
                 mux.send_ioctl(tutk_protocol.K10092SetCameraTime()).result(wait)
         self.frame_ts = time.time()
+
+    def set_resolving_bit(self, fps: int = 0):
+        if fps or self.camera.product_model in {
+            "WYZEDB3",
+            "WVOD1",
+            "HL_WCO2",
+            "WYZEC1",
+        }:
+            return K10052DBSetResolvingBit(
+                self.preferred_frame_size, self.preferred_bitrate, fps
+            )
+
+        return K10056SetResolvingBit(self.preferred_frame_size, self.preferred_bitrate)
 
     def update_frame_size_rate(self, bitrate: Optional[int] = None, fps: int = 0):
         """Send a message to the camera to update the frame_size and bitrate."""
@@ -526,11 +539,12 @@ class WyzeIOTCSession:
             self.preferred_frame_rate = fps
             self.sync_camera_time()
 
-        ioctl_params = self.preferred_frame_size, self.preferred_bitrate, fps
-        logger.warning("Requesting frame_size=%d, bitrate=%d, fps=%d" % ioctl_params)
+        params = self.preferred_frame_size, self.preferred_bitrate, fps
+        logger.warning("Requesting frame_size=%d, bitrate=%d, fps=%d" % params)
+
         with self.iotctrl_mux() as mux:
             with contextlib.suppress(tutk_ioctl_mux.Empty):
-                mux.send_ioctl(K10052DBSetResolvingBit(*ioctl_params)).result(False)
+                mux.send_ioctl(self.set_resolving_bit(fps)).result(False)
 
     def clear_buffer(self) -> None:
         """Clear local buffer."""
@@ -555,9 +569,7 @@ class WyzeIOTCSession:
         except Exception as e:
             logger.warning(f"Flushing Error: {e}")
 
-    def recv_audio_data(
-        self,
-    ) -> Iterator[tuple[bytes, Optional[tutk.FrameInfo3Struct]]]:
+    def recv_audio_data(self) -> Iterator[bytes]:
         assert self.av_chan_id is not None, "Please call _connect() first!"
         try:
             while self.should_stream():
@@ -570,10 +582,9 @@ class WyzeIOTCSession:
                     continue
 
                 assert frame_info is not None, "Empty frame_info without an error!"
-                if self._audio_frame_slow(frame_info):
-                    continue
+                self._sync_audio_frame(frame_info)
 
-                yield frame_data, frame_info
+                yield frame_data
 
         except tutk.TutkError as ex:
             warnings.warn(ex.name)
@@ -590,7 +601,7 @@ class WyzeIOTCSession:
             with open(fifo_path, "wb", buffering=0) as audio_pipe:
                 set_non_blocking(audio_pipe)
                 self.audio_pipe_ready = True
-                for frame_data, _ in self.recv_audio_data():
+                for frame_data in self.recv_audio_data():
                     with contextlib.suppress(BlockingIOError):
                         audio_pipe.write(frame_data)
 
@@ -603,7 +614,7 @@ class WyzeIOTCSession:
                 os.unlink(fifo_path)
             warnings.warn("Audio pipe closed")
 
-    def _audio_frame_slow(self, frame_info) -> Optional[bool]:
+    def _sync_audio_frame(self, frame_info):
         # Some cams can't sync
         if frame_info.timestamp < 1591069888:
             return
@@ -792,17 +803,8 @@ class WyzeIOTCSession:
                     warnings.warn(f"AUTH FAILED: {auth_response}")
                     raise ValueError("AUTH_FAILED")
                 self.camera.set_camera_info(auth_response["cameraInfo"])
-                frame_bit = self.preferred_frame_size, self.preferred_bitrate
-                if self.camera.product_model in (
-                    "WYZEDB3",
-                    "WVOD1",
-                    "HL_WCO2",
-                    "WYZEC1",
-                ):
-                    ioctl_msg = K10052DBSetResolvingBit(*frame_bit)
-                else:
-                    ioctl_msg = K10056SetResolvingBit(*frame_bit)
-                mux.waitfor(mux.send_ioctl(ioctl_msg))
+
+                mux.send_ioctl(self.set_resolving_bit()).result()
                 self.state = WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
         except tutk.TutkError:
             self._disconnect()

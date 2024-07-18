@@ -149,6 +149,7 @@ class WyzeStream:
     def start(self) -> bool:
         if self.health_check(False) != StreamStatus.STOPPED:
             return False
+        self.state = StreamStatus.CONNECTING
         logger.info(
             f"🎉 Connecting to WyzeCam {self.camera.model_name} - {self.camera.nickname} on {self.camera.ip}"
         )
@@ -338,6 +339,8 @@ class WyzeStream:
 
         if cmd == "device_info":
             return self.api.get_device_info(self.camera)
+        if cmd == "device_setting":
+            return self.api.get_device_info(self.camera, cmd="device_setting")
 
         if cmd == "battery":
             return self.api.get_device_info(self.camera, "P8")
