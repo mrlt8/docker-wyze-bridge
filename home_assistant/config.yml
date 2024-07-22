@@ -4,6 +4,7 @@ slug: docker_wyze_bridge
 url: https://github.com/mrlt8/docker-wyze-bridge
 image: mrlt8/wyze-bridge
 version: 2.9.12
+stage: stable
 arch:
   - armv7
   - aarch64
@@ -134,3 +135,4 @@ schema:
   WB_AUTH: bool?
   WB_USERNAME: str?
   WB_PASSWORD: str?
+  STREAM_AUTH: str?

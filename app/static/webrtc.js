@@ -55,7 +55,8 @@ class Receiver {
         this.queuedCandidates = [];
         this.ws = null;
         this.pc = null;
-        this.eTag = '';
+        this.sessionUrl = '';
+        this.iceConnectionTimer;
         this.start();
     }
     start() {
@@ -63,43 +64,26 @@ class Receiver {
         this.ws = new WebSocket(this.signalJson.signalingUrl);
         this.ws.onopen = () => this.onOpen();
         this.ws.onmessage = (msg) => this.onWsMessage(msg);
-        this.ws.onerror = (err) => this.onClose(err);
-        this.ws.onclose = () => this.onClose();
+        this.ws.onerror = (err) => this.onError(err);
+        this.ws.onclose = () => this.onError();
     }
 
-    onClose(err = null) {
-        if (err) { console.error('Error:', err); }
-        if (this.ws !== null) {
-            this.ws.close();
-            this.ws = null;
-        }
-        this.scheduleRestart();
-    }
     onOpen() {
         const direction = this.whep ? "sendrecv" : "recvonly";
-
-        this.pc = new RTCPeerConnection({ iceServers: this.signalJson.servers });
+        this.pc = new RTCPeerConnection({ iceServers: this.signalJson.servers, sdpSemantics: 'unified-plan' });
         this.pc.addTransceiver("video", { direction });
         this.pc.addTransceiver("audio", { direction });
         this.pc.ontrack = (evt) => this.onTrack(evt);
         this.pc.onicecandidate = (evt) => this.onIceCandidate(evt);
         this.pc.oniceconnectionstatechange = () => this.onConnectionStateChange();
         this.pc.createOffer().then((desc) => this.createOffer(desc));
-
     }
     createOffer(desc) {
         this.pc.setLocalDescription(desc);
-
         if (!this.whep) { return this.sendToServer("SDP_OFFER", desc); }
-
-        console.log('Sending offer');
         this.offerData = parseOffer(desc.sdp);
-        let headers = { 'Content-Type': 'application/sdp' };
-
-        const server = this.signalJson.servers && this.signalJson.servers.length > 0 ? this.signalJson.servers[0] : null;
-        if (server && server.credential && server.username) {
-            headers['Authorization'] = 'Basic ' + btoa(server.username + ':' + server.credential);
-        }
+        const headers = this.authHeaders();
+        headers['Content-Type'] = 'application/sdp'
         fetch(this.signalJson.whep, {
             method: 'POST',
             headers: headers,
@@ -107,54 +91,64 @@ class Receiver {
         })
             .then((res) => {
                 if (res.status !== 201) { throw new Error('Bad status code'); }
-                this.eTag = res.headers.get('ETag');
+                this.sessionUrl = new URL(res.headers.get('location'), this.signalJson.whep).toString();
                 return res.text();
             })
             .then((sdp) => this.onRemoteDescription(sdp))
-            .catch((err) => this.onClose(err));
+            .catch((err) => this.onError(err));
     }
+    authHeaders() {
+        const server = this.signalJson.servers && this.signalJson.servers.length > 0 ? this.signalJson.servers[0] : null;
+        if (server && server.credential && server.username) {
+            return { 'Authorization': 'Basic ' + btoa(server.username + ':' + server.credential) };
+        }
+        return {}
+    }
+
     sendToServer(action, payload) {
         this.ws.send(JSON.stringify({ "action": action, "messagePayload": btoa(JSON.stringify(payload)), "recipientClientId": this.signalJson.ClientId }));
     }
     sendLocalCandidates(candidates) {
-        fetch(this.signalJson.whep, {
+        const headers = this.authHeaders();
+        headers['Content-Type'] = 'application/trickle-ice-sdpfrag'
+        headers['If-Match'] = '*'
+
+        fetch(this.sessionUrl, {
             method: 'PATCH',
-            headers: {
-                'Content-Type': 'application/trickle-ice-sdpfrag',
-                'If-Match': this.eTag,
-            },
+            headers: headers,
             body: generateSdpFragment(this.offerData, candidates),
         })
             .then((res) => {
-                if (res.status !== 204) {
-                    throw new Error('bad status code');
+                switch (res.status) {
+                    case 204:
+                        break;
+                    case 404:
+                        throw new Error('stream not found');
+                    default:
+                        throw new Error(`bad status code ${res.status}`);
                 }
             })
             .catch((err) => {
-                console.error('error: ' + err);
-                this.scheduleRestart();
+                this.onError(err.toString());
             });
     }
 
     onTrack(event) {
-        console.log("new track: " + event.track.kind);
         let vid = document.querySelector(`video[data-cam='${this.signalJson.cam}']`);
         vid.srcObject = event.streams[0];
-        vid.oncanplay = () => {
-            vid.autoplay = true;
-            vid.play();
-        };
-
+        vid.autoplay = true;
+        vid.play().catch((err) => {
+            console.info('play() error:', err);
+        });
     }
 
     onConnectionStateChange() {
+        clearTimeout(this.iceConnectionTimer);
         if (this.restartTimeout !== null) { return; }
-
-        console.log('Peer connection state:', this.pc.iceConnectionState);
         switch (this.pc.iceConnectionState) {
             case 'disconnected':
             case 'failed':
-                this.scheduleRestart();
+                this.onError()
                 break;
         }
     }
@@ -193,20 +187,40 @@ class Receiver {
     onIceCandidate(evt) {
         if (this.restartTimeout !== null || evt.candidate === null) { return; }
         if (this.whep) {
-            if (this.eTag === '') {
+            if (this.sessionUrl === '') {
                 this.queuedCandidates.push(evt.candidate);
             } else {
                 this.sendLocalCandidates([evt.candidate]);
             }
         } else {
             this.sendToServer('ICE_CANDIDATE', evt.candidate);
+            if (!this.iceConnectionTimer) {
+                this.iceConnectionTimer = setTimeout(() => {
+                    if (this.pc.iceConnectionState !== 'start') {
+                        this.pc.close();
+                        this.onError("ICE connection timeout")
+                    }
+                }, 30000);
+            }
         }
     }
+    refreshSignal() {
+        fetch(new URL(`signaling/${this.signalJson.cam}?${this.whep ? 'webrtc' : 'kvs'}`, window.location.href))
+            .then((resp) => resp.json())
+            .then((signalJson) => {
+                if (signalJson.result !== "ok") { return console.error("signaling json not ok"); }
+                this.signalJson = signalJson;
+            });
+    }
 
-    scheduleRestart() {
+    onError(err = undefined) {
         if (this.restartTimeout !== null) {
             return;
         }
+        if (err !== undefined) { console.error('Error:', err.toString()); }
+        clearTimeout(this.iceConnectionTimer);
+        this.iceConnectionTimer = null;
+
         if (this.ws !== null) {
             this.ws.close();
             this.ws = null;
@@ -215,11 +229,26 @@ class Receiver {
             this.pc.close();
             this.pc = null;
         }
+        const connection = document.getElementById("connection-lost");
+        const offline = connection && connection.style.display === "block";
+
         this.restartTimeout = window.setTimeout(() => {
             this.restartTimeout = null;
-            this.start();
+            if (offline) {
+                this.onError()
+            } else {
+                this.refreshSignal();
+                this.start();
+            }
         }, restartPause);
-        this.eTag = '';
+
+        if (this.sessionUrl !== '' && !offline) {
+            fetch(this.sessionUrl, {
+                method: 'DELETE',
+                headers: this.authHeaders(),
+            }).catch(() => { });
+        }
+        this.sessionUrl = '';
         this.queuedCandidates = [];
     }
-}
+};

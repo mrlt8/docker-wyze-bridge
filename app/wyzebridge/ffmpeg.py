@@ -7,7 +7,7 @@ from wyzebridge.logging import logger
 
 
 def get_ffmpeg_cmd(
-    uri: str, vcodec: str, audio: dict, record: bool = False, is_vertical: bool = False
+    uri: str, vcodec: str, audio: dict, is_vertical: bool = False
 ) -> list[str]:
     """
     Return the ffmpeg cmd with options from the env.
@@ -22,7 +22,6 @@ def get_ffmpeg_cmd(
         - "rate": int, source audio sample rate
         - "codec_out": str, output audio codec
 
-    - record (bool, optional): Specify if video should record.
     - is_vertical (bool, optional): Specify if the source video is vertical.
 
     Returns:
@@ -69,7 +68,7 @@ def get_ffmpeg_cmd(
         + ["-fps_mode", "passthrough", "-flush_packets", "1"]
         + ["-rtbufsize", "1"]
         + ["-f", "tee"]
-        + [rtsp_ss + get_record_cmd(uri, audio_out, record) + livestream]
+        + [rtsp_ss + livestream]
     )
     if "ffmpeg" not in cmd[0].lower():
         cmd.insert(0, "ffmpeg")
@@ -155,41 +154,6 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
     )
 
 
-def get_record_cmd(uri: str, audio_codec: str, record: bool = False) -> str:
-    """
-    Check if recording is enabled and return an ffmpeg tee cmd.
-
-    Parameters:
-    - uri (str): uri of the stream used to lookup ENV parameters.
-    - audio_codec (str): used to determine the output container.
-
-    Returns:
-    - str: ffmpeg compatible str to be used for the tee command.
-    """
-    if not record:
-        return ""
-    seg_time = env_bool("RECORD_LENGTH", "60")
-    file_name = "{CAM_NAME}_%Y-%m-%d_%H-%M-%S_%Z"
-    file_name = env_bool("RECORD_FILE_NAME", file_name, style="original").rstrip(".mp4")
-    format = "mp4" if audio_codec.lower() in {"aac", "libopus"} else "mov"
-    path = "/%s/" % env_bool(
-        f"RECORD_PATH_{uri}", env_bool("RECORD_PATH", "record/{CAM_NAME}")
-    ).format(cam_name=uri.lower(), CAM_NAME=uri).strip("/")
-    os.makedirs(path, exist_ok=True)
-    logger.info(f"📹 Will record {seg_time}s clips to {path}")
-    return (
-        f"|[onfail=ignore:f=segment"
-        ":bsfs/v=dump_extra=freq=keyframe"
-        f":segment_time={seg_time}"
-        ":segment_atclocktime=1"
-        f":segment_format={format}"
-        ":reset_timestamps=1"
-        ":strftime=1"
-        ":use_fifo=1]"
-        f"{path}{file_name.format(cam_name=uri.lower(),CAM_NAME=uri)}.mp4"
-    )
-
-
 def get_livestream_cmd(uri: str) -> str:
     """
     Check if livestream is enabled and return ffmpeg tee cmd.
@@ -215,8 +179,6 @@ def get_livestream_cmd(uri: str) -> str:
 
 
 def rtsp_snap_cmd(cam_name: str, interval: bool = False):
-    if auth := os.getenv(f"MTX_PATHS_{cam_name.upper()}_READUSER", ""):
-        auth += f':{os.getenv(f"MTX_PATHS_{cam_name.upper()}_READPASS","")}@'
     img = f"{IMG_PATH}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
 
     if interval and SNAPSHOT_FORMAT:
@@ -232,7 +194,7 @@ def rtsp_snap_cmd(cam_name: str, interval: bool = False):
     return (
         ["ffmpeg", "-loglevel", "fatal", "-analyzeduration", "0", "-probesize", "32"]
         + ["-f", "rtsp", "-rtsp_transport", "tcp", "-thread_queue_size", "500"]
-        + ["-i", f"rtsp://{auth}0.0.0.0:8554/{cam_name}", "-map", "0:v:0"]
+        + ["-i", f"rtsp://0.0.0.0:8554/{cam_name}", "-map", "0:v:0"]
         + rotation
         + ["-f", "image2", "-frames:v", "1", "-y", img]
     )

@@ -77,11 +77,7 @@ class WyzeAPIError(Exception):
 
 
 def login(
-    email: str,
-    password: str,
-    phone_id: Optional[str] = None,
-    api_key: Optional[str] = None,
-    key_id: Optional[str] = None,
+    email: str, password: str, api_key: str, key_id: str, phone_id: Optional[str] = None
 ) -> WyzeCredential:
     """Authenticate with Wyze.
 
@@ -106,57 +102,9 @@ def login(
 
     resp = post(f"{AUTH_API}/api/user/login", json=payload, headers=headers)
     resp_json = validate_resp(resp)
+    resp_json["phone_id"] = phone_id
 
-    return WyzeCredential.model_validate(dict(resp_json, phone_id=phone_id))
-
-
-def send_sms_code(auth_info: WyzeCredential, phone: str = "Primary") -> str:
-    """Request SMS verification code.
-
-    This method calls out to the `/user/login/sendSmsCode` endpoint of
-    `auth-prod.api.wyze.com` (using https), and requests an SMS verification
-    code necessary to login to accounts with SMS verification enabled.
-
-    :param auth_info: the result of a [`login()`][wyzecam.api.login] call.
-    :returns: verification_id required to logging in with SMS verification.
-    """
-    resp = post(
-        f"{AUTH_API}/user/login/sendSmsCode",
-        json={},
-        params={
-            "mfaPhoneType": phone,
-            "sessionId": auth_info.sms_session_id,
-            "userId": auth_info.user_id,
-        },
-        headers=_headers(auth_info.phone_id),
-    )
-    resp.raise_for_status()
-
-    return resp.json().get("session_id")
-
-
-def send_email_code(auth_info: WyzeCredential) -> str:
-    """Request email verification code.
-
-    This method calls out to the `/user/login/sendEmailCode` endpoint of
-    `auth-prod.api.wyze.com` (using https), and requests an email verification
-    code necessary to login to accounts with email verification enabled.
-
-    :param auth_info: the result of a [`login()`][wyzecam.api.login] call.
-    :returns: verification_id required to logging in with SMS verification.
-    """
-    resp = post(
-        f"{AUTH_API}/v2/user/login/sendEmailCode",
-        json={},
-        params={
-            "userId": auth_info.user_id,
-            "sessionId": auth_info.email_session_id,
-        },
-        headers=_headers(auth_info.phone_id),
-    )
-    resp.raise_for_status()
-
-    return resp.json().get("session_id")
+    return WyzeCredential.model_validate(resp_json)
 
 
 def refresh_token(auth_info: WyzeCredential) -> WyzeCredential:
@@ -174,15 +122,14 @@ def refresh_token(auth_info: WyzeCredential) -> WyzeCredential:
     """
     payload = _payload(auth_info)
     payload["refresh_token"] = auth_info.refresh_token
+
     resp = post(f"{WYZE_API}/user/refresh_token", json=payload, headers=_headers())
 
-    return WyzeCredential.model_validate(
-        dict(
-            validate_resp(resp)["data"],
-            user_id=auth_info.user_id,
-            phone_id=auth_info.phone_id,
-        )
-    )
+    resp_json = validate_resp(resp)
+    resp_json["user_id"] = auth_info.user_id
+    resp_json["phone_id"] = auth_info.phone_id
+
+    return WyzeCredential.model_validate(resp_json)
 
 
 def get_user_info(auth_info: WyzeCredential) -> WyzeAccount:
@@ -201,9 +148,10 @@ def get_user_info(auth_info: WyzeCredential) -> WyzeAccount:
         f"{WYZE_API}/user/get_user_info", json=_payload(auth_info), headers=_headers()
     )
 
-    return WyzeAccount.model_validate(
-        dict(validate_resp(resp)["data"], phone_id=auth_info.phone_id)
-    )
+    resp_json = validate_resp(resp)
+    resp_json["phone_id"] = auth_info.phone_id
+
+    return WyzeAccount.model_validate(resp_json)
 
 
 def get_homepage_object_list(auth_info: WyzeCredential) -> dict[str, Any]:
@@ -214,7 +162,7 @@ def get_homepage_object_list(auth_info: WyzeCredential) -> dict[str, Any]:
         headers=_headers(),
     )
 
-    return validate_resp(resp)["data"]
+    return validate_resp(resp)
 
 
 def get_camera_list(auth_info: WyzeCredential) -> list[WyzeCamera]:
@@ -280,7 +228,7 @@ def run_action(auth_info: WyzeCredential, camera: WyzeCamera, action: str):
     )
     resp = post(f"{WYZE_API}/v2/auto/run_action", json=payload, headers=_headers())
 
-    return validate_resp(resp)["data"]
+    return validate_resp(resp)
 
 
 def post_device(
@@ -298,7 +246,7 @@ def post_device(
         params |= _payload(auth_info, endpoint)
         resp = post(device_url, json=params, headers=_headers())
 
-    return validate_resp(resp)["data"]
+    return validate_resp(resp)
 
 
 def get_cam_webrtc(auth_info: WyzeCredential, mac_id: str) -> dict:
@@ -340,7 +288,7 @@ def validate_resp(resp: Response) -> dict:
 
     resp.raise_for_status()
 
-    return resp_json
+    return resp_json.get("data", resp_json)
 
 
 def _payload(auth_info: WyzeCredential, endpoint: str = "default") -> dict:

@@ -1,9 +1,9 @@
 ARG BUILD
 ARG BUILD_DATE
 ARG GITHUB_SHA
-FROM python:3.12-slim-bookworm as base
+FROM python:3.12-slim-bookworm AS base
 
-FROM base as builder
+FROM base AS builder
 ARG BUILD_DATE
 RUN apt-get update \
     && apt-get install -y curl tar gcc \

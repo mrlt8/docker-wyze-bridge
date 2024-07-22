@@ -1,3 +1,50 @@
+## What's Changed in v2.10.0
+
+### WebUI Authentication
+
+Simplify default credentials for the WebUI:
+
+  - This will not affect users who are setting their own `WB_PASSWORD` and `WB_API`.
+  - Default `WB_PASSWORD` will now be derived from the username part of the Wyze email address instead of using a randomly generated password.
+    - Example: For the email address `john123@doe.com`, the `WB_PASSWORD` will be `john123`.
+  - Default `WB_API` will be based on the wyze account for persistance.
+
+### Stream Authentication
+
+NEW: `STREAM_AUTH` option to specify multiple users and paths:
+
+  - Username and password should be separated by a `:` 
+  - An additional `:` can be used to specify the allowed IP address for the user. 
+    - **This does NOT work with docker desktop**
+    - Specify multiple IPs using a comma
+  - Use the `@` to specify paths accessible to the user. 
+    - Paths are optional for each user.  
+    - Multiple paths can be specified by using a comma. If none are provided, the user will have access to all paths/streams 
+  - Multiple users can be specified by using  `|` as a separator 
+
+  **EXAMPLE**:
+
+  ```
+  STREAM_AUTH=user:pass@cam-1,other-cam|second-user:password@just-one-cam|user3:pass
+  ```
+
+  - `user:pass`  has access to `cam-1` and `other-cam`
+  - `second-user:password` has access to `just-one-cam`
+  - `user3:pass` has access to **all** paths/cameras
+
+  See [Wiki](https://github.com/mrlt8/docker-wyze-bridge/wiki/Authentication#custom-stream-auth) for more information and examples.
+
+### Recording via MediaMTX
+
+Recoding streams has been updated to use MediaMTX with the option to delete older clips. 
+
+Use `RECORD_ALL` or `RECORD_CAM_NAME` to enable recording.
+
+- `RECORD_PATH` Available variables are `%path` or `{cam_name}`, `%Y` `%m` `%d` `%H` `%M` `%S` `%f` `%s` (time in strftime format).
+- `RECORD_LENGTH` Length of each clip. Use `s` for seconds , `h` for hours. Defaults to `60s`
+- `RECORD_KEEP` Delete older clips. Use `s` for seconds , `h` for hours. Set to 0s to disable automatic deletion. Defaults to `0s`
+
+
 ## What's Changed in v2.9.11/12
 
 - FIX: Fix regression introduced in v2.9.11 which caused connection issues for WYZEDB3, WVOD1, HL_WCO2, and WYZEC1 (#1294) 

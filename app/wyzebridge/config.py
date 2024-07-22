@@ -2,13 +2,7 @@ from os import environ, getenv, makedirs
 from platform import machine
 
 from dotenv import load_dotenv
-from wyzebridge.bridge_utils import (
-    env_bool,
-    get_password,
-    get_secret,
-    migrate_path,
-    split_int_str,
-)
+from wyzebridge.bridge_utils import env_bool, migrate_path, split_int_str
 from wyzebridge.hass import setup_hass
 
 load_dotenv()
@@ -54,6 +48,8 @@ MOTION: bool = env_bool("motion_api", style="bool")
 MOTION_INT: int = max(env_bool("motion_int", "1.5", style="float"), 1.1)
 MOTION_START: bool = env_bool("motion_start", style="bool")
 
+WB_AUTH: bool = bool(env_bool("WB_AUTH") if getenv("WB_AUTH") else True)
+STREAM_AUTH: str = env_bool("STREAM_AUTH", style="original")
 
 makedirs(TOKEN_PATH, exist_ok=True)
 makedirs(IMG_PATH, exist_ok=True)
@@ -64,11 +60,6 @@ for key, value in environ.items():
         print(f"\n[!] WARNING: {key} is deprecated! Please use {new_key} instead\n")
         environ.pop(key, None)
         environ[new_key] = value
-
-WB_AUTH: bool = bool(env_bool("WB_AUTH") if getenv("WB_AUTH") else True)
-WB_USERNAME: str = get_secret("wb_username") or get_secret("wyze_email") or "wbadmin"
-WB_PASSWORD: str = get_password("wb_password", "wyze_password", path=TOKEN_PATH)
-WB_API: str = get_password("wb_api", path=TOKEN_PATH, length=30) if WB_AUTH else ""
 
 if HASS_TOKEN:
     migrate_path("/config/wyze-bridge/", "/config/")

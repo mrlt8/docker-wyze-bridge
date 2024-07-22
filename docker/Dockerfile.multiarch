@@ -1,11 +1,11 @@
 ARG BUILD
 ARG BUILD_DATE
 ARG GITHUB_SHA
-FROM amd64/python:3.12-slim-bookworm as base_amd64
-FROM arm32v7/python:3.12-slim-bookworm as base_arm
-FROM arm64v8/python:3.12-slim-bookworm as base_arm64
+FROM amd64/python:3.12-slim-bookworm AS base_amd64
+FROM arm32v7/python:3.12-slim-bookworm AS base_arm
+FROM arm64v8/python:3.12-slim-bookworm AS base_arm64
 
-FROM base_$TARGETARCH as builder
+FROM base_$TARGETARCH AS builder
 ARG TARGETARCH
 ARG BUILD_DATE
 RUN apt-get update \

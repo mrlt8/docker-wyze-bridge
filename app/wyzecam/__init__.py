@@ -33,14 +33,7 @@ try:
 except PackageNotFoundError:  # pragma: no cover
     __version__ = "unknown"
 
-from wyzecam.api import (
-    get_camera_list,
-    get_user_info,
-    login,
-    refresh_token,
-    send_email_code,
-    send_sms_code,
-)
+from wyzecam.api import get_camera_list, get_user_info, login, refresh_token
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential, clean_name
 from wyzecam.iotc import WyzeIOTC, WyzeIOTCSession, WyzeIOTCSessionState
 from wyzecam.tutk import tutk_protocol

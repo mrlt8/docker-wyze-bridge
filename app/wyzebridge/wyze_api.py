@@ -1,13 +1,10 @@
 import contextlib
-import hmac
 import json
 import pickle
-import struct
-from base64 import b32decode
 from datetime import datetime
 from functools import wraps
-from os import environ, listdir, remove, utime
-from os.path import exists, getmtime, getsize
+from os import environ, utime
+from os.path import getmtime
 from pathlib import Path
 from time import sleep, time
 from typing import Any, Callable, Optional
@@ -16,7 +13,8 @@ from urllib.parse import parse_qs, urlparse
 import wyzecam
 from requests import get
 from requests.exceptions import ConnectionError, HTTPError, RequestException
-from wyzebridge.bridge_utils import env_bool, env_filter, get_secret
+from wyzebridge.auth import get_secret
+from wyzebridge.bridge_utils import env_bool, env_filter
 from wyzebridge.config import IMG_PATH, MOTION, TOKEN_PATH
 from wyzebridge.logging import logger
 from wyzecam.api import RateLimitError, WyzeAPIError, post_device
@@ -26,7 +24,7 @@ from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 def cached(func: Callable[..., Any]) -> Callable[..., Any]:
     def wrapper(self, *args: Any, **kwargs: Any):
         name = "auth" if func.__name__ == "login" else func.__name__.split("_", 1)[-1]
-        if self.mfa_req or (not self.auth and not self.creds.is_set and name != "auth"):
+        if not self.auth and not self.creds.is_set and name != "auth":
             return
         if not kwargs.get("fresh_data"):
             if getattr(self, name, None):
@@ -57,7 +55,7 @@ def cached(func: Callable[..., Any]) -> Callable[..., Any]:
 def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(func)
     def wrapper(self, *args: Any, **kwargs: Any):
-        if self.mfa_req or (not self.auth and not self.login()):
+        if not self.auth and not self.login():
             return
         try:
             return func(self, *args, **kwargs)
@@ -103,21 +101,20 @@ class WyzeCredentials:
 
 
 class WyzeApi:
-    __slots__ = "auth", "user", "creds", "cameras", "mfa_req", "_last_pull"
+    __slots__ = "auth", "user", "creds", "cameras", "_last_pull"
 
     def __init__(self) -> None:
         self.auth: Optional[WyzeCredential] = None
         self.user: Optional[WyzeAccount] = None
         self.creds: WyzeCredentials = WyzeCredentials()
         self.cameras: Optional[list[WyzeCamera]] = None
-        self.mfa_req: Optional[str] = None
         self._last_pull: float = 0
         if env_bool("FRESH_DATA"):
             self.clear_cache()
 
     @property
     def total_cams(self) -> int:
-        return 0 if self.mfa_req else len(self.get_cameras() or [])
+        return len(self.get_cameras() or [])
 
     @cached
     def login(self, fresh_data: bool = False, web: bool = False) -> WyzeCredential:
@@ -269,35 +266,6 @@ class WyzeApi:
             logger.warning(ex)
             return {"result": str(ex), "cam": cam_name}
 
-    def _mfa_auth(self):
-        if not self.auth:
-            return
-
-        open(f"{TOKEN_PATH}mfa_token.txt", "w").close()
-        while not self.auth.access_token:
-            resp = mfa_response(self.auth, TOKEN_PATH)
-            if not resp.get("verification_code"):
-                self.mfa_req = resp["mfa_type"]
-                code = get_mfa_code(f"{TOKEN_PATH}mfa_token.txt")
-                resp.update({"verification_code": code})
-
-            logger.info(f'🔑 Using {resp["verification_code"]} for authentication')
-            try:
-                self.auth = wyzecam.login(
-                    email=self.creds.email,
-                    password=self.creds.password,
-                    phone_id=self.auth.phone_id,
-                    mfa=resp,
-                )
-                if self.auth.access_token:
-                    logger.info("✅ Verification code accepted!")
-            except HTTPError as ex:
-                logger.error(ex)
-                if ex.response.status_code == 400:
-                    logger.warning("🚷 Wrong Code?")
-                sleep(5)
-        self.mfa_req = None
-
     @authenticated
     def refresh_token(self):
         if self.auth_locked:
@@ -425,9 +393,6 @@ class WyzeApi:
             for token_file in Path(TOKEN_PATH).glob("*.pickle"):
                 token_file.unlink()
 
-    def get_mfa(self):
-        return self.mfa_req
-
 
 def url_timestamp(url: str) -> int:
     try:
@@ -449,71 +414,6 @@ def valid_s3_url(url: Optional[str]) -> bool:
         return amz_date.timestamp() + int(x_amz_expires) > time()
     except (ValueError, TypeError, KeyError):
         return False
-
-
-def get_mfa_code(code_file: str) -> str:
-    logger.warning(f"📝 Enter verification code in the WebUI or add it to {code_file}")
-    while not exists(code_file) or getsize(code_file) == 0:
-        sleep(1)
-    with open(code_file, "r+") as f:
-        code = "".join(c for c in f.read() if c.isdigit())
-        f.truncate(0)
-    return code
-
-
-def select_mfa_type(primary: str, options: list) -> str:
-    mfa_type = env_bool("mfa_type", primary.lower())
-    if env_bool("totp_key"):
-        mfa_type = "totpverificationcode"
-    if resp := next((i for i in options if i.lower() == mfa_type), None):
-        if primary.lower() not in ["unknown", mfa_type]:
-            logger.warning(f"⚠ Forcing mfa_type={resp}")
-        return resp
-
-    prio = ["primaryphone", "totpverificationcode", "email"]
-    options.sort(key=lambda i: prio.index(i.lower()) if i.lower() in prio else 9)
-
-    return options[0]
-
-
-def mfa_response(creds: WyzeCredential, totp_path: str) -> dict:
-    if not creds.mfa_options or not creds.mfa_details:
-        return {}
-
-    primary_option = creds.mfa_details.get("primary_option", "")
-    resp = dict(mfa_type=select_mfa_type(primary_option, creds.mfa_options))
-    logger.warning(f"🔐 MFA Code Required [{resp['mfa_type']}]")
-    if resp["mfa_type"].lower() == "email":
-        logger.info("✉️ e-mail code requested")
-        return dict(resp, verification_id=wyzecam.send_email_code(creds))
-
-    if resp["mfa_type"].lower() == "primaryphone":
-        logger.info("💬 SMS code requested")
-        return dict(resp, verification_id=wyzecam.send_sms_code(creds))
-
-    resp["verification_id"] = creds.mfa_details["totp_apps"][0]["app_id"]
-    if env_key := env_bool("totp_key", style="original"):
-        logger.info("🔏 Using TOTP_KEY to generate TOTP")
-        return dict(resp, verification_code=get_totp(env_key))
-
-    with contextlib.suppress(FileNotFoundError):
-        if len(key := Path(f"{totp_path}totp").read_text()) > 15:
-            logger.info(f"🔏 Using {totp_path}totp to generate TOTP")
-            resp["verification_code"] = get_totp(key)
-
-    return resp
-
-
-def get_totp(secret: str) -> str:
-    key = "".join(c for c in secret if c.isalnum()).upper()
-    if len(key) != 16:
-        return ""
-    message = struct.pack(">Q", int(time() / 30))
-    hmac_hash = hmac.new(b32decode(key), message, "sha1").digest()
-    offset = hmac_hash[-1] & 0xF
-    code = struct.unpack(">I", hmac_hash[offset : offset + 4])[0] & 0x7FFFFFFF
-
-    return str(code % 10**6).zfill(6)
 
 
 def filter_cams(cams: list[WyzeCamera]) -> list[WyzeCamera]:

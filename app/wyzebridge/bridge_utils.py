@@ -1,5 +1,4 @@
 import os
-import secrets
 import shutil
 from typing import Any
 
@@ -65,36 +64,6 @@ def is_livestream(uri: str) -> bool:
     services = {"youtube", "facebook", "livestream"}
 
     return any(env_bool(f"{service}_{uri}") for service in services)
-
-
-def get_secret(name: str) -> str:
-    if not name:
-        return ""
-    try:
-        with open(f"/run/secrets/{name.upper()}", "r") as f:
-            return f.read().strip("'\" \n\t\r")
-    except FileNotFoundError:
-        return env_bool(name, style="original")
-
-
-def get_password(
-    file_name: str, alt: str = "", path: str = "", length: int = 16
-) -> str:
-    if env_pass := (get_secret(file_name) or get_secret(alt)):
-        return env_pass
-
-    file_path = f"{path}{file_name}"
-    if os.path.exists(file_path) and os.path.getsize(file_path) > 0:
-        with open(file_path, "r") as file:
-            return file.read().strip()
-
-    password = secrets.token_urlsafe(length)
-    with open(file_path, "w") as file:
-        file.write(password)
-
-    print(f"\n\nDEFAULT {file_name.upper()}:\n{password=}")
-
-    return password
 
 
 def migrate_path(old: str, new: str):

@@ -395,42 +395,6 @@ document.addEventListener("DOMContentLoaded", () => {
       icon.classList.add("fa-plug-circle-exclamation");
     })
   });
-  sse.addEventListener("mfa", (e) => {
-    const alertDiv = document.getElementById("alert")
-    if (e.data == "clear") {
-      alertDiv.innerHTML = '<div class="columns is-centered"><div class="column is-half-desktop"><article class="message is-success container is-one-third-desktop"><div class="message-body"><span class="icon"><i class="fas fa-check-circle"></i></span><span>Verification code accepted!</div></article></div></div>'
-      setTimeout(function () { location.reload(1); }, 5000);
-    }
-    else if (alertDiv.classList.contains("is-hidden")) {
-      const mfaType = e.data === "PrimaryPhone" ? "SMS" : e.data === "Email" ? "Email" : "TOTP";
-      console.info(`${e.data} verification required`)
-      alertDiv.classList.toggle("is-hidden");
-      alertDiv.innerHTML = '<div class="columns is-centered"><div class="column is-half-desktop"><article class="message is-dark container is-one-third-desktop"><div class="message-header">Two Factor Authentication Required</div>\
-          <div class="message-body"><form id="mfa-form" action="#"><div class="field"><label class="label" for="mfa-code">'+ mfaType + ' verification code required</label><p class="control has-icons-left"><input id="mfa-code" class="input is-dark is-large is-fullwidth" type="tel" placeholder="e.g. 123456" inputmode="numeric" required pattern="\\d{3}\\s?\\d{3}" maxlength="7" autocomplete="one-time-code"><span class="icon is-left"><i class="fas fa-unlock" aria-hidden="true"></i></span></div><div class="field"><div class="control"><button id="mfa-submit" type="submit" class="button is-dark is-fullwidth">Submit</button></div></p></div></form></div>\
-          </article></div></div>'
-      const mfaForm = document.getElementById("mfa-form");
-      const button = document.getElementById("mfa-submit").classList;
-      const mfaCodeInput = document.getElementById("mfa-code");
-      const handleFormSubmit = async (e) => {
-        e.preventDefault();
-        button.add("is-loading");
-        try {
-          await fetch(`mfa/${mfaCodeInput.value.replace(/\s/g, "")}`);
-          mfaForm.reset();
-        } catch (error) {
-          console.error(error);
-        } finally {
-          button.remove("is-loading");
-        }
-      };
-      mfaForm.addEventListener("submit", handleFormSubmit);
-      mfaCodeInput.addEventListener("input", () => {
-        if (mfaCodeInput.value.replace(/\s/g, "").length == 6) {
-          mfaForm.dispatchEvent(new Event("submit"));
-        }
-      });
-    }
-  })
   sse.addEventListener("message", (event) => {
     const data = JSON.parse(event.data);
 
@@ -648,7 +612,9 @@ document.addEventListener("DOMContentLoaded", () => {
       hls.on(Hls.Events.MEDIA_ATTACHED, () => {
         hls.loadSource(videoSrc);
         videoElement.muted = true;
-        videoElement.play();
+        videoElement.play().catch((err) => {
+          console.info('play() error:', err);
+        });
       });
       hls.attachMedia(videoElement);
     } else if (videoElement.canPlayType('application/vnd.apple.mpegurl')) {
@@ -660,7 +626,7 @@ document.addEventListener("DOMContentLoaded", () => {
   }
 
   document.querySelectorAll('video.hls.placeholder').forEach((videoElement) => {
-    videoElement.parentElement.addEventListener("click", () => { loadHLS(videoElement), videoElement.play() }, { "once": true });
+    videoElement.parentElement.addEventListener("click", () => { videoElement.play() }, { "once": true });
     videoElement.addEventListener('play', () => {
       loadHLS(videoElement);
       if (!videoElement.classList.contains("connected") && !videoElement.hasAttribute("connecting")) {
@@ -680,8 +646,8 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   });
   // Load WS for WebRTC on demand
-  function loadWebRTC(video, force = false) {
-    if (!force && (!video.classList.contains("placeholder") || !video.classList.contains("connected"))) { return }
+  function loadWebRTC(video) {
+    if (!video.classList.contains("placeholder")) { return }
     let videoFormat = getCookie("video");
     video.classList.remove("placeholder");
     video.controls = true;
@@ -689,8 +655,10 @@ document.addEventListener("DOMContentLoaded", () => {
   }
   // Click to load WebRTC
 
-  document.querySelectorAll('[data-enabled=True] video.webrtc.placeholder').forEach((v) => {
-    v.parentElement.addEventListener("click", () => { loadWebRTC(v, true), v.play() }, { "once": true });
+  document.querySelectorAll('[data-enabled=True] video.webrtc.placeholder').forEach((videoElement) => {
+    videoElement.parentElement.addEventListener("click", () => { videoElement.play() }, { "once": true });
+    videoElement.addEventListener("play", () => { loadWebRTC(videoElement) }, { "once": true });
+    videoElement.addEventListener('pause', () => { videoElement.removeAttribute('autoplay'); });
   });
   // Auto-play video
   function autoplay(action) {
@@ -701,6 +669,8 @@ document.addEventListener("DOMContentLoaded", () => {
         video.pause();
         video.controls = false;
         video.classList.add("lost");
+        video.removeAttribute('src');
+        video.load();
       });
       return;
     }
@@ -714,7 +684,9 @@ document.addEventListener("DOMContentLoaded", () => {
       if (!resume && !autoPlay && !fullscreen && !video.autoplay) { return }
       if (video.classList.contains("hls")) { loadHLS(video); }
       if (video.classList.contains("webrtc")) { loadWebRTC(video); }
-      video.play();
+      video.play().catch((err) => {
+        console.info('play() error:', err);
+      });
     });
   }
   // Change default video format for WebUI
