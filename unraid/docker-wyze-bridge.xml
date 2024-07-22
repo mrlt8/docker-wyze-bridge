@@ -41,6 +41,7 @@
   <Config Name="WB_AUTH" Target="WB_AUTH" Default="True" Mode="" Description="Enable authentication for Wyze Bridge." Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="WB_USERNAME" Target="WB_USERNAME" Default="" Mode="" Description="Username to access Wyze Bridge." Type="Variable" Display="always" Required="false" Mask="false"/>
   <Config Name="WB_PASSWORD" Target="WB_PASSWORD" Default="" Mode="" Description="Password to access Wyze Bridge." Type="Variable" Display="always" Required="false" Mask="true"/>
+  <Config Name="STREAM_AUTH" Target="STREAM_AUTH" Default="" Mode="" Description="Custom Stream Authentication" Type="Variable" Display="always" Required="false" Mask="true"/>
   <Config Name="RTSP Port" Target="8554" Default="8554" Mode="tcp" Description="" Type="Port" Display="advanced" Required="false" Mask="false">8554</Config>
   <Config Name="RTMP Port" Target="1935" Default="1935" Mode="tcp" Description="" Type="Port" Display="advanced" Required="false" Mask="false">1935</Config>
   <Config Name="HLS Port" Target="8888" Default="8888" Mode="tcp" Description="" Type="Port" Display="advanced" Required="false" Mask="false">8888</Config>

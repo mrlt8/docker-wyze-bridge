@@ -134,3 +134,4 @@ schema:
   WB_AUTH: bool?
   WB_USERNAME: str?
   WB_PASSWORD: str?
+  STREAM_AUTH: str?
