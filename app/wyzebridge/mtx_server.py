@@ -167,13 +167,11 @@ class MtxServer:
             mtx.add("webrtcAdditionalHosts", ips)
 
     def setup_llhls(self, token_path: str = "/tokens/", hass: bool = False):
-        if not hass:
-            return
         logger.info("[MTX] Configuring LL-HLS")
         with MtxInterface() as mtx:
             mtx.set("hlsVariant", "lowLatency")
-            mtx.set("hlsEncryption", "yes")
-            if mtx.get("hlsServerKey"):
+            mtx.set("hlsEncryption", True)
+            if env_bool("mtx_hlsServerKey"):
                 return
 
             key = "/ssl/privkey.pem"
