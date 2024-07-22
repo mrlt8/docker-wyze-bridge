@@ -3,9 +3,9 @@ ARG BUILD
 ARG BUILD_DATE
 ARG GITHUB_SHA
 ARG QSV
-FROM amd64/python:3.12-slim-bookworm as base
+FROM amd64/python:3.12-slim-bookworm AS base
 
-FROM base as builder
+FROM base AS builder
 ARG QSV
 ARG BUILD_DATE
 RUN if [ -n "$QSV" ]; then echo 'deb http://deb.debian.org/debian bookworm main contrib non-free non-free-firmware' >/etc/apt/sources.list.d/debian-testing.list; fi \
