@@ -59,149 +59,53 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.9.11/12
+## What's Changed in v2.10.0
 
-- FIX: Fix regression introduced in v2.9.11 which caused connection issues for WYZEDB3, WVOD1, HL_WCO2, and WYZEC1 (#1294) 
-- FIX: Update stream state on startup to prevent multiple connections.
-- FIX: No audio on HW and QSV builds. (#1281)
-- Use k10056 if supported and not setting fps when updating resolution and bitrate (#1194)
-- Temporary fix: Don't check bitrate on newer firmware which do not seem to report the actual bitrate. (#1194)
+### WebUI Authentication
 
-## What's Changed in v2.9.10
+Simplify default credentials for the WebUI:
 
-- FIX: `-20021` error when sending multiple ioctl commands to the camera.
-- FIX: Regression introduced in v2.9.9 where the WebRTC/HLS icon in WebUI was missing.
-- Reduced memory usage slightly.
-- NEW: Option to use pre-hashed passwords (#1275):
-  - You must md5 hash your password three times and prefix it with `hashed:`
-  - Example: `WYZE_PASSWORD=hashed:<your-tripple-hashed-password>`
-- NEW: REST/MQTT commands (#1274):
-  - `notifications` GET/SET wyze app push notifications on/off (CLOUD).
-  - `motion_detection` GET/SET motion detection on/off (LOCAL).
+  - This will not affect users who are setting their own `WB_PASSWORD` and `WB_API`.
+  - Default `WB_PASSWORD` will now be derived from the username part of the Wyze email address instead of using a randomly generated password.
+    - Example: For the email address `john123@doe.com`, the `WB_PASSWORD` will be `john123`.
+  - Default `WB_API` will be based on the wyze account for persistance.
 
+### Stream Authentication
 
-## What's Changed in v2.9.9
+NEW: `STREAM_AUTH` option to specify multiple users and paths:
 
-- FIX: Regression introduced in v2.9.8 where a pipe blocking issue would cause CPU to spike (#1268) (#1270)
-- Tweak HLS latency and buffer.
+  - Username and password should be separated by a `:` 
+  - An additional `:` can be used to specify the allowed IP address for the user. 
+    - **This does NOT work with docker desktop**
+    - Specify multiple IPs using a comma
+  - Use the `@` to specify paths accessible to the user. 
+    - Paths are optional for each user.  
+    - Multiple paths can be specified by using a comma. If none are provided, the user will have access to all paths/streams 
+  - Multiple users can be specified by using  `|` as a separator 
 
-## What's Changed in v2.9.8
+  **EXAMPLE**:
 
-KNOWN BUG: stream path may become unresponsive after stopping when ON_DEMAND is enabled until the onDemand timeout clears (60s).
+  ```
+  STREAM_AUTH=user:pass@cam-1,other-cam|second-user:password@just-one-cam|user3:pass
+  ```
 
-- FIX: restart options in the WebUI
-- FIX: Resume HLS/WebRTC on recover and play on first click in WebUI.
-- NEW: Add 'reload cameras' option to refresh camera data without clearing all data (#1255)
-- CHANGED: Use hls-js for HLS in WebUI.
+  - `user:pass`  has access to `cam-1` and `other-cam`
+  - `second-user:password` has access to `just-one-cam`
+  - `user3:pass` has access to **all** paths/cameras
 
-## What's Changed in v2.9.7
+  See [Wiki](https://github.com/mrlt8/docker-wyze-bridge/wiki/Authentication#custom-stream-auth) for more information and examples.
 
-- FIX: Pan and tilt cruise points 3 and 4 were broken. Thanks @Deach01! (#1228)
-- FIX: Remove whitespaces from credentials (#1252)
-- CHANGED: Removed `blank` option when setting `cruise_points` as it would be ignored anyways.
+### Recording via MediaMTX
 
+Recoding streams has been updated to use MediaMTX with the option to delete older clips. 
 
-## What's Changed in v2.9.6
+Use `RECORD_ALL` or `RECORD_CAM_NAME` to enable recording.
 
-- FIX: Connection to camera would get stuck and not come back on it's own until the webui was opened. Thanks @vipergts450 and @g13092! (#1234) (#1240)
-- FIX: Regression introduced in v2.9.5 where AAC audio sources would not work (#1241) Thanks @rspierenburg!
-- Home Assistant FIX: Regression introduced in v2.9.5 where MQTT was not setting up automatically. (#1247)
-- Home Assistant FIX: check if path exists when migrating HA config (#1242)
-- Home Assistant NEW: Disable MQTT by setting MQTT to `false` (#1232)
-- NEW: Ability to read credentials from Docker Secrets. Thanks @cliaz! (#1244)
-  - Supported variables: `WYZE_EMAIL`, `WYZE_PASSWORD`, `API_ID`,`API_KEY`, `WB_USERNAME`, `WB_PASSWORD`, and `WB_API`
-
-## What's Changed in v2.9.5
-
-- **POTENTIALLY BREAKING**: The bridge will now use **PCMU/8000** as the default audio codec when the camera does not provide an RTSP/WebRTC-compatible audio format. This change should enhance compatibility with various NVR systems like **Surveillance Station** which do not support opus. Thanks @Dot50Cal!
-  - To use a different audio codec, set the desired codec in the `AUDIO_CODEC` environment variable.
-- Always re-encode `aac_eld` (Wyze Cam v4) even when WebRTC is not enabled (#1236) Thanks @Dot50Cal!
-- HOME ASSISTANT: Disable MQTT from automatically setting up by setting `MQTT_DTOPIC` to something other than `homeassistant` (#1232)
-
-## What's Changed in v2.9.4
-
-- Adjust AV sync issue/delay when audio is enabled. (#1231) Thanks @delmlund!
-
-## What's Changed in v2.9.3
-
-- FIX: Clear the retain flag from MQTT Discovery which was causing commands to be resent to the bridge on startup for some users. (#1182)
-- Ignore commands when connection is stopping.
-
-## What's Changed in v2.9.2
-
-- Improved video connection stability and audio sync.  #1175 #1196 #1194 #1193 #1186 Thanks @vipergts450!
-- FIX: Remove quotes from credentials #1158
-- NEW: `FORCE_FPS` option for all cameras #1161
-- Home Assistant: Add `FORCE_FPS` option #1161
-- Home Assistant: Ignore whitespaces in api key/id #1188 Thanks @richh1! 
-
-
-## What's Changed in v2.9.1
-
-- FIX: Setting bitrate higher than 255 would not report correctly (#1185) Thanks @Anc0dia!
-- FIX: Wrong bitrate for HL_CFL2 (#1112) Thanks @dreondre!
-- FIX: Could not set values with the REST API when `WB_AUTH` is enabled.(#1189) Thanks @kiwi-cam!
-- NEW: `api` header authentication option for the RES API when `WB_AUTH` is enabled:
-  - `-H "api: MyWbApiKey"`
- 
-## What's Changed in v2.9.0
-
-> [!IMPORTANT] 
-> WebUI and stream authentication will be enabled by default to prevent unintentional access.
-
-**Default Authentication**
-
-  - To disable default authentication, set `WB_AUTH=False` explicitly.
-  - Note that all streams and the REST API will necessitate authentication when `WB_AUTH` is enabled.
-
-**WebUI Authentication**
-
-- If `WB_USERNAME` and `WB_PASSWORD` are not set, the system will try to use `WYZE_EMAIL` and `WYZE_PASSWORD`.
-- In case neither sets of credentials are provided, the username will default to `wbadmin` with a randomly generated `WB_PASSWORD`, which will be logged and stored in a `wb_password` file within the tokens directory.
-- Credentials are case sensitive.
-
-**Stream and REST API Authentication**
-- A unique API key will be accessible at the bottom of your WebUI and saved to a `wb_api` file in your tokens directory.
-  - For persistence, ensure to set the `WB_API` environment variable or volume mount the `/tokens` directory.
-- REST API will require an `api` query parameter. 
-  - Example:  `http://localhost:5000/api/<camera-name>/state?api=<your-wb-api-key>`
-- Streams will also require authentication.
-  - username: `wb`
-  - password: your unique wb api key
-
-**FIXES**
-- Wrong file permission caused errors for non-root. (#1174) Thanks @GiZZoR!
-- Fix `MOTION_API` when substreams were enabled. (#1125) Thanks @kiwi-cam!
-- Changing FPS and `FORCE_FPS` were broken (#1161) Thanks @jarrah31!
-- Dropped frame issue when camera is falling behind. (#1167) Thanks @34t614t1254y!
-
-**NEW**
-- Token based wyze authentication from WebUI. See [wiki](https://github.com/mrlt8/docker-wyze-bridge/wiki/Authentication#token-based-authentication).
-- Remove 255 limit from `QUALITY`. Can now go as high as your network can handle. e.g. `- QUALITY=HD8000` 
-- Update snapshot with `MOTION_API` and push to mqtt (#709) (#970)
-- Additional headers for `MOTION_WEBHOOKS`.
-- `OFFLINE_WEBHOOKS` will send a POST request when the bridge cannot connect to a camera because it is offline. Replaces `ifttt_webhook`.
-
-**POTENTIALLY BREAKING**
-- CHANGES: `MOTION_WEBHOOKS` now makes a POST request instead of a GET request.
-- CHANGES: `MOTION_WEBHOOKS` includes the event timestamp in the message body which may require you to adjust the timezone for your container with the `TZ` environment.
-- REMOVED: `ifttt_webhook` as webhooks are no longer free with IFTTT.
-- CHANGED: Renamed WebUI authentication related ENV options:
-  - `WEB_AUTH` -> `WB_AUTH`
-  - `WEB_USERNAME` -> `WB_USERNAME`
-  - `WEB_PASSWORD` -> `WB_PASSWORD`
-
-**HOME ASSISTANT**
-- Login with API Key/ID or existing token via Ingress/WebUI.
-- Config now uses yaml instead of json.
-- Credentials are now optional to allow for WebUI based login, but it is still recommended to set them under advanced options.
-
+- `RECORD_PATH` Available variables are `%path` or `{cam_name}`, `%Y` `%m` `%d` `%H` `%M` `%S` `%f` `%s` (time in strftime format).
+- `RECORD_LENGTH` Length of each clip. Use `s` for seconds , `h` for hours. Defaults to `60s`
+- `RECORD_KEEP` Delete older clips. Use `s` for seconds , `h` for hours. Set to 0s to disable automatic deletion. Defaults to `0s`
 
 [View previous changes](https://github.com/mrlt8/docker-wyze-bridge/releases)
-
-> [!TIP] 
-> Home Assistant: you may need to re-add the repo if you cannot see the latest updates.
-
 
 ## FAQ
 
