@@ -1,4 +1,6 @@
-## What's Changed in v2.10.0
+## What's Changed in v2.10.0/v2.10.1
+
+FIXED: Could not disable `WB_AUTH` if `WB_API` is set. Thanks @bengthu! (#1304)
 
 ### WebUI Authentication
 

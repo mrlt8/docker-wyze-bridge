@@ -59,7 +59,9 @@ You can then use the web interface at `http://localhost:5000` where localhost is
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
 
-## What's Changed in v2.10.0
+## What's Changed in v2.10.0/v2.10.1
+
+FIXED: Could not disable `WB_AUTH` if `WB_API` is set. (#1304)
 
 ### WebUI Authentication
 

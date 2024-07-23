@@ -47,7 +47,7 @@ def gen_api_key(email):
 class WbAuth:
     enabled: bool = bool(env_bool("WB_AUTH") if os.getenv("WB_AUTH") else True)
     username: str = get_secret("wb_username", "wbadmin")
-    api: str = get_credential("wb_api")
+    api: str = ""
     _pass: str = get_credential("wb_password")
     _hashed_pass: Optional[str] = None
 
@@ -80,8 +80,7 @@ class WbAuth:
             cls._pass = email.partition("@")[0]
             cls._hashed_pass = generate_password_hash(cls._pass)
 
-        if not get_credential("wb_api"):
-            cls.api = gen_api_key(email)
+        cls.api = get_credential("wb_api") or gen_api_key(email)
 
 
 STREAM_AUTH: str = env_bool("STREAM_AUTH", style="original")
