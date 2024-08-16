@@ -5,4 +5,4 @@ pydantic==2.8.*
 python-dotenv==1.0.*
 requests==2.32.*
 PyYAML==6.0.*
-xxtea==3.2.*
+xxtea==3.3.*
