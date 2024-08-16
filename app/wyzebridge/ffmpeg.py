@@ -66,7 +66,7 @@ def get_ffmpeg_cmd(
         + (["-map", "1:a", "-c:a", audio_out] if audio_in else [])
         + (a_options if audio and audio_out != "copy" else [])
         + ["-fps_mode", "passthrough", "-flush_packets", "1"]
-        + ["-rtbufsize", "1"]
+        + ["-rtbufsize", "1", "-copyts", "-copytb", "1"]
         + ["-f", "tee"]
         + [rtsp_ss + livestream]
     )
