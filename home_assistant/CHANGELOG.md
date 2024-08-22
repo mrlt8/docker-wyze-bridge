@@ -1,3 +1,8 @@
+## What's Changed in v2.10.2
+
+- FIX: day/night FPS slowdown for V4 cameras (#1287) Thanks @cdoolin and @Answer-1!
+- NEW: Update battery level in WebUI
+
 ## What's Changed in v2.10.0/v2.10.1
 
 FIXED: Could not disable `WB_AUTH` if `WB_API` is set. Thanks @bengthu! (#1304)
