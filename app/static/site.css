@@ -142,7 +142,8 @@ video {
 .status .fa-circle-play,
 .status .fa-circle-pause,
 .status .fa-satellite-dish,
-.fa-arrows-rotate {
+.fa-arrows-rotate,
+.card-header-title .icon.battery {
   cursor: pointer;
 }
 

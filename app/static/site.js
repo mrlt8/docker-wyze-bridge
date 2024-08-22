@@ -404,6 +404,7 @@ document.addEventListener("DOMContentLoaded", () => {
       const preview = card.querySelector(`img.refresh_img, video[data-cam='${cam}']`);
       const motionIcon = card.querySelector(".icon.motion");
       const connected = card.dataset.connected.toLowerCase() === "true";
+      updateBatteryLevel(card);
 
       card.dataset.connected = false;
       statusIcon.className = "fas";
@@ -752,4 +753,38 @@ document.addEventListener("DOMContentLoaded", () => {
       bulmaToast.toast({ message: `<strong>${title}</strong> - ${message}`, type: `is-${type}`, pauseOnHover: true, duration: 10000 })
     }
   }
+  function updateBatteryLevel(card) {
+    if (card.dataset.battery?.toLowerCase() !== "true") { return; }
+    const iconElement = card.querySelector(".icon.battery i");
+    fetch(`api/${card.id}/battery`)
+      .then((resp) => resp.json())
+      .then((data) => {
+        if (data.status != "success" || !data.value) { return; }
+        const batteryLevel = parseInt(data.value);
+        let batteryIcon;
+        iconElement.classList.remove("has-text-danger");
+        iconElement.classList.forEach(cls => {
+          if (cls.startsWith('fa-battery-')) {
+            iconElement.classList.remove(cls);
+          }
+        });
+        if (batteryLevel > 90) {
+          batteryIcon = "full";
+        } else if (batteryLevel > 75) {
+          batteryIcon = "three-quarters";
+        } else if (batteryLevel > 50) {
+          batteryIcon = "half";
+        } else if (batteryLevel > 10) {
+          batteryIcon = "quarter";
+        } else {
+          batteryIcon = "empty";
+          iconElement.classList.add("has-text-danger");
+        }
+        iconElement.classList.add(`fa-battery-${batteryIcon}`);
+        iconElement.parentElement.title = `Battery Level: ${batteryLevel}%`;
+      })
+  }
+  document.querySelectorAll('div.camera[data-battery="True"]').forEach((card) => {
+    card.querySelector(".icon.battery").addEventListener("click", () => updateBatteryLevel(card));
+  });
 });

@@ -16,8 +16,6 @@ It just works!
 
 Streams direct from camera without additional bandwidth or subscriptions.
 
-Based on [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) with [kroo/wyzecam](https://github.com/kroo/wyzecam) and [bluenviron/mediamtx](https://github.com/bluenviron/mediamtx).
-
 Please consider ⭐️ starring or [☕️ sponsoring](https://ko-fi.com/mrlt8) this project if you found it useful, or use the [affiliate link](https://amzn.to/3NLnbvt) when shopping on amazon!
 
 
@@ -52,19 +50,17 @@ See the [supported cameras](#supported-cameras) section for additional informati
 Install [docker](https://docs.docker.com/get-docker/) and run:
 
 ```bash
-docker run -p 8554:8554 -p 8888:8888 -p 5000:5000 mrlt8/wyze-bridge
+docker run -p 8554:8554 -p 8888:8888 -p 5050:5000 -e WB_AUTH=false mrlt8/wyze-bridge
 ```
 
-You can then use the web interface at `http://localhost:5000` where localhost is the hostname or ip of the machine running the bridge.
-
-The default login for the WebUI will be:
-```
-username: wbadmin
-password: <username portion of your wyze email>
-```
-Example: For the wyze email `myEmail123@gmail.com`, the default password would be `myEmail123`.
+You can then use the web interface at `http://localhost:5050` where `localhost` is the hostname or ip of the machine running the bridge.
 
 See [basic usage](#basic-usage) for additional information or visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant) for additional information on using the bridge as a Home Assistant Add-on.
+
+## What's Changed in v2.10.2
+
+- FIX: day/night FPS slowdown for V4 cameras (#1287) Thanks @cdoolin and @Answer-1!
+- NEW: Update battery level in WebUI
 
 ## What's Changed in v2.10.0/v2.10.1
 
@@ -283,6 +279,11 @@ All environment variables are optional.
 * [Debugging Options](https://github.com/mrlt8/docker-wyze-bridge/wiki/Advanced-Option#debugging-options)
 
 ## Other Wyze Projects
+
+Honorable Mentions:
+
+* [@noelhibbard's script](https://gist.github.com/noelhibbard/03703f551298c6460f2fd0bfdbc328bd#file-readme-md) - Original script that the bridge is bassd on.
+* [kroo/wyzecam](https://github.com/kroo/wyzecam) - Original library that the bridge is based on.
 
 Video Streaming:
 

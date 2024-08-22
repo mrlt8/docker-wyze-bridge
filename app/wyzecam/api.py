@@ -225,6 +225,7 @@ def run_action(auth_info: WyzeCredential, camera: WyzeCamera, action: str):
         action_key=action,
         instance_id=camera.mac,
         provider_key=camera.product_model,
+        custom_string="",
     )
     resp = post(f"{WYZE_API}/v2/auto/run_action", json=payload, headers=_headers())
 

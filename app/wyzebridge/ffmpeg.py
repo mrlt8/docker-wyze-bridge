@@ -35,7 +35,7 @@ def get_ffmpeg_cmd(
     thread_queue = "-thread_queue_size 8 -analyzeduration 32 -probesize 32"
     if audio and "codec" in audio:
         # `Option sample_rate not found.` if we try to specify -ar for aac:
-        rate = "" if audio["codec"] == "aac" else f" -ar {audio['rate']}"
+        rate = "" if audio["codec"] == "aac" else f" -ar {audio['rate']} -ac 1"
         audio_in = f"{thread_queue} -f {audio['codec']}{rate} -i /tmp/{uri}_audio.pipe"
         audio_out = audio["codec_out"] or "copy"
     a_filter = env_bool("AUDIO_FILTER", "volume=5") + ",adelay=0|0"
@@ -66,7 +66,7 @@ def get_ffmpeg_cmd(
         + (["-map", "1:a", "-c:a", audio_out] if audio_in else [])
         + (a_options if audio and audio_out != "copy" else [])
         + ["-fps_mode", "passthrough", "-flush_packets", "1"]
-        + ["-rtbufsize", "1"]
+        + ["-rtbufsize", "1", "-copyts", "-copytb", "1"]
         + ["-f", "tee"]
         + [rtsp_ss + livestream]
     )
