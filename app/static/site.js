@@ -754,7 +754,6 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   }
   function updateBatteryLevel(card) {
-    console.log("updateBatteryLevel")
     if (card.dataset.battery?.toLowerCase() !== "true") { return; }
     const iconElement = card.querySelector(".icon.battery i");
     fetch(`api/${card.id}/battery`)
