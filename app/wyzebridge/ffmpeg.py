@@ -1,5 +1,8 @@
 import os
-from datetime import datetime
+import shutil
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Optional
 
 from wyzebridge.bridge_utils import env_bool, env_cam
 from wyzebridge.config import IMG_PATH, SNAPSHOT_FORMAT
@@ -178,13 +181,52 @@ def get_livestream_cmd(uri: str) -> str:
     return cmd
 
 
+def purge_old(base_path: str, extension: str, keep_time: Optional[timedelta]):
+    if not keep_time:
+        return
+    threshold = datetime.now() - keep_time
+    for filepath in Path(base_path).rglob(f"*{extension}"):
+        if filepath.stat().st_mtime > threshold.timestamp():
+            continue
+        filepath.unlink()
+        logger.debug(f"[ffmpeg] Deleted: {filepath}")
+
+        if not any(filepath.parent.iterdir()):
+            shutil.rmtree(filepath.parent)
+            logger.debug(f"[ffmpeg] Deleted empty directory: {filepath.parent}")
+
+
+def parse_timedelta(env_key: str) -> Optional[timedelta]:
+    value = env_bool(env_key)
+    if not value:
+        return
+
+    time_map = {"s": "seconds", "m": "minutes", "h": "hours", "d": "days", "w": "weeks"}
+    if value.isdigit():
+        value += "s"
+
+    try:
+        amount, unit = int(value[:-1]), value[-1]
+        if unit not in time_map or amount < 1:
+            return
+        return timedelta(**{time_map[unit]: amount})
+    except (ValueError, TypeError):
+        return
+
+
 def rtsp_snap_cmd(cam_name: str, interval: bool = False):
-    img = f"{IMG_PATH}{cam_name}.{env_bool('IMG_TYPE','jpg')}"
+    ext = env_bool("IMG_TYPE", "jpg")
+    img = f"{IMG_PATH}{cam_name}.{ext}"
 
     if interval and SNAPSHOT_FORMAT:
         file = datetime.now().strftime(f"{IMG_PATH}{SNAPSHOT_FORMAT}")
-        img = file.format(cam_name=cam_name, CAM_NAME=cam_name.upper())
+        base, _ext = os.path.splitext(file)
+        ext = _ext.lstrip(".") or ext
+        img = f"{base}.{ext}".format(cam_name=cam_name, CAM_NAME=cam_name.upper())
         os.makedirs(os.path.dirname(img), exist_ok=True)
+
+        keep_time = parse_timedelta("SNAPSHOT_KEEP")
+        purge_old(IMG_PATH, ext, keep_time)
 
     rotation = []
     if rotate_img := env_bool(f"ROTATE_IMG_{cam_name}"):
