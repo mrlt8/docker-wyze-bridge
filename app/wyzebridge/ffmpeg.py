@@ -225,7 +225,8 @@ def rtsp_snap_cmd(cam_name: str, interval: bool = False):
         img = f"{base}.{ext}".format(cam_name=cam_name, CAM_NAME=cam_name.upper())
         os.makedirs(os.path.dirname(img), exist_ok=True)
 
-        keep_time = parse_timedelta("SNAPSHOT_KEEP")
+    keep_time = parse_timedelta("SNAPSHOT_KEEP")
+    if keep_time and SNAPSHOT_FORMAT:
         purge_old(IMG_PATH, ext, keep_time)
 
     rotation = []
