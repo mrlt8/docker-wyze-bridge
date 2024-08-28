@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
 
-from wyzebridge.bridge_utils import env_bool, env_cam
+from wyzebridge.bridge_utils import LIVESTREAM_PLATFORMS, env_bool, env_cam
 from wyzebridge.config import IMG_PATH, SNAPSHOT_FORMAT
 from wyzebridge.logging import logger
 
@@ -158,27 +158,16 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
 
 
 def get_livestream_cmd(uri: str) -> str:
-    """
-    Check if livestream is enabled and return ffmpeg tee cmd.
 
-    Parameters:
-    - uri (str): uri of the stream used to lookup ENV parameters.
+    flv = "|[f=flv:flvflags=no_duration_filesize:use_fifo=1:fifo_options=attempt_recovery=1\\\:drop_pkts_on_overflow=1\\\:recover_any_error=1]"
 
-    Returns:
-    - str: ffmpeg compatible str to be used for the tee command.
-    """
-    cmd = ""
-    flv = "|[f=flv:flvflags=no_duration_filesize:use_fifo=1]"
-    if len(key := env_bool(f"YOUTUBE_{uri}", style="original")) > 5:
-        logger.info("📺 YouTube livestream enabled")
-        cmd += f"{flv}rtmp://a.rtmp.youtube.com/live2/{key}"
-    if len(key := env_bool(f"FACEBOOK_{uri}", style="original")) > 5:
-        logger.info("📺 Facebook livestream enabled")
-        cmd += f"{flv}rtmps://live-api-s.facebook.com:443/rtmp/{key}"
-    if len(key := env_bool(f"LIVESTREAM_{uri}", style="original")) > 5:
-        logger.info(f"📺 Custom ({key}) livestream enabled")
-        cmd += f"{flv}{key}"
-    return cmd
+    for platform, api in LIVESTREAM_PLATFORMS.items():
+        key = env_bool(f"{platform}_{uri}", style="original")
+        if len(key) > 5:
+            logger.info(f"📺 Livestream to {platform if api else key} enabled")
+            return f"{flv}{api}{key}"
+
+    return ""
 
 
 def purge_old(base_path: str, extension: str, keep_time: Optional[timedelta]):
