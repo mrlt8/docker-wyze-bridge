@@ -7,7 +7,7 @@ from wyzecam.api_models import WyzeCamera
 LIVESTREAM_PLATFORMS = {
     "YouTube": "rtmp://a.rtmp.youtube.com/live2/",
     "Facebook": "rtmps://live-api-s.facebook.com:443/rtmp/",
-    "RestreamIO": "rtmp://live.restream.io/live",
+    "RestreamIO": "rtmp://live.restream.io/live/",
     "Livestream": "",
 }
 
