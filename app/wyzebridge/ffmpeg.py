@@ -159,7 +159,7 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
 
 def get_livestream_cmd(uri: str) -> str:
 
-    flv = "|[f=flv:flvflags=no_duration_filesize:use_fifo=1:fifo_options=attempt_recovery=1\\\:drop_pkts_on_overflow=1\\\:recover_any_error=1]"
+    flv = "|[f=flv:flvflags=no_duration_filesize:use_fifo=1:fifo_options=attempt_recovery=1\\\:drop_pkts_on_overflow=1:onfail=abort]"
 
     for platform, api in LIVESTREAM_PLATFORMS.items():
         key = env_bool(f"{platform}_{uri}", style="original")
