@@ -1,9 +1,9 @@
 {
-  "name": "Docker Wyze Bridge (2.6.0 build)",
+  "name": "Docker Wyze Bridge (2.9.12 build)",
   "description": "Previous build. Use the REBUILD button to pull latest image.",
   "slug": "docker_wyze_bridge_previous",
   "url": "https://github.com/mrlt8/docker-wyze-bridge",
-  "version": "2.6.0",
+  "version": "2.9.12",
   "stage": "deprecated",
   "arch": ["armv7", "aarch64", "amd64"],
   "startup": "application",
