@@ -1,7 +1,7 @@
 Flask==3.0.*
 Flask-HTTPAuth==4.8.*
 paho-mqtt== 2.1.*
-pydantic==2.8.*
+pydantic==2.9.*
 python-dotenv==1.0.*
 requests==2.32.*
 PyYAML==6.0.*
