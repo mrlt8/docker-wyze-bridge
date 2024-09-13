@@ -34,7 +34,7 @@ class WyzeBridge(Thread):
 
     def _initialize(self, fresh_data: bool = False) -> None:
         self.api.login(fresh_data=fresh_data)
-        WbAuth.set_email(email=self.api.creds.email, force=fresh_data)
+        WbAuth.set_email(email=self.api.get_user().email, force=fresh_data)
         self.mtx.setup_auth(WbAuth.api, STREAM_AUTH)
         self.setup_streams()
         if self.streams.total < 1:

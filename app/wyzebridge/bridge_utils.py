@@ -4,6 +4,13 @@ from typing import Any
 
 from wyzecam.api_models import WyzeCamera
 
+LIVESTREAM_PLATFORMS = {
+    "YouTube": "rtmp://a.rtmp.youtube.com/live2/",
+    "Facebook": "rtmps://live-api-s.facebook.com:443/rtmp/",
+    "RestreamIO": "rtmp://live.restream.io/live/",
+    "Livestream": "",
+}
+
 
 def env_cam(env: str, uri: str, default="", style="") -> str:
     return env_bool(
@@ -61,9 +68,7 @@ def split_int_str(env_value: str, min: int = 0, default: int = 0) -> tuple[str, 
 
 
 def is_livestream(uri: str) -> bool:
-    services = {"youtube", "facebook", "livestream"}
-
-    return any(env_bool(f"{service}_{uri}") for service in services)
+    return any(env_bool(f"{service}_{uri}") for service in LIVESTREAM_PLATFORMS)
 
 
 def migrate_path(old: str, new: str):

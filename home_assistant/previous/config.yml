@@ -1,10 +1,10 @@
-name: Docker Wyze Bridge
-description: WebRTC/RTSP/RTMP/LL-HLS bridge for Wyze cams in a docker container
-slug: docker_wyze_bridge
+name: Docker Wyze Bridge (2.9.12 build)
+description: Previous build. Use the REBUILD button to pull latest image.
+slug: docker_wyze_bridge_previous
 url: https://github.com/mrlt8/docker-wyze-bridge
 image: mrlt8/wyze-bridge
-version: 2.10.2
-stage: stable
+version: 2.9.12
+stage: deprecated
 arch:
   - armv7
   - aarch64
@@ -58,7 +58,6 @@ schema:
   NET_MODE: list(LAN|P2P|ANY)?
   SNAPSHOT: list(API|RTSP|RTSP15|RTSP30|RTSP60|RTSP180|RTSP300|Disable)?
   SNAPSHOT_FORMAT: str?
-  SNAPSHOT_KEEP: str?
   IMG_TYPE: list(jpg|png)?
   IMG_DIR: str?
   ENABLE_AUDIO: bool?
@@ -136,4 +135,3 @@ schema:
   WB_AUTH: bool?
   WB_USERNAME: str?
   WB_PASSWORD: str?
-  STREAM_AUTH: str?

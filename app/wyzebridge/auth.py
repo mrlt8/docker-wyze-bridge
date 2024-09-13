@@ -68,7 +68,7 @@ class WbAuth:
         cls._update_credentials(email, force)
 
         logger.info(f"[AUTH] WB_USERNAME={cls.username}")
-        logger.info(f"[AUTH] WB_PASSWORD={cls._pass[0]}{'*'*(len(cls._pass)-1)}")
+        logger.info(f"[AUTH] WB_PASSWORD={redact_password(cls._pass)}")
         logger.info(f"[AUTH] WB_API={cls.api}")
 
     @classmethod
@@ -81,6 +81,10 @@ class WbAuth:
             cls._hashed_pass = generate_password_hash(cls._pass)
 
         cls.api = get_credential("wb_api") or gen_api_key(email)
+
+
+def redact_password(password: Optional[str]):
+    return f"{password[0]}{'*' * (len(password) - 1)}" if password else "NOT SET"
 
 
 STREAM_AUTH: str = env_bool("STREAM_AUTH", style="original")
