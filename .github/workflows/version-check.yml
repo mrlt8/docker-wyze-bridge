@@ -26,7 +26,7 @@ jobs:
           echo "current_tag=$current_tag" >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         if: steps.media_mtx.outputs.current_tag != '' && steps.media_mtx.outputs.current_tag != steps.media_mtx.outputs.release_tag
         with:
           title: 'Bump MediaMTX to v${{ steps.media_mtx.outputs.release_tag }}'
@@ -58,7 +58,7 @@ jobs:
           echo "current_tag=$current_tag" >> $GITHUB_OUTPUT
 
       - name: Create Pull Request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         if: steps.wyze_ios.outputs.current_tag != '' && steps.wyze_ios.outputs.current_tag != steps.wyze_ios.outputs.release_tag
         with:
           title: 'Bump Wyze App version to v${{ steps.wyze_ios.outputs.release_tag }}'
