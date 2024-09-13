@@ -1,3 +1,15 @@
+## What's Changed in v2.10.3
+
+- FIX: Increased `MTX_WRITEQUEUESIZE` to prevent issues with higher bitrates.
+- FIX: Restart RTMP livestream on fail (#1333)
+- FIX: Restore user data on bridge restart (#1334)
+- NEW: `SNAPSHOT_KEEP` Option to delete old snapshots when saving snapshots with a timelapse-like custom format with `SNAPSHOT_FORMAT`. (#1330)
+  - Example for 3 min: `SNAPSHOT_KEEP=180`, `SNAPSHOT_KEEP=180s`, `SNAPSHOT_KEEP=3m`
+  - Example for 3 days: `SNAPSHOT_KEEP=72h`, `SNAPSHOT_KEEP=3d`
+  - Example for 3 weeks: `SNAPSHOT_KEEP=21d`, `SNAPSHOT_KEEP=3w`
+- NEW: `RESTREAMIO` option for livestreaming via [restream.io](https://restream.io). (#1333)
+  - Example `RESTREAMIO_FRONT_DOOR=re_My_Custom_Key123`
+
 ## What's Changed in v2.10.2
 
 - FIX: day/night FPS slowdown for V4 cameras (#1287) Thanks @cdoolin and @Answer-1!
