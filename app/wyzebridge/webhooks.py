@@ -21,7 +21,7 @@ def send_webhook(event: str, camera: str, msg: str, img: Optional[str] = None) -
 
     logger.debug(f"[WEBHOOKS] 📲 Triggering {event.upper()} event for {camera}")
     try:
-        resp = requests.post(url, headers=header, data=msg)
+        resp = requests.post(url, headers=header, data=msg, verify=False)
         resp.raise_for_status()
-    except requests.exceptions.HTTPError as ex:
+    except Exception as ex:
         print(f"[WEBHOOKS] {ex}")
