@@ -36,6 +36,7 @@ map:
   - ssl:ro
 services:
   - mqtt:want
+video: true
 ingress: true
 ingress_port: 5000
 panel_icon: mdi:bridge
@@ -57,6 +58,7 @@ schema:
   NET_MODE: list(LAN|P2P|ANY)?
   SNAPSHOT: list(API|RTSP|RTSP15|RTSP30|RTSP60|RTSP180|RTSP300|Disable)?
   SNAPSHOT_FORMAT: str?
+  SNAPSHOT_KEEP: str?
   IMG_TYPE: list(jpg|png)?
   IMG_DIR: str?
   ENABLE_AUDIO: bool?
