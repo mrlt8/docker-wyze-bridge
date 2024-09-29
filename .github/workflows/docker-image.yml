@@ -4,7 +4,7 @@ on:
   schedule:
     - cron: '31 22 * * 0'
   push:
-    branches: [main, dev]
+    branches: [main, dev, onvif]
     # Publish semver tags as releases.
     tags: ['v*.*.*']
   pull_request:
@@ -84,7 +84,7 @@ jobs:
             type=schedule,suffix=${{ steps.image_type.outputs.suffix }}
             type=semver,pattern={{ version }},suffix=${{ steps.image_type.outputs.suffix }}
             type=edge,branch=main,enable=${{ github.event_name == 'push' }},suffix=${{ steps.image_type.outputs.suffix }}
-            type=ref,event=branch,enable=${{ contains(github.ref,'dev') }},suffix=${{ steps.image_type.outputs.suffix }}
+            type=ref,event=branch,enable=${{ contains(github.ref,'dev') || contains(github.ref, 'onvif') }},suffix=${{ steps.image_type.outputs.suffix }}
 
       - name: Update Release Version
         id: version_bump

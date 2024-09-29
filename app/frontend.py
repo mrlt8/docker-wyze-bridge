@@ -15,7 +15,7 @@ from flask import (
 )
 from werkzeug.exceptions import NotFound
 from wyze_bridge import WyzeBridge
-from wyzebridge import config, web_ui
+from wyzebridge import config, onvif, web_ui
 from wyzebridge.auth import WbAuth
 from wyzebridge.web_ui import url_for
 
@@ -118,6 +118,12 @@ def create_app():
             resp.set_cookie("camera_order", quote_plus(order))
 
         return resp
+
+    @app.route("/onvif/device_service", methods=["POST"])
+    @app.route("/onvif/media_service", methods=["POST"])
+    def onvif_service():
+        response = onvif.onvif_resp(wb.streams)
+        return Response(response, content_type="application/soap+xml")
 
     @app.route("/api/sse_status")
     @auth_required
