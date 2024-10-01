@@ -30,6 +30,8 @@ def create_app():
         print("Please ensure your host is up to date.")
         exit()
 
+    onvif.ws_discovery()
+
     def auth_required(view):
         @wraps(view)
         def wrapped_view(*args, **kwargs):

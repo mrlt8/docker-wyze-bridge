@@ -1,8 +1,8 @@
-import os
 import socket
 import struct
 import uuid
 from datetime import UTC, datetime
+from threading import Thread
 from urllib.parse import urlparse
 from xml.etree import ElementTree
 
@@ -30,7 +30,25 @@ def parse_message_id(soap_message):
         return None
 
 
-def ws_discovery(server):
+def ws_discovery():
+    if not config.WS_DISCOVERY:
+        return
+
+    logger.info("[ONVIF] Starting WS-Discovery...")
+    discovery_thread = Thread(target=discovery_loop)
+    discovery_thread.daemon = True
+    discovery_thread.start()
+
+
+def get_xaddr():
+    xaddr = config.ONVIF_ADDRS or socket.gethostbyname_ex(socket.gethostname())[2][0]
+    root, sub = xaddr.partition("/")[::2]
+    host, port = root.partition(":")[::2]
+
+    return f"{host}:{port or 5000}{'/' + sub if sub else ''}"
+
+
+def discovery_loop():
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     sock.bind(("", 3702))
@@ -38,45 +56,55 @@ def ws_discovery(server):
     mreq = struct.pack("4sl", socket.inet_aton("239.255.255.250"), socket.INADDR_ANY)
     sock.setsockopt(socket.IPPROTO_IP, socket.IP_ADD_MEMBERSHIP, mreq)
 
-    logger.info("Listening for WS-Discovery messages...")
+    xaddr = get_xaddr()
+
+    logger.info(f"[ONVIF] WS-Discovery enabled for {xaddr}")
 
     while True:
         data, addr = sock.recvfrom(1024)
         request_id = parse_message_id(data.decode("utf-8"))
-        response_uuid = str(uuid.uuid4())
-        response = """<?xml version="1.0" encoding="utf-8"?>
+
+        if not request_id:
+            continue
+
+        logger.debug(f"[ONVIF] Received WS-Discovery message from {addr[0]}")
+
+        response = f"""<?xml version="1.0" encoding="utf-8"?>
         <soapenv:Envelope xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope" 
-                  xmlns:tds="http://www.onvif.org/ver10/device/wsdl" 
-                  xmlns:d="http://schemas.xmlsoap.org/ws/2005/04/discovery"
-                  xmlns:dn="http://www.onvif.org/ver10/network/wsdl">
-                  xmlns:wsa="http://www.w3.org/2005/08/addressing">"""
-
-        if request_id:
-            response += f"""
-    <soapenv:Header>
-            <wsa:MessageID>{response_uuid}</wsa:MessageID>
-            <wsa:Action>http://www.onvif.org/ver10/device/wsdl/ProbeMatches</wsa:Action>
-        <wsa:RelatesTo>{request_id}</wsa:RelatesTo>
-    </soapenv:Header>"""
-
-        response += f"""
+                xmlns:wsa="http://schemas.xmlsoap.org/ws/2004/08/addressing"
+                xmlns:d="http://schemas.xmlsoap.org/ws/2005/04/discovery"
+                xmlns:dn="http://www.onvif.org/ver10/network/wsdl">
+        <soapenv:Header>
+            <wsa:MessageID>uuid:{uuid.uuid4()}</wsa:MessageID>
+            <wsa:RelatesTo>uuid:{request_id}</wsa:RelatesTo>
+            <wsa:To>http://schemas.xmlsoap.org/ws/2004/08/addressing/role/anonymous</wsa:To>
+            <wsa:Action>http://schemas.xmlsoap.org/ws/2005/04/discovery/ProbeMatches</wsa:Action>
+        </soapenv:Header>
         <soapenv:Body>
-        <d:ProbeMatches>
-            <d:ProbeMatch>
-                <d:Types>dn:NetworkVideoTransmitter</d:Types>
-                <d:Scopes>onvif://www.onvif.org/Profile/Streaming</d:Scopes>
-                <d:XAddrs>http://{server}:5000/onvif/device_service</d:XAddrs>
-                <d:MetadataVersion>1</d:MetadataVersion>
-            </d:ProbeMatch>
-        </d:ProbeMatches>
-    </soapenv:Body>
-</soapenv:Envelope>"""
+            <d:ProbeMatches>
+                <d:ProbeMatch>
+                    <wsa:EndpointReference>
+                        <wsa:Address>urn:uuid:Wyze-Bridge-{config.ARCH}-{config.BUILD}-build</wsa:Address>
+                    </wsa:EndpointReference>
+                    <d:Types>dn:NetworkVideoTransmitter</d:Types>
+                    <d:Scopes>
+                        onvif://www.onvif.org/type/video_encoder
+                        onvif://www.onvif.org/type/audio_encoder
+                        onvif://www.onvif.org/hardware/{config.ARCH}-{config.BUILD}
+                        onvif://www.onvif.org/name/WYZE%20BRIDGE
+                    </d:Scopes>
+                    <d:XAddrs>http://{xaddr}/onvif/device_service</d:XAddrs>
+                    <d:MetadataVersion>1</d:MetadataVersion>
+                </d:ProbeMatch>
+            </d:ProbeMatches>
+        </soapenv:Body>
+    </soapenv:Envelope>"""
 
         sock.sendto(response.encode("utf-8"), addr)
 
 
 def parse_request(xml_request):
-    service = os.path.basename(request.path)
+    # service = os.path.basename(request.path)
     try:
         root = ElementTree.fromstring(xml_request)
         creds = None
@@ -91,7 +119,7 @@ def parse_request(xml_request):
         if (body := root.find(".//s:Body", NAMESPACES)) and len(body) > 0:
             action = body[0].tag.rsplit("}", 1)[-1]
             profile = body[0].findtext(".//wsdl:ProfileToken", None, NAMESPACES)
-            logger.info(f"{service=}, {action=}, {profile=}")
+            logger.debug(f"[ONVIF] XML request: {action=}, {profile=}")
             return action, profile, creds
     except Exception as ex:
         logger.error(f"[ONVIF] error parsing XML request: {ex}")
@@ -174,11 +202,11 @@ def get_system_date_and_time():
 
 
 def get_services():
-    hostname = env_bool("DOMAIN", urlparse(request.root_url).hostname or "localhost")
+    root_url = request.root_url
     return f"""<tds:GetServicesResponse>
             <tds:Service>
                 <tds:Namespace>http://www.onvif.org/ver10/device/wsdl</tds:Namespace>
-                <tds:XAddr>http://{hostname}:5000/onvif/device_service</tds:XAddr>
+                <tds:XAddr>{root_url}onvif/device_service</tds:XAddr>
                 <tds:Version>
                     <tds:Major>2</tds:Major>
                     <tds:Minor>4</tds:Minor>
@@ -189,7 +217,7 @@ def get_services():
             </tds:Service>
             <tds:Service>
                 <tds:Namespace>http://www.onvif.org/ver10/media/wsdl</tds:Namespace>
-                <tds:XAddr>http://{hostname}:5000/onvif/media_service</tds:XAddr>
+                <tds:XAddr>{root_url}onvif/media_service</tds:XAddr>
                 <tds:Version>
                     <tds:Major>2</tds:Major>
                     <tds:Minor>4</tds:Minor>
@@ -236,11 +264,11 @@ def get_configurations():
 
 
 def get_capabilities():
-    hostname = env_bool("DOMAIN", urlparse(request.root_url).hostname or "localhost")
+    root_url = request.root_url
     return f"""<tds:GetCapabilitiesResponse>
             <tds:Capabilities>
                 <trt:Media>
-                    <trt:XAddr>http://{hostname}:5000/onvif/media_service</trt:XAddr>
+                    <trt:XAddr>{root_url}onvif/media_service</trt:XAddr>
                     <trt:StreamingCapabilities>
                         <tt:RTPMulticast>false</tt:RTPMulticast>
                         <tt:RTP_TCP>false</tt:RTP_TCP>
@@ -248,7 +276,7 @@ def get_capabilities():
                     </trt:StreamingCapabilities>
                 </trt:Media>
                 <tds:Device>
-                    <tds:XAddr>http://{hostname}:5000/onvif/device_service</tds:XAddr>
+                    <tds:XAddr>{root_url}onvif/device_service</tds:XAddr>
                     <tds:System>
                         <tt:DiscoveryResolve>true</tt:DiscoveryResolve>
                         <tt:DiscoveryBye>false</tt:DiscoveryBye>
@@ -394,10 +422,10 @@ def get_stream_uri(profile):
 
 
 def get_snapshot_uri(profile):
-    hostname = env_bool("DOMAIN", urlparse(request.root_url).hostname or "localhost")
+    root_url = request.root_url
     return f"""<trt:GetSnapshotUriResponse>
             <trt:MediaUri>
-                <tt:Uri>http://{hostname}:5000/snapshot/{profile}.jpg</tt:Uri>
+                <tt:Uri>{root_url}snapshot/{profile}.jpg</tt:Uri>
                 <tt:InvalidAfterConnect>false</tt:InvalidAfterConnect>
                 <tt:InvalidAfterReboot>false</tt:InvalidAfterReboot>
                 <tt:Timeout>PT60S</tt:Timeout>
