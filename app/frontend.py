@@ -122,7 +122,7 @@ def create_app():
     @app.route("/onvif/device_service", methods=["POST"])
     @app.route("/onvif/media_service", methods=["POST"])
     def onvif_service():
-        response = onvif.onvif_resp(wb.streams)
+        response = onvif.service_resp(wb.streams)
         return Response(response, content_type="application/soap+xml")
 
     @app.route("/api/sse_status")

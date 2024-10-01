@@ -1,6 +1,6 @@
 import os
-from base64 import urlsafe_b64encode
-from hashlib import sha256
+from base64 import b64decode, b64encode, urlsafe_b64encode
+from hashlib import sha1, sha256
 from typing import Optional
 
 from werkzeug.security import generate_password_hash
@@ -81,6 +81,22 @@ class WbAuth:
             cls._hashed_pass = generate_password_hash(cls._pass)
 
         cls.api = get_credential("wb_api") or gen_api_key(email)
+
+    @classmethod
+    def auth_onvif(cls, creds: Optional[dict]) -> bool:
+        if creds and creds.get("username") == "wb":
+            hashed = onvif_hash(creds["nonce"], creds["created"], cls.api)
+            return hashed == creds.get("password")
+
+        return cls.enabled is False
+
+
+def onvif_hash(nonce, created, password) -> str:
+    if not nonce or not created or not password:
+        return ""
+
+    sha1_hash = sha1(b64decode(nonce) + created.encode() + password.encode())
+    return b64encode(sha1_hash.digest()).decode()
 
 
 def redact_password(password: Optional[str]):

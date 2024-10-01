@@ -8,12 +8,15 @@ from xml.etree import ElementTree
 
 from flask import request
 from wyzebridge import config
+from wyzebridge.auth import WbAuth
 from wyzebridge.bridge_utils import env_bool
 from wyzebridge.logging import logger
 
 NAMESPACES = {
     "s": "http://www.w3.org/2003/05/soap-envelope",
     "wsdl": "http://www.onvif.org/ver10/media/wsdl",
+    "wsse": "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd",
+    "wsu": "http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-utility-1.0.xsd",
 }
 
 
@@ -72,35 +75,41 @@ def ws_discovery(server):
         sock.sendto(response.encode("utf-8"), addr)
 
 
-def parse_action(xml_request):
-    onvif_path = os.path.basename(request.path)
+def parse_request(xml_request):
+    service = os.path.basename(request.path)
     try:
         root = ElementTree.fromstring(xml_request)
-        namespace = {"s": NAMESPACES["s"]}
-        body = root.find(".//s:Body", namespace)
-        if body is not None and len(body):
-            action_element = body[0]
-            action = action_element.tag.rsplit("}", 1)[-1]
-            token = action_element.find(".//wsdl:ProfileToken", NAMESPACES)
-            profile = token.text if token is not None else None
-            logger.debug(f"{onvif_path=}, {action=}, {profile=}, {xml_request=}")
-            return action, profile
-    except ElementTree.ParseError as e:
-        logger.error(f"XML parsing error: {e}")
-    return None, None
+        creds = None
+        if auth := root.find(".//wsse:UsernameToken", NAMESPACES):
+            creds = {
+                "username": auth.findtext(".//wsse:Username", None, NAMESPACES),
+                "password": auth.findtext(".//wsse:Password", None, NAMESPACES),
+                "nonce": auth.findtext(".//wsse:Nonce", None, NAMESPACES),
+                "created": auth.findtext(".//wsu:Created", None, NAMESPACES),
+            }
+
+        if (body := root.find(".//s:Body", NAMESPACES)) and len(body) > 0:
+            action = body[0].tag.rsplit("}", 1)[-1]
+            profile = body[0].findtext(".//wsdl:ProfileToken", None, NAMESPACES)
+            logger.info(f"{service=}, {action=}, {profile=}")
+            return action, profile, creds
+    except Exception as ex:
+        logger.error(f"[ONVIF] error parsing XML request: {ex}")
+
+    return None, None, None
 
 
-def onvif_resp(streams):
-    action, profile_token = parse_action(request.data)
+def service_resp(streams):
+    action, profile, creds = parse_request(request.data)
 
     if action == "GetProfiles":
         resp = get_profiles(streams.streams)
     elif action == "GetVideoSources":
         resp = get_video_sources()
     elif action == "GetStreamUri":
-        resp = get_stream_uri(profile_token)
+        resp = get_stream_uri(profile)
     elif action == "GetSnapshotUri":
-        resp = get_snapshot_uri(profile_token)
+        resp = get_snapshot_uri(profile)
     elif action == "GetSystemDateAndTime":
         resp = get_system_date_and_time()
     elif action == "GetServices":
@@ -127,6 +136,10 @@ def onvif_resp(streams):
         resp = subscribe()
     else:
         resp = unknown_request()
+
+    if not WbAuth.auth_onvif(creds):
+        logger.error("Onvif auth failed")
+        resp = unauthorized()
 
     return f"""<?xml version="1.0" encoding="utf-8"?>
 <soapenv:Envelope xmlns:soapenv="http://www.w3.org/2003/05/soap-envelope" 
@@ -442,3 +455,22 @@ def unknown_request():
                 <soapenv:Text xml:lang="en">The requested command is not supported by this device.</soapenv:Text>
             </soapenv:Reason>
         </soapenv:Fault>"""
+
+
+def unauthorized():
+    return """<soap:Fault>
+      <soap:Code>
+        <soap:Value>soap:Sender</soap:Value>
+        <soap:Subcode>
+          <soap:Value>env:NotAuthorized</soap:Value>
+        </soap:Subcode>
+      </soap:Code>
+      <soap:Reason>
+        <soap:Text xml:lang="en">Authorization failed: Invalid credentials</soap:Text>
+      </soap:Reason>
+      <soap:Detail>
+        <wsse:FailedAuthentication xmlns:wsse="http://docs.oasis-open.org/wss/2004/01/oasis-200401-wss-wssecurity-secext-1.0.xsd">
+          Security token is invalid or expired
+        </wsse:FailedAuthentication>
+      </soap:Detail>
+    </soap:Fault>"""
