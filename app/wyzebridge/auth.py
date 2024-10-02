@@ -84,11 +84,14 @@ class WbAuth:
 
     @classmethod
     def auth_onvif(cls, creds: Optional[dict]) -> bool:
+        if not cls.enabled:
+            return True
+
         if creds and creds.get("username") == "wb":
             hashed = onvif_hash(creds["nonce"], creds["created"], cls.api)
             return hashed == creds.get("password")
 
-        return cls.enabled is False
+        return False
 
 
 def onvif_hash(nonce, created, password) -> str:
