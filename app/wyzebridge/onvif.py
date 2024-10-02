@@ -108,15 +108,14 @@ def parse_request(xml_request):
     try:
         root = ElementTree.fromstring(xml_request)
         creds = None
-        if auth := root.find(".//wsse:UsernameToken", NAMESPACES):
+        if (auth := root.find(".//wsse:UsernameToken", NAMESPACES)) is not None:
             creds = {
                 "username": auth.findtext(".//wsse:Username", None, NAMESPACES),
                 "password": auth.findtext(".//wsse:Password", None, NAMESPACES),
                 "nonce": auth.findtext(".//wsse:Nonce", None, NAMESPACES),
                 "created": auth.findtext(".//wsu:Created", None, NAMESPACES),
             }
-
-        if (body := root.find(".//s:Body", NAMESPACES)) and len(body) > 0:
+        if (body := root.find(".//s:Body", NAMESPACES)) is not None:
             action = body[0].tag.rsplit("}", 1)[-1]
             profile = body[0].findtext(".//wsdl:ProfileToken", None, NAMESPACES)
             logger.debug(f"[ONVIF] XML request: {action=}, {profile=}")
@@ -166,7 +165,7 @@ def service_resp(streams):
         resp = unknown_request()
 
     if not WbAuth.auth_onvif(creds):
-        logger.error("Onvif auth failed")
+        logger.error(f"[ONVIF] Auth failed for {action=} with {creds=}")
         resp = unauthorized()
 
     return f"""<?xml version="1.0" encoding="utf-8"?>
