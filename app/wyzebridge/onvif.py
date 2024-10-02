@@ -3,13 +3,11 @@ import struct
 import uuid
 from datetime import UTC, datetime
 from threading import Thread
-from urllib.parse import urlparse
 from xml.etree import ElementTree
 
 from flask import request
 from wyzebridge import config
 from wyzebridge.auth import WbAuth
-from wyzebridge.bridge_utils import env_bool
 from wyzebridge.logging import logger
 
 NAMESPACES = {
@@ -409,7 +407,7 @@ def get_profiles(streams):
 
 
 def get_stream_uri(profile):
-    hostname = env_bool("DOMAIN", urlparse(request.root_url).hostname or "localhost")
+    hostname = request.host.split(":")[0]
     if WbAuth.enabled:
         hostname = f"wb:{WbAuth.api}@{hostname}"
     return f"""<trt:GetStreamUriResponse>
