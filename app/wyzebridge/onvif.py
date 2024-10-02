@@ -410,6 +410,8 @@ def get_profiles(streams):
 
 def get_stream_uri(profile):
     hostname = env_bool("DOMAIN", urlparse(request.root_url).hostname or "localhost")
+    if WbAuth.enabled:
+        hostname = f"wb:{WbAuth.api}@{hostname}"
     return f"""<trt:GetStreamUriResponse>
             <trt:MediaUri>
                 <tt:Uri>rtsp://{hostname}:8554/{profile}</tt:Uri>
