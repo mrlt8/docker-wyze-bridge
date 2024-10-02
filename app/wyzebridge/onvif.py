@@ -164,7 +164,7 @@ def service_resp(streams):
     else:
         resp = unknown_request()
 
-    if not WbAuth.auth_onvif(creds):
+    if action != "GetSystemDateAndTime" and not WbAuth.auth_onvif(creds):
         logger.error(f"[ONVIF] Auth failed for {action=} with {creds=}")
         resp = unauthorized()
 
