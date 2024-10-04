@@ -400,6 +400,9 @@ def get_profiles(streams):
                         <tt:Width>1920</tt:Width>
                         <tt:Height>1080</tt:Height>
                     </tt:Resolution>
+                    <tt:RateControl>
+                        <tt:BitrateLimit>5000</tt:BitrateLimit>
+                    </tt:RateControl>
                 </tt:VideoEncoderConfiguration>
             </trt:Profiles>
             """
