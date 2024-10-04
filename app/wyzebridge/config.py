@@ -33,6 +33,8 @@ SNAPSHOT_FORMAT: str = env_bool("SNAPSHOT_FORMAT", style="original").strip("/")
 
 
 BRIDGE_IP: str = env_bool("WB_IP")
+WS_DISCOVERY: str = env_bool("WS_DISCOVERY")
+ONVIF_ADDRS: str = env_bool("ONVIF_URL").strip("/")
 HLS_URL: str = env_bool("WB_HLS_URL").strip("/")
 RTMP_URL = env_bool("WB_RTMP_URL").strip("/")
 RTSP_URL = env_bool("WB_RTSP_URL").strip("/")
