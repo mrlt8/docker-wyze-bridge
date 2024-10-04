@@ -6,10 +6,7 @@ FROM python:3.12-slim-bookworm AS base
 FROM base AS builder
 ARG BUILD_DATE
 RUN apt-get update \
-    && apt-get install -y curl tar gcc \
-    && if [ "$(uname -m)" = "armv7l" ]; then \
-    apt-get install -y libxml2-dev libxslt1-dev zlib1g-dev libffi-dev; \
-    fi \
+    && apt-get install -y curl tar gcc python3-lxml \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 COPY ../app/ /build/app/

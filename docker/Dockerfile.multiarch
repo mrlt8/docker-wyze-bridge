@@ -9,10 +9,7 @@ FROM base_$TARGETARCH AS builder
 ARG TARGETARCH
 ARG BUILD_DATE
 RUN apt-get update \
-    && apt-get install -y curl tar gcc \
-    && if [ "${TARGETARCH}" = "arm" ]; then \
-    apt-get install -y libxml2-dev libxslt1-dev zlib1g-dev libffi-dev; \
-    fi \
+    && apt-get install -y curl tar gcc python3-lxml \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 COPY /app/ /build/app/
