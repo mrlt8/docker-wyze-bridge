@@ -116,7 +116,7 @@ def parse_request(xml_request):
         if (body := root.find(".//s:Body", NAMESPACES)) is not None:
             action = body[0].tag.rsplit("}", 1)[-1]
             profile = body[0].findtext(".//wsdl:ProfileToken", None, NAMESPACES)
-            logger.debug(f"[ONVIF] XML request: {action=}, {profile=}")
+            logger.debug(f"[ONVIF] Request: {action=}, {profile=}")
             return action, profile, creds
     except Exception as ex:
         logger.error(f"[ONVIF] error parsing XML request: {ex}")
@@ -408,8 +408,6 @@ def get_profiles(streams):
 
 def get_stream_uri(profile):
     hostname = request.host.split(":")[0]
-    if WbAuth.enabled:
-        hostname = f"wb:{WbAuth.api}@{hostname}"
     return f"""<trt:GetStreamUriResponse>
             <trt:MediaUri>
                 <tt:Uri>rtsp://{hostname}:8554/{profile}</tt:Uri>
@@ -421,10 +419,12 @@ def get_stream_uri(profile):
 
 
 def get_snapshot_uri(profile):
-    root_url = request.root_url
+    snapshot_uri = f"{request.root_url}snapshot/{profile}.jpg"
+    if WbAuth.enabled:
+        snapshot_uri = f"{snapshot_uri}?api={WbAuth.api}"
     return f"""<trt:GetSnapshotUriResponse>
             <trt:MediaUri>
-                <tt:Uri>{root_url}snapshot/{profile}.jpg</tt:Uri>
+                <tt:Uri>{snapshot_uri}</tt:Uri>
                 <tt:InvalidAfterConnect>false</tt:InvalidAfterConnect>
                 <tt:InvalidAfterReboot>false</tt:InvalidAfterReboot>
                 <tt:Timeout>PT60S</tt:Timeout>
