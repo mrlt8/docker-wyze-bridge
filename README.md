@@ -232,7 +232,7 @@ Visit the [wiki page](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assi
 * [Portainer](https://github.com/mrlt8/docker-wyze-bridge/wiki/Portainer)
 * [Unraid](https://github.com/mrlt8/docker-wyze-bridge/issues/236)
 * [Home Assistant](https://github.com/mrlt8/docker-wyze-bridge/wiki/Home-Assistant)
-* [Homebridge Camera FFmpeg](https://sunoo.github.io/homebridge-camera-ffmpeg/configs/WyzeCam.html)
+* [Homebridge Camera FFmpeg](https://homebridge-plugins.github.io/homebridge-camera-ffmpeg/configs/WyzeCam.html)
 * [HomeKit Secure Video](https://github.com/mrlt8/docker-wyze-bridge/wiki/HomeKit-Secure-Video)
 * [WebUI API](https://github.com/mrlt8/docker-wyze-bridge/wiki/WebUI-API)
 
