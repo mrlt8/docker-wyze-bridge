@@ -1,6 +1,8 @@
 import contextlib
 import json
 import pickle
+import urllib
+import requests
 from datetime import datetime
 from functools import wraps
 from os import environ, utime
@@ -9,7 +11,7 @@ from pathlib import Path
 from time import sleep, time
 from typing import Any, Callable, Optional
 from urllib.parse import parse_qs, urlparse
-
+from wyzecam.kinesis.wpk_stream_info_model import Stream
 import wyzecam
 from requests import get
 from requests.exceptions import ConnectionError, HTTPError, RequestException
@@ -17,7 +19,13 @@ from wyzebridge.auth import get_secret
 from wyzebridge.bridge_utils import env_bool, env_filter
 from wyzebridge.config import IMG_PATH, MOTION, TOKEN_PATH
 from wyzebridge.logging import logger
-from wyzecam.api import RateLimitError, WyzeAPIError, post_device
+from wyzecam.api import (
+    RateLimitError,
+    WyzeAPIError,
+    get_camera_stream,
+    post_device,
+    wakeup_kvs_camera,
+)
 from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 
 
@@ -373,7 +381,7 @@ class WyzeApi:
             post_device(self.auth, "set_device_Info", params, api_version=1)
             return {"status": "success", "response": "success"}
         except ValueError as ex:
-            error = f'{ex.args[0].get("code")}: {ex.args[0].get("msg")}'
+            error = f"{ex.args[0].get('code')}: {ex.args[0].get('msg')}"
             logger.error(f"[CONTROL] ERROR: {error}")
             return {"status": "error", "response": f"{error}"}
 
@@ -392,6 +400,26 @@ class WyzeApi:
                 setattr(self, data_attr, None)
             for token_file in Path(TOKEN_PATH).glob("*.pickle"):
                 token_file.unlink()
+
+    def setup_mtx_proxy(self, cam_name: str, uri: str) -> bool:
+        if not (cam := self.get_camera(cam_name, True)):
+            return False
+        logger.info(f"🎉 Starting KVS Stream for MTX - {cam.nickname}")
+        kvs_stream: Stream = get_camera_stream(
+            auth_info=self.auth,
+            camera=cam,
+        )
+        kvs_stream.params.signaling_url = urllib.parse.unquote(
+            kvs_stream.params.signaling_url
+        )
+        requests.post(
+            f"http://localhost:8080/websocket/{uri}",
+            json=kvs_stream.params.model_dump(),
+            headers={"Content-Type": "application/json"},
+        )
+        sleep(1)
+        wakeup_kvs_camera(auth_info=self.auth, camera=cam)
+        return True
 
 
 def url_timestamp(url: str) -> int:

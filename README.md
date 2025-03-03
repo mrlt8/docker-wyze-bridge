@@ -180,8 +180,8 @@ The container can be run on its own, in [Portainer](https://github.com/mrlt8/doc
 | Wyze Cam Outdoor v2           | HL_WCO2        | ✅                                                            | 4.48.4.x  |
 | Wyze Cam Doorbell             | WYZEDB3        | ✅                                                            | 4.25.1.x  |
 | Wyze Cam Doorbell v2 [2K]     | HL_DB2         | ✅                                                            | 4.51.1.x  |
-| Wyze Cam Doorbell Pro 2       | AN_RDB1        | ❓                                                            | -         |
-| Wyze Battery Cam Pro          | AN_RSCW        | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/1011) | -         |
+| Wyze Cam Doorbell Pro 2       | AN_RDB1        | ✅                                                            | -         |
+| Wyze Battery Cam Pro          | AN_RSCW        | ✅                                                            | -         |
 | Wyze Cam Flood Light Pro [2K] | LD_CFP         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/822)  | -         |
 | Wyze Cam Doorbell Pro         | GW_BE1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/276)  | -         |
 | Wyze Cam OG                   | GW_GC1         | [⚠️](https://github.com/mrlt8/docker-wyze-bridge/issues/677)  | -         |

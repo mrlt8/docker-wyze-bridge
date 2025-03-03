@@ -34,13 +34,13 @@ NO_WEBRTC = {
     "HL_PANP",
     "WVOD1",
     "HL_WCO2",
-    "AN_RSCW",
     "WYZEDB3",
     "HL_DB2",
     "GW_BE1",
-    "AN_RDB1",
 }
 
+
+KVS_CAMS = {"AN_RSCW", "AN_RDB1", "HL_CAM4", "WYZE_CAKP2JFUS"}
 
 # known 2k cameras
 PRO_CAMS = {"HL_CAM3P", "HL_PANP", "HL_CAM4", "HL_DB2", "HL_CFL2"}
@@ -163,6 +163,10 @@ class WyzeCamera(BaseModel):
     @property
     def is_2k(self) -> bool:
         return self.product_model in PRO_CAMS or self.model_name.endswith("Pro")
+    
+    @property
+    def is_kvs(self) -> bool:
+        return self.product_model in KVS_CAMS
 
     @property
     def is_floodlight(self) -> bool:

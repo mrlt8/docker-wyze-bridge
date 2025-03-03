@@ -8,3 +8,6 @@
 *.env
 *.pyc
 !/app/.env
+wrapped
+kinesis
+demo

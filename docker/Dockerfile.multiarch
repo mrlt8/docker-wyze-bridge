@@ -4,6 +4,17 @@ ARG GITHUB_SHA
 FROM amd64/python:3.12-slim-bookworm AS base_amd64
 FROM arm32v7/python:3.12-slim-bookworm AS base_arm
 FROM arm64v8/python:3.12-slim-bookworm AS base_arm64
+FROM amd64/golang:1.23 AS go-builder-amd64
+FROM arm32v7/golang:1.23 AS go-builder-arm
+FROM arm64v8/golang:1.23 AS go-builder-arm64
+
+
+FROM go-builder-$TARGETARCH AS go-builder
+COPY whep_proxy /app
+WORKDIR /app
+RUN go mod download
+RUN go build -o whep_proxy
+
 
 FROM base_$TARGETARCH AS builder
 ARG TARGETARCH
@@ -36,6 +47,8 @@ FROM base_$TARGETARCH
 ARG BUILD
 ARG GITHUB_SHA
 COPY --from=builder /build /
+COPY --from=go-builder /app/whep_proxy /usr/local/bin/whep_proxy
+RUN chmod +x /usr/local/bin/whep_proxy
 ENV PYTHONUNBUFFERED=1 FLASK_APP=frontend BUILD=$BUILD GITHUB_SHA=$GITHUB_SHA
 WORKDIR /app
 CMD ["flask", "run", "--host=0.0.0.0"]

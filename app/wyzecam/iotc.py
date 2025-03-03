@@ -10,7 +10,7 @@ import pathlib
 import time
 import warnings
 from ctypes import CDLL, c_int
-from typing import Any, Iterator, Optional, Union
+from typing import Iterator, Optional, Union
 
 from wyzecam.api_models import WyzeAccount, WyzeCamera
 from wyzecam.tutk import tutk, tutk_ioctl_mux, tutk_protocol

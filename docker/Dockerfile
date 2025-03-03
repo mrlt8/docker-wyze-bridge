@@ -1,6 +1,14 @@
 ARG BUILD
 ARG BUILD_DATE
 ARG GITHUB_SHA
+
+FROM golang:1.23 AS go-builder
+
+COPY whep_proxy /app
+WORKDIR /app
+RUN go mod download
+RUN go build -o whep_proxy
+
 FROM python:3.12-slim-bookworm AS base
 
 FROM base AS builder
@@ -35,6 +43,8 @@ FROM base
 ARG BUILD
 ARG GITHUB_SHA
 COPY --from=builder /build /
+COPY --from=go-builder /app/whep_proxy /usr/local/bin/whep_proxy
+RUN chmod +x /usr/local/bin/whep_proxy
 ENV PYTHONUNBUFFERED=1 FLASK_APP=frontend BUILD=$BUILD GITHUB_SHA=$GITHUB_SHA
 WORKDIR /app
 CMD ["flask", "run", "--host=0.0.0.0"]
