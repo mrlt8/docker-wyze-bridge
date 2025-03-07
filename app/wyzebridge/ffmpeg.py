@@ -61,7 +61,7 @@ def get_ffmpeg_cmd(
         ["-hide_banner", "-loglevel", get_log_level()]
         + env_cam("FFMPEG_FLAGS", uri, flags).strip("'\"\n ").split()
         + thread_queue.split()
-        + (["-hwaccel", h264_enc] if h264_enc in {"vaapi", "qsv"} else [])
+        + (["-hwaccel", h264_enc, "-hwaccel_output_format", h264_enc] if h264_enc in {"vaapi", "qsv"} else [])
         + ["-f", vcodec, "-i", "pipe:0"]
         + audio_in.split()
         + ["-map", "0:v", "-c:v"]
@@ -123,10 +123,11 @@ def re_encode_video(uri: str, is_vertical: bool) -> list[str]:
     v_filter = []
     transpose = "clock"
     if (env_bool("ROTATE_DOOR") and is_vertical) or env_bool(f"ROTATE_CAM_{uri}"):
-        if os.getenv(f"ROTATE_CAM_{uri}") in {"0", "1", "2", "3"}:
+        unchecked_transpose = env_cam("rotate_cam", uri)
+        if unchecked_transpose in {"0", "1", "2", "3"}:
             # Numerical values are deprecated, and should be dropped
             #  in favor of symbolic constants.
-            transpose = os.environ[f"ROTATE_CAM_{uri}"]
+            transpose = unchecked_transpose
 
         v_filter = ["-filter:v", f"transpose={transpose}"]
         if h264_enc == "h264_vaapi":
