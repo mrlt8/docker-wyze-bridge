@@ -1,14 +1,16 @@
 from dataclasses import dataclass
+from typing import Any
 
-@dataclass(slots=True)
+@dataclass(slots=False)
 class WyzeStreamOptions:
-    quality: str = "hd180"
-    audio: bool = False
-    record: bool = False
-    reconnect: bool = False
-    substream: bool = False
-    frame_size: int = 0
-    bitrate: int = 120
+    def __init__(self, quality: str = "hd180", audio: bool = False, record: bool = False, reconnect: bool = False, substream: bool = False, frame_size: int = 0, bitrate: int = 120) -> None:
+        self.quality: str = quality
+        self.audio: bool = audio
+        self.record: bool = record
+        self.reconnect: bool = reconnect
+        self.substream: bool = substream
+        self.frame_size: int = frame_size
+        self.bitrate: int = bitrate
 
     def __post_init__(self):
         if self.record:

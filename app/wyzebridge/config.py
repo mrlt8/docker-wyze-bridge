@@ -27,6 +27,8 @@ IMG_PATH: str = f'/{env_bool("IMG_DIR", r"/media/wyze/img").strip("/")}/'
 
 SUBSTREAM: bool = env_bool("SUBSTREAM", style="bool")
 RTSP_FW: bool = env_bool("RTSP_FW", style="bool")
+OFFLINE_ERRNO: int = env_bool("OFFLINE_ERRNO", "-90", style="int")
+IGNORE_OFFLINE: bool = env_bool("IGNORE_OFFLINE", style="bool")
 
 LATITUDE: float = float(getenv("LATITUDE", "0"))
 LONGITUDE: float = float(getenv("LONGITUDE", "0"))

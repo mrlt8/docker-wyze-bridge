@@ -8,7 +8,6 @@ class Stream(Protocol):
     options: WyzeStreamOptions
     start_time: float
     uri: str
-    state: Any
 
     @property
     def connected(self) -> bool: ...

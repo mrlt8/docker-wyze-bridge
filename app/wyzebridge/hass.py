@@ -1,7 +1,7 @@
 import json
 import logging
 from os import environ, makedirs
-from sys import stdout
+from sys import stderr, stdout
 from typing import Optional
 
 import requests
@@ -85,7 +85,7 @@ def setup_hass(hass_token: Optional[str]) -> None:
     
     if log_level or log_time:
         log_level = getattr(logging, log_level.upper(), 20) #INFO
-        format_logging(logging.StreamHandler(stdout), log_level, log_time)
+        format_logging(logging.StreamHandler(stderr), log_level, log_time)
 
     if conf.get("LOG_FILE"):
         log_path = "/config/logs/"

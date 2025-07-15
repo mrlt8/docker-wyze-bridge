@@ -12,6 +12,8 @@ import warnings
 from ctypes import CDLL, c_int, c_ubyte, c_uint16, c_uint, c_uint32
 from typing import Iterator, Optional, Tuple, Union
 
+from wyzebridge.wyze_api import WyzeApi
+from wyzebridge.wyze_stream_options import WyzeStreamOptions
 from wyzebridge.config import FORCE_IOTC_DETAIL, LLHLS, SDK_KEY
 from wyzecam.api_models import WyzeAccount, WyzeCamera
 from wyzecam.tutk import tutk, tutk_ioctl_mux, tutk_protocol
@@ -138,18 +140,17 @@ class WyzeIOTC:
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.deinitialize()
 
-    def session(self, stream, state) -> "WyzeIOTCSession":
-        if stream.options.substream:
-            stream.user.phone_id = stream.user.phone_id[2:]
+    def session(self, user: WyzeAccount, api: WyzeApi, camera: WyzeCamera, options: WyzeStreamOptions) -> "WyzeIOTCSession":
+        if options.substream:
+            user.phone_id = user.phone_id[2:]
         return WyzeIOTCSession(
             self.tutk_platform_lib,
-            stream.user,
-            stream.camera,
-            frame_size=stream.options.frame_size,
-            bitrate=stream.options.bitrate,
-            enable_audio=stream.options.audio,
-            stream_state=state,
-            substream=stream.options.substream,
+            user,
+            camera,
+            frame_size=options.frame_size,
+            bitrate=options.bitrate,
+            enable_audio=options.audio,
+            substream=options.substream,
         )
 
     def connect_and_auth(
@@ -251,7 +252,6 @@ class WyzeIOTCSession:
         bitrate: int = tutk.BITRATE_HD,
         enable_audio: bool = True,
         connect_timeout: int = 60,
-        stream_state: c_int = c_int(0),
         substream: bool = False,
     ) -> None:
         """Construct a wyze iotc session.
@@ -279,7 +279,6 @@ class WyzeIOTCSession:
         self.preferred_bitrate: int = bitrate
         self.connect_timeout: int = connect_timeout
         self.enable_audio: bool = enable_audio
-        self.stream_state: c_int = stream_state
         self.audio_pipe_ready: bool = False
         self.frame_ts: float = 0.0
         self.substream: bool = substream
@@ -502,7 +501,7 @@ class WyzeIOTCSession:
         time.sleep(sleep)
         return (
             self.state == WyzeIOTCSessionState.AUTHENTICATION_SUCCEEDED
-            and self.stream_state.value > 1
+            # TODO MARC and self.stream_state.value > 1
         )
 
     def valid_frame_size(self) -> set[int]:

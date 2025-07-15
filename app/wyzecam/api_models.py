@@ -74,7 +74,6 @@ class WyzeCredential(BaseModel):
     :var email_session_id: Additional details for email support
     :var phone_id: The phone id passed to [login()][wyzecam.api.login]
     """
-
     access_token: Optional[str] = None
     refresh_token: Optional[str] = None
     user_id: Optional[str] = None
@@ -82,7 +81,9 @@ class WyzeCredential(BaseModel):
     mfa_details: Optional[dict[str, Any]] = None
     sms_session_id: Optional[str] = None
     email_session_id: Optional[str] = None
-    phone_id: Optional[str] = str(uuid.uuid4())
+    # Generate a new phone_id
+    # This is used to identify the device in Wyze's ecosystem
+    phone_id: Optional[str] = str(uuid.uuid4()) 
 
 class WyzeAccount(BaseModel):
     """User profile information; see [wyzecam.api.get_user_info][].
@@ -95,14 +96,13 @@ class WyzeAccount(BaseModel):
     :var user_center_id: center id of the user
     :var open_user_id: open id of the user (used for authenticating with newer firmwares; important!)
     """
-
-    phone_id: str
-    logo: str
-    nickname: str
-    email: str
-    user_code: str
-    user_center_id: str
-    open_user_id: str
+    phone_id: str = ""
+    logo: str = ""
+    nickname: str = ""
+    email: str = ""
+    user_code: str = ""
+    user_center_id: str = ""
+    open_user_id: str = ""
 
 class WyzeCamera(BaseModel):
     """Wyze camera device information; see [wyzecam.api.get_camera_list][].
@@ -117,22 +117,21 @@ class WyzeCamera(BaseModel):
     :var timezone_name: the timezone of the camera
 
     """
-
-    p2p_id: Optional[str]
-    p2p_type: Optional[int]
-    ip: Optional[str]
-    enr: Optional[str]
-    mac: str
-    product_model: str
-    camera_info: Optional[dict[str, Any]] = None
-    nickname: Optional[str]
-    timezone_name: Optional[str]
-    firmware_ver: Optional[str]
-    dtls: Optional[int]
-    parent_dtls: Optional[int]
-    parent_enr: Optional[str]
-    parent_mac: Optional[str]
-    thumbnail: Optional[str]
+    p2p_id: str = ""
+    p2p_type: int = 0
+    ip: str = ""
+    enr: str = ""
+    mac: str = ""
+    product_model: str = ""
+    camera_info: dict[str, Any] = {}
+    nickname: str = ""
+    firmware_ver: str = ""
+    dtls: int = 0
+    parent_dtls: int = 0
+    parent_enr: str = ""
+    parent_mac: str = ""
+    thumbnail: str = ""
+    timezone_name: str = ""
 
     def set_camera_info(self, info: dict[str, Any]) -> None:
         # Called internally as part of WyzeIOTC.connect_and_auth()
@@ -192,17 +191,18 @@ class WyzeCamera(BaseModel):
         if self.rtsp_fw:
             return False
         min_ver = SUBSTREAM_FW.get(self.product_model)
-        return is_min_version(self.firmware_ver, min_ver)
+        return self.is_min_version(min_ver)
 
     @property
     def rtsp_fw(self) -> bool:
         return bool(self.firmware_ver and self.firmware_ver[:5] in RTSP_FW)
 
-def is_min_version(version: Optional[str], min_version: Optional[str]) -> bool:
-    if not version or not min_version:
-        return False
-    version_parts = list(map(int, version.split(".")))
-    min_version_parts = list(map(int, min_version.split(".")))
-    return (version_parts >= min_version_parts) or (
-        version_parts == min_version_parts and version >= min_version
-    )
+    def is_min_version(self, min_version: Optional[str]) -> bool:
+        if not self.firmware_ver or not min_version:
+            return False
+
+        version_parts = list(map(int, self.firmware_ver.split(".")))
+        min_version_parts = list(map(int, min_version.split(".")))
+        return (version_parts >= min_version_parts) or (
+            version_parts == min_version_parts and self.firmware_ver >= min_version
+        )

@@ -1,0 +1,145 @@
+{
+    "uri": "basement-camera",
+    "user": {
+        "py/object": "wyzecam.api_models.WyzeAccount",
+        "phone_id": "3702cf08-3a96-4a97-9fef-7b9a327e841f",
+        "logo": "https://wyze-logo.s3.us-west-2.amazonaws.com/logo/user/f2b53679720396166efc7ec9542ded85.png?X-Amz-Security-Token=IQoJb3JpZ2luX2VjECUaCXVzLXdlc3QtMiJGMEQCIBoeJC9ajy%2F7oPeiHXWhcMk0kctOxBSjf%2B7g3PuHUVAzAiABW1nb%2Fhyo2WZWE0hZRj1u21DqUSyaOfRBu%2BK5Z%2B6RpCqaAgg%2BEAQaDDA2NjU4NzU4NjcyMSIMRB4kZpBO8ZgjZwXLKvcBEQ74cdKKm2DSBNikfwLtRolm%2Fed3Azv2x%2B8viwgdeq7V1OkrErmR2zNhDS%2BSh2f160OqEB9iLH%2BM0%2Bw5bn5t8eQmXkO17f0J2S0QkXOoUkohYFGNzgp%2BkSBQCAMrJvlEADBB2JYFAl4aL9rxkyZc11SxzBz3KxL%2FDP5Pm1QYRIf1RZbPA%2B6PslIm3kMBxajsuNmBt8Rzk%2BxHFn5azzg6A%2FmFVhE0C8yiUVVzY0ElC1OFIvYtdkrm1qBUlVvCm5r0XFjpUsXQHkl6D1GbeLzBUdgKv09%2BilQJNph4MSDBaBFJrTXjbT6R3Blz%2FQs2N4%2FcCqvC0rQ99TCXttfDBjqeARGcFDE34b0tHVgnsbV3%2BOUrKZrUCZVG%2FrkCVZZJwx75v3JcGhwUZtghufN73nMe5%2Bb6yzbWA2HHVAxtZ1KHsPSGfHDjymiXSauVtJvTl1ulB3%2BUgKGH3P761TVgXHZdb3hdul0rMGxVPyaDIJa8fIyRFk1%2FEzWo6Fnv07wl8LwClrRXgv2vAnHDdckkyFHIs85ommjjMLFizJ5g7ERA&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20250715T050109Z&X-Amz-SignedHeaders=host&X-Amz-Credential=ASIAQ7AHN6CQQMRLHCPE%2F20250715%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Expires=1800&X-Amz-Signature=25e787f488e2630df900554a5c960926733f93391044237d0dced8667100c8a8",
+        "nickname": "IDisposable",
+        "email": "idisposable@gmail.com",
+        "user_code": "Official Version",
+        "user_center_id": "d5f3c5403627e4339f67accbf41b4975",
+        "open_user_id": "8184245"
+    },
+    "api": {
+        "py/object": "wyzebridge.wyze_api.WyzeApi",
+        "auth": {
+            "py/object": "wyzecam.api_models.WyzeCredential",
+            "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjhiN2Y4YmMwLWFhNWQtNDJmNi04MmY2LWZlZjFlMzFjN2M4NyJ9.eyJhdWQiOlsib2F1dGgyLXJlc291cmNlIiwibmF0aXZlX29hdXRoMl9yZXNvdXJjZSJdLCJ1c2VyX2lkIjoiZDVmM2M1NDAzNjI3ZTQzMzlmNjdhY2NiZjQxYjQ5NzUiLCJ1c2VyX25hbWUiOiJpZGlzcG9zYWJsZUBnbWFpbC5jb20iLCJzY29wZSI6WyJuYXRpdmUiXSwiaXNzIjoiaHR0cHM6Ly9hdXRoLnd5emUuY29tIiwiY3JlYXRlZF9hdCI6MTc1MjU1NTY2OCwiZXhwIjoxNzUyNzI4NDY4LCJhdXRob3JpdGllcyI6WyJVU0VSIl0sImp0aSI6IjRhSmJkU2MyaXE1VDBCaFhHbDVUTmVmLTJDNCIsImNsaWVudF9pZCI6IjhjMGUwM2NhLTA3NjAtNDI5ZS1hNTdiLTkxYzNkZGEwZjFiOCJ9.QNEa2XvqPbXu-EojGm5kEkIbZEE-VXMTLgZ6B0Bn7jFF01O7buqgoAh5mz6vaPKHDrEKEOiJF6WNkRTdaVBwwhfHMjO70h7SsVcIbaOnLd0fcMVRoIIipQ9GXAlQN83PYTJcFS1PEYb658b4p8MrS3iEKC-Cd9JnEA6FHzCHjG05kVqCNfzIlYiQYpH5AQHNOjPDzUthB34rJHSHCINbqS3m9VUZfQhqObfTBZropWMuUAwab-XUgLi8NCLbKEdHWV7SoMrVQwEZdH8ENYDBUlK03KKlCcaQHw--5rIo20yP7ztXbF2-efVALsOOFswQyMLLHzCBIaTNsFqAyXFbEA",
+            "refresh_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCIsImtpZCI6IjhiN2Y4YmMwLWFhNWQtNDJmNi04MmY2LWZlZjFlMzFjN2M4NyJ9.eyJhdWQiOlsib2F1dGgyLXJlc291cmNlIiwibmF0aXZlX29hdXRoMl9yZXNvdXJjZSJdLCJ1c2VyX2lkIjoiZDVmM2M1NDAzNjI3ZTQzMzlmNjdhY2NiZjQxYjQ5NzUiLCJ1c2VyX25hbWUiOiJpZGlzcG9zYWJsZUBnbWFpbC5jb20iLCJzY29wZSI6WyJuYXRpdmUiXSwiYXRpIjoiNGFKYmRTYzJpcTVUMEJoWEdsNVROZWYtMkM0IiwiaXNzIjoiaHR0cHM6Ly9hdXRoLnd5emUuY29tIiwiY3JlYXRlZF9hdCI6MTc1MjU1NTY2OCwiZXhwIjoxNzU0OTc0ODY4LCJhdXRob3JpdGllcyI6WyJVU0VSIl0sImp0aSI6IjVHeUY2SGVLOEtiQnRGaUVES2xxaDNWVlNEWSIsImNsaWVudF9pZCI6IjhjMGUwM2NhLTA3NjAtNDI5ZS1hNTdiLTkxYzNkZGEwZjFiOCJ9.gKCwPOulyAs0KbOjtIk7T_ZX9jc-q0PRQGHtlwaBH13LKN5c7SCpGHj9q5zEl2bl2uIse9XMwfarig2DhtYkHmm7OecOxpwN6e4kvQJAV6JZd7TAKe7zVQlA8e59bI9mPCNX_VSDDfVMyXIVMzBoyd-NKyrv5adXENrx79i_jVrBM_kqPFf6NW35BSxRJjtUyjzuQcJho1spZAQaBU5_7tQhr9KOOzPkDL-cg-AMXYxkpDz-EfuWR9m0vM6woqe0gHmxsGru5NVS2zxjl7d-pVbTo7RUFG6tKkyZ6Ocjqi0Sn94L7AqSjeGUnnTSu9KxxpI7r57_wrdpr3eI1BNiUg",
+            "user_id": "d5f3c5403627e4339f67accbf41b4975",
+            "sms_session_id": None,
+            "email_session_id": None,
+            "phone_id": "3702cf08-3a96-4a97-9fef-7b9a327e841f"
+        },
+        "user": {
+            "py/object": "wyzecam.api_models.WyzeAccount",
+            "phone_id": "3702cf08-3a96-4a97-9fef-7b9a327e841f",
+            "logo": "https://wyze-logo.s3.us-west-2.amazonaws.com/logo/user/f2b53679720396166efc7ec9542ded85.png?X-Amz-Security-Token=IQoJb3JpZ2luX2VjECUaCXVzLXdlc3QtMiJGMEQCIBoeJC9ajy%2F7oPeiHXWhcMk0kctOxBSjf%2B7g3PuHUVAzAiABW1nb%2Fhyo2WZWE0hZRj1u21DqUSyaOfRBu%2BK5Z%2B6RpCqaAgg%2BEAQaDDA2NjU4NzU4NjcyMSIMRB4kZpBO8ZgjZwXLKvcBEQ74cdKKm2DSBNikfwLtRolm%2Fed3Azv2x%2B8viwgdeq7V1OkrErmR2zNhDS%2BSh2f160OqEB9iLH%2BM0%2Bw5bn5t8eQmXkO17f0J2S0QkXOoUkohYFGNzgp%2BkSBQCAMrJvlEADBB2JYFAl4aL9rxkyZc11SxzBz3KxL%2FDP5Pm1QYRIf1RZbPA%2B6PslIm3kMBxajsuNmBt8Rzk%2BxHFn5azzg6A%2FmFVhE0C8yiUVVzY0ElC1OFIvYtdkrm1qBUlVvCm5r0XFjpUsXQHkl6D1GbeLzBUdgKv09%2BilQJNph4MSDBaBFJrTXjbT6R3Blz%2FQs2N4%2FcCqvC0rQ99TCXttfDBjqeARGcFDE34b0tHVgnsbV3%2BOUrKZrUCZVG%2FrkCVZZJwx75v3JcGhwUZtghufN73nMe5%2Bb6yzbWA2HHVAxtZ1KHsPSGfHDjymiXSauVtJvTl1ulB3%2BUgKGH3P761TVgXHZdb3hdul0rMGxVPyaDIJa8fIyRFk1%2FEzWo6Fnv07wl8LwClrRXgv2vAnHDdckkyFHIs85ommjjMLFizJ5g7ERA&X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Date=20250715T050109Z&X-Amz-SignedHeaders=host&X-Amz-Credential=ASIAQ7AHN6CQQMRLHCPE%2F20250715%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Expires=1800&X-Amz-Signature=25e787f488e2630df900554a5c960926733f93391044237d0dced8667100c8a8",
+            "nickname": "IDisposable",
+            "email": "idisposable@gmail.com",
+            "user_code": "Official Version",
+            "user_center_id": "d5f3c5403627e4339f67accbf41b4975",
+            "open_user_id": "8184245"
+        },
+        "cameras": [
+            {
+                "py/object": "wyzecam.api_models.WyzeCamera",
+                "p2p_type": 3,
+                "ip": "192.168.1.112",
+                "mac": "80482C53AC54",
+                "product_model": "HL_CAM4",
+                "camera_info": None,
+                "nickname": "Driveway Camera",
+                "firmware_ver": "4.52.9.3415",
+                "dtls": 1,
+                "parent_dtls": 0,
+                "parent_mac": "",
+                "thumbnail": "https://prod-sight-safe-auth.wyze.com/resource/80482C53AC54/2025-07-15/80482C53AC54131752555509_1752555509400_13_1_0/fe215605c2a84a868db577924fcc9417_-1.jpg?st=zqLNTE_XDx_yURCOpc1Dleba8DlvcFgdj5-tWOfCbOe4kNVoWbv6PkWv17M2UJF2Wtr9A5aGHb_doKZi0YUxVOqlVTiLDS3julsMlqYdNr8mN9btwu7ZknKTF1f8Gam-sw_RwPJv2-jCq6-jFD2qgKKNyFLkwv8ba5_TUz6whdUIgfXIRigOBuTh4gNXu_c6HZXrd2neXDvgFinK0r5y2bu3Ug8jq3T7VQWC5omJRRuyjd3pd8xAtUZdJA2fKMJ4rAEkIksj8zGtIa8_tPHoOlLyJknFMR9ztUN5czD74HSTDw5IBFSq0bM_bKQUTMXOCUtpomA0OuGi8Q&kid=4sA3SJ4EGkWtZ4BeBkE4BJ&nonce=X4v7cZA2ZLigWlzb",
+                "timezone_name": "America/Chicago"
+            },
+            {
+                "py/object": "wyzecam.api_models.WyzeCamera",
+                "p2p_type": 3,
+                "ip": "192.168.1.14",
+                "mac": "D03F271322CE",
+                "product_model": "WYZE_CAKP2JFUS",
+                "camera_info": None,
+                "nickname": "Bird Camera",
+                "firmware_ver": "4.36.14.3497",
+                "dtls": 1,
+                "parent_dtls": 0,
+                "parent_mac": "",
+                "thumbnail": "https://prod-sight-safe-auth.wyze.com/resource/D03F271322CE/2025-07-15/D03F271322CE131752555609_1752555609932_13_1_0/ca350e72ea454354940ec7648083b19a_-1.jpg?st=EXNJwrOLSzK5yUsuJna04k2gr1H1Rcc_JT3BZHCTw-Pnq-MJVDQxt5M78n2IDN2Ef4eb0JggWgb0JwWTi8WqEUCF8Jz6hpw2ZetGcV3wmOD8CTCmnXPKE8cFUOV0mEQnZpMgzIIzZCW5lagHLYH6gUNZrIZI_YwK_Vx8apSeWKjUk2Av8X-bT7orcMIy8V8h6eJx0NjNydOqPYS6A5iDLeEoTQxXH0XtQSGFcDD64nWLCOw4ZcukyBNPRQsGU77-8EHOMAfM0Cak_6UlN2JGji8S_OhpQezXksCJWqggSwsgI_YQ7QIC3MV-eLY_YjmYcuEiKdzLuTl08w&kid=4sA3SJ4EGkWtZ4BeBkE4BJ&nonce=l7rpsGGkXxvmrSqW",
+                "timezone_name": "America/Chicago"
+            },
+            {
+                "py/object": "wyzecam.api_models.WyzeCamera",
+                "p2p_type": 3,
+                "ip": "192.168.1.55",
+                "mac": "D03F272E3098",
+                "product_model": "WYZE_CAKP2JFUS",
+                "camera_info": None,
+                "nickname": "Coop Camera",
+                "firmware_ver": "4.36.14.3497",
+                "dtls": 1,
+                "parent_dtls": 0,
+                "parent_mac": "",
+                "thumbnail": "https://prod-sight-safe-auth.wyze.com/resource/D03F272E3098/2025-07-11/D03F272E3098131752196978_1752196981884_13_1_0/543ec310fa31493a9be06e5fc47c2669_-1.jpg?st=1oC3GNs2qIg_FS0m_oygbq5m_Wb2w_OfrC0h_koZvTVl3Qr96hkgf_2Hj3fUNFOYkOGZmnlCW84XlsAx-NDWE1RzsIIwEvY4Y7l-OR5oazqEDwBj5VvNa8fmiYQ2HuUuiepNcSLmurrDkboi7ll4hxU9bXUJyZMo-OAZwu4lH9ziBFNhgG8B83IJ8ShGyJoWPBd447a-K8U_pUeYEYOqZBwO21oYu5ZuA54i3ibcCgf75q5BYVAMJjxp0_s5p4s37s7W399_rdt91RkBMsyzj7pG9RviHQRmEqOCQSfbQURT56eUdsp7MnygOKXP95tZjixS407u7GHe1w&kid=4sA3SJ4EGkWtZ4BeBkE4BJ&nonce=6sydQwuKqm0-6isZ",
+                "timezone_name": "America/Chicago"
+            },
+            {
+                "py/object": "wyzecam.api_models.WyzeCamera",
+                "p2p_type": 3,
+                "ip": "192.168.1.56",
+                "mac": "D03F27131EFC",
+                "product_model": "WYZE_CAKP2JFUS",
+                "camera_info": None,
+                "nickname": "Basement Camera",
+                "firmware_ver": "4.36.14.3497",
+                "dtls": 1,
+                "parent_dtls": 0,
+                "parent_mac": "",
+                "thumbnail": "https://prod-sight-safe-auth.wyze.com/resource/D03F27131EFC/2025-07-13/D03F27131EFC131752370366_1752370368718_13_1_0/fec83e521bfc472380a12a0dc0bdd663_-1.jpg?st=DnHZB0SK2uyuCm8c7lSDy2BXnSmKUNYu4ruU3I-xEuk8QBG6W2LzHwuKR1K9aB181RXaxFvPAAreWBz-nL6bFiBe4iJxrag4ee3G_kMM39Z4WWRPeDtKiRDcfOiECDF8Q-7vFfdqdCCr3k94mxnPhSOA8wAYPTMatb6dlzotn2d-a0iPVcZ-xF_RXlZ60ILYf3--0yNqM4XDMR_KFy_IIcr1kDPh_ZCPRFd5F5oK-NCsnXO1xdStzAnqJ8kVpZK2nxZNBVU7PKRKiFWTFc37-dKHjlDv5sIubBUzDjizpors0uWiYkKJ-A-pbiYVMcPu-1CEaPHOaMB02w&kid=4sA3SJ4EGkWtZ4BeBkE4BJ&nonce=RwEaX-UujUqQyR91",
+                "timezone_name": "America/Chicago"
+            },
+            {
+                "py/object": "wyzecam.api_models.WyzeCamera",
+                "p2p_type": 3,
+                "ip": "192.168.1.54",
+                "mac": "D03F27134424",
+                "product_model": "WYZE_CAKP2JFUS",
+                "camera_info": None,
+                "nickname": "Shed Camera",
+                "firmware_ver": "4.36.14.3497",
+                "dtls": 1,
+                "parent_dtls": 0,
+                "parent_mac": "",
+                "thumbnail": "https://prod-sight-safe-auth.wyze.com/resource/D03F27134424/2025-07-15/D03F27134424131752555480_1752555480998_13_1_0/7aa739304e644dab9a53a3bd530633c8_-1.jpg?st=9RR9XRtBAgGSHlQl2NhNJLhjhxB3c4kJ_7sh2HZHYhTvYL-jFaa_OPD97NV080tst30RkZCJIwnY-9V4KxmIJ-iaOPO-pL_w_C2ie6NeBZgn3ue9GHSApEv0oR_FWz-5AN4mxwuRTQsshG4QtxUEv4k2rz-ADZ8oK92iDkW4c9ElnXL01CWKUEmq4ITpVgQwGKyoqG7Jl1WnpuPaA1cc7F-1hSRsj8_WzSvzXnLvxXlUMT0febFHjuxA66N3D2Hmk01EeQ9PMhoWvY_E57sH9NhagYPJufewBWxA6oM5EMHGtrz5LCUhKqCxHmTYnYy9P8vWILdofcjo8w&kid=4sA3SJ4EGkWtZ4BeBkE4BJ&nonce=KtitNJRYIJflL-of",
+                "timezone_name": "America/Chicago"
+            }
+        ],
+        "creds": {
+            "py/object": "wyzebridge.wyze_api.WyzeCredentials",
+            "email": "idisposable@gmail.com",
+            "password": "4fZUJDM_FCY9@zr",
+            "key_id": "41b227c2-2c56-46c0-9ae5-3a820f59182f",
+            "api_key": "qThQpNHfGUa8kepsp67tJ81EvPW4wzmVmj98xli1716sDJuH52JdfR5K5BbE"
+        },
+        "_last_pull": 1752555616.9508293
+    },
+    "camera": {
+        "py/object": "wyzecam.api_models.WyzeCamera",
+        "p2p_type": 3,
+        "ip": "192.168.1.56",
+        "mac": "D03F27131EFC",
+        "product_model": "WYZE_CAKP2JFUS",
+        "camera_info": None,
+        "nickname": "Basement Camera",
+        "firmware_ver": "4.36.14.3497",
+        "dtls": 1,
+        "parent_dtls": 0,
+        "parent_mac": "",
+        "thumbnail": "https://prod-sight-safe-auth.wyze.com/resource/D03F27131EFC/2025-07-13/D03F27131EFC131752370366_1752370368718_13_1_0/fec83e521bfc472380a12a0dc0bdd663_-1.jpg?st=DnHZB0SK2uyuCm8c7lSDy2BXnSmKUNYu4ruU3I-xEuk8QBG6W2LzHwuKR1K9aB181RXaxFvPAAreWBz-nL6bFiBe4iJxrag4ee3G_kMM39Z4WWRPeDtKiRDcfOiECDF8Q-7vFfdqdCCr3k94mxnPhSOA8wAYPTMatb6dlzotn2d-a0iPVcZ-xF_RXlZ60ILYf3--0yNqM4XDMR_KFy_IIcr1kDPh_ZCPRFd5F5oK-NCsnXO1xdStzAnqJ8kVpZK2nxZNBVU7PKRKiFWTFc37-dKHjlDv5sIubBUzDjizpors0uWiYkKJ-A-pbiYVMcPu-1CEaPHOaMB02w&kid=4sA3SJ4EGkWtZ4BeBkE4BJ&nonce=RwEaX-UujUqQyR91",
+        "timezone_name": "America/Chicago"
+    },
+    "options": {
+        "py/object": "wyzebridge.wyze_stream_options.WyzeStreamOptions",
+        "quality": "hd0",
+        "audio": False,
+        "record": True,
+        "reconnect": False,
+        "substream": False,
+        "frame_size": 0,
+        "bitrate": 180
+    }
+}

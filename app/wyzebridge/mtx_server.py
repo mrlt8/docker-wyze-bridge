@@ -4,7 +4,7 @@ import os
 from pathlib import Path
 from signal import SIGTERM
 from subprocess import Popen
-from typing import Optional
+from typing import Any, Optional
 
 import yaml
 from wyzebridge.build_config import MTX_TAG
@@ -16,11 +16,9 @@ MTX_CONFIG: str = "/app/mediamtx.yml"
 MTX_PATH: str = "%path"
 
 class MtxInterface:
-    __slots__ = "data", "_modified"
-
     def __init__(self):
-        self.data = {}
-        self._modified = False
+        self.data: Any = {}
+        self._modified: bool = False
 
     def __enter__(self):
         self.load_config()
@@ -73,9 +71,6 @@ class MtxInterface:
 
 class MtxServer:
     """Setup and interact with the backend mediamtx."""
-
-    __slots__ = "sub_process"
-
     def __init__(self) -> None:
         self.sub_process: Optional[Popen] = None
         self.setup_path_defaults()

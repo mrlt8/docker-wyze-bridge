@@ -1,78 +1,55 @@
 import contextlib
 import json
-import multiprocessing as mp
-import traceback
+import jsonpickle
+import sys
 import zoneinfo
-from collections import namedtuple
-from ctypes import c_int
+from threading import Lock, Thread
+from subprocess import Popen, PIPE, DEVNULL
 from datetime import datetime
-from enum import IntEnum
-from queue import Empty, Full
-from subprocess import PIPE, Popen
-from threading import Thread
 from time import sleep, time
 from typing import Optional
 
 from wyzecam.iotc import WyzeIOTC, WyzeIOTCSession
 from wyzecam.tutk.tutk import TutkError
 from wyzecam.api_models import WyzeAccount, WyzeCamera
-from wyzebridge.wyze_stream_options import WyzeStreamOptions
-from wyzebridge.stream import Stream
-from wyzebridge.bridge_utils import env_bool, env_cam
-from wyzebridge.config import COOLDOWN, DISABLE_CONTROL, MQTT_TOPIC
-from wyzebridge.ffmpeg import get_ffmpeg_cmd
-from wyzebridge.logging import logger, isDebugEnabled
+
+from wyzebridge.bridge_utils import env_bool
+from wyzebridge.config import COOLDOWN, DISABLE_CONTROL, IGNORE_OFFLINE, MQTT_TOPIC
+from wyzebridge.logging import logger
 from wyzebridge.mqtt import publish_discovery, publish_messages, update_mqtt_state
+from wyzebridge.stream import Stream
+from wyzebridge.stream_state import StreamState, StreamStatus
 from wyzebridge.webhooks import send_webhook
 from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.wyze_commands import GET_CMDS, PARAMS, SET_CMDS
-from wyzebridge.wyze_control import camera_control
+from wyzebridge.wyze_stream_options import WyzeStreamOptions
 
-NET_MODE = {0: "P2P", 1: "RELAY", 2: "LAN"}
 
-StreamTuple = namedtuple("stream", ["user", "camera", "options"])
-QueueTuple = namedtuple("queue", ["cam_resp", "cam_cmd"])
-
-class StreamStatus(IntEnum):
-    OFFLINE = -90
-    STOPPING = -1
-    DISABLED = 0
-    STOPPED = 1
-    CONNECTING = 2
-    CONNECTED = 3
+# TODO Marc find a new place to emit these messages
+#        mqtt = [
+#            (f"{MQTT_TOPIC}/{self.uri.lower()}/net_mode", net_mode),
+#            (f"{MQTT_TOPIC}/{self.uri.lower()}/wifi", wifi),
+#            (f"{MQTT_TOPIC}/{self.uri.lower()}/audio", json.dumps(audio) if audio else False),
+#            (f"{MQTT_TOPIC}/{self.uri.lower()}/ip", sess.camera.ip, 0, True),
+#        ]
 
 class WyzeStream(Stream):
-    __slots__ = (
-        "api",
-        "cam_cmd",
-        "cam_resp",
-        "camera",
-        "motion_ts",
-        "options",
-        "rtsp_fw_enabled",
-        "start_time",
-        "tutk_stream_process",
-        "uri",
-        "user",
-        "_motion",
-        "_state",
-    )
-
     def __init__(self, user: WyzeAccount, api: WyzeApi, camera: WyzeCamera, options: WyzeStreamOptions) -> None:
         self.api: WyzeApi = api
-        self.cam_cmd: mp.Queue
-        self.cam_resp: mp.Queue
+        self.cmd_conn = None  # Will be set to Popen.stdin
+        self.resp_conn = None  # Will be set to Popen.stdout
         self.camera: WyzeCamera = camera
-        self.motion_ts: float = 0
+        self.motion_ts: float = 0.0
         self.options: WyzeStreamOptions = options
         self.rtsp_fw_enabled: bool = False
-        self.start_time: float = 0
-        self.tutk_stream_process: Optional[mp.Process] = None
+        self.start_time: float = 0.0
         self.uri: str = camera.name_uri + ("-sub" if options.substream else "")
         self.user: WyzeAccount = user
         self._motion: bool = False
-        self._state: c_int = mp.Value("i", StreamStatus.STOPPED, lock=False)
-        
+        self._state = StreamState(StreamStatus.STOPPED)
+        self._tutk_process: Optional[Popen] = None
+        self._resp_thread: Optional[Thread] = None
+        self._logs_thread: Optional[Thread] = None
         self.setup()
 
     def setup(self):
@@ -94,18 +71,17 @@ class WyzeStream(Stream):
             self.state = StreamStatus.DISABLED
 
         hq_size = 4 if self.camera.is_floodlight else 3 if self.camera.is_2k else 0
-
         self.options.update_quality(hq_size)
         publish_discovery(self.uri, self.camera)
 
     @property
-    def state(self) -> int:
-        return self._state.value
+    def state(self) -> StreamStatus:
+        return self._state.get()
 
     @state.setter
     def state(self, value: StreamStatus) -> None:
-        if self._state.value != value:
-            self._state.value = value
+        if self._state.get() != value:
+            self._state.set(value)
             update_mqtt_state(self.uri, self.status())
 
     @property
@@ -148,31 +124,68 @@ class WyzeStream(Stream):
             f"🎉 Connecting to WyzeCam {self.camera.model_name} - {self.camera.nickname} on {self.camera.ip}"
         )
         self.start_time = time()
-        self.cam_resp = mp.Queue(1)
-        self.cam_cmd = mp.Queue(1)
-        self.tutk_stream_process = mp.Process(
-            target=start_tutk_stream,
-            args=(
-                self.uri,
-                StreamTuple(self.user, self.camera, self.options),
-                QueueTuple(self.cam_resp, self.cam_cmd),
-                self._state,
-            ),
-            name=self.uri,
+        
+        # Serialize arguments for the child process
+        user_json = jsonpickle.encode(self.user)
+        camera_json = jsonpickle.encode(self.camera)
+        api_json = jsonpickle.encode(self.api)
+        options_json = jsonpickle.encode(self.options)
+
+        cmd = [
+            sys.executable,  # Use the current Python interpreter
+            "tutk_stream_process.py",
+            "--uri", self.uri,
+            "--user", user_json,
+            "--api", api_json,
+            "--camera", camera_json,
+            "--options", options_json,
+        ]
+
+        self._tutk_process = Popen(
+            cmd,
+            stdin=PIPE,
+            stdout=PIPE,
+            stderr=PIPE,
+            text=True,
+            bufsize=1,  # Line-buffered
         )
-        self.tutk_stream_process.start()
+        self.cmd_conn = self._tutk_process.stdin
+        self.resp_conn = self._tutk_process.stdout
+        self.logs_conn = self._tutk_process.stderr
+        
+        # Start a thread to read responses and status updates
+        self._resp_thread = Thread(target=self._read_responses, name="{self.camera.nickname}_response_reader", daemon=True)
+        self._resp_thread.start()
+
+        # Start a thread to read logging messages
+        self._logs_thread = Thread(target=self._read_logs, name="{self.camera.nickname}_logs_reader", daemon=True)
+        self._logs_thread.start()
         return True
 
     def stop(self) -> bool:
-        self._clear_mp_queue()
+        self._send_command({"cmd": "stop"})
         self.start_time = 0
         self.state = StreamStatus.STOPPING
-        with contextlib.suppress(ValueError, AttributeError, RuntimeError, AssertionError):
-            if self.tutk_stream_process:
-                self.tutk_stream_process.terminate()
-                self.tutk_stream_process.join(0.5)
 
-        self.tutk_stream_process = None
+        with contextlib.suppress(ValueError, AttributeError, RuntimeError, AssertionError):
+            if self._resp_thread and self._resp_thread.is_alive():
+                self._resp_thread.join(timeout=1.0)
+        self._resp_thread = None
+
+        with contextlib.suppress(ValueError, AttributeError, RuntimeError, AssertionError):
+            if self._logs_thread and self._logs_thread.is_alive():
+                self._logs_thread.join(timeout=1.0)
+        self._logs_thread = None
+        
+        with contextlib.suppress(ValueError, AttributeError, RuntimeError, AssertionError):
+            if self._tutk_process and self._tutk_process.poll() is None:
+                self._tutk_process.terminate()
+                self._tutk_process.wait(timeout=5.0)
+        self._tutk_process = None
+
+        self.cmd_conn = None
+        self.resp_conn = None
+        self.logs_conn = None
         self.state = StreamStatus.STOPPED
         return True
 
@@ -180,7 +193,6 @@ class WyzeStream(Stream):
         if self.state == StreamStatus.DISABLED:
             logger.info(f"🔓 Enabling {self.uri}")
             self.state = StreamStatus.STOPPED
-
         return self.state > StreamStatus.DISABLED
 
     def disable(self) -> bool:
@@ -188,18 +200,18 @@ class WyzeStream(Stream):
             logger.info(f"🔒 Disabling {self.uri}")
             if self.state != StreamStatus.STOPPED:
                 self.stop()
-
             self.state = StreamStatus.DISABLED
         return True
 
-    def health_check(self, should_start: bool = True) -> int:
+    def health_check(self, should_start: bool = True) -> StreamStatus:
         if self.state == StreamStatus.OFFLINE:
-            if env_bool("IGNORE_OFFLINE"):
+            if IGNORE_OFFLINE:
                 logger.info(f"🪦 {self.uri} is offline. WILL ignore.")
                 self.disable()
                 return self.state
             logger.info(f"👻 {self.camera.nickname} is offline.")
-        if self.state in {-13, -19, -68}:  # IOTC_ER_TIMEOUT, IOTC_ER_CAN_NOT_FIND_DEVICE, IOTC_ER_DEVICE_REJECT_BY_WRONG_AUTH_KEY
+
+        if self.state in {StreamStatus.IOTC_TIMEOUT, StreamStatus.IOTC_MISSING_DEVICE, StreamStatus.IOTC_WRONG_AUTH_KEY}:
             self.refresh_camera()
         elif self.state < StreamStatus.DISABLED:
             state = self.state
@@ -213,7 +225,7 @@ class WyzeStream(Stream):
             and should_start
         ):
             self.start()
-        elif self.state == StreamStatus.CONNECTING and is_timedout(self.start_time, 20):
+        elif self.state == StreamStatus.CONNECTING and self.is_timedout(self.start_time, 20):
             logger.warning(f"⏰ Timed out connecting to {self.camera.nickname}.")
             self.stop()
 
@@ -221,6 +233,9 @@ class WyzeStream(Stream):
             return StreamStatus.DISABLED
 
         return self.state if self.start_time < time() else StreamStatus.DISABLED
+
+    def is_timedout(self, start_time: float, timeout: int = 20) -> bool:
+        return time() - start_time > timeout if start_time else False
 
     def refresh_camera(self):
         self.stop()
@@ -231,7 +246,7 @@ class WyzeStream(Stream):
 
     def status(self) -> str:
         try:
-            return StreamStatus(self._state.value).name.lower()
+            return self.state.name.lower()
         except ValueError:
             return "error"
 
@@ -259,11 +274,18 @@ class WyzeStream(Stream):
             "req_frame_size": self.options.frame_size,
             "req_bitrate": self.options.bitrate,
         }
+        
         if self.connected and not self.camera.camera_info:
             self.update_cam_info()
+            
         if self.camera.camera_info and "boa_info" in self.camera.camera_info:
             data["boa_url"] = f"http://{self.camera.ip}/cgi-bin/hello.cgi?name=/"
-        return data | self.camera.model_dump(exclude={"p2p_id", "enr", "parent_enr"})
+            
+        camera = self.camera.__dict__
+        for key in ["p2p_id", "enr", "parent_enr"]:
+            camera.pop(key, None)
+            
+        return data | camera
 
     def update_cam_info(self) -> None:
         if not self.connected:
@@ -324,6 +346,24 @@ class WyzeStream(Stream):
             self.api.set_device_info(self.camera, {"device_timezone_city": zone.key}),
             value=int(offset.total_seconds() / 3600),
         )
+        
+    def check_rtsp_fw(self, force: bool = False) -> Optional[str]:
+        """Check and add rtsp."""
+        if not self.camera.rtsp_fw:
+            return
+        logger.info(f"🛃 Checking {self.camera.nickname} for firmware RTSP")
+        try:
+            with WyzeIOTC() as iotc, WyzeIOTCSession(
+                iotc.tutk_platform_lib, self.user, self.camera
+            ) as session:
+                if session.session_check().mode != 2:  # 0: P2P mode, 1: Relay mode, 2: LAN mode
+                    logger.warning(
+                        f"⚠️ [{self.camera.nickname}] Camera is not on same LAN"
+                    )
+                    return
+                return session.check_native_rtsp(start_rtsp=force)
+        except TutkError:
+            return
 
     def send_cmd(self, cmd: str, payload: str | list | dict = "") -> dict:
         if cmd in {"state", "start", "stop", "disable", "enable"}:
@@ -375,217 +415,82 @@ class WyzeStream(Stream):
             logger.info(f"🖇 [CONTROL] Connecting to {self.uri}")
             self.start()
             while not self.connected and time() - self.start_time < 10:
-                sleep(0.1)
-        self._clear_mp_queue()
+                sleep(0.5)
+
         try:
-            self.cam_cmd.put_nowait((cmd, payload))
-            cam_resp = self.cam_resp.get(timeout=10)
-        except Full:
-            return {"response": "camera busy"}
-        except Empty:
-            return {"response": "timed out"}
+            self._send_command({"cmd": cmd, "payload": payload})
+            response = self._receive_response(timeout=10)
+        except Exception as ex:
+            logger.error(f"Command error: {ex}")
+            response = {"response": "error", "error": str(ex)}
         finally:
             if on_demand:
                 logger.info(f"⛓️‍💥 [CONTROL] Disconnecting from {self.uri}")
                 self.stop()
 
-        return cam_resp.pop(cmd, None) or {"response": "could not get result"}
+        return response or {"response": "could not get result"}
 
-    def check_rtsp_fw(self, force: bool = False) -> Optional[str]:
-        """Check and add rtsp."""
-        if not self.camera.rtsp_fw:
-            return
-        logger.info(f"🛃 Checking {self.camera.nickname} for firmware RTSP")
-        try:
-            with WyzeIOTC() as iotc, WyzeIOTCSession(
-                iotc.tutk_platform_lib, self.user, self.camera
-            ) as session:
-                if session.session_check().mode != 2:  # 0: P2P mode, 1: Relay mode, 2: LAN mode
-                    logger.warning(
-                        f"⚠️ [{self.camera.nickname}] Camera is not on same LAN"
-                    )
-                    return
-                return session.check_native_rtsp(start_rtsp=force)
-        except TutkError:
-            return
+    def _send_command(self, cmd_data: dict) -> None:
+        """Send a command to the child process via stdin."""
+        if self.cmd_conn and not self.cmd_conn.closed:
+            with contextlib.suppress(BrokenPipeError):
+                self.cmd_conn.write(json.dumps({"type": "command", "data": cmd_data}) + "\n")
+                self.cmd_conn.flush()
 
-    def _clear_mp_queue(self):
-        with contextlib.suppress(Empty, AttributeError):
-            self.cam_cmd.get_nowait()
-        with contextlib.suppress(Empty, AttributeError):
-            self.cam_resp.get_nowait()
+    def _receive_response(self, timeout: float = 10.0) -> dict:
+        """Receive a response from the child process via stdout."""
+        start_time = time()
+        while time() - start_time < timeout:
+            if self.resp_conn and not self.resp_conn.closed:
+                line = self.resp_conn.readline().strip()
+                if line:
+                    try:
+                        msg = json.loads(line)
+                        logger.debug(f"Received response: {msg=}")
 
+                        if msg.get("type") == "status":
+                            self.state = StreamStatus(msg.get("data", StreamStatus.STOPPED))
+                            
+                        if msg.get("type") == "response":
+                            return msg.get("data", {})
+                    except json.JSONDecodeError:
+                        pass # it's a logging message from the other side ... ignore for now// logger.error(f"Invalid JSON response: {line}")
 
-def start_tutk_stream(uri: str, stream: StreamTuple, queue: QueueTuple, state: c_int):
-    """Connect and communicate with the camera using TUTK."""
-    was_offline = state.value == StreamStatus.OFFLINE
-    state.value = StreamStatus.CONNECTING
-    exit_code = StreamStatus.STOPPING
-    control_thread = audio_thread = None
-    try:
-        with WyzeIOTC() as iotc, iotc.session(stream, state) as sess:
-            assert state.value >= StreamStatus.CONNECTING, "Stream Stopped"
-            v_codec, audio = get_cam_params(sess, uri)
-            control_thread = setup_control(sess, queue) if not stream.options.substream else None
-            audio_thread = setup_audio(sess, uri) if sess.enable_audio else None
-
-            ffmpeg_cmd = get_ffmpeg_cmd(uri, v_codec, audio, stream.camera.is_vertical)
-            assert state.value >= StreamStatus.CONNECTING, "Stream Stopped"
-            state.value = StreamStatus.CONNECTED
-            with Popen(ffmpeg_cmd, stdin=PIPE, stderr=None) as ffmpeg:
-                if ffmpeg.stdin is not None:
-                    for frame, _ in sess.recv_bridge_data():
-                        ffmpeg.stdin.write(frame)
-
-    except TutkError as ex:
-        trace = traceback.format_exc() if isDebugEnabled(logger) else ""
-        logger.warning(f"𓁈‼️ [TUTK] {[ex.code]} {ex} {trace}")
-        set_cam_offline(uri, ex, was_offline)
-        if ex.code in {-10, -13, -19, -68, -90}: # IOTC_ER_UNLICENSE, IOTC_ER_TIMEOUT, IOTC_ER_CAN_NOT_FIND_DEVICE, IOTC_ER_DEVICE_REJECT_BY_WRONG_AUTH_KEY, IOTC_ER_DEVICE_OFFLINE
-            exit_code = ex.code
-    except ValueError as ex:
-        trace = traceback.format_exc() if isDebugEnabled(logger) else ""
-        logger.warning(f"𓁈⚠️ [TUTK] Error: [{type(ex).__name__}] {ex} {trace}")
-        if ex.args[0] == "ENR_AUTH_FAILED":
-            logger.warning("⏰ Expired ENR?")
-            exit_code = -19 # IOTC_ER_CAN_NOT_FIND_DEVICE
-    except BrokenPipeError:
-        logger.warning("𓁈✋ [TUTK] FFMPEG stopped")
-    except Exception as ex:
-        trace = traceback.format_exc() if isDebugEnabled(logger) else ""
-        logger.error(f"𓁈‼️ [TUTK] Exception: [{type(ex).__name__}] {ex} {trace}")
-    else:
-        logger.warning("𓁈🛑 [TUTK] Stream stopped")
-    finally:
-        state.value = exit_code
-
-        if audio_thread is not None:
-            stop_and_wait(audio_thread)
-            audio_thread = None
-
-        if control_thread is not None:
-            stop_and_wait(control_thread)
-            control_thread = None
-
-def stop_and_wait(thread: Thread):
-    with contextlib.suppress(ValueError, AttributeError, RuntimeError, AssertionError):
-        if thread and thread.is_alive():
-            thread.join(timeout=30.0)
-
-def setup_audio(sess: WyzeIOTCSession, uri: str) -> Thread:
-    audio_thread = Thread(target=sess.recv_audio_pipe, name=f"{uri}_audio", daemon=True)
-    audio_thread.start()
-    return audio_thread
-
-def setup_control(sess: WyzeIOTCSession, queue: QueueTuple) -> Thread:
-    control_thread = Thread(
-        target=camera_control,
-        args=(sess, queue.cam_resp, queue.cam_cmd),
-        name=f"{sess.camera.name_uri}_control",
-        daemon=True
-    )
-    control_thread.start()
-    return control_thread
-
-def get_cam_params(sess: WyzeIOTCSession, uri: str) -> tuple[str, dict]:
-    """Check session and return fps and audio codec from camera."""
-    session_info = sess.session_check()
-    net_mode = check_net_mode(session_info.mode, uri)
-    v_codec, fps = get_video_params(sess)
-    firmware, wifi = get_camera_info(sess)
-    stream = (
-        f"{sess.preferred_bitrate}kb/s {sess.resolution} stream ({v_codec}/{fps}fps)"
-    )
-
-    logger.info(f"📡 Getting {stream} via {net_mode} (WiFi: {wifi}%) FW: {firmware}")
-
-    audio = get_audio_params(sess)
-    mqtt = [
-        (f"{MQTT_TOPIC}/{uri.lower()}/net_mode", net_mode),
-        (f"{MQTT_TOPIC}/{uri.lower()}/wifi", wifi),
-        (f"{MQTT_TOPIC}/{uri.lower()}/audio", json.dumps(audio) if audio else False),
-        (f"{MQTT_TOPIC}/{uri.lower()}/ip", sess.camera.ip, 0, True),
-    ]
-    publish_messages(mqtt)
-    return v_codec, audio
-
-def get_camera_info(sess: WyzeIOTCSession) -> tuple[str, str]:
-    if not (camera_info := sess.camera.camera_info):
-        logger.warning("⚠️ cameraInfo is missing.")
-        return "NA", "NA"
-    logger.debug(f"[cameraInfo] {camera_info}")
-
-    firmware = camera_info.get("basicInfo", {}).get("firmware", "NA")
-    if sess.camera.dtls or sess.camera.parent_dtls:
-        firmware += " 🔒"
-
-    wifi = camera_info.get("basicInfo", {}).get("wifidb", "NA")
-    if "netInfo" in camera_info:
-        wifi = camera_info["netInfo"].get("signal", wifi)
-
-    return firmware, wifi
-
-def get_video_params(sess: WyzeIOTCSession) -> tuple[str, int]:
-    cam_info = sess.camera.camera_info
-    if not cam_info or not (video_param := cam_info.get("videoParm")):
-        logger.warning("⚠️ camera_info is missing videoParm. Using default values.")
-        video_param = {"type": "h264", "fps": 20}
-
-    fps = int(video_param.get("fps", 0))
-
-    if force_fps := int(env_cam("FORCE_FPS", sess.camera.name_uri, "0")):
-        logger.info(f"🦾 Attempting to force fps={force_fps}")
-        sess.update_frame_size_rate(fps=force_fps)
-        fps = force_fps
-
-    if fps % 5 != 0:
-        logger.error(f"⚠️ Unusual FPS detected: {fps}")
-
-    logger.debug(f"📽️ [videoParm] {video_param}")
-    sess.preferred_frame_rate = fps
-
-    return video_param.get("type", "h264"), fps
-
-def get_audio_params(sess: WyzeIOTCSession) -> dict[str, str | int]:
-    if not sess.enable_audio:
-        return {}
-
-    codec, rate = sess.identify_audio_codec()
-    logger.info(f"🔊 Audio Enabled [Source={codec.upper()}/{rate:,}Hz]")
-
-    if codec_out := env_bool("AUDIO_CODEC"):
-        logger.info(f"🔊 [AUDIO] Re-Encode Enabled [AUDIO_CODEC={codec_out}]")
-    elif rate > 8000 or codec.lower() == "s16le":
-        codec_out = "pcm_mulaw"
-        logger.info(f"🔊 [AUDIO] Re-Encode for RTSP compatibility [{codec_out=}]")
-
-    return {"codec": codec, "rate": rate, "codec_out": codec_out.lower()}
-
-def check_net_mode(session_mode: int, uri: str) -> str:
-    """Check if the connection mode is allowed."""
-    net_mode = env_cam("NET_MODE", uri, "any")
+            sleep(0.1)
+        return {"response": "timed out"}
     
-    if "p2p" in net_mode and session_mode == 1:
-        raise RuntimeError("☁️ Connected via RELAY MODE! Reconnecting")
-    
-    if "lan" in net_mode and session_mode != 2:
-        raise RuntimeError("☁️ Connected via NON-LAN MODE! Reconnecting")
+    def _read_responses(self) -> None:
+        """Read responses and status updates from the child process."""
+        while self._tutk_process and self._tutk_process.poll() is None:
+            if resp := self._receive_response(timeout=0.1) is None:
+                sleep(0.1)
+                
+    def _read_logs(self) -> None:
+        """Read logging messages from the child process."""
+        while self._tutk_process and self._tutk_process.poll() is None:
+            if self.logs_conn and not self.logs_conn.closed:
+                line = self.logs_conn.readline().strip()
+                if line:
+                    logger.debug(line)
+                else:
+                    sleep(0.1)
+                
+def state_control(self, cmd: str) -> dict:
+    if cmd == "start":
+        return {"response": "success"} if self.start() else {"response": "failed"}
+    if cmd == "stop":
+        return {"response": "success"} if self.stop() else {"response": "failed"}
+    if cmd == "disable":
+        return {"response": "success"} if self.disable() else {"response": "failed"}
+    if cmd == "enable":
+        return {"response": "success"} if self.enable() else {"response": "failed"}
+    return {"response": self.status()}
 
-    mode = f'{NET_MODE.get(session_mode, f"UNKNOWN ({session_mode})")} mode'
-    if session_mode != 2:
-        logger.warning(f"☁️ Camera is connected via {mode}!!")
-        logger.warning("Stream may consume additional bandwidth!")
-    return mode
+def power_control(self, value: str) -> dict:
+    return {"response": f"power {value} not implemented"}
 
-def set_cam_offline(uri: str, error: TutkError, was_offline: bool) -> None:
-    """Do something when camera goes offline."""
-    offline_code:int = env_bool("OFFLINE_ERRNO", "-90", style="int")
-    is_offline = error.code == offline_code
-    state = "offline" if is_offline else error.name # IOTC_ER_DEVICE_OFFLINE
-    update_mqtt_state(uri.lower(), str(state))
+def notification_control(self, value: str) -> dict:
+    return {"response": f"notifications {value} not implemented"}
 
-    if is_offline and not was_offline:  # Don't resend if previous state was offline.
-        send_webhook("offline", uri, f"{uri} is offline")
-
-def is_timedout(start_time: float, timeout: int = 20) -> bool:
-    return time() - start_time > timeout if start_time else False
+def tz_control(self, timezone: str) -> dict:
+    return {"response": f"time_zone {timezone} not implemented"}

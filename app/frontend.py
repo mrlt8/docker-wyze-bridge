@@ -60,10 +60,10 @@ def create_app():
             return {"status": "success"}
 
         credentials = {
-            "email": request.form.get("email"),
-            "password": request.form.get("password"),
-            "key_id": request.form.get("keyId"),
-            "api_key": request.form.get("apiKey"),
+            "email": request.form.get("email") or "",
+            "password": request.form.get("password") or "",
+            "key_id": request.form.get("keyId") or "",
+            "api_key": request.form.get("apiKey") or "",
         }
 
         if all(credentials.values()):
@@ -244,8 +244,8 @@ def create_app():
         /restart/all:           Restart camera connections and rtsp-simple-server.
         """
         if restart_cmd == "cameras":
-            wb.streams.stop_all()
-            wb.streams.monitor_streams(wb.mtx.health_check)
+            wb.stop_streams()
+            wb.start_streams()
         elif restart_cmd == "rtsp_server":
             wb.mtx.restart()
         elif restart_cmd == "cam_data":

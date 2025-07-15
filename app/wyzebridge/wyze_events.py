@@ -1,20 +1,18 @@
 import time
 from collections import deque
 from datetime import datetime
-from typing import Any
 
 from wyzebridge.config import MOTION_INT, MOTION_START
 from wyzebridge.logging import logger
 from wyzebridge.mqtt import update_preview
+from wyzebridge.stream import Stream
 from wyzebridge.webhooks import send_webhook
-from wyzebridge.wyze_stream import WyzeStream
+from wyzebridge.wyze_api import WyzeApi
 
 class WyzeEvents:
-    __slots__ = "api", "streams", "events", "last_check", "last_ts"
-
-    def __init__(self, streams: dict[str, WyzeStream | Any]):
-        self.streams = streams
-        self.api = next(iter(streams.values())).api
+    def __init__(self, api: WyzeApi, streams: dict[str, Stream]):
+        self.api: WyzeApi = api
+        self.streams: dict[str, Stream] = streams
         self.events: deque[str] = deque(maxlen=20)
         self.last_check: float = 0
         self.last_ts: int = 0

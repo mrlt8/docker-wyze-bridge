@@ -205,51 +205,35 @@ def get_camera_list(auth_info: WyzeCredential) -> list[WyzeCamera]:
             continue
 
         device_params = device.get("device_params", {})
-        p2p_id: Optional[str] = device_params.get("p2p_id")
-        p2p_type: Optional[int] = device_params.get("p2p_type")
-        ip: Optional[str] = device_params.get("ip")
-        enr: Optional[str] = device.get("enr")
-        mac: Optional[str] = device.get("mac")
-        product_model: Optional[str] = device.get("product_model")
-        nickname: Optional[str] = device.get("nickname")
-        timezone_name: Optional[str] = device.get("timezone_name")
-        firmware_ver: Optional[str] = device.get("firmware_ver")
-        dtls: Optional[int] = device_params.get("dtls")
-        parent_dtls: Optional[int] = device_params.get("main_device_dtls")
-        parent_enr: Optional[str] = device.get("parent_device_enr")
-        parent_mac: Optional[str] = device.get("parent_device_mac")
-        thumbnail: Optional[str] = device_params.get("camera_thumbnails").get("thumbnails_url")
 
-        if not p2p_type:
+        camera = WyzeCamera()
+        camera.p2p_id = device_params.get("p2p_id")
+        camera.p2p_type = device_params.get("p2p_type")
+        camera.ip = device_params.get("ip")
+        camera.enr = device.get("enr")
+        camera.mac = device.get("mac")
+        camera.product_model = device.get("product_model")
+        camera.nickname = device.get("nickname")
+        camera.timezone_name = device.get("timezone_name")
+        camera.firmware_ver = device.get("firmware_ver")
+        camera.dtls = device_params.get("dtls")
+        camera.parent_dtls = device_params.get("main_device_dtls")
+        camera.parent_enr = device.get("parent_device_enr")
+        camera.parent_mac = device.get("parent_device_mac")
+        camera.thumbnail = device_params.get("camera_thumbnails").get("thumbnails_url")
+
+        if not camera.p2p_type:
             continue
-        if not ip:
+        if not camera.ip:
             continue
-        if not enr:
+        if not camera.enr:
             continue
-        # above added, validate
-        if not mac:
+        if not camera.mac:
             continue
-        if not product_model:
+        if not camera.product_model:
             continue
 
-        result.append(
-            WyzeCamera(
-                p2p_id=p2p_id,
-                p2p_type=p2p_type,
-                ip=ip,
-                enr=enr,
-                mac=mac,
-                product_model=product_model,
-                nickname=nickname,
-                timezone_name=timezone_name,
-                firmware_ver=firmware_ver,
-                dtls=dtls,
-                parent_dtls=parent_dtls,
-                parent_enr=parent_enr,
-                parent_mac=parent_mac,
-                thumbnail=thumbnail,
-            )
-        )
+        result.append(camera)
     return result
 
 def run_action(auth_info: WyzeCredential, camera: WyzeCamera, action: str):

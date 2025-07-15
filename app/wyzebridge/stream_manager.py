@@ -5,7 +5,7 @@ from subprocess import Popen, TimeoutExpired
 from threading import Thread
 from typing import  Callable, Optional
 
-from wyzebridge.wyze_stream import StreamStatus
+from wyzebridge.stream_status import StreamStatus
 from wyzebridge.wyze_api import WyzeApi
 from wyzebridge.stream import Stream
 from wyzebridge.config import MOTION, MQTT_DISCOVERY, SNAPSHOT_TYPE
@@ -17,8 +17,6 @@ from wyzebridge.wyze_events import WyzeEvents
 from wyzebridge.bridge_utils_sunset import should_take_snapshot, should_skip_snapshot
 
 class StreamManager:
-    __slots__ = "api", "stop_flag", "streams", "rtsp_snapshots", "last_snap", "monitor_snapshots_thread"
-
     def __init__(self, api: WyzeApi):
         self.api: WyzeApi = api
         self.stop_flag: bool = False
@@ -56,19 +54,19 @@ class StreamManager:
             return  # we are already stopping
 
         self.stop_flag = True
-        logger.info(f"[STREAM] Stopping {self.total} stream{'s'[:self.total^1]}")
-
-        uris = { uri for uri in self.streams.keys() }
-        for uri in uris:
-            logger.info(f"[STREAM] Stopping {uri} stream")
-            if stream := self.streams.pop(uri, None):
-                stream.stop()
 
         if self.monitor_snapshots_thread is not None:
             logger.info("[STREAM] Stopping monitor_snapshots thread")
             with contextlib.suppress(ValueError, AttributeError, RuntimeError, AssertionError):
                 self.monitor_snapshots_thread.join(timeout=20.0)
             self.monitor_snapshots_thread = None
+
+        logger.info(f"[STREAM] Stopping {self.total} stream{'s'[:self.total^1]}")
+        uris = { uri for uri in self.streams.keys() }
+        for uri in uris:
+            logger.info(f"[STREAM] Stopping {uri} stream")
+            if stream := self.streams.pop(uri, None):
+                stream.stop()
 
         self.streams.clear()
         wait_for_purges()
@@ -79,7 +77,7 @@ class StreamManager:
         mqtt = cam_control(self.streams, self.send_cmd)
         logger.info(f"🎬 {self.total} stream{'s'[:self.total^1]} enabled")
         event = RtspEvent(self.streams)
-        events = WyzeEvents(self.streams) if MOTION else None
+        events = WyzeEvents(self.api, self.streams) if MOTION else None
 
         if MQTT_DISCOVERY:
             self.monitor_snapshots()

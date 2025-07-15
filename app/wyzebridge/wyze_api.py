@@ -17,7 +17,7 @@ from wyzecam.api_models import WyzeAccount, WyzeCamera, WyzeCredential
 from wyzecam.api import AccessTokenError, RateLimitError, WyzeAPIError, get_cam_webrtc, get_camera_list, get_user_info, login, post_device, refresh_token, run_action
 from wyzebridge.auth import get_secret
 from wyzebridge.bridge_utils import env_bool, env_list
-from wyzebridge.config import IMG_PATH, MOTION, TOKEN_PATH
+from wyzebridge.config import FRESH_DATA, IMG_PATH, MOTION, TOKEN_PATH
 from wyzebridge.logging import logger
 
 def cached(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -70,8 +70,6 @@ def authenticated(func: Callable[..., Any]) -> Callable[..., Any]:
     return wrapper
 
 class WyzeCredentials:
-    __slots__ = "email", "password", "key_id", "api_key"
-
     def __init__(self) -> None:
         self.email: str = get_secret("WYZE_EMAIL")
         self.password: str = get_secret("WYZE_PASSWORD")
@@ -81,11 +79,13 @@ class WyzeCredentials:
         if not self.is_set:
             logger.warning("[API] Credentials are NOT set")
 
+   
     @property
     def is_set(self) -> bool:
         return bool(self.email and self.password and self.key_id and self.api_key)
 
     def update(self, email: str, password: str, key_id: str, api_key: str) -> None:
+        logger.debug(f"Updating Wyze credentials: {email=}, {password=}, {key_id=}, {api_key=}")
         self.email = email.strip()
         self.password = password.strip()
         self.key_id = key_id.strip()
@@ -98,16 +98,14 @@ class WyzeCredentials:
         return self.email.lower() == email.lower() if self.is_set else True
 
 class WyzeApi:
-    __slots__ = "auth", "user", "creds", "cameras", "_last_pull"
-
-    def __init__(self) -> None:
+    def __init__(self, creds: WyzeCredentials) -> None:
         self.auth: Optional[WyzeCredential] = None
         self.user: Optional[WyzeAccount] = None
-        self.creds: WyzeCredentials = WyzeCredentials()
         self.cameras: Optional[list[WyzeCamera]] = None
+        self.creds: WyzeCredentials = creds
         self._last_pull: float = 0
 
-        if env_bool("FRESH_DATA"):
+        if FRESH_DATA:
             self.clear_cache()
 
     @property
@@ -169,15 +167,9 @@ class WyzeApi:
             token, refresh = parse_token(token)
             logger.info("⚠️ Using 'ACCESS_TOKEN' for authentication")
             try:
-                self.auth = WyzeCredential(access_token=token)
-            except Exception:
-                self.auth = None
-
-        if len(token := refresh or env_bool("refresh_token", style="original")) > 150:
-            logger.info("⚠️ Using 'REFRESH_TOKEN' for authentication")
-            try:
-                creds = WyzeCredential(refresh_token=token)
-                self.auth = refresh_token(creds)
+                self.auth = WyzeCredential()
+                self.auth.access_token = token or ""
+                self.auth.refresh_token = refresh or ""
             except Exception:
                 self.auth = None
 

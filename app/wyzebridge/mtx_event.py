@@ -9,6 +9,7 @@ import select
 
 from wyzebridge.logging import logger
 from wyzebridge.mqtt import update_mqtt_state
+from wyzebridge.stream import Stream
 
 class RtspEvent:
     """
@@ -16,11 +17,10 @@ class RtspEvent:
     """
 
     FIFO = "/tmp/mtx_event"
-    __slots__ = "pipe", "streams", "buf"
 
     def __init__(self, streams):
-        self.pipe = 0
-        self.streams = streams
+        self.pipe: int = 0
+        self.streams: dict[str, Stream] = streams
         self.buf: str = ""
         self.open_pipe()
 

@@ -12,7 +12,7 @@ from wyzebridge.hass import setup_hass
 from wyzebridge.logging import logger
 from wyzebridge.mtx_server import MtxServer
 from wyzebridge.stream_manager import StreamManager
-from wyzebridge.wyze_api import WyzeApi
+from wyzebridge.wyze_api import WyzeApi, WyzeCredentials
 from wyzebridge.wyze_stream import WyzeStream, WyzeStreamOptions
 from wyzecam.api_models import WyzeCamera
 
@@ -25,23 +25,21 @@ if HASS_TOKEN:
     migrate_path("/config/wyze-bridge/", "/config/")
 
 class WyzeBridge(Thread):
-    __slots__ = "api", "streams", "mtx", "user", "rtsp_enabled", "stopping"
-
     def __init__(self) -> None:
-        Thread.__init__(self)
+        Thread.__init__(self, name="WyzeBridge")
         
-        self.stopping = False
-
-        signal.signal(getattr(signal, "SIGTERM"), self._clean_up)
-        signal.signal(getattr(signal, "SIGINT"), self._clean_up)
-
         print(f"\n🚀 DOCKER-WYZE-BRIDGE v{VERSION} {BUILD_STR}\n")
-        self.api: WyzeApi = WyzeApi()
+        self.stopping: bool = False
+        self.creds = WyzeCredentials()
+        self.api: WyzeApi = WyzeApi(self.creds)
         self.streams: StreamManager = StreamManager(self.api)
         self.mtx: MtxServer = MtxServer()
         self.mtx.setup_webrtc(BRIDGE_IP)
         if LLHLS:
             self.mtx.setup_llhls(TOKEN_PATH, bool(HASS_TOKEN))
+
+        signal.signal(getattr(signal, "SIGTERM"), self._clean_up)
+        signal.signal(getattr(signal, "SIGINT"), self._clean_up)
 
     def health(self):
         return {
@@ -69,8 +67,15 @@ class WyzeBridge(Thread):
             logger.debug(f"[BRIDGE] MTX config:\n{self.mtx.dump_config()}")
             
         self.mtx.start()
-        self.streams.monitor_streams(self.mtx.health_check)
+        self.start_streams
 
+    def start_streams(self) -> None:
+        self.streams.monitor_streams(self.mtx.health_check)
+        
+    def stop_streams(self) -> None:
+        if self.streams:
+            self.streams.stop_all()
+        
     def restart(self, fresh_data: bool = False) -> None:
         self._stop_services()
         self._initialize(fresh_data)
