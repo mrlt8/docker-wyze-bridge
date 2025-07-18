@@ -151,7 +151,7 @@ class WyzeStream:
             return False
         self.state = StreamStatus.CONNECTING
         logger.info(
-            f"🎉 Connecting to WyzeCam {self.camera.model_name} - {self.camera.nickname} on {self.camera.ip}"
+            f"↔️ Connecting to WyzeCam {self.camera.model_name} - {self.camera.nickname} on {self.camera.ip}"
         )
         self.start_time = time()
         self.cam_resp = mp.Queue(1)
