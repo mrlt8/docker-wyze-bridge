@@ -12,6 +12,7 @@ startup: application
 boot: auto
 apparmor: false
 hassio_api: true
+host_network: true
 ports:
   1935/tcp: 1935
   8554/tcp: 8554
