@@ -157,7 +157,7 @@ class K10002ConnectAuth(TutkWyzeProtocolMessage):
         Constructs a new K10002ConnectAuth message
 
         :param challenge_response: the xxtea-encrypted response to the challenge bytes
-                                   recieved as part of message 10001.
+                                   received as part of message 10001.
         :param mac: the mac address of the camera
         :param video: True if we wish to start streaming video after authentication is successful.
         :param audio: True if we wish to start streaming audio after authentication is successful.
@@ -259,7 +259,7 @@ class K10008ConnectUserAuth(TutkWyzeProtocolMessage):
         Constructs a new K10008ConnectAuth message
 
         :param challenge_response: the xxtea-encrypted response to the challenge bytes
-                                   recieved as part of message 10001.
+                                   received as part of message 10001.
         :param phone_id: the phone id of the client
         :param open_userid: the open_user_id associated with the user authenticating.
         :param video: True if we wish to start streaming video after authentication is successful.

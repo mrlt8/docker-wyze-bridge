@@ -42,7 +42,7 @@ class WyzeIOTC:
     :vartype udp_port: int
     :var max_num_av_channels: the maximum number of simultaneous sessions this object supports.
     :vartype max_num_av_channels: int
-    :var version: the version of the underyling `tutk_platform_lib`
+    :var version: the version of the underlying `tutk_platform_lib`
     """
 
     def __init__(

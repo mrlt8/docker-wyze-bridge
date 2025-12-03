@@ -414,7 +414,7 @@ class SInfoStructEx(FormattedStructure):
 
 class FrameInfoStruct(FormattedStructure):
     """
-    A struct recieved on every video frame, with lots of useful information
+    A struct received on every video frame, with lots of useful information
     about the frame sent by the camera.
 
     :var codec_id: 78: h264 80: h265
