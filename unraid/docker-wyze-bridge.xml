@@ -9,11 +9,11 @@
   </Branch>
   <Branch>
     <Tag>latest-hw</Tag>
-    <TagDescription>Latest stable release for amd64 with additinal drivers for harware accelerated encoding.</TagDescription>
+    <TagDescription>Latest stable release for amd64 with additional drivers for hardware accelerated encoding.</TagDescription>
   </Branch>
   <Branch>
     <Tag>latest-qsv</Tag>
-    <TagDescription>Latest stable release for amd64 with additinal drivers for QSV accelerated encoding.</TagDescription>
+    <TagDescription>Latest stable release for amd64 with additional drivers for QSV accelerated encoding.</TagDescription>
   </Branch>
   <Branch>
     <Tag>dev</Tag>
