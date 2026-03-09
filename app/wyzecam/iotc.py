@@ -21,6 +21,7 @@ from wyzecam.tutk.tutk_protocol import (
     K10056SetResolvingBit,
     respond_to_ioctrl_10001,
 )
+from wyzebridge.config import CONNECT_TIMEOUT
 
 logger = logging.getLogger(__name__)
 
@@ -144,6 +145,7 @@ class WyzeIOTC:
             frame_size=stream.options.frame_size,
             bitrate=stream.options.bitrate,
             enable_audio=stream.options.audio,
+            connect_timeout=CONNECT_TIMEOUT,
             stream_state=state,
             substream=stream.options.substream,
         )
@@ -678,6 +680,45 @@ class WyzeIOTCSession:
         raise Exception("Unable to identify audio.")
 
     def _connect(
+        self,
+        timeout_secs: int = 10,
+        channel_id: int = 0,
+        username: str = "admin",
+        password: str = "888888",
+        max_buf_size: int = 10 * 1024 * 1024,
+    ):
+        # Get retry settings from environment
+        max_retries = int(os.getenv("CONNECT_RETRIES", 3))
+        retry_delay = float(os.getenv("CONNECT_RETRY_DELAY", 2.0))
+        
+        last_error = None
+        for attempt in range(max_retries):
+            try:
+                self._connectattempt(
+                    timeout_secs, channel_id, username, password, max_buf_size
+                )
+                # If we get here, connection succeeded
+                break
+            except tutk.TutkError as e:
+                last_error = e
+                # Check if it's a timeout error that we should retry
+                if e.code in (-13, -23):  # IOTC_ER_TIMEOUT, IOTC_ER_REMOTE_TIMEOUT_DISCONNECT
+                    if attempt < max_retries - 1:
+                        logger.debug(
+                            f"Connection timeout on attempt {attempt + 1}/{max_retries}, "
+                            f"retrying in {retry_delay}s..."
+                        )
+                        self._disconnect()
+                        time.sleep(retry_delay)
+                        continue
+                # For other errors, don't retry
+                raise
+        else:
+            # All retries exhausted
+            if last_error:
+                raise last_error
+
+    def _connectattempt(
         self,
         timeout_secs: int = 10,
         channel_id: int = 0,
