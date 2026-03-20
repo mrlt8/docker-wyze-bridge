@@ -694,8 +694,19 @@ class WyzeIOTCSession:
                 raise tutk.TutkError(session_id)
             self.session_id = session_id
 
-            if not self.camera.dtls and not self.camera.parent_dtls:
+            use_dtls = self.camera.dtls or self.camera.parent_dtls
+            # Force DTLS for V4 cameras — firmware 4.52.9.5332+ requires it
+            # even if the API reports dtls=0
+            if self.camera.product_model == "HL_CAM4" and not use_dtls:
+                logger.info(
+                    "[V4] Forcing DTLS auth for Cam V4 "
+                    "(required for firmware 4.52.9.5332+)"
+                )
+                use_dtls = True
+
+            if not use_dtls:
                 logger.debug("Connect via IOTC_Connect_ByUID_Parallel")
+                self.connect_timeout = int(os.getenv("LAN_TIMEOUT", 10))
                 session_id = tutk.iotc_connect_by_uid_parallel(
                     self.tutk_platform_lib, self.camera.p2p_id, self.session_id
                 )
@@ -704,15 +715,27 @@ class WyzeIOTCSession:
                 password = self.camera.enr
                 if self.camera.parent_dtls:
                     password = self.camera.parent_enr
+                p2p_timeout = int(os.getenv("P2P_TIMEOUT", 20))
+                self.connect_timeout = p2p_timeout
                 session_id = tutk.iotc_connect_by_uid_ex(
                     self.tutk_platform_lib,
                     self.camera.p2p_id,
                     self.session_id,
                     self.get_auth_key(),
-                    self.connect_timeout,
+                    p2p_timeout,
                 )
 
             if session_id < 0:  # type: ignore
+                if session_id == -13 and self.camera.product_model == "HL_CAM4":
+                    fw = self.camera.firmware_ver or "unknown"
+                    logger.error(
+                        f"[V4] IOTC_ER_TIMEOUT (-13) connecting to "
+                        f"{self.camera.nickname} (FW: {fw}). "
+                        f"V4 firmware 4.52.9.5332+ requires DTLS auth that "
+                        f"TUTK SDK 4.2.x may not fully support. "
+                        f"Recommended fix: downgrade V4 firmware to 4.52.9.4188 "
+                        f"via Wyze app or SD card."
+                    )
                 raise tutk.TutkError(session_id)
             self.session_id = session_id
 
