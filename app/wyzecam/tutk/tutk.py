@@ -953,6 +953,7 @@ def iotc_connect_by_uid_ex(
     """
     connect_input = St_IOTCConnectInput()
     connect_input.cb = sizeof(connect_input)
+    connect_input.authentication_type = 1  # Force DTLS authentication
     connect_input.auth_key = auth_key.encode()
     connect_input.timeout = timeout
 

@@ -447,6 +447,21 @@ def start_tutk_stream(uri: str, stream: StreamTuple, queue: QueueTuple, state: c
     except TutkError as ex:
         logger.warning(f"{[ex.code]} {ex}")
         set_cam_offline(uri, ex, was_offline)
+        if ex.code == -13 and stream.camera.product_model == "HL_CAM4":
+            fw = stream.camera.firmware_ver or "unknown"
+            logger.error(
+                f"[V4] IOTC_ER_TIMEOUT (-13) for {stream.camera.nickname} "
+                f"(FW: {fw}). V4 firmware 4.52.9.5332+ may require TUTK SDK "
+                f"4.3.x for full DTLS support. Recommended: downgrade V4 "
+                f"firmware to 4.52.9.4188 via Wyze app or SD card."
+            )
+        elif ex.code == -10:
+            logger.error(
+                f"IOTC_ER_UNLICENSE (-10) for "
+                f"{stream.camera.nickname}. This device may require "
+                f"a valid SDK_KEY. Set the SDK_KEY env var with a licensed "
+                f"TUTK SDK key."
+            )
         if ex.code in {-10, -13, -19, -68, -90}:
             exit_code = ex.code
     except ValueError as ex:
