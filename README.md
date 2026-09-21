@@ -85,7 +85,7 @@ Simplify default credentials for the WebUI:
   - This will not affect users who are setting their own `WB_PASSWORD` and `WB_API`.
   - Default `WB_PASSWORD` will now be derived from the username part of the Wyze email address instead of using a randomly generated password.
     - Example: For the email address `john123@doe.com`, the `WB_PASSWORD` will be `john123`.
-  - Default `WB_API` will be based on the wyze account for persistance.
+  - Default `WB_API` will be based on the wyze account for persistence.
 
 ### Stream Authentication
 
