@@ -289,6 +289,7 @@ All environment variables are optional.
 * [Proxy Stream from RTSP Firmware](https://github.com/mrlt8/docker-wyze-bridge/wiki/Advanced-Option#proxy-stream-from-rtsp-firmware)
 * [BOA HTTP Server/Motion Alerts](https://github.com/mrlt8/docker-wyze-bridge/wiki/Boa-HTTP-Server)
 * [Debugging Options](https://github.com/mrlt8/docker-wyze-bridge/wiki/Advanced-Option#debugging-options)
+* [Optional SD recording download helper](docs/sd-recording-download.md) — experimental, one existing recording per request.
 
 ## Other Wyze Projects
 
