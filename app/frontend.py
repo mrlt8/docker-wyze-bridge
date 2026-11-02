@@ -17,6 +17,7 @@ from werkzeug.exceptions import NotFound
 from wyze_bridge import WyzeBridge
 from wyzebridge import config, web_ui
 from wyzebridge.auth import WbAuth
+from wyzebridge.sd_download import register_sd_download
 from wyzebridge.web_ui import url_for
 
 
@@ -38,6 +39,8 @@ def create_app():
             return web_ui.auth.login_required(view)(*args, **kwargs)
 
         return wrapped_view
+
+    register_sd_download(app, wb, auth_required)
 
     @app.route("/login", methods=["GET", "POST"])
     def wyze_login():

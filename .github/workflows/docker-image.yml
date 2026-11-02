@@ -16,6 +16,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Should build?
+        if: github.event_name != 'pull_request'
         run: |
           if [ -z "${{ secrets.DOCKERHUB_USERNAME }}" ]; then
             echo "The DOCKERHUB_USERNAME secret is missing."
@@ -122,6 +123,7 @@ jobs:
           provenance: false
 
   version_bump:
+    if: github.event_name != 'pull_request'
     needs: [build]
     runs-on: ubuntu-latest
     steps:
